@@ -746,7 +746,7 @@ document.addEventListener("DOMContentLoaded", function() {
 ?>
 <div class="glass-panel" style="padding: 24px; max-width:600px; margin:0 auto;">
     <h3 style="font-size:20px; margin-bottom:20px;"><i class="fas fa-user-edit text-primary"></i> <?= $action === 'edit' ? 'Edit Data Pelanggan' : 'Tambah Baru' ?></h3>
-    <form action="index.php?page=admin_customers&action=<?= $action === 'edit' ? 'update' : 'add' ?>" method="POST">
+    <form action="index.php?page=admin_customers&action=<?= $action === 'edit' ? 'update' : 'add' ?>" method="POST" onsubmit="return validateAndSync(event)">
         <?php if($action === 'edit'): ?><input type="hidden" name="id" value="<?= $c['id'] ?>"><?php endif; ?>
         
         <div class="form-group">
@@ -942,7 +942,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
         <div style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid var(--glass-border); padding-top:20px;">
             <a href="index.php?page=admin_customers" class="btn btn-ghost">Batal</a>
-            <button type="submit" class="btn btn-primary" onclick="syncPackageData()">Simpan</button>
+            <button type="submit" class="btn btn-primary">Simpan</button>
         </div>
     </form>
 </div>
@@ -970,17 +970,33 @@ function togglePkgFields(type) {
 }
 
 function syncPackageData() {
+    // This is now inside validateAndSync
+}
+
+function validateAndSync(e) {
     const type = document.getElementById('customer_type_selector').value;
     const realPkg = document.getElementById('real_package_name');
     const realFee = document.getElementById('real_monthly_fee');
 
+    let pkgVal = '';
+    let feeVal = '';
+
     if(type === 'partner') {
-        realPkg.value = document.querySelector('[name=package_name_custom]').value;
-        realFee.value = document.querySelector('[name=monthly_fee_custom]').value;
+        pkgVal = document.querySelector('[name=package_name_custom]').value;
+        feeVal = document.querySelector('[name=monthly_fee_custom]').value;
     } else {
-        realPkg.value = document.querySelector('[name=package_name_select]').value;
-        realFee.value = document.querySelector('[name=monthly_fee_std]').value;
+        pkgVal = document.querySelector('[name=package_name_select]').value;
+        feeVal = document.querySelector('[name=monthly_fee_std]').value;
     }
+
+    if(!pkgVal || !feeVal || feeVal <= 0) {
+        alert("Mohon lengkapi Nama Paket dan Biaya Bulanan!");
+        return false;
+    }
+
+    realPkg.value = pkgVal;
+    realFee.value = feeVal;
+    return true;
 }
 
 function toggleArrears() { let p = document.getElementById('arrearsPanel'); p.style.display = p.style.display === 'none' ? 'block' : 'none'; }

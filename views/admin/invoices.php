@@ -236,7 +236,7 @@ if ($action === 'print') {
                     SUM(i.amount) as amount, 
                     MIN(i.due_date) as due_date, 
                     COUNT(i.id) as months_owed,
-                    c.id as cust_id, c.customer_code, c.name as customer_name, c.type, c.contact, c.package_name, c.monthly_fee,
+                    c.id as cust_id, c.customer_code, c.name as customer_name, c.type as customer_type, c.contact, c.package_name, c.monthly_fee,
                     0 as item_count
                 FROM invoices i
                 JOIN customers c ON i.customer_id = c.id
@@ -247,7 +247,7 @@ if ($action === 'print') {
             ")->fetchAll();
         } else {
             $invoices = $db->query("
-                SELECT i.*, c.id as cust_id, c.customer_code, c.name as customer_name, c.type, c.contact, c.package_name, c.monthly_fee,
+                SELECT i.*, c.id as cust_id, c.customer_code, c.name as customer_name, c.type as customer_type, c.contact, c.package_name, c.monthly_fee,
                 (SELECT COUNT(*) FROM invoice_items WHERE invoice_id = i.id) as item_count
                 FROM invoices i
                 JOIN customers c ON i.customer_id = c.id
@@ -351,6 +351,11 @@ if ($action === 'print') {
                     <?php endif; ?>
                     <div>
                         <div style="font-weight:700; font-size:15px;"><?= htmlspecialchars($inv['customer_name']) ?></div>
+                        <?php if($inv['customer_type'] === 'partner'): ?>
+                            <span style="font-size:9px; background:#a855f7; color:white; padding:1px 5px; border-radius:3px; font-weight:700;">MITRA</span>
+                        <?php else: ?>
+                            <span style="font-size:9px; background:#3b82f6; color:white; padding:1px 5px; border-radius:3px; font-weight:700;">PERSONAL</span>
+                        <?php endif; ?>
                         <div style="font-size:12px; color:var(--text-secondary);">INV-<?= str_pad($inv['id'], 5, "0", STR_PAD_LEFT) ?> • <?= date('d M Y', strtotime($inv['due_date'])) ?></div>
                     </div>
                 </div>

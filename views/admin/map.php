@@ -338,7 +338,6 @@ $existing_customers = $db->query("SELECT id, name, customer_code FROM customers 
 </script>
 
 <style>
-.m-icon { background:none; border:none; }
 #network-map { cursor: crosshair; }
 @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
 .leaflet-popup-content-wrapper { border-radius:12px; padding:5px; background:rgba(0,0,0,0.9); color:white; backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.1); }

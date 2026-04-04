@@ -304,10 +304,7 @@ if ($action === 'print') {
                     <td style="color:#64748b; font-weight:500;"><?= date('d/m/y', strtotime($row['activity_date'])) ?></td>
                     <td class="<?= $row['status'] == 'Lunas' ? 'type-in' : 'type-out' ?>"><?= strtoupper($row['activity_type']) ?></td>
                     <td>
-                        <div style="font-weight:700;"><?= htmlspecialchars($row['customer_name']) ?></div>
-                        <?php if($row['customer_type'] == 'partner'): ?>
-                            <span style="font-size:10px; color:#f59e0b; font-weight:800; text-transform:uppercase;">[MITRA]</span>
-                        <?php endif; ?>
+                        <div style="font-weight:700;"><?= htmlspecialchars($row['customer_name']) . ($row['customer_type'] == 'partner' ? ' (Mitra)' : '') ?></div>
                     </td>
                     <td style="font-family:'Courier New', Courier, monospace; font-weight:700;">INV-<?= str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT) ?></td>
                     <td style="font-weight:800; text-align:right; font-size:14px;">Rp <?= number_format($row['amount'], 0, ',', '.') ?></td>

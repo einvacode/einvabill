@@ -7,6 +7,7 @@ $db->exec("DELETE FROM invoice_items WHERE invoice_id NOT IN (SELECT id FROM inv
 // Ambil statistik Mendalam
 $total_customers = $db->query("SELECT COUNT(*) FROM customers WHERE type='customer'")->fetchColumn();
 $total_partners = $db->query("SELECT COUNT(*) FROM customers WHERE type='partner'")->fetchColumn();
+$monthly_potential = $db->query("SELECT SUM(monthly_fee) FROM customers")->fetchColumn() ?: 0;
 
 // 1. Total Piutang (Semua yang belum lunas sepanjang masa)
 $total_unpaid = $db->query("SELECT SUM(amount) FROM invoices WHERE status='Belum Lunas'")->fetchColumn() ?: 0;
@@ -50,7 +51,22 @@ $real_pct = $month_target > 0 ? round(($total_received_month / $month_target) * 
 <?php endif; ?>
 
 <!-- Statistics Grid -->
-<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+    <div class="glass-panel stat-card" style="border-top: 4px solid #3b82f6;">
+        <div class="stat-title">Total Pelanggan</div>
+        <div class="stat-value" style="color:#3b82f6;"><?= number_format($total_customers, 0) ?> <span style="font-size:14px; font-weight:normal;">User</span></div>
+        <div style="font-size:11px; color:var(--text-secondary); margin-top:5px;">Akun Personal Aktif</div>
+    </div>
+    <div class="glass-panel stat-card" style="border-top: 4px solid #a855f7;">
+        <div class="stat-title">Total Mitra (B2B)</div>
+        <div class="stat-value" style="color:#a855f7;"><?= number_format($total_partners, 0) ?> <span style="font-size:14px; font-weight:normal;">Mitra</span></div>
+        <div style="font-size:11px; color:var(--text-secondary); margin-top:5px;">Kontrak Kerjasama Aktif</div>
+    </div>
+    <div class="glass-panel stat-card" style="border-top: 4px solid #06b6d4;">
+        <div class="stat-title">Potensi Bulanan</div>
+        <div class="stat-value" style="color:#06b6d4;">Rp <?= number_format($monthly_potential, 0, ',', '.') ?></div>
+        <div style="font-size:11px; color:var(--text-secondary); margin-top:5px;">Nilai Seluruh Kontrak/Bulan</div>
+    </div>
     <div class="glass-panel stat-card" style="border-top: 4px solid var(--primary);">
         <div class="stat-title">Piutang (Hutang User)</div>
         <div class="stat-value" style="color:var(--danger);">Rp <?= number_format($total_unpaid, 0, ',', '.') ?></div>
@@ -109,7 +125,7 @@ $real_pct = $month_target > 0 ? round(($total_received_month / $month_target) * 
                 (SELECT 'invoice' as type, i.amount, i.created_at as activity_date, c.name as customer_name, 'Sistem' as actor_name
                  FROM invoices i 
                  JOIN customers c ON i.customer_id = c.id 
-                 WHERE strftime('%Y-%m', i.created_on) = strftime('%Y-%m', 'now'))
+                 WHERE strftime('%Y-%m', i.created_at) = strftime('%Y-%m', 'now'))
                 ORDER BY activity_date DESC LIMIT 10
             ";
             // Check if created_on exists, if not use created_at

@@ -3,6 +3,10 @@
 $user_id = $_SESSION['user_id'];
 // Base filter: assigned collector id
 $collector_id = $_SESSION['user_id'];
+
+// Get collector area assignment
+$collector_area = $db->query("SELECT area FROM users WHERE id = " . intval($collector_id))->fetchColumn() ?: '';
+
 $area_filter = " AND c.collector_id = " . intval($collector_id);
 
 // Billing date filter
@@ -77,7 +81,7 @@ $total_tugas_pages = ceil($unpaid_count / $items_per_page);
 
 // Fetch unpaid invoices with limit
 $query = "
-    SELECT i.*, c.id as cust_id, c.name, c.address, c.contact, c.area as cust_area, c.customer_code, c.package_name
+    SELECT i.*, c.id as cust_id, c.name, c.address, c.contact, c.area as cust_area, c.customer_code, c.package_name, c.type as customer_type
     FROM invoices i 
     JOIN customers c ON i.customer_id = c.id 
     WHERE i.status = 'Belum Lunas' $area_filter $billing_where
@@ -220,7 +224,12 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
         <div class="glass-panel" style="padding:16px; margin-bottom:10px; border-left:3px solid var(--primary);">
             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
                 <div>
-                    <div style="font-weight:600; font-size:15px;"><?= htmlspecialchars($ac['name']) ?></div>
+                    <div style="font-weight:600; font-size:15px;">
+                        <?= htmlspecialchars($ac['name']) ?>
+                        <?php if($ac['type'] === 'partner'): ?>
+                            <span style="font-size:9px; background:#a855f7; color:white; padding:2px 6px; border-radius:4px; vertical-align:middle; margin-left:4px;">MITRA</span>
+                        <?php endif; ?>
+                    </div>
                     <div style="font-size:11px; color:var(--primary); font-family:monospace;"><?= htmlspecialchars($ac['customer_code'] ?? '') ?></div>
                     <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;"><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($ac['address'] ?: '-') ?></div>
                 </div>
