@@ -1,0 +1,206 @@
+<?php
+session_start();
+date_default_timezone_set('Asia/Jakarta');
+
+$db_file = __DIR__ . '/../database.sqlite';
+$db = new PDO('sqlite:' . $db_file);
+$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+
+// Buat tabel jika belum ada
+$db->exec("
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        role TEXT NOT NULL,
+        name TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS customers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        address TEXT,
+        contact TEXT,
+        package_name TEXT,
+        monthly_fee REAL,
+        ip_address TEXT,
+        type TEXT DEFAULT 'customer', -- 'customer' atau 'partner'
+        registration_date TEXT,
+        billing_date INTEGER
+    );
+
+    CREATE TABLE IF NOT EXISTS invoices (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        amount REAL NOT NULL,
+        due_date TEXT NOT NULL,
+        status TEXT DEFAULT 'Belum Lunas',
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(customer_id) REFERENCES customers(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        invoice_id INTEGER NOT NULL,
+        amount REAL NOT NULL,
+        payment_date TEXT DEFAULT CURRENT_TIMESTAMP,
+        received_by INTEGER,
+        FOREIGN KEY(invoice_id) REFERENCES invoices(id),
+        FOREIGN KEY(received_by) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS settings (
+        id INTEGER PRIMARY KEY DEFAULT 1,
+        company_name TEXT NOT NULL,
+        company_tagline TEXT,
+        company_contact TEXT,
+        company_address TEXT,
+        company_logo TEXT,
+        wa_template TEXT,
+        wa_template_paid TEXT,
+        bank_account TEXT,
+        router_ip TEXT,
+        router_user TEXT,
+        router_pass TEXT,
+        router_port INTEGER
+    );
+
+    CREATE TABLE IF NOT EXISTS routers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        host TEXT NOT NULL,
+        port INTEGER DEFAULT 8728,
+        username TEXT NOT NULL,
+        password TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS invoice_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        invoice_id INTEGER NOT NULL,
+        description TEXT NOT NULL,
+        amount REAL NOT NULL,
+        FOREIGN KEY(invoice_id) REFERENCES invoices(id)
+    );
+");
+
+// Auto-migrate new columns safely
+try { $db->exec("ALTER TABLE customers ADD COLUMN router_id INTEGER DEFAULT 0"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE customers ADD COLUMN pppoe_name TEXT"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE customers ADD COLUMN customer_code TEXT"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE customers ADD COLUMN area TEXT"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE users ADD COLUMN area TEXT"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE users ADD COLUMN customer_id INTEGER"); } catch(Exception $e) {}
+
+// Create packages table
+$db->exec("CREATE TABLE IF NOT EXISTS packages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    fee REAL NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)");
+
+// Create areas table
+$db->exec("CREATE TABLE IF NOT EXISTS areas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)");
+
+// Auto-migrate existing areas from customers to areas table
+try {
+    $existing_areas = $db->query("SELECT DISTINCT area FROM customers WHERE area IS NOT NULL AND area != ''")->fetchAll(PDO::FETCH_COLUMN);
+    $stmt_ins = $db->prepare("INSERT OR IGNORE INTO areas (name) VALUES (?)");
+    foreach($existing_areas as $a_name) {
+        $stmt_ins->execute([trim($a_name)]);
+    }
+} catch(Exception $e) {}
+
+// Auto-generate customer_code for existing customers without one (unique random)
+try {
+    $nocode = $db->query("SELECT id FROM customers WHERE customer_code IS NULL OR customer_code = ''")->fetchAll();
+    if (count($nocode) > 0) {
+        $stmt_code = $db->prepare("UPDATE customers SET customer_code = ? WHERE id = ?");
+        $stmt_check = $db->prepare("SELECT COUNT(*) FROM customers WHERE customer_code = ?");
+        foreach ($nocode as $nc) {
+            do {
+                $code = 'CUST-' . str_pad(mt_rand(100000, 999999), 6, '0', STR_PAD_LEFT);
+                $stmt_check->execute([$code]);
+            } while ($stmt_check->fetchColumn() > 0);
+            $stmt_code->execute([$code, $nc['id']]);
+        }
+    }
+} catch(Exception $e) {}
+
+// One-time migration: replace old sequential codes (CUST-0xxxx, 5 digits) with random ones
+try {
+    $old_codes = $db->query("SELECT id, customer_code FROM customers WHERE customer_code LIKE 'CUST-0%' AND LENGTH(customer_code) = 10")->fetchAll();
+    if (count($old_codes) > 0) {
+        $stmt_upd = $db->prepare("UPDATE customers SET customer_code = ? WHERE id = ?");
+        $stmt_dup = $db->prepare("SELECT COUNT(*) FROM customers WHERE customer_code = ?");
+        foreach ($old_codes as $oc) {
+            do {
+                $new_code = 'CUST-' . str_pad(mt_rand(100000, 999999), 6, '0', STR_PAD_LEFT);
+                $stmt_dup->execute([$new_code]);
+            } while ($stmt_dup->fetchColumn() > 0);
+            $stmt_upd->execute([$new_code, $oc['id']]);
+        }
+    }
+} catch(Exception $e) {}
+
+// Licensing columns
+try { $db->exec("ALTER TABLE settings ADD COLUMN license_key TEXT"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE settings ADD COLUMN license_expiry TEXT"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE settings ADD COLUMN license_type TEXT"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE settings ADD COLUMN installation_date TEXT"); } catch(Exception $e) {}
+
+// Fetch Settings for License Check
+$site_settings = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
+
+// Auto-record installation date (start of trial)
+if (empty($site_settings['installation_date'])) {
+    $today = date('Y-m-d');
+    $db->prepare("UPDATE settings SET installation_date = ? WHERE id=1")->execute([$today]);
+    $site_settings['installation_date'] = $today;
+}
+
+// === LICENSE ENGINE ===
+$MASTER_KEY = "AG-ULTIMATE-2026";
+$license_key = $site_settings['license_key'] ?? '';
+$install_date = $site_settings['installation_date'];
+$expiry_date = $site_settings['license_expiry'] ?? '';
+
+$LICENSE_ST = 'EXPIRED'; // Default
+$LICENSE_MSG = '';
+
+if ($license_key === $MASTER_KEY) {
+    $LICENSE_ST = 'UNLIMITED';
+} elseif (!empty($expiry_date) && strtotime($expiry_date) >= strtotime(date('Y-m-d'))) {
+    $LICENSE_ST = 'ACTIVE';
+} else {
+    // Check Trial (7 Days)
+    $days_since_install = (strtotime(date('Y-m-d')) - strtotime($install_date)) / 86400;
+    if ($days_since_install <= 7) {
+        $LICENSE_ST = 'TRIAL';
+        $remaining = 7 - floor($days_since_install);
+        $LICENSE_MSG = "Masa Percobaan (Trial) sisa $remaining hari.";
+    } else {
+        $LICENSE_ST = 'EXPIRED';
+        $LICENSE_MSG = "Masa Percobaan / Lisensi Anda telah habis. Silakan hubungi Administrator Utama.";
+    }
+}
+
+define('LICENSE_ST', $LICENSE_ST);
+define('LICENSE_MSG', $LICENSE_MSG);
+
+// Insert default users if not exists
+$stmt = $db->query("SELECT COUNT(*) FROM users");
+if ($stmt->fetchColumn() == 0) {
+    // Password for all is '123456' using password_hash
+    $hash = password_hash('123456', PASSWORD_DEFAULT);
+    $stmt = $db->prepare("INSERT INTO users (username, password, role, name) VALUES (?, ?, ?, ?)");
+    $stmt->execute(['admin', $hash, 'admin', 'Administrator']);
+    $stmt->execute(['tagih', $hash, 'collector', 'Tukang Tagih']);
+    $stmt->execute(['mitra', $hash, 'partner', 'Mitra A']);
+}
+?>

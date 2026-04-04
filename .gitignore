@@ -1,0 +1,27 @@
+# Database (SENSITIVE)
+database.sqlite
+database.sqlite-journal
+
+# Uploads & Assets
+public/uploads/*
+!public/uploads/.gitkeep
+
+# Backups
+backups/*
+!backups/.gitkeep
+
+# Project Specific
+tmp_migrate_collector.php
+app/migrate_logos.php
+app/migrate10_custcode.php
+app/migrate6.php
+cleanup_db.php
+
+# Environment & Logs
+.env
+*.log
+npm-debug.log*
+
+# OS Files
+.DS_Store
+Thumbs.db
