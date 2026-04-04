@@ -22,6 +22,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $router_user = $_POST['router_user'] ?? '';
     $router_pass = $_POST['router_pass'] ?? '';
     $router_port = $_POST['router_port'] ?? '8728';
+
+    // ACS Config
+    $acs_url = $_POST['acs_url'] ?? '';
+    $acs_user = $_POST['acs_user'] ?? '';
+    $acs_pass = $_POST['acs_pass'] ?? '';
     
     // Handle File Upload
     if (isset($_FILES['logo_file']) && $_FILES['logo_file']['error'] === UPLOAD_ERR_OK) {
@@ -44,9 +49,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $company_qris = 'public/uploads/' . $file_name;
         }
     }
-    
-    $stmt = $db->prepare("UPDATE settings SET company_name=?, company_tagline=?, company_contact=?, company_address=?, company_logo=?, company_qris=?, wa_template=?, wa_template_paid=?, bank_account=?, router_ip=?, router_user=?, router_pass=?, router_port=? WHERE id=1");
-    $stmt->execute([$company_name, $company_tagline, $company_contact, $company_address, $company_logo, $company_qris, $wa_template, $wa_template_paid, $bank_account, $router_ip, $router_user, $router_pass, $router_port]);
+
+    $stmt = $db->prepare("UPDATE settings SET company_name=?, company_tagline=?, company_contact=?, company_address=?, company_logo=?, company_qris=?, wa_template=?, wa_template_paid=?, bank_account=?, router_ip=?, router_user=?, router_pass=?, router_port=?, acs_url=?, acs_user=?, acs_pass=? WHERE id=1");
+    $stmt->execute([$company_name, $company_tagline, $company_contact, $company_address, $company_logo, $company_qris, $wa_template, $wa_template_paid, $bank_account, $router_ip, $router_user, $router_pass, $router_port, $acs_url, $acs_user, $acs_pass]);
     
     $success = "Pengaturan berhasil disimpan.";
 }
@@ -157,6 +162,25 @@ $settings = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
                     Dapatkan fitur terbaru, perbaikan bug, dan optimasi performa langsung dari pusat pembaruan.
                 </p>
                 <a href="index.php?page=admin_updater" class="btn btn-primary" style="width: 100%; padding: 12px;">Buka Pengelola Update</a>
+            </div>
+
+            <div style="margin-top:20px; background: rgba(59, 130, 246, 0.05); padding: 20px; border-radius: 12px; border: 1px solid var(--glass-border);">
+                <h5 style="margin-bottom:15px;"><i class="fas fa-satellite-dish"></i> Konfigurasi TR-069 (GenieACS)</h5>
+                <div class="form-group">
+                    <label>GenieACS API URL</label>
+                    <input type="text" name="acs_url" class="form-control" value="<?= htmlspecialchars($settings['acs_url'] ?? '') ?>" placeholder="http://1.2.3.4:7557">
+                    <small style="color:var(--text-secondary);">Gunakan port default GenieACS (7557).</small>
+                </div>
+                <div class="flex" style="gap:10px;">
+                    <div class="form-group" style="flex:1;">
+                        <label>Username API (Opsional)</label>
+                        <input type="text" name="acs_user" class="form-control" value="<?= htmlspecialchars($settings['acs_user'] ?? '') ?>">
+                    </div>
+                    <div class="form-group" style="flex:1;">
+                        <label>Password API (Opsional)</label>
+                        <input type="password" name="acs_pass" class="form-control" value="<?= htmlspecialchars($settings['acs_pass'] ?? '') ?>">
+                    </div>
+                </div>
             </div>
             
             <div style="margin-top: 20px; text-align: center; font-size: 11px; color: var(--text-secondary);">

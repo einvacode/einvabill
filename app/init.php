@@ -154,6 +154,11 @@ try { $db->exec("ALTER TABLE settings ADD COLUMN license_expiry TEXT"); } catch(
 try { $db->exec("ALTER TABLE settings ADD COLUMN license_type TEXT"); } catch(Exception $e) {}
 try { $db->exec("ALTER TABLE settings ADD COLUMN installation_date TEXT"); } catch(Exception $e) {}
 
+// TR-069 ACS Settings
+try { $db->exec("ALTER TABLE settings ADD COLUMN acs_url TEXT"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE settings ADD COLUMN acs_user TEXT"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE settings ADD COLUMN acs_pass TEXT"); } catch(Exception $e) {}
+
 // Fetch Settings for License Check
 $site_settings = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
 

@@ -417,6 +417,9 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                 <div style="display:flex; gap:8px;">
                     <button class="btn btn-sm btn-ghost" onclick="createInvoice(<?= $c['id'] ?>, <?= $c['monthly_fee'] ?>)">Tagih</button>
+                    <?php if(!empty($c['pppoe_name'])): ?>
+                        <button class="btn btn-sm btn-ghost" onclick="viewTR069('<?= htmlspecialchars($c['pppoe_name']) ?>')" title="TR-069"><i class="fas fa-satellite-dish"></i></button>
+                    <?php endif; ?>
                     <a href="index.php?page=admin_customers&action=details&id=<?= $c['id'] ?>" class="btn btn-sm" style="background:var(--primary); color:white;"><i class="fas fa-eye"></i></a>
                     <a href="index.php?page=admin_customers&action=edit&id=<?= $c['id'] ?>" class="btn btn-sm" style="background:var(--warning); color:white;"><i class="fas fa-edit"></i></a>
                     <a href="index.php?page=admin_customers&action=delete&id=<?= $c['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus?')"><i class="fas fa-trash"></i></a>
@@ -479,6 +482,9 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     </td>
                     <td>
                         <button class="btn btn-sm btn-ghost" onclick="createInvoice(<?= $c['id'] ?>, <?= $c['monthly_fee'] ?>)" title="Tagih Manual"><i class="fas fa-file-invoice"></i></button>
+                        <?php if(!empty($c['pppoe_name'])): ?>
+                            <button class="btn btn-sm btn-ghost" onclick="viewTR069('<?= htmlspecialchars($c['pppoe_name']) ?>')" title="Monitoring TR-069"><i class="fas fa-satellite-dish"></i></button>
+                        <?php endif; ?>
                         <a href="index.php?page=admin_customers&action=details&id=<?= $c['id'] ?>" class="btn btn-sm" style="background:var(--primary); color:white;" title="Detail & Riwayat"><i class="fas fa-eye"></i></a>
                         <a href="index.php?page=admin_customers&action=edit&id=<?= $c['id'] ?>" class="btn btn-sm" style="background:var(--warning); color:white;" title="Edit"><i class="fas fa-edit"></i></a>
                         <a href="index.php?page=admin_customers&action=delete&id=<?= $c['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus Pelanggan ini?')" title="Hapus"><i class="fas fa-trash"></i></a>
@@ -1169,3 +1175,43 @@ document.querySelector('input[name="num_months"]').addEventListener('input', fun
 </script>
 
 <?php endif; ?>
+
+<!-- TR-069 Monitor Modal -->
+<div id="tr069Modal" class="modal" style="display:none; position:fixed; z-index:1001; left:0; top:0; width:100%; height:100%; overflow:auto; background-color: rgba(0,0,0,0.8); backdrop-filter: blur(5px);">
+    <div class="glass-panel" style="background: var(--bg-color); margin: 5% auto; padding: 25px; border-radius: 20px; width: 90%; max-width: 600px; border: 1px solid var(--glass-border); position:relative;">
+        <span onclick="document.getElementById('tr069Modal').style.display='none'" style="position:absolute; right:20px; top:15px; font-size:28px; font-weight:bold; cursor:pointer; color:var(--text-secondary);">&times;</span>
+        <h3 style="margin-bottom:20px;"><i class="fas fa-satellite-dish text-primary"></i> Monitoring ONT (TR-069)</h3>
+        <div id="tr069-content">
+            <div style="text-align:center; padding:40px;">
+                <i class="fas fa-circle-notch fa-spin fa-2x text-primary"></i>
+                <p style="margin-top:15px; color:var(--text-secondary);">Menghubungkan ke server ACS...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function viewTR069(pppoe) {
+    const modal = document.getElementById('tr069Modal');
+    const content = document.getElementById('tr069-content');
+    modal.style.display = 'block';
+    if(window.innerWidth < 900) modal.style.paddingTop = '20px';
+    
+    content.innerHTML = '<div style="text-align:center; padding:40px;"><i class="fas fa-circle-notch fa-spin fa-2x text-primary"></i><p style="margin-top:15px; color:var(--text-secondary);">Mengambil data perangkat...</p></div>';
+    
+    fetch('views/components/tr069_monitor.php?pppoe=' + encodeURIComponent(pppoe))
+        .then(response => response.text())
+        .then(html => {
+            content.innerHTML = html;
+        })
+        .catch(err => {
+            content.innerHTML = '<div class="alert alert-danger">Gagal memuat data monitoring.</div>';
+        });
+}
+window.onclick = function(event) {
+    const modal = document.getElementById('tr069Modal');
+    if (event.target == modal) {
+        modal.style.display = "none";
+    }
+}
+</script>
