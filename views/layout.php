@@ -33,6 +33,8 @@
                         <a href="index.php?page=admin_customers" class="nav-link <?= $page == 'admin_customers' ? 'active' : '' ?>"><i class="fas fa-users"></i> Pelanggan</a>
                         <a href="index.php?page=admin_packages" class="nav-link <?= $page == 'admin_packages' ? 'active' : '' ?>"><i class="fas fa-box"></i> Manajemen Paket</a>
                         <a href="index.php?page=admin_areas" class="nav-link <?= $page == 'admin_areas' ? 'active' : '' ?>"><i class="fas fa-map-marker-alt"></i> Manajemen Area</a>
+                        <a href="index.php?page=admin_assets" class="nav-link <?= $page == 'admin_assets' ? 'active' : '' ?>"><i class="fas fa-boxes"></i> Aset Jaringan</a>
+                        <a href="index.php?page=admin_map" class="nav-link <?= $page == 'admin_map' ? 'active' : '' ?>"><i class="fas fa-map"></i> Peta Jaringan</a>
                         <a href="index.php?page=admin_invoices" class="nav-link <?= $page == 'admin_invoices' && ($filter_status ?? '') != 'belum' ? 'active' : '' ?>"><i class="fas fa-file-invoice-dollar"></i> Tagihan</a>
                         <a href="index.php?page=admin_invoices&filter_status=belum" class="nav-link <?= $page == 'admin_invoices' && ($filter_status ?? '') == 'belum' ? 'active' : '' ?>"><i class="fas fa-user-clock" style="color:#f43f5e;"></i> User Tunggakan</a>
                         <a href="index.php?page=admin_reports" class="nav-link <?= $page == 'admin_reports' ? 'active' : '' ?>"><i class="fas fa-chart-line"></i> Laporan</a>
@@ -57,6 +59,8 @@
                     <?php
                         if($page == 'admin_dashboard') echo 'Dashboard Admin';
                         elseif($page == 'admin_customers') echo 'Manajemen Pelanggan';
+                        elseif($page == 'admin_assets') echo 'Manajemen Aset (OLT/ODP)';
+                        elseif($page == 'admin_map') echo 'Peta Sebaran Jaringan';
                         elseif($page == 'admin_invoices') echo 'Manajemen Tagihan';
                         elseif($page == 'admin_reports') echo 'Laporan Keuangan';
                         elseif($page == 'admin_landing') echo 'Pengaturan Web Profil';
@@ -98,6 +102,9 @@
             </a>
             <a href="index.php?page=admin_customers" class="<?= $page == 'admin_customers' ? 'active' : '' ?>">
                 <i class="fas fa-users"></i><span>Pelanggan</span>
+            </a>
+            <a href="index.php?page=admin_map" class="<?= $page == 'admin_map' ? 'active' : '' ?>">
+                <i class="fas fa-map-location-dot"></i><span>Peta</span>
             </a>
             <a href="index.php?page=admin_invoices" class="<?= $page == 'admin_invoices' ? 'active' : '' ?>">
                 <i class="fas fa-file-invoice-dollar"></i><span>Tagihan</span>

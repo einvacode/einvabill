@@ -159,6 +159,26 @@ try { $db->exec("ALTER TABLE settings ADD COLUMN acs_url TEXT"); } catch(Excepti
 try { $db->exec("ALTER TABLE settings ADD COLUMN acs_user TEXT"); } catch(Exception $e) {}
 try { $db->exec("ALTER TABLE settings ADD COLUMN acs_pass TEXT"); } catch(Exception $e) {}
 
+// Infrastructure Assets Table (NIM)
+$db->exec("CREATE TABLE IF NOT EXISTS infrastructure_assets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL, -- OLT, ODC, ODP
+    parent_id INTEGER DEFAULT 0, -- ODP -> ODC -> OLT
+    lat TEXT,
+    lng TEXT,
+    total_ports INTEGER DEFAULT 8,
+    brand TEXT,
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)");
+
+// Customer GIS & Topology columns
+try { $db->exec("ALTER TABLE customers ADD COLUMN lat TEXT"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE customers ADD COLUMN lng TEXT"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE customers ADD COLUMN odp_id INTEGER DEFAULT 0"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE customers ADD COLUMN odp_port INTEGER"); } catch(Exception $e) {}
+
 // Fetch Settings for License Check
 $site_settings = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
 

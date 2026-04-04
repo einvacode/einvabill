@@ -99,6 +99,12 @@ switch ($page) {
     case 'admin_areas':
         require __DIR__ . '/views/admin/areas.php';
         break;
+    case 'admin_assets':
+        require __DIR__ . '/views/admin/assets.php';
+        break;
+    case 'admin_map':
+        require __DIR__ . '/views/admin/map.php';
+        break;
     case 'admin_backup':
         require __DIR__ . '/views/admin/backup.php';
         break;

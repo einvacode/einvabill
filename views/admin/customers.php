@@ -36,6 +36,10 @@ if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $router_id = isset($_POST['router_id']) ? intval($_POST['router_id']) : 0;
     $pppoe_name = $_POST['pppoe_name'] ?? '';
     $collector_id = intval($_POST['collector_id'] ?? 0);
+    $lat = $_POST['lat'] ?? '';
+    $lng = $_POST['lng'] ?? '';
+    $odp_id = intval($_POST['odp_id'] ?? 0);
+    $odp_port = intval($_POST['odp_port'] ?? 0);
     
     // Auto-generate unique random customer code
     $stmt_check = $db->prepare("SELECT COUNT(*) FROM customers WHERE customer_code = ?");
@@ -44,8 +48,8 @@ if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt_check->execute([$customer_code]);
     } while ($stmt_check->fetchColumn() > 0);
     
-    $stmt = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, package_name, monthly_fee, ip_address, type, registration_date, billing_date, area, router_id, pppoe_name, collector_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$customer_code, $name, $address, $contact, $package_name, $monthly_fee, $ip_address, $type, $registration_date, $billing_date, $area, $router_id, $pppoe_name, $collector_id]);
+    $stmt = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, package_name, monthly_fee, ip_address, type, registration_date, billing_date, area, router_id, pppoe_name, collector_id, lat, lng, odp_id, odp_port) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$customer_code, $name, $address, $contact, $package_name, $monthly_fee, $ip_address, $type, $registration_date, $billing_date, $area, $router_id, $pppoe_name, $collector_id, $lat, $lng, $odp_id, $odp_port]);
     $id = $db->lastInsertId();
     
     // Arrears Logic
@@ -81,9 +85,13 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $router_id = isset($_POST['router_id']) ? intval($_POST['router_id']) : 0;
     $pppoe_name = $_POST['pppoe_name'] ?? '';
     $collector_id = intval($_POST['collector_id'] ?? 0);
+    $lat = $_POST['lat'] ?? '';
+    $lng = $_POST['lng'] ?? '';
+    $odp_id = intval($_POST['odp_id'] ?? 0);
+    $odp_port = intval($_POST['odp_port'] ?? 0);
     
-    $stmt = $db->prepare("UPDATE customers SET name=?, address=?, contact=?, package_name=?, monthly_fee=?, ip_address=?, type=?, registration_date=?, billing_date=?, area=?, router_id=?, pppoe_name=?, collector_id=? WHERE id=?");
-    $stmt->execute([$name, $address, $contact, $package_name, $monthly_fee, $ip_address, $type, $registration_date, $billing_date, $area, $router_id, $pppoe_name, $collector_id, $id]);
+    $stmt = $db->prepare("UPDATE customers SET name=?, address=?, contact=?, package_name=?, monthly_fee=?, ip_address=?, type=?, registration_date=?, billing_date=?, area=?, router_id=?, pppoe_name=?, collector_id=?, lat=?, lng=?, odp_id=?, odp_port=? WHERE id=?");
+    $stmt->execute([$name, $address, $contact, $package_name, $monthly_fee, $ip_address, $type, $registration_date, $billing_date, $area, $router_id, $pppoe_name, $collector_id, $lat, $lng, $odp_id, $odp_port, $id]);
     
     // Process additional arrears if any during update
     $arrears_months = intval($_POST['arrears_months'] ?? 0);
@@ -829,6 +837,48 @@ document.addEventListener("DOMContentLoaded", function() {
             </div>
             <div style="font-size:10px; color:var(--text-secondary); margin-top:5px;">*Atur daftar area di menu Manajemen Area</div>
         </div>
+
+        <!-- NEW: Infra & GIS Section -->
+        <div style="padding:15px; background:rgba(236, 72, 153, 0.05); border-radius:12px; margin-bottom:20px; border:1px solid rgba(236, 72, 153, 0.2);">
+            <div style="font-weight:700; color:#ec4899; margin-bottom:12px;"><i class="fas fa-network-wired"></i> Infra & GIS Jaringan</div>
+            <div class="flex" style="gap:15px; margin-bottom:15px;">
+                <div style="flex:2;">
+                    <label style="font-size:12px; margin-bottom:5px; display:block;">Tersambung dari ODP</label>
+                    <select name="odp_id" class="form-control">
+                        <option value="0">-- Pilih ODP --</option>
+                        <?php 
+                        $odps = $db->query("SELECT id, name, total_ports FROM infrastructure_assets WHERE type = 'ODP' ORDER BY name ASC")->fetchAll();
+                        foreach($odps as $o):
+                            $used = $db->prepare("SELECT COUNT(*) FROM customers WHERE odp_id = ? AND id != ?");
+                            $used->execute([$o['id'], $c['id'] ?? 0]);
+                            $count = $used->fetchColumn();
+                        ?>
+                        <option value="<?= $o['id'] ?>" <?= ($c['odp_id'] ?? 0) == $o['id'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($o['name']) ?> (<?= $count ?>/<?= $o['total_ports'] ?> Port)
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size:12px; margin-bottom:5px; display:block;">Port ODP</label>
+                    <input type="number" name="odp_port" class="form-control" value="<?= $c['odp_port'] ?? '' ?>" placeholder="1-16">
+                </div>
+            </div>
+            <div class="flex" style="gap:15px;">
+                <div style="flex:1;">
+                    <label style="font-size:12px; margin-bottom:5px; display:block;">Latitude</label>
+                    <input type="text" name="lat" class="form-control" value="<?= htmlspecialchars($c['lat'] ?? '') ?>" placeholder="-6.xxx">
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size:12px; margin-bottom:5px; display:block;">Longitude</label>
+                    <input type="text" name="lng" class="form-control" value="<?= htmlspecialchars($c['lng'] ?? '') ?>" placeholder="106.xxx">
+                </div>
+            </div>
+            <div style="font-size:11px; margin-top:8px; color:var(--text-secondary);">
+                <i class="fas fa-info-circle"></i> Tip: Gunakan Google Maps (Klik kanan di lokasi > Ambil koordinat) atau buka <a href="index.php?page=admin_map" target="_blank" style="color:#ec4899; font-weight:700;">Peta Jaringan</a> untuk referensi.
+            </div>
+        </div>
+
         <div class="flex" style="gap:15px;">
             <div class="form-group" style="flex:1;">
                 <label>Tgl Registrasi</label>
