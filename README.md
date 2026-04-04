@@ -1,6 +1,6 @@
-# 🚀 Antigravity Billing System - RT/RW Net Management
+# 🚀 EinvaBill - RT/RW Net Management
 
-**Antigravity Billing** adalah aplikasi manajemen penagihan (billing) mandiri berkekuatan tinggi yang dirancang khusus untuk pengelola RT/RW Net, ISP lokal, dan penyedia layanan IT. Dibangun dengan fokus pada kecepatan, transparansi keuangan, dan kemudahan operasional.
+**EinvaBill** adalah aplikasi manajemen penagihan (billing) mandiri berkekuatan tinggi yang dirancang khusus untuk pengelola RT/RW Net, ISP lokal, dan penyedia layanan IT. Dibangun dengan fokus pada kecepatan, transparansi keuangan, dan kemudahan operasional.
 
 ![Versi](https://img.shields.io/badge/Versi-1.5.0--Stable-blue?style=for-the-badge)
 ![Lisensi](https://img.shields.io/badge/SaaS--Ready-True-green?style=for-the-badge)
