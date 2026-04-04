@@ -751,7 +751,7 @@ document.addEventListener("DOMContentLoaded", function() {
         
         <div class="form-group">
             <label>Tipe Entitas</label>
-            <select name="type" class="form-control" required>
+            <select name="type" id="customer_type_selector" class="form-control" required onchange="togglePkgFields(this.value)">
                 <option value="customer" <?= $c['type']=='customer'?'selected':'' ?>>Pelanggan (Rumahan)</option>
                 <option value="partner" <?= $c['type']=='partner'?'selected':'' ?>>Mitra (Bandwidth)</option>
             </select>
@@ -768,25 +768,38 @@ document.addEventListener("DOMContentLoaded", function() {
             <label>Kontak / WhatsApp</label>
             <input type="text" name="contact" class="form-control" value="<?= htmlspecialchars($c['contact']) ?>">
         </div>
-        <div class="flex" style="gap:15px; margin-bottom:20px;">
+        <div id="standard-pkg-zone" class="flex" style="gap:15px; margin-bottom:20px; <?= $c['type'] == 'partner' ? 'display:none;' : '' ?>">
             <div style="flex:1;">
                 <label style="font-size:14px; margin-bottom:8px; display:block;">Pilih Paket</label>
-                <select name="package_name" id="package_selector" class="form-control" required onchange="updateFee(this.value)">
+                <select name="package_name_select" id="package_selector" class="form-control" onchange="updateFee(this.value)">
                     <option value="">-- Pilih Paket --</option>
                     <?php foreach($packages_all as $p): ?>
                         <option value="<?= htmlspecialchars($p['name']) ?>" data-fee="<?= $p['fee'] ?>" <?= $c['package_name'] == $p['name'] ? 'selected' : '' ?>><?= htmlspecialchars($p['name']) ?></option>
                     <?php endforeach; ?>
-                    <?php if(!empty($c['package_name']) && !in_array($c['package_name'], array_column($packages_all, 'name'))): ?>
-                        <option value="<?= htmlspecialchars($c['package_name']) ?>" selected><?= htmlspecialchars($c['package_name']) ?> (Legacy)</option>
-                    <?php endif; ?>
                 </select>
                 <div style="font-size:10px; color:var(--text-secondary); margin-top:5px;">*Atur paket di menu Manajemen Paket</div>
             </div>
             <div style="flex:1;">
                 <label style="font-size:14px; margin-bottom:8px; display:block;">Biaya Bulanan (Rp)</label>
-                <input type="number" name="monthly_fee" id="monthly_fee_input" class="form-control" value="<?= $c['monthly_fee'] ?>" required>
+                <input type="number" name="monthly_fee_std" id="monthly_fee_input" class="form-control" value="<?= $c['monthly_fee'] ?>">
             </div>
         </div>
+
+        <div id="custom-pkg-zone" class="flex" style="gap:15px; margin-bottom:20px; <?= $c['type'] != 'partner' ? 'display:none;' : '' ?>">
+            <div style="flex:1;">
+                <label style="font-size:14px; margin-bottom:8px; display:block;">Nama Paket (Custom)</label>
+                <input type="text" name="package_name_custom" class="form-control" value="<?= htmlspecialchars($c['package_name']) ?>" placeholder="Misal: Dedicated 50Mbps">
+                <div style="font-size:10px; color:var(--success); margin-top:5px;">*Khusus Mitra tulis manual nama paketnya</div>
+            </div>
+            <div style="flex:1;">
+                <label style="font-size:14px; margin-bottom:8px; display:block;">Biaya Custom (Rp)</label>
+                <input type="number" name="monthly_fee_custom" class="form-control" value="<?= $c['monthly_fee'] ?>" placeholder="Sesuai Kontrak">
+            </div>
+        </div>
+        
+        <!-- Hidden real fields to sync before submit -->
+        <input type="hidden" name="package_name" id="real_package_name" value="<?= htmlspecialchars($c['package_name']) ?>">
+        <input type="hidden" name="monthly_fee" id="real_monthly_fee" value="<?= $c['monthly_fee'] ?>">
 
         <div style="padding:15px; background:var(--hover-bg); border-radius:12px; margin-bottom:20px; border-left:4px solid var(--primary);">
             <div class="form-group" style="margin-bottom:10px;">
@@ -843,18 +856,18 @@ document.addEventListener("DOMContentLoaded", function() {
             <div style="font-weight:700; color:#ec4899; margin-bottom:12px;"><i class="fas fa-network-wired"></i> Infra & GIS Jaringan</div>
             <div class="flex" style="gap:15px; margin-bottom:15px;">
                 <div style="flex:2;">
-                    <label style="font-size:12px; margin-bottom:5px; display:block;">Tersambung dari ODP</label>
+                    <label style="font-size:12px; margin-bottom:5px; display:block;">Sumber Koneksi (ODP/Switch/Radio)</label>
                     <select name="odp_id" class="form-control">
-                        <option value="0">-- Pilih ODP --</option>
+                        <option value="0">-- Pilih Sumber --</option>
                         <?php 
-                        $odps = $db->query("SELECT id, name, total_ports FROM infrastructure_assets WHERE type = 'ODP' ORDER BY name ASC")->fetchAll();
-                        foreach($odps as $o):
+                        $all_assets = $db->query("SELECT id, name, type, total_ports FROM infrastructure_assets ORDER BY type DESC, name ASC")->fetchAll();
+                        foreach($all_assets as $o):
                             $used = $db->prepare("SELECT COUNT(*) FROM customers WHERE odp_id = ? AND id != ?");
                             $used->execute([$o['id'], $c['id'] ?? 0]);
                             $count = $used->fetchColumn();
                         ?>
                         <option value="<?= $o['id'] ?>" <?= ($c['odp_id'] ?? 0) == $o['id'] ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($o['name']) ?> (<?= $count ?>/<?= $o['total_ports'] ?> Port)
+                            <?= $o['type'] ?>: <?= htmlspecialchars($o['name']) ?> (<?= $count ?>/<?= $o['total_ports'] ?> Port)
                         </option>
                         <?php endforeach; ?>
                     </select>
@@ -929,7 +942,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
         <div style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid var(--glass-border); padding-top:20px;">
             <a href="index.php?page=admin_customers" class="btn btn-ghost">Batal</a>
-            <button type="submit" class="btn btn-primary">Simpan</button>
+            <button type="submit" class="btn btn-primary" onclick="syncPackageData()">Simpan</button>
         </div>
     </form>
 </div>
@@ -941,6 +954,32 @@ function updateFee(packageName) {
     const fee = selectedOption.getAttribute('data-fee');
     if(fee) {
         document.getElementById('monthly_fee_input').value = fee;
+    }
+}
+
+function togglePkgFields(type) {
+    const stdZone = document.getElementById('standard-pkg-zone');
+    const customZone = document.getElementById('custom-pkg-zone');
+    if(type === 'partner') {
+        stdZone.style.display = 'none';
+        customZone.style.display = 'flex';
+    } else {
+        stdZone.style.display = 'flex';
+        customZone.style.display = 'none';
+    }
+}
+
+function syncPackageData() {
+    const type = document.getElementById('customer_type_selector').value;
+    const realPkg = document.getElementById('real_package_name');
+    const realFee = document.getElementById('real_monthly_fee');
+
+    if(type === 'partner') {
+        realPkg.value = document.querySelector('[name=package_name_custom]').value;
+        realFee.value = document.querySelector('[name=monthly_fee_custom]').value;
+    } else {
+        realPkg.value = document.querySelector('[name=package_name_select]').value;
+        realFee.value = document.querySelector('[name=monthly_fee_std]').value;
     }
 }
 

@@ -170,8 +170,16 @@ $db->exec("CREATE TABLE IF NOT EXISTS infrastructure_assets (
     total_ports INTEGER DEFAULT 8,
     brand TEXT,
     description TEXT,
+    price REAL DEFAULT 0, -- Harga Beli
+    status TEXT DEFAULT 'Deployed', -- Deployed, Stock, Repair
+    installation_date TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )");
+
+// Migrations for existing tables
+try { $db->exec("ALTER TABLE infrastructure_assets ADD COLUMN price REAL DEFAULT 0"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE infrastructure_assets ADD COLUMN status TEXT DEFAULT 'Deployed'"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE infrastructure_assets ADD COLUMN installation_date TEXT"); } catch(Exception $e) {}
 
 // Customer GIS & Topology columns
 try { $db->exec("ALTER TABLE customers ADD COLUMN lat TEXT"); } catch(Exception $e) {}

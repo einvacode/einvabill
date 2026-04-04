@@ -29,17 +29,24 @@
                 </div>
                 <div class="nav-links">
                     <?php if($_SESSION['user_role'] === 'admin'): ?>
+                        <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">MENU UTAMA</div>
                         <a href="index.php?page=admin_dashboard" class="nav-link <?= $page == 'admin_dashboard' ? 'active' : '' ?>"><i class="fas fa-home"></i> Dashboard</a>
                         <a href="index.php?page=admin_customers" class="nav-link <?= $page == 'admin_customers' ? 'active' : '' ?>"><i class="fas fa-users"></i> Pelanggan</a>
-                        <a href="index.php?page=admin_packages" class="nav-link <?= $page == 'admin_packages' ? 'active' : '' ?>"><i class="fas fa-box"></i> Manajemen Paket</a>
-                        <a href="index.php?page=admin_areas" class="nav-link <?= $page == 'admin_areas' ? 'active' : '' ?>"><i class="fas fa-map-marker-alt"></i> Manajemen Area</a>
-                        <a href="index.php?page=admin_assets" class="nav-link <?= $page == 'admin_assets' ? 'active' : '' ?>"><i class="fas fa-boxes"></i> Aset Jaringan</a>
-                        <a href="index.php?page=admin_map" class="nav-link <?= $page == 'admin_map' ? 'active' : '' ?>"><i class="fas fa-map"></i> Peta Jaringan</a>
                         <a href="index.php?page=admin_invoices" class="nav-link <?= $page == 'admin_invoices' && ($filter_status ?? '') != 'belum' ? 'active' : '' ?>"><i class="fas fa-file-invoice-dollar"></i> Tagihan</a>
                         <a href="index.php?page=admin_invoices&filter_status=belum" class="nav-link <?= $page == 'admin_invoices' && ($filter_status ?? '') == 'belum' ? 'active' : '' ?>"><i class="fas fa-user-clock" style="color:#f43f5e;"></i> User Tunggakan</a>
-                        <a href="index.php?page=admin_reports" class="nav-link <?= $page == 'admin_reports' ? 'active' : '' ?>"><i class="fas fa-chart-line"></i> Laporan</a>
-                        <a href="index.php?page=admin_users" class="nav-link <?= $page == 'admin_users' ? 'active' : '' ?>"><i class="fas fa-user-shield"></i> Akses Pengguna</a>
+                        
+                        <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">INFRASTRUKTUR</div>
                         <a href="index.php?page=admin_router" class="nav-link <?= $page == 'admin_router' ? 'active' : '' ?>"><i class="fas fa-network-wired"></i> Router</a>
+                        <a href="index.php?page=admin_assets" class="nav-link <?= $page == 'admin_assets' ? 'active' : '' ?>"><i class="fas fa-boxes"></i> Aset Jaringan</a>
+                        <a href="index.php?page=admin_map" class="nav-link <?= $page == 'admin_map' ? 'active' : '' ?>"><i class="fas fa-map-location-dot"></i> Peta Jaringan</a>
+
+                        <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">DATA MASTER</div>
+                        <a href="index.php?page=admin_packages" class="nav-link <?= $page == 'admin_packages' ? 'active' : '' ?>"><i class="fas fa-box"></i> Manajemen Paket</a>
+                        <a href="index.php?page=admin_areas" class="nav-link <?= $page == 'admin_areas' ? 'active' : '' ?>"><i class="fas fa-map-marker-alt"></i> Manajemen Area</a>
+                        <a href="index.php?page=admin_users" class="nav-link <?= $page == 'admin_users' ? 'active' : '' ?>"><i class="fas fa-user-shield"></i> Akses Pengguna</a>
+
+                        <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">SISTEM & LAPORAN</div>
+                        <a href="index.php?page=admin_reports" class="nav-link <?= $page == 'admin_reports' ? 'active' : '' ?>"><i class="fas fa-chart-line"></i> Laporan</a>
                         <a href="index.php?page=admin_landing" class="nav-link <?= $page == 'admin_landing' ? 'active' : '' ?>"><i class="fas fa-globe"></i> Web Profil</a>
                         <a href="index.php?page=admin_settings" class="nav-link <?= $page == 'admin_settings' ? 'active' : '' ?>"><i class="fas fa-cog"></i> Pengaturan</a>
                         <a href="index.php?page=admin_backup" class="nav-link <?= $page == 'admin_backup' ? 'active' : '' ?>"><i class="fas fa-shield-alt"></i> Backup & Restore</a>
@@ -50,7 +57,7 @@
                     <?php endif; ?>
                 </div>
             </div>
-            <a href="index.php?page=logout" class="nav-link" style="margin-top: auto;"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            <a href="index.php?page=logout" class="nav-link" style="margin-top: auto; margin-bottom: 20px;"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </aside>
 
         <main class="main-content">

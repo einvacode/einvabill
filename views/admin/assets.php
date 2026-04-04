@@ -12,15 +12,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $total_ports = $_POST['total_ports'] ?? 8;
         $brand = $_POST['brand'] ?? '';
         $description = $_POST['description'] ?? '';
+        $price = $_POST['price'] ?? 0;
+        $status = $_POST['status'] ?? 'Deployed';
+        $installation_date = $_POST['installation_date'] ?? date('Y-m-d');
 
         if ($action === 'add') {
-            $stmt = $db->prepare("INSERT INTO infrastructure_assets (name, type, parent_id, lat, lng, total_ports, brand, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$name, $type, $parent_id, $lat, $lng, $total_ports, $brand, $description]);
+            $stmt = $db->prepare("INSERT INTO infrastructure_assets (name, type, parent_id, lat, lng, total_ports, brand, description, price, status, installation_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$name, $type, $parent_id, $lat, $lng, $total_ports, $brand, $description, $price, $status, $installation_date]);
             $success = "Aset berhasil ditambahkan.";
         } else {
             $id = $_POST['id'];
-            $stmt = $db->prepare("UPDATE infrastructure_assets SET name=?, type=?, parent_id=?, lat=?, lng=?, total_ports=?, brand=?, description=? WHERE id=?");
-            $stmt->execute([$name, $type, $parent_id, $lat, $lng, $total_ports, $brand, $description, $id]);
+            $stmt = $db->prepare("UPDATE infrastructure_assets SET name=?, type=?, parent_id=?, lat=?, lng=?, total_ports=?, brand=?, description=?, price=?, status=?, installation_date=? WHERE id=?");
+            $stmt->execute([$name, $type, $parent_id, $lat, $lng, $total_ports, $brand, $description, $price, $status, $installation_date, $id]);
             $success = "Aset berhasil diperbarui.";
         }
     }
@@ -34,26 +37,31 @@ if ($action === 'delete') {
 }
 
 // Fetch Stats
-$stats = $db->query("SELECT type, COUNT(*) as count FROM infrastructure_assets GROUP BY type")->fetchAll(PDO::FETCH_KEY_PAIR);
+$stats_raw = $db->query("SELECT type, COUNT(*) as count FROM infrastructure_assets GROUP BY type")->fetchAll(PDO::FETCH_KEY_PAIR);
 $total_customers = $db->query("SELECT COUNT(*) FROM customers WHERE odp_id > 0")->fetchColumn();
+$total_investment = $db->query("SELECT SUM(price) FROM infrastructure_assets")->fetchColumn() ?: 0;
 ?>
 
-<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:20px; margin-bottom:30px;">
-    <div class="glass-panel" style="padding:20px; text-align:center; border-left:4px solid var(--primary);">
-        <div style="font-size:12px; color:var(--text-secondary); margin-bottom:5px;">TOTAL OLT (HUB)</div>
-        <div style="font-size:24px; font-weight:800;"><?= $stats['OLT'] ?? 0 ?></div>
+<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:15px; margin-bottom:30px;">
+    <div class="glass-panel" style="padding:15px; text-align:center; border-left:4px solid var(--primary);">
+        <div style="font-size:10px; color:var(--text-secondary); margin-bottom:5px;">OLT / ODC / ODP</div>
+        <div style="font-size:20px; font-weight:800;"><?= ($stats_raw['OLT']??0) + ($stats_raw['ODC']??0) + ($stats_raw['ODP']??0) ?></div>
     </div>
-    <div class="glass-panel" style="padding:20px; text-align:center; border-left:4px solid #a855f7;">
-        <div style="font-size:12px; color:var(--text-secondary); margin-bottom:5px;">TOTAL ODC</div>
-        <div style="font-size:24px; font-weight:800;"><?= $stats['ODC'] ?? 0 ?></div>
+    <div class="glass-panel" style="padding:15px; text-align:center; border-left:4px solid #f59e0b;">
+        <div style="font-size:10px; color:var(--text-secondary); margin-bottom:5px;">ROUTER & SWITCH</div>
+        <div style="font-size:20px; font-weight:800;"><?= ($stats_raw['Router']??0) + ($stats_raw['Switch']??0) ?></div>
     </div>
-    <div class="glass-panel" style="padding:20px; text-align:center; border-left:4px solid #ec4899;">
-        <div style="font-size:12px; color:var(--text-secondary); margin-bottom:5px;">TOTAL ODP</div>
-        <div style="font-size:24px; font-weight:800;"><?= $stats['ODP'] ?? 0 ?></div>
+    <div class="glass-panel" style="padding:15px; text-align:center; border-left:4px solid #06b6d4;">
+        <div style="font-size:10px; color:var(--text-secondary); margin-bottom:5px;">WIRELESS & SERVER</div>
+        <div style="font-size:20px; font-weight:800;"><?= ($stats_raw['Wireless']??0) + ($stats_raw['Server']??0) ?></div>
     </div>
-    <div class="glass-panel" style="padding:20px; text-align:center; border-left:4px solid var(--success);">
-        <div style="font-size:12px; color:var(--text-secondary); margin-bottom:5px;">PORT TERPAKAI</div>
-        <div style="font-size:24px; font-weight:800;"><?= $total_customers ?></div>
+    <div class="glass-panel" style="padding:15px; text-align:center; border-left:4px solid var(--success);">
+        <div style="font-size:10px; color:var(--text-secondary); margin-bottom:5px;">PORT TERPAKAI</div>
+        <div style="font-size:20px; font-weight:800;"><?= $total_customers ?></div>
+    </div>
+    <div class="glass-panel" style="padding:15px; text-align:center; border-left:4px solid #ec4899;">
+        <div style="font-size:10px; color:var(--text-secondary); margin-bottom:5px;">TOTAL INVESTASI</div>
+        <div style="font-size:18px; font-weight:800;">Rp <?= number_format($total_investment, 0, ',', '.') ?></div>
     </div>
 </div>
 
@@ -68,10 +76,10 @@ $total_customers = $db->query("SELECT COUNT(*) FROM customers WHERE odp_id > 0")
             <thead>
                 <tr>
                     <th>Nama Aset</th>
-                    <th>Tipe</th>
+                    <th>Tipe / Status</th>
                     <th>Induk (Uplink)</th>
                     <th>Kapasitas</th>
-                    <th>Lokasi (Lat, Lng)</th>
+                    <th>Nilai Aset (Rp)</th>
                     <th>Aksi</th>
                 </tr>
             </thead>
@@ -90,7 +98,17 @@ $total_customers = $db->query("SELECT COUNT(*) FROM customers WHERE odp_id > 0")
                         <div style="font-size:11px; color:var(--text-secondary);"><?= htmlspecialchars($a['brand'] ?: 'Generic') ?></div>
                     </td>
                     <td>
-                        <span class="badge" style="background:<?= $a['type']=='OLT' ? 'var(--primary)' : ($a['type']=='ODC' ? '#a855f7' : '#ec4899') ?>; color:white;">
+                        <?php 
+                        $bgColor = 'var(--primary)';
+                        if($a['type'] == 'ODC') $bgColor = '#a855f7';
+                        if($a['type'] == 'ODP') $bgColor = '#ec4899';
+                        if($a['type'] == 'Router') $bgColor = '#f59e0b';
+                        if($a['type'] == 'Switch') $bgColor = '#6366f1';
+                        if($a['type'] == 'Wireless') $bgColor = '#06b6d4';
+                        if($a['type'] == 'Server') $bgColor = '#4b5563';
+                        if($a['type'] == 'ONU') $bgColor = '#10b981';
+                        ?>
+                        <span class="badge" style="background:<?= $bgColor ?>; color:white;">
                             <?= $a['type'] ?>
                         </span>
                     </td>
@@ -101,7 +119,10 @@ $total_customers = $db->query("SELECT COUNT(*) FROM customers WHERE odp_id > 0")
                         </div>
                         <div style="font-size:11px; font-weight:700;"><?= $current_usage ?> / <?= $a['total_ports'] ?> Port</div>
                     </td>
-                    <td style="font-family:monospace; font-size:11px;"><?= $a['lat'] ? $a['lat'].', '.$a['lng'] : '-' ?></td>
+                    <td>
+                        <div style="font-weight:700; color:var(--success);">Rp <?= number_format($a['price'], 0, ',', '.') ?></div>
+                        <div style="font-size:10px; color:var(--text-secondary);"><?= $a['installation_date'] ? 'Pasang: '.$a['installation_date'] : '-' ?></div>
+                    </td>
                     <td>
                         <button class="btn btn-sm btn-ghost" onclick='editAsset(<?= json_encode($a) ?>)'><i class="fas fa-edit"></i></button>
                         <a href="index.php?page=admin_assets&action=delete&id=<?= $a['id'] ?>" class="btn btn-sm btn-ghost" style="color:var(--danger);" onclick="return confirm('Hapus aset ini?')"><i class="fas fa-trash"></i></a>
@@ -133,6 +154,11 @@ $total_customers = $db->query("SELECT COUNT(*) FROM customers WHERE odp_id > 0")
                         <option value="OLT">OLT (Pusat)</option>
                         <option value="ODC">ODC (Cabinet)</option>
                         <option value="ODP">ODP (Pelanggan)</option>
+                        <option value="Router">Router (MikroTik/Lainnya)</option>
+                        <option value="Switch">Switch (L2/L3)</option>
+                        <option value="Wireless">Wireless (AP/Radio)</option>
+                        <option value="Server">Server</option>
+                        <option value="ONU">ONU (Modem Pelanggan)</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -166,6 +192,24 @@ $total_customers = $db->query("SELECT COUNT(*) FROM customers WHERE odp_id > 0")
                     <input type="text" name="lng" id="asset_lng" class="form-control">
                 </div>
             </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+                <div class="form-group">
+                    <label>Harga Beli (Rp)</label>
+                    <input type="number" name="price" id="asset_price" class="form-control" value="0">
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select name="status" id="asset_status" class="form-control">
+                        <option value="Deployed">Terpasang (Deployed)</option>
+                        <option value="Stock">Gudang (Stock)</option>
+                        <option value="Repair">Rusak (Repair)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Tanggal Pemasangan</label>
+                <input type="date" name="installation_date" id="asset_date" class="form-control" value="<?= date('Y-m-d') ?>">
+            </div>
             <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
                 <button type="button" class="btn btn-ghost" onclick="closeAssetModal()">Batal</button>
                 <button type="submit" class="btn btn-primary" id="saveBtn">Simpan Aset</button>
@@ -196,6 +240,9 @@ function editAsset(a) {
     document.getElementById('asset_brand').value = a.brand;
     document.getElementById('asset_lat').value = a.lat;
     document.getElementById('asset_lng').value = a.lng;
+    document.getElementById('asset_price').value = a.price;
+    document.getElementById('asset_status').value = a.status;
+    document.getElementById('asset_date').value = a.installation_date;
     document.getElementById('assetModal').style.display = 'block';
 }
 </script>
