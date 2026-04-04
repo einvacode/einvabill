@@ -109,6 +109,10 @@ switch ($page) {
     case 'admin_license_keygen':
         require __DIR__ . '/app/keygen.php';
         break;
+    case 'admin_updater':
+    case 'admin_updater_run':
+        require __DIR__ . '/views/admin/updater.php';
+        break;
     case 'router_data':
         require __DIR__ . '/app/router_data.php';
         exit;

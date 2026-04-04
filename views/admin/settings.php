@@ -64,9 +64,10 @@ $settings = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
     <?php endif; ?>
 
     <div class="settings-tabs" style="display:flex; gap:10px; margin-bottom:25px; border-bottom:1px solid var(--glass-border); overflow-x:auto; padding-bottom:5px;">
-        <button class="settings-tab active btn btn-sm btn-ghost" onclick="switchTab(this, 'profil')" style="border-radius:10px; white-space:nowrap; padding:10px 20px;"><i class="fas fa-building"></i> Profil</button>
-        <button class="settings-tab btn btn-sm btn-ghost" onclick="switchTab(this, 'whatsapp')" style="border-radius:10px; white-space:nowrap; padding:10px 20px;"><i class="fab fa-whatsapp"></i> WA Template</button>
-        <button class="settings-tab btn btn-sm btn-ghost" onclick="switchTab(this, 'router')" style="border-radius:10px; white-space:nowrap; padding:10px 20px;"><i class="fas fa-server"></i> API Router</button>
+        <button type="button" class="settings-tab active btn btn-sm btn-ghost" onclick="switchTab(this, 'profil')" style="border-radius:10px; white-space:nowrap; padding:10px 20px;"><i class="fas fa-building"></i> Profil</button>
+        <button type="button" class="settings-tab btn btn-sm btn-ghost" onclick="switchTab(this, 'whatsapp')" style="border-radius:10px; white-space:nowrap; padding:10px 20px;"><i class="fab fa-whatsapp"></i> WA Template</button>
+        <button type="button" class="settings-tab btn btn-sm btn-ghost" onclick="switchTab(this, 'router')" style="border-radius:10px; white-space:nowrap; padding:10px 20px;"><i class="fas fa-server"></i> API Router</button>
+        <button type="button" class="settings-tab btn btn-sm btn-ghost" onclick="switchTab(this, 'system')" style="border-radius:10px; white-space:nowrap; padding:10px 20px;"><i class="fas fa-microchip"></i> System</button>
     </div>
 
     <form method="POST" enctype="multipart/form-data">
@@ -144,6 +145,23 @@ $settings = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
             <div class="form-group">
                 <label>Password API</label>
                 <input type="password" name="router_pass" class="form-control" value="<?= htmlspecialchars($settings['router_pass'] ?? '') ?>">
+            </div>
+        </div>
+
+        <!-- SYSTEM SECTION -->
+        <div id="system" class="settings-section" style="display:none;">
+            <div style="background: rgba(59, 130, 246, 0.05); padding: 25px; border-radius: 15px; border: 1px dashed var(--primary); text-align: center;">
+                <i class="fas fa-sync-alt" style="font-size: 32px; color: var(--primary); margin-bottom: 15px;"></i>
+                <h4 style="margin-bottom: 10px;">Update Aplikasi Otomatis</h4>
+                <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 20px;">
+                    Dapatkan fitur terbaru, perbaikan bug, dan optimasi performa langsung dari pusat pembaruan.
+                </p>
+                <a href="index.php?page=admin_updater" class="btn btn-primary" style="width: 100%; padding: 12px;">Buka Pengelola Update</a>
+            </div>
+            
+            <div style="margin-top: 20px; text-align: center; font-size: 11px; color: var(--text-secondary);">
+                Versi Saat Ini: v1.5.0-Stable <br>
+                License: <?= LICENSE_ST ?>
             </div>
         </div>
 
