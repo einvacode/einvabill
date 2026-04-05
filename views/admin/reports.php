@@ -50,6 +50,11 @@ $q_tertunggak_lama = $db->prepare("
 $q_tertunggak_lama->execute([$period]);
 $tertunggak_lama = $q_tertunggak_lama->fetchColumn() ?: 0;
 
+// NEW: Expenses for the period
+$q_expenses = $db->prepare("SELECT SUM(amount) FROM expenses WHERE strftime('%Y-%m', date) = ?");
+$q_expenses->execute([$period]);
+$total_expenses = $q_expenses->fetchColumn() ?: 0;
+
 
 // Table Data Query (UNION of Payments received this month AND Unpaid Invoices due this month)
 $q_table = $db->prepare("
@@ -118,6 +123,13 @@ if ($action === 'export') {
 if ($action === 'print') {
     $company = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
     $total_income = $lunas_tepat + $tunggakan_dibayar;
+    
+    // Expenses for the printed period
+    $q_expenses_print = $db->prepare("SELECT * FROM expenses WHERE strftime('%Y-%m', date) = ? ORDER BY date ASC");
+    $q_expenses_print->execute([$period]);
+    $expenses_list = $q_expenses_print->fetchAll();
+    $total_expenses_print = 0;
+    foreach($expenses_list as $e) $total_expenses_print += $e['amount'];
     
     // Logo processing logic
     $logo_src = '';
@@ -258,15 +270,15 @@ if ($action === 'print') {
                     <div class="val" style="color:#ef4444;">Rp <?= number_format($belum_bayar, 0, ',', '.') ?></div>
                     <div class="subtext">Tagihan Belum Lunas (Bulan Ini)</div>
                 </div>
-                <div class="summary-box">
-                    <h3>Lunas Tepat Waktu</h3>
-                    <div class="val" style="font-size:22px;">Rp <?= number_format($lunas_tepat, 0, ',', '.') ?></div>
-                    <div class="subtext">Pembayaran khusus bulan <?= $months[$filter_month] ?></div>
+                <div class="summary-box danger" style="border-top:4px solid #ef4444;">
+                    <h3>Total Pengeluaran</h3>
+                    <div class="val" style="color:#ef4444;">Rp <?= number_format($total_expenses_print, 0, ',', '.') ?></div>
+                    <div class="subtext">Operasional & Belanja</div>
                 </div>
-                <div class="summary-box danger">
-                    <h3>Sisa Akumulasi Piutang Lama</h3>
-                    <div class="val" style="font-size:22px; color:#ef4444;">Rp <?= number_format($tertunggak_lama, 0, ',', '.') ?></div>
-                    <div class="subtext">Tagihan tertunggak sebelum <?= $months[$filter_month] ?></div>
+                <div class="summary-box" style="border-top:4px solid #10b981; background:#f0fdf4;">
+                    <h3>Estimasi Laba Bersih</h3>
+                    <div class="val" style="color:#10b981;">Rp <?= number_format($total_income - $total_expenses_print, 0, ',', '.') ?></div>
+                    <div class="subtext">Income - Pengeluaran</div>
                 </div>
             </div>
 
@@ -313,6 +325,36 @@ if ($action === 'print') {
                 <?php endforeach; ?>
             </tbody>
         </table>
+
+        <?php if(!empty($expenses_list)): ?>
+        <div class="report-header" style="border-bottom: 2px solid #e2e8f0; margin: 40px 0 20px 0; padding-bottom: 15px;">
+            <div class="header-left">
+                <div class="company-info">
+                    <h1 style="font-size:18px;">RINCIAN PENGELUARAN</h1>
+                </div>
+            </div>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th width="100">TANGGAL</th>
+                    <th>KATEGORI</th>
+                    <th>KETERANGAN</th>
+                    <th width="140" style="text-align:right;">NOMINAL</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach($expenses_list as $e): ?>
+                <tr>
+                    <td style="color:#64748b; font-weight:500;"><?= date('d/m/y', strtotime($e['date'])) ?></td>
+                    <td style="font-weight:700; color:#ef4444;"><?= strtoupper($e['category']) ?></td>
+                    <td><?= htmlspecialchars($e['description'] ?: '-') ?></td>
+                    <td style="font-weight:800; text-align:right; font-size:14px; color:#ef4444;">Rp <?= number_format($e['amount'], 0, ',', '.') ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+        <?php endif; ?>
 
         <!-- Signature Section at the Very End -->
         <div class="signature-area">
@@ -396,9 +438,15 @@ if ($action === 'print') {
         </div>
 
         <div class="stat-card glass-panel" style="background:rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3);">
-            <div class="stat-title" style="color:var(--danger)"><i class="fas fa-exclamation-triangle"></i> Sisa Piutang</div>
-            <div class="stat-value text-danger">Rp <?= number_format($tertunggak_lama, 0, ',', '.') ?></div>
-            <div style="font-size:11px; color:var(--text-secondary); margin-top:10px;">Total hutang lama.</div>
+            <div class="stat-title" style="color:var(--danger)"><i class="fas fa-wallet"></i> Pengeluaran</div>
+            <div class="stat-value text-danger">Rp <?= number_format($total_expenses, 0, ',', '.') ?></div>
+            <div style="font-size:11px; color:var(--text-secondary); margin-top:10px;">Biaya operasional & barang.</div>
+        </div>
+
+        <div class="stat-card glass-panel" style="background:rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3);">
+            <div class="stat-title" style="color:var(--success)"><i class="fas fa-hand-holding-usd"></i> Laba Bersih</div>
+            <div class="stat-value text-success">Rp <?= number_format(($lunas_tepat + $tunggakan_dibayar) - $total_expenses, 0, ',', '.') ?></div>
+            <div style="font-size:11px; color:var(--text-secondary); margin-top:10px;">Dana Masuk - Pengeluaran.</div>
         </div>
     </div>
     
@@ -406,6 +454,7 @@ if ($action === 'print') {
     <div style="display:flex; justify-content:space-between; align-items:center; margin: 30px 0 15px 0; flex-wrap:wrap; gap:10px;">
         <h4 style="margin:0;">Rincian Transaksi - <?= $months[$filter_month] ?> <?= $filter_year ?></h4>
         <div style="display:flex; gap:10px;">
+            <a href="index.php?page=admin_report_assets" class="btn btn-sm btn-ghost" style="border: 1px solid var(--glass-border);"><i class="fas fa-boxes"></i> Laporan Aset</a>
             <a href="index.php?page=admin_reports&action=print&month=<?= $filter_month ?>&year=<?= $filter_year ?>" target="_blank" class="btn btn-sm btn-primary"><i class="fas fa-print"></i> Cetak Laporan (HTML)</a>
             <a href="index.php?page=admin_reports&action=export&month=<?= $filter_month ?>&year=<?= $filter_year ?>" class="btn btn-sm btn-success"><i class="fas fa-file-excel"></i> Export Excel (CSV)</a>
         </div>

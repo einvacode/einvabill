@@ -78,6 +78,12 @@ switch ($page) {
     case 'admin_invoices':
         require __DIR__ . '/views/admin/invoices.php';
         break;
+    case 'admin_expenses':
+        require __DIR__ . '/views/admin/expenses.php';
+        break;
+    case 'admin_report_assets':
+        require __DIR__ . '/views/admin/report_assets.php';
+        break;
     case 'admin_reports':
         require __DIR__ . '/views/admin/reports.php';
         break;

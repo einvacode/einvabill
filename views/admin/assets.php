@@ -38,7 +38,7 @@ if ($action === 'delete') {
 
 // Fetch Stats
 $stats_raw = $db->query("SELECT type, COUNT(*) as count FROM infrastructure_assets GROUP BY type")->fetchAll(PDO::FETCH_KEY_PAIR);
-$total_customers = $db->query("SELECT COUNT(*) FROM customers WHERE odp_id > 0")->fetchColumn();
+$total_ports_used = $db->query("SELECT (SELECT COUNT(*) FROM customers WHERE odp_id > 0) + (SELECT COUNT(*) FROM infrastructure_assets WHERE parent_id > 0)")->fetchColumn();
 $total_investment = $db->query("SELECT SUM(price) FROM infrastructure_assets")->fetchColumn() ?: 0;
 ?>
 
@@ -57,7 +57,7 @@ $total_investment = $db->query("SELECT SUM(price) FROM infrastructure_assets")->
     </div>
     <div class="glass-panel" style="padding:15px; text-align:center; border-left:4px solid var(--success);">
         <div style="font-size:10px; color:var(--text-secondary); margin-bottom:5px;">PORT TERPAKAI</div>
-        <div style="font-size:20px; font-weight:800;"><?= $total_customers ?></div>
+        <div style="font-size:20px; font-weight:800;"><?= $total_ports_used ?></div>
     </div>
     <div class="glass-panel" style="padding:15px; text-align:center; border-left:4px solid #ec4899;">
         <div style="font-size:10px; color:var(--text-secondary); margin-bottom:5px;">TOTAL INVESTASI</div>
@@ -87,9 +87,16 @@ $total_investment = $db->query("SELECT SUM(price) FROM infrastructure_assets")->
                 <?php
                 $assets = $db->query("SELECT a.*, p.name as parent_name FROM infrastructure_assets a LEFT JOIN infrastructure_assets p ON a.parent_id = p.id ORDER BY a.type DESC, a.name ASC")->fetchAll();
                 foreach($assets as $a):
-                    $usage = $db->prepare("SELECT COUNT(*) FROM customers WHERE odp_id = ?");
-                    $usage->execute([$a['id']]);
-                    $current_usage = $usage->fetchColumn();
+                    // Hitung Penggunaan Port Fisik (Hanya 1 Tingkat / Direct)
+                    $usage_cust = $db->prepare("SELECT COUNT(*) FROM customers WHERE odp_id = ?");
+                    $usage_cust->execute([$a['id']]);
+                    $direct_cust_count = $usage_cust->fetchColumn();
+                    
+                    $usage_child = $db->prepare("SELECT COUNT(*) FROM infrastructure_assets WHERE parent_id = ?");
+                    $usage_child->execute([$a['id']]);
+                    $direct_asset_count = $usage_child->fetchColumn();
+                    
+                    $current_usage = $direct_cust_count + $direct_asset_count;
                     $usage_pct = ($a['total_ports'] > 0) ? ($current_usage / $a['total_ports']) * 100 : 0;
                 ?>
                 <tr>
@@ -117,7 +124,10 @@ $total_investment = $db->query("SELECT SUM(price) FROM infrastructure_assets")->
                         <div style="width:100px; height:8px; background:rgba(255,255,255,0.1); border-radius:4px; margin-bottom:5px; overflow:hidden;">
                             <div style="width:<?= $usage_pct ?>%; height:100%; background:<?= $usage_pct > 90 ? 'var(--danger)' : 'var(--success)' ?>;"></div>
                         </div>
-                        <div style="font-size:11px; font-weight:700;"><?= $current_usage ?> / <?= $a['total_ports'] ?> Port</div>
+                        <div style="font-size:11px; font-weight:700;">Penggunaan: <?= $current_usage ?> / <?= $a['total_ports'] ?> Port</div>
+                        <div style="font-size:10px; color:var(--text-secondary); margin-top:2px;">
+                            <i class="fas fa-link"></i> <?= $direct_asset_count ?> Cabang, <?= $direct_cust_count ?> Pelanggan
+                        </div>
                     </td>
                     <td>
                         <div style="font-weight:700; color:var(--success);">Rp <?= number_format($a['price'], 0, ',', '.') ?></div>
@@ -220,6 +230,8 @@ $total_investment = $db->query("SELECT SUM(price) FROM infrastructure_assets")->
 
 <script>
 function showAssetModal() {
+// ...
+// ...
     document.getElementById('assetForm').action = 'index.php?page=admin_assets&action=add';
     document.getElementById('modalTitle').innerText = 'Tambah Aset Baru';
     document.getElementById('asset_id').value = '';

@@ -34,6 +34,7 @@
                         <a href="index.php?page=admin_customers" class="nav-link <?= $page == 'admin_customers' ? 'active' : '' ?>"><i class="fas fa-users"></i> Pelanggan</a>
                         <a href="index.php?page=admin_invoices" class="nav-link <?= $page == 'admin_invoices' && ($filter_status ?? '') != 'belum' ? 'active' : '' ?>"><i class="fas fa-file-invoice-dollar"></i> Tagihan</a>
                         <a href="index.php?page=admin_invoices&filter_status=belum" class="nav-link <?= $page == 'admin_invoices' && ($filter_status ?? '') == 'belum' ? 'active' : '' ?>"><i class="fas fa-user-clock" style="color:#f43f5e;"></i> User Tunggakan</a>
+                        <a href="index.php?page=admin_expenses" class="nav-link <?= $page == 'admin_expenses' ? 'active' : '' ?>"><i class="fas fa-wallet" style="color:var(--warning);"></i> Pengeluaran</a>
                         
                         <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">INFRASTRUKTUR</div>
                         <a href="index.php?page=admin_router" class="nav-link <?= $page == 'admin_router' ? 'active' : '' ?>"><i class="fas fa-network-wired"></i> Router</a>
@@ -46,7 +47,8 @@
                         <a href="index.php?page=admin_users" class="nav-link <?= $page == 'admin_users' ? 'active' : '' ?>"><i class="fas fa-user-shield"></i> Akses Pengguna</a>
 
                         <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">SISTEM & LAPORAN</div>
-                        <a href="index.php?page=admin_reports" class="nav-link <?= $page == 'admin_reports' ? 'active' : '' ?>"><i class="fas fa-chart-line"></i> Laporan</a>
+                        <a href="index.php?page=admin_reports" class="nav-link <?= $page == 'admin_reports' ? 'active' : '' ?>"><i class="fas fa-chart-line"></i> Laporan Keuangan</a>
+                        <a href="index.php?page=admin_report_assets" class="nav-link <?= $page == 'admin_report_assets' ? 'active' : '' ?>"><i class="fas fa-file-contract"></i> Laporan Aset</a>
                         <a href="index.php?page=admin_landing" class="nav-link <?= $page == 'admin_landing' ? 'active' : '' ?>"><i class="fas fa-globe"></i> Web Profil</a>
                         <a href="index.php?page=admin_settings" class="nav-link <?= $page == 'admin_settings' ? 'active' : '' ?>"><i class="fas fa-cog"></i> Pengaturan</a>
                         <a href="index.php?page=admin_backup" class="nav-link <?= $page == 'admin_backup' ? 'active' : '' ?>"><i class="fas fa-shield-alt"></i> Backup & Restore</a>
@@ -69,7 +71,9 @@
                         elseif($page == 'admin_assets') echo 'Manajemen Aset (OLT/ODP)';
                         elseif($page == 'admin_map') echo 'Peta Sebaran Jaringan';
                         elseif($page == 'admin_invoices') echo 'Manajemen Tagihan';
+                        elseif($page == 'admin_expenses') echo 'Manajemen Pengeluaran';
                         elseif($page == 'admin_reports') echo 'Laporan Keuangan';
+                        elseif($page == 'admin_report_assets') echo 'Laporan Inventaris Aset';
                         elseif($page == 'admin_landing') echo 'Pengaturan Web Profil';
                         elseif($page == 'admin_users') echo 'Akses Pengguna';
                         elseif($page == 'admin_router') echo 'Monitoring Router';
@@ -117,7 +121,10 @@
                 <i class="fas fa-file-invoice-dollar"></i><span>Tagihan</span>
             </a>
             <a href="index.php?page=admin_reports" class="<?= $page == 'admin_reports' ? 'active' : '' ?>">
-                <i class="fas fa-chart-line"></i><span>Laporan</span>
+                <i class="fas fa-chart-line"></i><span>Keuangan</span>
+            </a>
+            <a href="index.php?page=admin_report_assets" class="<?= $page == 'admin_report_assets' ? 'active' : '' ?>">
+                <i class="fas fa-file-contract"></i><span>Aset</span>
             </a>
             <a href="#" onclick="toggleMobileMenu(event)" id="mobileMenuToggle">
                 <i class="fas fa-ellipsis-h"></i><span>Lainnya</span>
@@ -160,6 +167,9 @@
                     </a>
                     <a href="index.php?page=admin_areas" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 8px; border-radius:12px; color:var(--text-primary); text-decoration:none; background:var(--hover-bg); font-size:12px; font-weight:500; transition:all 0.2s;" class="<?= $page == 'admin_areas' ? 'active' : '' ?>">
                         <i class="fas fa-map-marker-alt" style="font-size:22px; color:#3b82f6;"></i> Area
+                    </a>
+                    <a href="index.php?page=admin_expenses" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 8px; border-radius:12px; color:var(--text-primary); text-decoration:none; background:var(--hover-bg); font-size:12px; font-weight:500; transition:all 0.2s;" class="<?= $page == 'admin_expenses' ? 'active' : '' ?>">
+                        <i class="fas fa-wallet" style="font-size:22px; color:var(--warning);"></i> Pengeluaran
                     </a>
                     <a href="index.php?page=admin_router" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 8px; border-radius:12px; color:var(--text-primary); text-decoration:none; background:var(--hover-bg); font-size:12px; font-weight:500; transition:all 0.2s;">
                         <i class="fas fa-network-wired" style="font-size:22px; color:var(--success);"></i> Router

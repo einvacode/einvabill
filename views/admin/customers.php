@@ -51,8 +51,29 @@ if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, package_name, monthly_fee, ip_address, type, registration_date, billing_date, area, router_id, pppoe_name, collector_id, lat, lng, odp_id, odp_port) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $stmt->execute([$customer_code, $name, $address, $contact, $package_name, $monthly_fee, $ip_address, $type, $registration_date, $billing_date, $area, $router_id, $pppoe_name, $collector_id, $lat, $lng, $odp_id, $odp_port]);
     $id = $db->lastInsertId();
+
+    // SELECTIVE AUTOMATIC PAYMENT ON REGISTRATION
+    if ($monthly_fee > 0) {
+        if ($type === 'customer') {
+            // RUMAHAN: Langsung Bayar Lunas di Hari Registrasi
+            $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Lunas', ?)");
+            $stmt_inv->execute([$id, $monthly_fee, $registration_date, date('Y-m-d H:i:s')]);
+            $inv_id = $db->lastInsertId();
+
+            $stmt_pay = $db->prepare("INSERT INTO payments (invoice_id, amount, payment_date, received_by) VALUES (?, ?, ?, ?)");
+            $stmt_pay->execute([$inv_id, $monthly_fee, date('Y-m-d H:i:s'), $_SESSION['user_id'] ?? 1]);
+        } else {
+            // MITRA: Bayar Setelah 30 Hari / Sesuai Tanggal Tagihan Bulan Depan (Belum Lunas)
+            $next_month = date('Y-m', strtotime("+1 month"));
+            $bday = str_pad($billing_date, 2, '0', STR_PAD_LEFT);
+            $due_date = "{$next_month}-{$bday}";
+            
+            $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Belum Lunas', ?)");
+            $stmt_inv->execute([$id, $monthly_fee, $due_date, date('Y-m-d H:i:s')]);
+        }
+    }
     
-    // Arrears Logic
+    // Arrears Logic (Jika ada tunggakan manual dari migrasi data lama)
     $arrears_months = intval($_POST['arrears_months'] ?? 0);
     $arrears_amount = floatval($_POST['arrears_amount'] ?? 0);
     if ($arrears_amount <= 0) $arrears_amount = $monthly_fee;

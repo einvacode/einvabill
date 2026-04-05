@@ -107,6 +107,16 @@ $db->exec("CREATE TABLE IF NOT EXISTS areas (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )");
 
+// Create expenses table
+$db->exec("CREATE TABLE IF NOT EXISTS expenses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category TEXT NOT NULL,
+    amount REAL NOT NULL,
+    description TEXT,
+    date TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)");
+
 // Auto-migrate existing areas from customers to areas table
 try {
     $existing_areas = $db->query("SELECT DISTINCT area FROM customers WHERE area IS NOT NULL AND area != ''")->fetchAll(PDO::FETCH_COLUMN);
@@ -186,6 +196,8 @@ try { $db->exec("ALTER TABLE customers ADD COLUMN lat TEXT"); } catch(Exception 
 try { $db->exec("ALTER TABLE customers ADD COLUMN lng TEXT"); } catch(Exception $e) {}
 try { $db->exec("ALTER TABLE customers ADD COLUMN odp_id INTEGER DEFAULT 0"); } catch(Exception $e) {}
 try { $db->exec("ALTER TABLE customers ADD COLUMN odp_port INTEGER"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE customers ADD COLUMN path_json TEXT"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE infrastructure_assets ADD COLUMN path_json TEXT"); } catch(Exception $e) {}
 
 // Fetch Settings for License Check
 $site_settings = $db->query("SELECT * FROM settings WHERE id=1")->fetch();

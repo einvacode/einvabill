@@ -32,6 +32,12 @@ $arrears_collected = $db->query("
 
 // 6. Realisasi (Persentase terhadap target bulan ini)
 $real_pct = $month_target > 0 ? round(($total_received_month / $month_target) * 100, 1) : 0;
+
+// 7. Pengeluaran Bulan Ini
+$total_expenses_month = $db->query("SELECT SUM(amount) FROM expenses WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now')")->fetchColumn() ?: 0;
+
+// 8. Laba Bersih (Uang Masuk - Pengeluaran)
+$net_profit_month = $total_received_month - $total_expenses_month;
 ?>
 <!-- Banner Lisensi -->
 <?php if(LICENSE_ST === 'TRIAL'): ?>
@@ -98,6 +104,16 @@ $real_pct = $month_target > 0 ? round(($total_received_month / $month_target) * 
         <div class="stat-title">Koleksi Hari Ini</div>
         <div class="stat-value" style="color:#a855f7;">Rp <?= number_format($today_collected, 0, ',', '.') ?></div>
         <div style="font-size:11px; color:var(--text-secondary); margin-top:5px;">Keberhasilan penagihan hari ini</div>
+    </div>
+    <div class="glass-panel stat-card" style="border-top: 4px solid #f43f5e;">
+        <div class="stat-title">Pengeluaran (Bulan Ini)</div>
+        <div class="stat-value" style="color:#f43f5e;">Rp <?= number_format($total_expenses_month, 0, ',', '.') ?></div>
+        <div style="font-size:11px; color:var(--text-secondary); margin-top:5px;">Operasional, Barang, Insentif</div>
+    </div>
+    <div class="glass-panel stat-card" style="border-top: 4px solid #10b981; background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), transparent);">
+        <div class="stat-title">Laba Bersih (Estimasi)</div>
+        <div class="stat-value" style="color:#10b981;">Rp <?= number_format($net_profit_month, 0, ',', '.') ?></div>
+        <div style="font-size:11px; color:var(--text-secondary); margin-top:5px;">Dana Masuk - Pengeluaran</div>
     </div>
 </div>
 
