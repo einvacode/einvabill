@@ -55,13 +55,9 @@ if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     // SELECTIVE AUTOMATIC PAYMENT ON REGISTRATION
     if ($monthly_fee > 0) {
         if ($type === 'customer') {
-            // RUMAHAN: Langsung Bayar Lunas di Hari Registrasi
-            $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Lunas', ?)");
+            // RUMAHAN: Tagihan Terbit di Hari Registrasi (Belum Lunas - perlu konfirmasi manual)
+            $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Belum Lunas', ?)");
             $stmt_inv->execute([$id, $monthly_fee, $registration_date, date('Y-m-d H:i:s')]);
-            $inv_id = $db->lastInsertId();
-
-            $stmt_pay = $db->prepare("INSERT INTO payments (invoice_id, amount, payment_date, received_by) VALUES (?, ?, ?, ?)");
-            $stmt_pay->execute([$inv_id, $monthly_fee, date('Y-m-d H:i:s'), $_SESSION['user_id'] ?? 1]);
         } else {
             // MITRA: Bayar Setelah 30 Hari / Sesuai Tanggal Tagihan Bulan Depan (Belum Lunas)
             $next_month = date('Y-m', strtotime("+1 month"));
@@ -323,17 +319,26 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <?php if ($action === 'list'): ?>
 <div class="glass-panel" style="padding: 24px;">
+    <?php
+    $filter_type = $_GET['filter_type'] ?? '';
+    $page_title = $filter_type === 'partner' ? 'Manajemen Kemitraan (B2B)' : ($filter_type === 'customer' ? 'Manajemen Pelanggan Rumahan' : 'Pelanggan & Mitra');
+    $title_icon = $filter_type === 'partner' ? 'fa-handshake' : 'fa-users';
+    ?>
     <div style="display:flex; justify-content:space-between; margin-bottom:20px; align-items:center; flex-wrap:wrap; gap:10px;">
-        <h3 style="font-size:20px;"><i class="fas fa-users text-primary"></i> Pelanggan & Mitra</h3>
+        <h3 style="font-size:20px;"><i class="fas <?= $title_icon ?> text-primary"></i> <?= $page_title ?></h3>
         <div style="display:flex; gap:10px;">
             <?php 
             $export_params = $_GET; 
             $export_params['action'] = 'export';
             $export_url = "index.php?" . http_build_query($export_params);
+
+            // Add auto-type to the create button
+            $create_url = "index.php?page=admin_customers&action=create";
+            if ($filter_type) $create_url .= "&type=" . $filter_type;
             ?>
             <a href="<?= $export_url ?>" class="btn btn-sm btn-ghost" style="border-color:var(--success); color:var(--success);"><i class="fas fa-file-download"></i> Export</a>
             <a href="index.php?page=admin_customers&action=import_view" class="btn btn-sm btn-ghost" style="border-color:var(--success); color:var(--success);"><i class="fas fa-file-excel"></i> Import</a>
-            <a href="index.php?page=admin_customers&action=create" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Tambah</a>
+            <a href="<?= $create_url ?>" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Tambah</a>
         </div>
     </div>
     
@@ -354,6 +359,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php
     $filter_type = $_GET['filter_type'] ?? '';
     $filter_collector = $_GET['filter_collector'] ?? '';
+    $search = $_GET['search'] ?? '';
     
     $where_type = "";
     if ($filter_type) $where_type = " AND type = " . $db->quote($filter_type);
@@ -366,6 +372,12 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    $where_search = "";
+    if ($search) {
+        $s = $db->quote("%$search%");
+        $where_search = " AND (name LIKE $s OR customer_code LIKE $s OR address LIKE $s OR contact LIKE $s)";
+    }
+
     $collectors = $db->query("SELECT id, name FROM users WHERE role = 'collector' ORDER BY name ASC")->fetchAll();
 
     // Pagination Logic
@@ -374,7 +386,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $offset = ($current_page - 1) * $items_per_page;
     
     // Count total rows for this filter
-    $count_q = "SELECT COUNT(*) FROM customers WHERE 1=1 $where_type $where_collector";
+    $count_q = "SELECT COUNT(*) FROM customers WHERE 1=1 $where_type $where_collector $where_search";
     $total_rows = $db->query($count_q)->fetchColumn();
     $total_pages = ceil($total_rows / $items_per_page);
     ?>
@@ -383,6 +395,13 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     <div style="padding:15px; background:var(--hover-bg); border-radius:12px; margin-bottom:20px; border-left:4px solid var(--primary);">
         <form method="GET" style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
             <input type="hidden" name="page" value="admin_customers">
+            <div style="flex:1; min-width:200px;">
+                <label style="font-size:12px; color:var(--text-secondary); display:block; margin-bottom:4px;">Cari Nama / Kode / Alamat</label>
+                <div style="position:relative;">
+                    <i class="fas fa-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-secondary);"></i>
+                    <input type="text" name="search" class="form-control" placeholder="Ketik keyword..." value="<?= htmlspecialchars($search) ?>" style="padding:8px 12px 8px 35px; font-size:13px;">
+                </div>
+            </div>
             <div>
                 <label style="font-size:12px; color:var(--text-secondary); display:block; margin-bottom:4px;">Tipe</label>
                 <select name="filter_type" class="form-control" style="padding:8px 12px; font-size:13px;">
@@ -400,9 +419,9 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php endforeach; ?>
                 </select>
             </div>
-            <button type="submit" class="btn btn-primary btn-sm" style="padding:8px 16px; height:fit-content;"><i class="fas fa-filter"></i> Filter</button>
-            <?php if($filter_type || $filter_collector): ?>
-                <a href="index.php?page=admin_customers" class="btn btn-sm btn-ghost" style="padding:8px 16px; height:fit-content;"><i class="fas fa-times"></i> Reset</a>
+            <button type="submit" class="btn btn-primary btn-sm" style="padding:8px 16px; height:38px;"><i class="fas fa-filter"></i> Cari & Filter</button>
+            <?php if($filter_type || $filter_collector || $search): ?>
+                <a href="index.php?page=admin_customers" class="btn btn-sm btn-ghost" style="padding:8px 16px; height:38px; display:flex; align-items:center;"><i class="fas fa-times"></i> Reset</a>
             <?php endif; ?>
         </form>
     </div>
@@ -412,7 +431,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php
         $routers = [];
         try { $routers = $db->query("SELECT * FROM routers")->fetchAll(); } catch(Exception $e) {}
-        $customers = $db->query("SELECT * FROM customers WHERE 1=1 $where_type $where_collector ORDER BY id DESC LIMIT $items_per_page OFFSET $offset")->fetchAll();
+        $customers = $db->query("SELECT * FROM customers WHERE 1=1 $where_type $where_collector $where_search ORDER BY id DESC LIMIT $items_per_page OFFSET $offset")->fetchAll();
         
         foreach($customers as $c):
             $rtName = '-';
@@ -762,7 +781,8 @@ document.addEventListener("DOMContentLoaded", function() {
         $id = $_GET['id'];
         $c = $db->query("SELECT * FROM customers WHERE id = " . intval($id))->fetch();
     } else {
-        $c = ['type'=>'customer', 'registration_date'=>date('Y-m-d'), 'billing_date'=>'', 'router_id'=>0, 'pppoe_name'=>'', 'name'=>'', 'address'=>'', 'contact'=>'', 'package_name'=>'', 'monthly_fee'=>'', 'ip_address'=>'', 'area'=>''];
+        $default_type = $_GET['type'] ?? 'customer';
+        $c = ['type'=>$default_type, 'registration_date'=>date('Y-m-d'), 'billing_date'=>'', 'router_id'=>0, 'pppoe_name'=>'', 'name'=>'', 'address'=>'', 'contact'=>'', 'package_name'=>'', 'monthly_fee'=>'', 'ip_address'=>'', 'area'=>''];
     }
 ?>
 <div class="glass-panel" style="padding: 24px; max-width:600px; margin:0 auto;">
@@ -1237,9 +1257,20 @@ document.addEventListener("DOMContentLoaded", () => {
                     <i class="fas fa-plus"></i> Tambah Item
                 </button>
 
-                <div style="padding:15px; background:var(--nav-active-bg); border-radius:10px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
-                    <div style="font-size:12px; color:var(--text-secondary);">TOTAL INVOICE:</div>
-                    <div style="font-size:20px; font-weight:800; color:var(--primary);" id="itemized_total_display">Rp <?= number_format($c['monthly_fee'], 0, ',', '.') ?></div>
+                <div style="padding:15px; background:var(--nav-active-bg); border-radius:10px; margin-bottom:12px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <div style="font-size:12px; color:var(--text-secondary);">SUBTOTAL:</div>
+                        <div style="font-size:16px; font-weight:700;" id="itemized_subtotal_display">Rp <?= number_format($c['monthly_fee'], 0, ',', '.') ?></div>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label style="font-size:11px; color:var(--danger); font-weight:700;">Potongan / Diskon (Rp):</label>
+                        <input type="number" name="invoice_discount" class="form-control" value="0" oninput="updateItemizedTotal()" style="padding:5px 10px; border:1px solid var(--danger); font-weight:700; color:var(--danger);">
+                    </div>
+                </div>
+
+                <div style="padding:15px; background:rgba(37, 99, 235, 0.1); border-radius:10px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; border:2px dashed var(--primary);">
+                    <div style="font-size:12px; color:var(--text-secondary); font-weight:800;">TOTAL AKHIR:</div>
+                    <div style="font-size:22px; font-weight:800; color:var(--primary);" id="itemized_total_display">Rp <?= number_format($c['monthly_fee'], 0, ',', '.') ?></div>
                 </div>
 
                 <button type="submit" class="btn btn-primary" style="width:100%; border-radius:12px; padding:15px;">
@@ -1272,12 +1303,21 @@ function addItemRow() {
 
 function updateItemizedTotal() {
     const amounts = document.querySelectorAll('.item-amount');
-    let total = 0;
+    const discountInput = document.querySelector('input[name="invoice_discount"]');
+    const discount = parseInt(discountInput ? discountInput.value : 0) || 0;
+    
+    let subtotal = 0;
     amounts.forEach(input => {
-        total += parseInt(input.value) || 0;
+        subtotal += parseInt(input.value) || 0;
     });
-    const formatted = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(total).replace('IDR', 'Rp');
-    document.getElementById('itemized_total_display').innerText = formatted;
+    
+    let total = subtotal - discount;
+    
+    const formattedSub = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(subtotal).replace('IDR', 'Rp');
+    const formattedTotal = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(total).replace('IDR', 'Rp');
+    
+    document.getElementById('itemized_subtotal_display').innerText = formattedSub;
+    document.getElementById('itemized_total_display').innerText = formattedTotal;
 }
 
 // Initial listener

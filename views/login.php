@@ -37,22 +37,26 @@
     </style>
 </head>
 <body>
-    <?php $company = $db->query("SELECT company_name, company_logo FROM settings WHERE id=1")->fetch(); ?>
+    <?php 
+    $company = $db->query("SELECT company_name, company_logo FROM settings WHERE id=1")->fetch(); 
+    $requested_role = $_GET['role'] ?? 'customer';
+    
+    $is_staff = ($requested_role === 'staff');
+    $portal_title = $is_staff ? 'Portal Staff & Admin' : 'Portal Pelanggan & Mitra';
+    $portal_desc = $is_staff ? 'Manajemen Billing & Operasional' : 'Layanan Mandiri & Cek Tagihan';
+    $portal_icon = $is_staff ? 'fa-shield-alt' : 'fa-user-circle';
+    $portal_color = $is_staff ? '#ef4444' : 'var(--primary)';
+    ?>
     <div class="login-container">
         <div class="glass-panel login-box">
-            <?php if(!empty($company['company_logo'])): 
-                $logo_src = preg_match('/^http/', $company['company_logo']) ? $company['company_logo'] : $company['company_logo'];
-            ?>
-                <img src="<?= htmlspecialchars($logo_src) ?>" class="login-logo" alt="Logo">
-            <?php else: ?>
-                <i class="fas fa-network-wired" style="font-size: 60px; color: var(--primary); margin-bottom:15px; display:inline-block;"></i>
-            <?php endif; ?>
-            
-            <h1><?= htmlspecialchars($company['company_name'] ?: 'RT RW NET') ?></h1>
-            <p>Portal Billing Terpadu</p>
+            <div style="text-align:center; margin-bottom:25px;">
+                <i class="fas <?= $portal_icon ?>" style="font-size: 50px; color: <?= $portal_color ?>; margin-bottom:15px; display:inline-block; opacity:0.8;"></i>
+                <h1 style="font-size: 22px; font-weight: 700; margin-bottom: 5px; color:var(--text-primary);"><?= $portal_title ?></h1>
+                <p style="font-size: 14px; color: var(--text-secondary);"><?= $portal_desc ?></p>
+            </div>
             
             <?php if(isset($error)): ?>
-                <div class="badge badge-danger" style="display:block; margin-bottom:15px; background:rgba(239, 68, 68, 0.2); color:#ef4444; border:1px solid #ef4444; padding:10px; border-radius:8px;">
+                <div class="badge badge-danger" style="display:block; margin-bottom:15px; background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.2); padding:10px; border-radius:8px; font-size:13px;">
                     <i class="fas fa-exclamation-circle"></i> <?= htmlspecialchars($error) ?>
                 </div>
             <?php endif; ?>
@@ -69,10 +73,17 @@
                 <button type="submit" class="btn btn-primary" style="margin-top:20px; padding: 14px; font-size:18px;">Masuk Aplikasi</button>
             </form>
             
-            <div style="text-align:center; margin-top:20px;">
-                <a href="index.php?page=landing" class="btn btn-ghost btn-sm" style="font-size:13px; color:var(--text-secondary);">
-                    <i class="fas fa-arrow-left"></i> Kembali ke Menu Utama
-                </a>
+            <div style="text-align:center; margin-top:20px; font-size:13px; color:var(--text-secondary);">
+                <?php if($is_staff): ?>
+                    Bukan Staff? <a href="index.php?page=login&role=customer" style="color:var(--primary); font-weight:600; text-decoration:none;">Portal Pelanggan</a>
+                <?php else: ?>
+                    Bukan Pelanggan? <a href="index.php?page=login&role=staff" style="color:#ef4444; font-weight:600; text-decoration:none;">Akses Staff</a>
+                <?php endif; ?>
+                <div style="margin-top:25px;">
+                    <a href="index.php?page=landing" class="btn btn-ghost btn-sm" style="font-size:13px; color:var(--text-secondary); padding: 8px 15px;">
+                        <i class="fas fa-home"></i> Kembali ke Beranda
+                    </a>
+                </div>
             </div>
         </div>
     <!-- Floating Theme Toggle -->

@@ -3,7 +3,11 @@ $action = $_GET['action'] ?? 'view';
 
 $filter_month = $_GET['month'] ?? date('m');
 $filter_year = $_GET['year'] ?? date('Y');
+$filter_user = $_GET['user_id'] ?? 'all';
 $period = sprintf("%04d-%02d", $filter_year, $filter_month);
+
+// Fetch all admins and collectors for filter (Excluding partners as they are not collectors)
+$available_users = $db->query("SELECT id, name, role FROM users WHERE role IN ('admin', 'collector') ORDER BY name ASC")->fetchAll();
 
 $months = [
     '01' => 'Januari', '02' => 'Februari', '03' => 'Maret', '04' => 'April',
@@ -12,28 +16,40 @@ $months = [
 ];
 
 // Metrics Queries
-$q_lunas_tepat = $db->prepare("
+$sql_lunas_tepat = "
     SELECT SUM(p.amount) as total
     FROM payments p
     JOIN invoices i ON p.invoice_id = i.id
     WHERE strftime('%Y-%m', p.payment_date) = ?
       AND strftime('%Y-%m', i.due_date) = ?
-");
-$q_lunas_tepat->execute([$period, $period]);
+";
+$params_lunas_tepat = [$period, $period];
+if ($filter_user !== 'all') {
+    $sql_lunas_tepat .= " AND p.received_by = ?";
+    $params_lunas_tepat[] = $filter_user;
+}
+$q_lunas_tepat = $db->prepare($sql_lunas_tepat);
+$q_lunas_tepat->execute($params_lunas_tepat);
 $lunas_tepat = $q_lunas_tepat->fetchColumn() ?: 0;
 
-$q_tunggakan_dibayar = $db->prepare("
+$sql_tunggakan_dibayar = "
     SELECT SUM(p.amount) as total
     FROM payments p
     JOIN invoices i ON p.invoice_id = i.id
     WHERE strftime('%Y-%m', p.payment_date) = ?
       AND strftime('%Y-%m', i.due_date) < ?
-");
-$q_tunggakan_dibayar->execute([$period, $period]);
+";
+$params_tunggakan_dibayar = [$period, $period];
+if ($filter_user !== 'all') {
+    $sql_tunggakan_dibayar .= " AND p.received_by = ?";
+    $params_tunggakan_dibayar[] = $filter_user;
+}
+$q_tunggakan_dibayar = $db->prepare($sql_tunggakan_dibayar);
+$q_tunggakan_dibayar->execute($params_tunggakan_dibayar);
 $tunggakan_dibayar = $q_tunggakan_dibayar->fetchColumn() ?: 0;
 
 $q_belum_bayar = $db->prepare("
-    SELECT SUM(amount) as total
+    SELECT SUM(amount - discount) as total
     FROM invoices 
     WHERE strftime('%Y-%m', due_date) = ? 
       AND status = 'Belum Lunas'
@@ -42,13 +58,29 @@ $q_belum_bayar->execute([$period]);
 $belum_bayar = $q_belum_bayar->fetchColumn() ?: 0;
 
 $q_tertunggak_lama = $db->prepare("
-    SELECT SUM(amount) as total
+    SELECT SUM(amount - discount) as total
     FROM invoices 
     WHERE strftime('%Y-%m', due_date) < ? 
       AND status = 'Belum Lunas'
 ");
 $q_tertunggak_lama->execute([$period]);
 $tertunggak_lama = $q_tertunggak_lama->fetchColumn() ?: 0;
+
+// NEW: Realized Discounts (Discounts on Invoices PAID this month)
+$sql_discount = "
+    SELECT SUM(i.discount) 
+    FROM invoices i
+    JOIN payments p ON i.id = p.invoice_id
+    WHERE strftime('%Y-%m', p.payment_date) = ?
+";
+$params_discount = [$period];
+if ($filter_user !== 'all') {
+    $sql_discount .= " AND p.received_by = ?";
+    $params_discount[] = $filter_user;
+}
+$q_discount = $db->prepare($sql_discount);
+$q_discount->execute($params_discount);
+$total_discount = $q_discount->fetchColumn() ?: 0;
 
 // NEW: Expenses for the period
 $q_expenses = $db->prepare("SELECT SUM(amount) FROM expenses WHERE strftime('%Y-%m', date) = ?");
@@ -57,7 +89,7 @@ $total_expenses = $q_expenses->fetchColumn() ?: 0;
 
 
 // Table Data Query (UNION of Payments received this month AND Unpaid Invoices due this month)
-$q_table = $db->prepare("
+$sql_table_p = "
     SELECT 
         'Pembayaran Masuk' as activity_type,
         p.payment_date as activity_date,
@@ -72,7 +104,14 @@ $q_table = $db->prepare("
     JOIN invoices i ON p.invoice_id = i.id
     JOIN customers c ON i.customer_id = c.id
     WHERE strftime('%Y-%m', p.payment_date) = ?
-    
+";
+$params_table = [$period];
+if ($filter_user !== 'all') {
+    $sql_table_p .= " AND p.received_by = ?";
+    $params_table[] = $filter_user;
+}
+
+$sql_table = $sql_table_p . "
     UNION ALL
     
     SELECT
@@ -83,15 +122,18 @@ $q_table = $db->prepare("
         c.area,
         i.id as invoice_id,
         i.due_date,
-        i.amount as amount,
+        (i.amount - i.discount) as amount,
         'Belum Lunas' as status
     FROM invoices i
     JOIN customers c ON i.customer_id = c.id
     WHERE strftime('%Y-%m', i.due_date) = ? AND i.status = 'Belum Lunas'
     
     ORDER BY activity_date DESC
-");
-$q_table->execute([$period, $period]);
+";
+$params_table[] = $period;
+
+$q_table = $db->prepare($sql_table);
+$q_table->execute($params_table);
 $report_data = $q_table->fetchAll();
 
 if ($action === 'export') {
@@ -247,6 +289,12 @@ if ($action === 'print') {
                 <div class="header-right">
                     <div class="report-brand">IKHTISAR KEUANGAN</div>
                     <div class="period-label">PERIODE: <?= strtoupper($months[$filter_month]) ?> <?= $filter_year ?></div>
+                    <?php if($filter_user !== 'all'): 
+                        $uname = 'Unknown';
+                        foreach($available_users as $u) { if($u['id'] == $filter_user) { $uname = $u['name']; break; } }
+                    ?>
+                        <div style="margin-top:5px; font-size:12px; font-weight:700; color:#1e293b; text-transform:uppercase;">DITERIMA OLEH: <?= $uname ?></div>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -274,6 +322,11 @@ if ($action === 'print') {
                     <h3>Total Pengeluaran</h3>
                     <div class="val" style="color:#ef4444;">Rp <?= number_format($total_expenses_print, 0, ',', '.') ?></div>
                     <div class="subtext">Operasional & Belanja</div>
+                </div>
+                <div class="summary-box" style="border-top:4px solid #f59e0b;">
+                    <h3>Total Potongan / Diskon</h3>
+                    <div class="val" style="color:#f59e0b;">Rp <?= number_format($total_discount, 0, ',', '.') ?></div>
+                    <div class="subtext">Restitusi & Pengurangan</div>
                 </div>
                 <div class="summary-box" style="border-top:4px solid #10b981; background:#f0fdf4;">
                     <h3>Estimasi Laba Bersih</h3>
@@ -407,6 +460,15 @@ if ($action === 'print') {
                     <?php endfor; ?>
                 </select>
             </div>
+            <div>
+                <label style="font-size:12px; color:var(--text-secondary); display:block; margin-bottom:5px;">Diterima Oleh</label>
+                <select name="user_id" class="form-control" style="padding:8px 12px; width:160px;">
+                    <option value="all">-- Semua --</option>
+                    <?php foreach($available_users as $u): ?>
+                        <option value="<?= $u['id'] ?>" <?= $filter_user == $u['id'] ? 'selected' : '' ?>><?= $u['name'] ?> (<?= ucfirst($u['role']) ?>)</option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
             <button type="submit" class="btn btn-primary btn-sm" style="height: 38px;"><i class="fas fa-filter"></i> Filter</button>
         </form>
     </div>
@@ -443,6 +505,12 @@ if ($action === 'print') {
             <div style="font-size:11px; color:var(--text-secondary); margin-top:10px;">Biaya operasional & barang.</div>
         </div>
 
+        <div class="stat-card glass-panel" style="background:rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3);">
+            <div class="stat-title" style="color:var(--warning)"><i class="fas fa-gift"></i> Total Potongan</div>
+            <div class="stat-value text-warning">Rp <?= number_format($total_discount, 0, ',', '.') ?></div>
+            <div style="font-size:11px; color:var(--text-secondary); margin-top:10px;">Total diskon yang diberikan.</div>
+        </div>
+
         <div class="stat-card glass-panel" style="background:rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3);">
             <div class="stat-title" style="color:var(--success)"><i class="fas fa-hand-holding-usd"></i> Laba Bersih</div>
             <div class="stat-value text-success">Rp <?= number_format(($lunas_tepat + $tunggakan_dibayar) - $total_expenses, 0, ',', '.') ?></div>
@@ -455,8 +523,8 @@ if ($action === 'print') {
         <h4 style="margin:0;">Rincian Transaksi - <?= $months[$filter_month] ?> <?= $filter_year ?></h4>
         <div style="display:flex; gap:10px;">
             <a href="index.php?page=admin_report_assets" class="btn btn-sm btn-ghost" style="border: 1px solid var(--glass-border);"><i class="fas fa-boxes"></i> Laporan Aset</a>
-            <a href="index.php?page=admin_reports&action=print&month=<?= $filter_month ?>&year=<?= $filter_year ?>" target="_blank" class="btn btn-sm btn-primary"><i class="fas fa-print"></i> Cetak Laporan (HTML)</a>
-            <a href="index.php?page=admin_reports&action=export&month=<?= $filter_month ?>&year=<?= $filter_year ?>" class="btn btn-sm btn-success"><i class="fas fa-file-excel"></i> Export Excel (CSV)</a>
+            <a href="index.php?page=admin_reports&action=print&month=<?= $filter_month ?>&year=<?= $filter_year ?>&user_id=<?= $filter_user ?>" target="_blank" class="btn btn-sm btn-primary"><i class="fas fa-print"></i> Cetak Laporan (HTML)</a>
+            <a href="index.php?page=admin_reports&action=export&month=<?= $filter_month ?>&year=<?= $filter_year ?>&user_id=<?= $filter_user ?>" class="btn btn-sm btn-success"><i class="fas fa-file-excel"></i> Export Excel (CSV)</a>
         </div>
     </div>
 

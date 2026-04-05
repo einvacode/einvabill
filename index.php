@@ -56,10 +56,42 @@ if ($page === 'home') {
     }
 }
 
+// Access Control (RBAC)
+$permissions = [
+    'admin' => '*', // Full access
+    'collector' => ['collector', 'admin_customers', 'admin_invoices', 'router_data', 'admin_areas', 'admin_map'],
+    'partner' => ['partner', 'admin_invoices'] // Can only see invoices (cross-checked in print.php later)
+];
+
+$user_role = $_SESSION['user_role'] ?? 'guest';
+$is_allowed = false;
+
+if ($user_role === 'admin') {
+    $is_allowed = true;
+} elseif (isset($permissions[$user_role])) {
+    if (in_array($page, $public_pages) || in_array($page, $permissions[$user_role])) {
+        $is_allowed = true;
+    }
+} elseif (in_array($page, $public_pages)) {
+    $is_allowed = true;
+}
+
+if (!$is_allowed) {
+    $page = '403'; // Set to a forbidden page
+}
+
 // Minimalistic Templating Route
 ob_start();
 
 switch ($page) {
+    case '403':
+        echo "<div class='glass-panel' style='padding:40px; text-align:center; min-height:300px; display:flex; flex-direction:column; justify-content:center; align-items:center;'>
+                <i class='fas fa-shield-alt' style='font-size:64px; color:#ef4444; margin-bottom:20px; opacity:0.5;'></i>
+                <h1 style='font-size:24px; margin-bottom:10px;'>Akses Ditolak</h1>
+                <p style='color:var(--text-secondary); max-width:400px;'>Maaf, akun Anda tidak memiliki izin untuk mengakses halaman ini. Silakan hubungi Administrator jika ini adalah kesalahan.</p>
+                <a href='index.php' class='btn btn-primary' style='margin-top:20px;'><i class='fas fa-home'></i> Beranda</a>
+              </div>";
+        break;
     case 'landing':
         require __DIR__ . '/views/landing.php';
         break;
@@ -86,6 +118,9 @@ switch ($page) {
         break;
     case 'admin_reports':
         require __DIR__ . '/views/admin/reports.php';
+        break;
+    case 'admin_banners':
+        require __DIR__ . '/views/admin/banners.php';
         break;
     case 'admin_landing':
         require __DIR__ . '/views/admin/landing_settings.php';

@@ -19,6 +19,9 @@ if ($code_input) {
         ")->fetchAll();
     }
 }
+
+// Fetch Active Banners for Customers
+$active_banners = $db->query("SELECT * FROM banners WHERE is_active = 1 AND target_role IN ('all', 'customer') ORDER BY created_at DESC")->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="id" data-theme="dark">
@@ -41,13 +44,35 @@ if ($code_input) {
     <div class="portal-container">
         <div class="portal-header">
             <?php if(!empty($site['company_logo'])): ?>
-                <img src="<?= htmlspecialchars($site['company_logo']) ?>" style="max-height:60px; margin-bottom:15px;" alt="Logo">
+                <div class="brand-logo-wrapper" style="height:60px; width:auto; margin-bottom:15px;">
+                    <img src="<?= htmlspecialchars($site['company_logo']) ?>" alt="Logo">
+                </div>
             <?php else: ?>
                 <i class="fas fa-wifi" style="font-size:40px; color:var(--primary); margin-bottom:15px;"></i>
             <?php endif; ?>
             <h1><?= htmlspecialchars($comp_name) ?></h1>
             <p style="color:var(--text-secondary);">Portal Cek Tagihan Pelanggan</p>
         </div>
+
+        <?php if(count($active_banners) > 0): ?>
+        <div class="banner-container" style="margin-bottom:20px;">
+            <?php foreach($active_banners as $banner): ?>
+                <div class="glass-panel banner-item" style="padding:15px; border-radius:16px; border-left:4px solid var(--primary); display:flex; gap:15px; align-items:center; margin-bottom:12px; position:relative; overflow:hidden;">
+                    <?php if($banner['image_path']): ?>
+                        <div class="banner-img" style="flex-shrink:0;">
+                            <img src="<?= $banner['image_path'] ?>" style="width:100px; height:60px; object-fit:cover; border-radius:10px; cursor:zoom-in;" onclick="openImagePreview(this.src)" title="Klik untuk perbesar">
+                        </div>
+                    <?php endif; ?>
+                    <div class="banner-text">
+                        <h4 style="margin:0 0 5px 0; color:var(--text-primary); font-size:14px; display:flex; align-items:center; gap:6px;">
+                            <i class="fas fa-bullhorn" style="color:var(--primary); font-size:12px;"></i> <?= htmlspecialchars($banner['title']) ?>
+                        </h4>
+                        <p style="margin:0; font-size:12px; color:var(--text-secondary); line-height:1.5;"><?= nl2br(htmlspecialchars($banner['content'])) ?></p>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
 
         <!-- Form Cek -->
         <div class="glass-panel" style="padding:24px; margin-bottom:20px;">
@@ -163,12 +188,31 @@ if ($code_input) {
         <i class="fas fa-sun theme-icon-dark"></i>
         <i class="fas fa-moon theme-icon-light"></i>
     </button>
+    <!-- Global Image Modal -->
+    <div id="globalImageModal" class="image-modal" onclick="closeImagePreview()">
+        <span class="image-modal-close" onclick="closeImagePreview()">&times;</span>
+        <img id="modalImg" src="" alt="Preview">
+    </div>
+
     <script>
     function toggleTheme() {
         const html = document.documentElement;
         const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
         html.setAttribute('data-theme', next);
         localStorage.setItem('billing_theme', next);
+    }
+
+    function openImagePreview(src) {
+        const modal = document.getElementById('globalImageModal');
+        const modalImg = document.getElementById('modalImg');
+        modal.style.display = 'flex';
+        modalImg.src = src;
+        document.body.style.overflow = 'hidden'; 
+    }
+
+    function closeImagePreview() {
+        document.getElementById('globalImageModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
     }
     </script>
 </body>

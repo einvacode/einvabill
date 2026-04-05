@@ -38,14 +38,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quick_action'])) {
             // SELECTIVE AUTOMATIC PAYMENT ON REGISTRATION
             if($pkg_fee > 0) {
                 if($type === 'customer') {
-                    // RUMAHAN: Langsung Lunas
-                    $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Lunas', ?)");
+                    // RUMAHAN: Tagihan Terbit di Hari Registrasi (Belum Lunas - perlu konfirmasi manual)
+                    $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Belum Lunas', ?)");
                     $reg_date = date('Y-m-d');
                     $stmt_inv->execute([$new_cust_id, $pkg_fee, $reg_date, date('Y-m-d H:i:s')]);
-                    $inv_id = $db->lastInsertId();
-
-                    $stmt_pay = $db->prepare("INSERT INTO payments (invoice_id, amount, payment_date, received_by) VALUES (?, ?, ?, ?)");
-                    $stmt_pay->execute([$inv_id, $pkg_fee, date('Y-m-d H:i:s'), $_SESSION['user_id'] ?? 1]);
                 } else {
                     // MITRA: Belum Lunas (Bulan Depan)
                     $next_month = date('Y-m', strtotime("+1 month"));
@@ -299,10 +295,14 @@ $existing_customers = $db->query("SELECT id, name, customer_code FROM customers 
 </div>
 
 <script>
-    // Initialize Map
+    // Initial View (Handle Redirects from Assets)
+    const initialLat = <?= $_GET['lat'] ?? -6.200000 ?>;
+    const initialLng = <?= $_GET['lng'] ?? 106.816666 ?>;
+    const initialZoom = <?= isset($_GET['lat']) ? 18 : 13 ?>;
+
     const map = L.map('network-map', {
         zoomControl: false // Cleaner UI
-    }).setView([-6.200000, 106.816666], 13);
+    }).setView([initialLat, initialLng], initialZoom);
     
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 

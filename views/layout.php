@@ -19,19 +19,24 @@
         <aside class="sidebar">
             <div>
                 <?php $site_settings = $db->query("SELECT company_name, company_logo FROM settings WHERE id=1")->fetch(); ?>
-                <div class="sidebar-header" style="display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap;">
+                <div class="sidebar-header" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 20px 10px 30px;">
                     <?php if(!empty($site_settings['company_logo'])): ?>
-                        <img src="<?= htmlspecialchars($site_settings['company_logo']) ?>" alt="Logo" style="max-height: 40px; border-radius: 4px;">
+                        <div class="brand-logo-wrapper sidebar-logo-box">
+                            <img src="<?= htmlspecialchars($site_settings['company_logo']) ?>" alt="Logo">
+                        </div>
                     <?php else: ?>
-                        <i class="fas fa-wifi" style="font-size: 24px; color: var(--primary);"></i>
+                        <div style="background: var(--nav-active-bg); padding: 12px; border-radius: 12px; margin-bottom: 5px;">
+                            <i class="fas fa-wifi" style="font-size: 28px; color: var(--primary);"></i>
+                        </div>
                     <?php endif; ?>
-                    <h2 style="font-size: 18px; margin: 0; line-height: 1.2; word-break: break-word;"><?= htmlspecialchars(strtoupper($site_settings['company_name'])) ?></h2>
+                    <h2 style="font-size: 16px; margin: 0; line-height: 1.3; word-break: break-word; text-align: center; font-weight: 700; color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);"><?= htmlspecialchars(strtoupper($site_settings['company_name'])) ?></h2>
                 </div>
                 <div class="nav-links">
                     <?php if($_SESSION['user_role'] === 'admin'): ?>
                         <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">MENU UTAMA</div>
                         <a href="index.php?page=admin_dashboard" class="nav-link <?= $page == 'admin_dashboard' ? 'active' : '' ?>"><i class="fas fa-home"></i> Dashboard</a>
-                        <a href="index.php?page=admin_customers" class="nav-link <?= $page == 'admin_customers' ? 'active' : '' ?>"><i class="fas fa-users"></i> Pelanggan</a>
+                        <a href="index.php?page=admin_customers&filter_type=customer" class="nav-link <?= $page == 'admin_customers' && ($_GET['filter_type'] ?? '') == 'customer' ? 'active' : '' ?>"><i class="fas fa-users"></i> Pelanggan Rumahan</a>
+                        <a href="index.php?page=admin_customers&filter_type=partner" class="nav-link <?= $page == 'admin_customers' && ($_GET['filter_type'] ?? '') == 'partner' ? 'active' : '' ?>"><i class="fas fa-handshake"></i> Kemitraan (B2B)</a>
                         <a href="index.php?page=admin_invoices" class="nav-link <?= $page == 'admin_invoices' && ($filter_status ?? '') != 'belum' ? 'active' : '' ?>"><i class="fas fa-file-invoice-dollar"></i> Tagihan</a>
                         <a href="index.php?page=admin_invoices&filter_status=belum" class="nav-link <?= $page == 'admin_invoices' && ($filter_status ?? '') == 'belum' ? 'active' : '' ?>"><i class="fas fa-user-clock" style="color:#f43f5e;"></i> User Tunggakan</a>
                         <a href="index.php?page=admin_expenses" class="nav-link <?= $page == 'admin_expenses' ? 'active' : '' ?>"><i class="fas fa-wallet" style="color:var(--warning);"></i> Pengeluaran</a>
@@ -49,6 +54,7 @@
                         <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">SISTEM & LAPORAN</div>
                         <a href="index.php?page=admin_reports" class="nav-link <?= $page == 'admin_reports' ? 'active' : '' ?>"><i class="fas fa-chart-line"></i> Laporan Keuangan</a>
                         <a href="index.php?page=admin_report_assets" class="nav-link <?= $page == 'admin_report_assets' ? 'active' : '' ?>"><i class="fas fa-file-contract"></i> Laporan Aset</a>
+                        <a href="index.php?page=admin_banners" class="nav-link <?= $page == 'admin_banners' ? 'active' : '' ?>"><i class="fas fa-scroll" style="color:var(--warning);"></i> Manajemen Banner</a>
                         <a href="index.php?page=admin_landing" class="nav-link <?= $page == 'admin_landing' ? 'active' : '' ?>"><i class="fas fa-globe"></i> Web Profil</a>
                         <a href="index.php?page=admin_settings" class="nav-link <?= $page == 'admin_settings' ? 'active' : '' ?>"><i class="fas fa-cog"></i> Pengaturan</a>
                         <a href="index.php?page=admin_backup" class="nav-link <?= $page == 'admin_backup' ? 'active' : '' ?>"><i class="fas fa-shield-alt"></i> Backup & Restore</a>
@@ -74,6 +80,7 @@
                         elseif($page == 'admin_expenses') echo 'Manajemen Pengeluaran';
                         elseif($page == 'admin_reports') echo 'Laporan Keuangan';
                         elseif($page == 'admin_report_assets') echo 'Laporan Inventaris Aset';
+                        elseif($page == 'admin_banners') echo 'Manajemen Banner Informasi';
                         elseif($page == 'admin_landing') echo 'Pengaturan Web Profil';
                         elseif($page == 'admin_users') echo 'Akses Pengguna';
                         elseif($page == 'admin_router') echo 'Monitoring Router';
@@ -180,6 +187,9 @@
                     <a href="index.php?page=admin_settings" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 8px; border-radius:12px; color:var(--text-primary); text-decoration:none; background:var(--hover-bg); font-size:12px; font-weight:500; transition:all 0.2s;">
                         <i class="fas fa-cog" style="font-size:22px; color:var(--text-secondary);"></i> Pengaturan
                     </a>
+                    <a href="index.php?page=admin_banners" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 8px; border-radius:12px; color:var(--text-primary); text-decoration:none; background:var(--hover-bg); font-size:12px; font-weight:500; transition:all 0.2s;" class="<?= $page == 'admin_banners' ? 'active' : '' ?>">
+                        <i class="fas fa-scroll" style="font-size:22px; color:var(--warning);"></i> Banner
+                    </a>
                     <a href="index.php?page=admin_backup" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 8px; border-radius:12px; color:var(--text-primary); text-decoration:none; background:var(--hover-bg); font-size:12px; font-weight:500; transition:all 0.2s;">
                         <i class="fas fa-shield-alt" style="font-size:22px; color:#8b5cf6;"></i> Backup
                     </a>
@@ -191,6 +201,17 @@
         </div>
     </div>
     <?php endif; ?>
+
+    <!-- Global Image Modal -->
+    <div id="globalImageModal" class="image-modal" onclick="closeImagePreview()" style="display:none; flex-direction:column; gap:15px;">
+        <span class="image-modal-close" onclick="closeImagePreview()">&times;</span>
+        <div style="max-width:90%; max-height:80%; display:flex; justify-content:center; align-items:center;">
+            <img id="modalImg" src="" alt="Preview">
+        </div>
+        <div style="color:white; font-size:14px; background:rgba(255,255,255,0.1); padding:8px 16px; border-radius:50px; backdrop-filter:blur(10px); pointer-events:none;">
+            <i class="fas fa-mouse-pointer"></i> Klik di mana saja untuk menutup
+        </div>
+    </div>
 
     <script>
     function toggleTheme() {
@@ -209,6 +230,19 @@
     
     function closeMobileMenu() {
         document.getElementById('mobileMenuOverlay').style.display = 'none';
+    }
+
+    function openImagePreview(src) {
+        const modal = document.getElementById('globalImageModal');
+        const modalImg = document.getElementById('modalImg');
+        modal.style.display = 'flex';
+        modalImg.src = src;
+        document.body.style.overflow = 'hidden'; // prevent scroll
+    }
+
+    function closeImagePreview() {
+        document.getElementById('globalImageModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
     }
     </script>
 </body>

@@ -44,7 +44,33 @@ if ($partner_cid) {
         ORDER BY id DESC
     ")->fetchAll();
 }
+
+// Fetch Active Banners
+$active_banners = $db->query("SELECT * FROM banners WHERE is_active = 1 AND target_role IN ('all', 'partner') ORDER BY created_at DESC")->fetchAll();
 ?>
+
+<?php if(count($active_banners) > 0): ?>
+<div class="banner-container" style="margin-bottom:20px;">
+    <?php foreach($active_banners as $banner): ?>
+        <div class="glass-panel banner-item" style="padding:20px; border-radius:16px; border-left:4px solid var(--primary); display:flex; gap:20px; align-items:center; margin-bottom:12px; position:relative; overflow:hidden;">
+            <?php if($banner['image_path']): ?>
+                <div class="banner-img" style="flex-shrink:0;">
+                    <img src="<?= $banner['image_path'] ?>" style="width:120px; height:80px; object-fit:cover; border-radius:12px; cursor:zoom-in;" onclick="openImagePreview(this.src)" title="Klik untuk perbesar">
+                </div>
+            <?php endif; ?>
+            <div class="banner-text">
+                <h4 style="margin:0 0 5px 0; color:var(--text-primary); font-size:16px; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-bullhorn" style="color:var(--primary); font-size:14px;"></i> <?= htmlspecialchars($banner['title']) ?>
+                </h4>
+                <p style="margin:0; font-size:13px; color:var(--text-secondary); line-height:1.5;"><?= nl2br(htmlspecialchars($banner['content'])) ?></p>
+                <div style="font-size:10px; color:var(--text-secondary); opacity:0.5; margin-top:8px;">
+                    <i class="far fa-clock"></i> Diposting pada <?= date('d M Y', strtotime($banner['created_at'])) ?>
+                </div>
+            </div>
+        </div>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>
 
 <div class="glass-panel" style="padding: 24px; margin-bottom:20px;">
     <h3 style="font-size:20px; margin-bottom:10px;"><i class="fas fa-handshake" style="color:var(--primary);"></i> Area Mitra Reseller</h3>

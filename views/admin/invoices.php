@@ -7,11 +7,12 @@ if ($action === 'create_itemized' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $descriptions = $_POST['item_desc'];
     $amounts = $_POST['item_amount'];
     
+    $discount = floatval($_POST['invoice_discount'] ?? 0);
     $total_amount = array_sum($amounts);
     $created_at = date('Y-m-d H:i:s');
     
-    $stmt = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, created_at) VALUES (?, ?, ?, ?)");
-    $stmt->execute([$customer_id, $total_amount, $due_date, $created_at]);
+    $stmt = $db->prepare("INSERT INTO invoices (customer_id, amount, discount, due_date, created_at) VALUES (?, ?, ?, ?, ?)");
+    $stmt->execute([$customer_id, $total_amount, $discount, $due_date, $created_at]);
     $invoice_id = $db->lastInsertId();
     
     $stmt_item = $db->prepare("INSERT INTO invoice_items (invoice_id, description, amount) VALUES (?, ?, ?)");
@@ -38,7 +39,7 @@ if ($action === 'create_auto' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $due_date = $next_month_period . '-' . $b_day;
     $created_at = date('Y-m-d H:i:s');
     
-    $stmt = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, created_at, status) VALUES (?, ?, ?, ?, 'Belum Lunas')");
+    $stmt = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, created_at, status, discount) VALUES (?, ?, ?, ?, 'Belum Lunas', 0)");
     $stmt->execute([$customer_id, $amount, $due_date, $created_at]);
     
     header("Location: index.php?page=admin_customers&action=details&id=$customer_id&msg=invoice_created");
@@ -61,10 +62,11 @@ if ($action === 'delete') {
 if ($action === 'edit_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $id = $_POST['id'];
     $amount = $_POST['amount'];
+    $discount = $_POST['discount'] ?? 0;
     $due_date = $_POST['due_date'];
     
     if ($_SESSION['user_role'] === 'admin') {
-        $db->prepare("UPDATE invoices SET amount=?, due_date=? WHERE id=?")->execute([$amount, $due_date, $id]);
+        $db->prepare("UPDATE invoices SET amount=?, discount=?, due_date=? WHERE id=?")->execute([$amount, $discount, $due_date, $id]);
     }
     header("Location: index.php?page=admin_invoices");
     exit;
@@ -72,12 +74,13 @@ if ($action === 'edit_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 if ($action === 'mark_paid') {
     $id = $_GET['id'];
-    $amount = $db->query("SELECT amount FROM invoices WHERE id = $id")->fetchColumn();
+    $inv = $db->query("SELECT amount, discount FROM invoices WHERE id = $id")->fetch();
+    $net_amount = $inv['amount'] - ($inv['discount'] ?? 0);
     $receiver_id = $_SESSION['user_id'];
     $payment_date = date('Y-m-d H:i:s');
     
     $db->prepare("UPDATE invoices SET status = 'Lunas' WHERE id = ?")->execute([$id]);
-    $db->prepare("INSERT INTO payments (invoice_id, amount, received_by, payment_date) VALUES (?, ?, ?, ?)")->execute([$id, $amount, $receiver_id, $payment_date]);
+    $db->prepare("INSERT INTO payments (invoice_id, amount, received_by, payment_date) VALUES (?, ?, ?, ?)")->execute([$id, $net_amount, $receiver_id, $payment_date]);
     
     header("Location: " . $_SERVER['HTTP_REFERER']);
     exit;
@@ -90,14 +93,18 @@ if ($action === 'mark_paid_bulk' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $payment_date = date('Y-m-d H:i:s');
     
     // Fetch oldest N unpaid invoices
-    $unpaid = $db->query("SELECT id, amount FROM invoices WHERE customer_id = $customer_id AND status = 'Belum Lunas' ORDER BY due_date ASC LIMIT $num_months")->fetchAll();
+    $unpaid = $db->query("SELECT id, amount, discount FROM invoices WHERE customer_id = $customer_id AND status = 'Belum Lunas' ORDER BY due_date ASC LIMIT $num_months")->fetchAll();
     
+    $last_id = 0;
     foreach ($unpaid as $inv) {
+        $net_amount = $inv['amount'] - ($inv['discount'] ?? 0);
         $db->prepare("UPDATE invoices SET status = 'Lunas' WHERE id = ?")->execute([$inv['id']]);
-        $db->prepare("INSERT INTO payments (invoice_id, amount, received_by, payment_date) VALUES (?, ?, ?, ?)")->execute([$inv['id'], $inv['amount'], $receiver_id, $payment_date]);
+        $db->prepare("INSERT INTO payments (invoice_id, amount, received_by, payment_date) VALUES (?, ?, ?, ?)")->execute([$inv['id'], $net_amount, $receiver_id, $payment_date]);
+        $last_id = $inv['id'];
     }
     
-    header("Location: index.php?page=admin_invoices&msg=bulk_paid");
+    $redirect = $_SESSION['user_role'] === 'collector' ? "index.php?page=collector&msg=paid&last_id=$last_id" : ($_SERVER['HTTP_REFERER'] ?? 'index.php?page=admin_invoices&msg=bulk_paid');
+    header("Location: $redirect");
     exit;
 }
 
@@ -109,10 +116,28 @@ if ($action === 'print') {
         JOIN customers c ON i.customer_id = c.id 
         WHERE i.id = $id
     ")->fetch();
+
+    // Security Cross-Check for Partners
+    if ($_SESSION['user_role'] === 'partner') {
+        $u = $db->query("SELECT customer_id FROM users WHERE id = " . intval($_SESSION['user_id']))->fetch();
+        $partner_cid = $u['customer_id'] ?? 0;
+        if (!$invoice || $invoice['customer_id'] != $partner_cid) {
+            echo "<div class='glass-panel' style='padding:40px; text-align:center;'>
+                    <h1 style='color:#ef4444;'>Akses Ditolak</h1>
+                    <p>Anda tidak memiliki izin untuk melihat struk ini.</p>
+                  </div>";
+            exit;
+        }
+    }
+
     require __DIR__ . '/../print.php';
     exit;
 }
 
+if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
+    header("Location: index.php?page=partner");
+    exit;
+}
 ?>
 
 <?php if ($action === 'list'): ?>
@@ -234,6 +259,7 @@ if ($action === 'print') {
                     i.customer_id, 
                     i.status,
                     SUM(i.amount) as amount, 
+                    SUM(i.discount) as discount,
                     MIN(i.due_date) as due_date, 
                     COUNT(i.id) as months_owed,
                     c.id as cust_id, c.customer_code, c.name as customer_name, c.type as customer_type, c.contact, c.package_name, c.monthly_fee,
@@ -410,6 +436,7 @@ if ($action === 'print') {
                     <th>Pelanggan</th>
                     <th>Jatuh Tempo</th>
                     <th>Nominal</th>
+                    <th>Potongan</th>
                     <th>Status</th>
                     <th>Aksi</th>
                 </tr>
@@ -497,6 +524,9 @@ if ($action === 'print') {
                     </td>
                     <td style="vertical-align: middle;"><?= date('d M Y', strtotime($inv['due_date'])) ?> <?= $is_grouped ? '<br><small style="color:var(--text-secondary);">Mulai Periode</small>' : '' ?></td>
                     <td style="vertical-align: middle; font-weight:800; color:var(--stat-value-color);">Rp <?= number_format($inv['amount'], 0, ',', '.') ?></td>
+                    <td style="vertical-align: middle; color:var(--danger); font-weight:700;">
+                        <?= $inv['discount'] > 0 ? '-Rp ' . number_format($inv['discount'], 0, ',', '.') : '-' ?>
+                    </td>
                     <td style="vertical-align: middle;">
                         <?php if($inv['status'] == 'Lunas'): ?>
                             <span class="badge badge-success" style="padding:4px 10px; border-radius:10px;"><i class="fas fa-check"></i> Lunas</span>
@@ -525,7 +555,7 @@ if ($action === 'print') {
                         <a href="index.php?page=admin_invoices&action=print&id=<?= $inv['id'] ?>&format=a4" target="_blank" class="btn btn-sm" style="background:var(--primary); color:white;" title="A4"><i class="fas fa-file-pdf"></i></a>
                         
                         <?php if(isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin'): ?>
-                            <a href="#" onclick="showEditInvoice(<?= $inv['id'] ?>, <?= $inv['amount'] ?>, '<?= $inv['due_date'] ?>')" class="btn btn-sm" style="background:var(--warning); color:white;" title="Edit"><i class="fas fa-edit"></i></a>
+                            <a href="#" onclick="showEditInvoice(<?= $inv['id'] ?>, <?= $inv['amount'] ?>, <?= $inv['discount'] ?? 0 ?>, '<?= $inv['due_date'] ?>')" class="btn btn-sm" style="background:var(--warning); color:white;" title="Edit"><i class="fas fa-edit"></i></a>
                             <a href="index.php?page=admin_invoices&action=delete&id=<?= $inv['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('PERINGATAN: Hapus tagihan ini secara permanen dari database?')" title="Hapus"><i class="fas fa-trash"></i></a>
                         <?php endif; ?>
                     </td>
@@ -647,9 +677,10 @@ if ($action === 'print') {
         progText.innerHTML = '<span style="color:#25D366;">Selesai! Scan tab yang terbuka dan klik kirim.</span>';
     }
 
-    function showEditInvoice(id, amount, date) {
+    function showEditInvoice(id, amount, discount, date) {
         document.getElementById('editInvId').value = id;
         document.getElementById('editInvAmount').value = amount;
+        document.getElementById('editInvDiscount').value = discount;
         document.getElementById('editInvDate').value = date;
         document.getElementById('editTitle').innerText = 'Edit INV-' + String(id).padStart(5, '0');
         document.getElementById('editInvoiceModal').style.display = 'flex';
@@ -693,6 +724,11 @@ if ($action === 'print') {
             <div class="form-group">
                 <label>Nominal Tagihan (Rp)</label>
                 <input type="number" name="amount" id="editInvAmount" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>Potongan / Restitusi (Rp)</label>
+                <input type="number" name="discount" id="editInvDiscount" class="form-control" value="0">
+                <small style="color:var(--text-secondary);">Akan mengurangi total yang harus dibayar.</small>
             </div>
             <div class="form-group">
                 <label>Jatuh Tempo</label>

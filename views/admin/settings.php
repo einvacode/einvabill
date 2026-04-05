@@ -95,12 +95,31 @@ $settings = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
                 <textarea name="company_address" class="form-control" rows="2"><?= htmlspecialchars($settings['company_address']) ?></textarea>
             </div>
             <div class="form-group" style="background:var(--hover-bg); padding:15px; border-radius:12px; border:1px solid var(--glass-border);">
-                <label style="margin-bottom:10px; display:block;">Logo Perusahaan</label>
-                <?php if(!empty($settings['company_logo'])): ?>
-                    <div style="margin-bottom:12px;"><img src="<?= htmlspecialchars($settings['company_logo']) ?>" style="max-height:60px; border-radius:8px; box-shadow:0 4px 10px rgba(0,0,0,0.2);"></div>
-                <?php endif; ?>
-                <input type="file" name="logo_file" class="form-control" accept="image/*">
-                <input type="text" name="company_logo" class="form-control" value="<?= htmlspecialchars($settings['company_logo'] ?? '') ?>" placeholder="Atau paste URL Logo di sini" style="margin-top:10px;">
+                <label style="margin-bottom:10px; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-image"></i> Logo Perusahaan (Auto-Fit)
+                </label>
+                
+                <div class="logo-preview-area" style="overflow: hidden; pointer-events: none; height: 160px; display: flex; align-items: center; justify-content: center;">
+                    <?php if(!empty($settings['company_logo'])): ?>
+                        <div class="brand-logo-wrapper" style="width:100%; height:100%; max-height: 100%;">
+                            <img src="<?= htmlspecialchars($settings['company_logo']) ?>" alt="Preview" style="max-height: 100%; object-fit: contain;">
+                        </div>
+                    <?php else: ?>
+                        <div style="text-align:center; color:var(--text-secondary); opacity:0.5;">
+                            <i class="fas fa-plus-circle" style="font-size:30px; margin-bottom:5px;"></i><br>
+                            <span style="font-size:12px;">Belum Ada Logo</span>
+                        </div>
+                    <?php endif; ?>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr auto; gap:10px; align-items:center;">
+                    <input type="file" name="logo_file" class="form-control" accept="image/*" style="padding:10px; height:auto; background:var(--input-bg);">
+                    <button type="button" class="btn btn-sm btn-ghost" onclick="document.querySelector('[name=company_logo]').value=''" title="Hapus URL" style="height:44px;"><i class="fas fa-times"></i></button>
+                </div>
+                <input type="text" name="company_logo" class="form-control" value="<?= htmlspecialchars($settings['company_logo'] ?? '') ?>" placeholder="Atau paste URL Logo di sini" style="margin-top:10px; font-size:12px; padding:12px; height:auto;">
+                <small style="color:var(--text-secondary); margin-top:8px; display:block; font-size:11px; line-height:1.4;">
+                    <i class="fas fa-info-circle"></i> Sistem akan otomatis menyesuaikan logo <strong>Kotak</strong> atau <strong>Persegi Panjang</strong> agar tetap terlihat profesional.
+                </small>
             </div>
             <div class="form-group">
                 <label>Info Rekening Pembayaran</label>
@@ -109,7 +128,9 @@ $settings = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
             <div class="form-group" style="background:var(--hover-bg); padding:15px; border-radius:12px; border:1px solid var(--glass-border); margin-top:15px;">
                 <label style="margin-bottom:10px; display:block;"><i class="fas fa-qrcode"></i> Foto QRIS Pembayaran</label>
                 <?php if(!empty($settings['company_qris'])): ?>
-                    <div style="margin-bottom:12px;"><img src="<?= htmlspecialchars($settings['company_qris']) ?>" style="max-height:150px; border-radius:8px; box-shadow:0 4px 10px rgba(0,0,0,0.2);"></div>
+                    <div class="logo-preview-area" style="max-height: 200px; height: auto; overflow: hidden; pointer-events: none; margin-bottom: 12px; border-style: solid; border-width: 1px;">
+                        <img src="<?= htmlspecialchars($settings['company_qris']) ?>" style="max-height:100%; max-width: 100%; object-fit: contain; border-radius: 8px;">
+                    </div>
                 <?php endif; ?>
                 <input type="file" name="qris_file" class="form-control" accept="image/*">
                 <input type="text" name="company_qris" class="form-control" value="<?= htmlspecialchars($settings['company_qris'] ?? '') ?>" placeholder="Atau paste URL QRIS di sini" style="margin-top:10px;">

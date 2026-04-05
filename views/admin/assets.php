@@ -36,41 +36,91 @@ if ($action === 'delete') {
     exit;
 }
 
-// Fetch Stats
+// Fetch Basic Stats for non-PHP blocks
 $stats_raw = $db->query("SELECT type, COUNT(*) as count FROM infrastructure_assets GROUP BY type")->fetchAll(PDO::FETCH_KEY_PAIR);
-$total_ports_used = $db->query("SELECT (SELECT COUNT(*) FROM customers WHERE odp_id > 0) + (SELECT COUNT(*) FROM infrastructure_assets WHERE parent_id > 0)")->fetchColumn();
+
+// Recursive Function to Build Network Tree
+function buildNetworkTree($db, $parentId = 0) {
+    if ($parentId == 0) {
+        $stmt = $db->prepare("SELECT a.*, (SELECT COUNT(*) FROM customers WHERE odp_id = a.id) as cust_count FROM infrastructure_assets a WHERE parent_id = 0 ORDER BY type ASC, name ASC");
+    } else {
+        $stmt = $db->prepare("SELECT a.*, (SELECT COUNT(*) FROM customers WHERE odp_id = a.id) as cust_count FROM infrastructure_assets a WHERE parent_id = ? ORDER BY type ASC, name ASC");
+    }
+    
+    if ($parentId == 0) $stmt->execute();
+    else $stmt->execute([$parentId]);
+    
+    $assets = $stmt->fetchAll();
+    $tree = [];
+    
+    foreach ($assets as $asset) {
+        $children = buildNetworkTree($db, $asset['id']);
+        
+        // Calculate Total Active Downstream (Recursive)
+        $total_child_usage = 0;
+        foreach($children as $child) {
+            $total_child_usage += $child['total_active_downstream'];
+        }
+        
+        $asset['children'] = $children;
+        $asset['total_active_downstream'] = $asset['cust_count'] + $total_child_usage;
+        $tree[] = $asset;
+    }
+    return $tree;
+}
+
+// Enhanced Stats Calculation
 $total_investment = $db->query("SELECT SUM(price) FROM infrastructure_assets")->fetchColumn() ?: 0;
+$total_ports_capacity = $db->query("SELECT SUM(total_ports) FROM infrastructure_assets")->fetchColumn() ?: 0;
+$used_by_customers = $db->query("SELECT COUNT(*) FROM customers WHERE odp_id > 0")->fetchColumn() ?: 0;
+$used_by_child_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets WHERE parent_id > 0")->fetchColumn() ?: 0;
+$total_ports_used = $used_by_customers + $used_by_child_assets;
+$idle_ports = $total_ports_capacity - $total_ports_used;
+$utilization_pct = ($total_ports_capacity > 0) ? ($total_ports_used / $total_ports_capacity) * 100 : 0;
 ?>
 
-<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:15px; margin-bottom:30px;">
-    <div class="glass-panel" style="padding:15px; text-align:center; border-left:4px solid var(--primary);">
-        <div style="font-size:10px; color:var(--text-secondary); margin-bottom:5px;">OLT / ODC / ODP</div>
-        <div style="font-size:20px; font-weight:800;"><?= ($stats_raw['OLT']??0) + ($stats_raw['ODC']??0) + ($stats_raw['ODP']??0) ?></div>
+<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:20px; margin-bottom:30px;">
+    <div class="glass-panel" style="padding:20px; border-left:4px solid var(--primary); display:flex; flex-direction:column; justify-content:center;">
+        <div style="font-size:11px; color:var(--text-secondary); margin-bottom:8px; text-transform:uppercase; letter-spacing:1px;">Total Valuasi Aset</div>
+        <div style="font-size:24px; font-weight:800; color:var(--text-primary);">Rp <?= number_format($total_investment, 0, ',', '.') ?></div>
+        <div style="font-size:11px; color:var(--text-secondary); margin-top:5px;">Total belanja infrastruktur</div>
     </div>
-    <div class="glass-panel" style="padding:15px; text-align:center; border-left:4px solid #f59e0b;">
-        <div style="font-size:10px; color:var(--text-secondary); margin-bottom:5px;">ROUTER & SWITCH</div>
-        <div style="font-size:20px; font-weight:800;"><?= ($stats_raw['Router']??0) + ($stats_raw['Switch']??0) ?></div>
+    <div class="glass-panel" style="padding:20px; border-left:4px solid var(--success); display:flex; flex-direction:column; justify-content:center;">
+        <div style="font-size:11px; color:var(--text-secondary); margin-bottom:8px; text-transform:uppercase; letter-spacing:1px;">Utilisasi Port Global</div>
+        <div style="font-size:24px; font-weight:800; color:var(--success);"><?= round($utilization_pct, 1) ?><span style="font-size:14px;">%</span></div>
+        <div style="width:100%; height:4px; background:rgba(255,255,255,0.05); border-radius:10px; margin-top:10px; overflow:hidden;">
+            <div style="width:<?= $utilization_pct ?>%; height:100%; background:var(--success);"></div>
+        </div>
     </div>
-    <div class="glass-panel" style="padding:15px; text-align:center; border-left:4px solid #06b6d4;">
-        <div style="font-size:10px; color:var(--text-secondary); margin-bottom:5px;">WIRELESS & SERVER</div>
-        <div style="font-size:20px; font-weight:800;"><?= ($stats_raw['Wireless']??0) + ($stats_raw['Server']??0) ?></div>
+    <div class="glass-panel" style="padding:24px; border-left:4px solid #f59e0b; display:flex; flex-direction:column; justify-content:center;">
+        <div style="font-size:11px; color:var(--text-secondary); margin-bottom:8px; text-transform:uppercase; letter-spacing:1px;">Kapasitas PORT Idle</div>
+        <div style="font-size:24px; font-weight:800; color:#f59e0b;"><?= $idle_ports ?> <span style="font-size:14px; color:var(--text-secondary); font-weight:normal;">Port</span></div>
+        <div style="font-size:11px; color:var(--text-secondary); margin-top:5px;">Siap digunakan pelanggan baru</div>
     </div>
-    <div class="glass-panel" style="padding:15px; text-align:center; border-left:4px solid var(--success);">
-        <div style="font-size:10px; color:var(--text-secondary); margin-bottom:5px;">PORT TERPAKAI</div>
-        <div style="font-size:20px; font-weight:800;"><?= $total_ports_used ?></div>
-    </div>
-    <div class="glass-panel" style="padding:15px; text-align:center; border-left:4px solid #ec4899;">
-        <div style="font-size:10px; color:var(--text-secondary); margin-bottom:5px;">TOTAL INVESTASI</div>
-        <div style="font-size:18px; font-weight:800;">Rp <?= number_format($total_investment, 0, ',', '.') ?></div>
+    <div class="glass-panel" style="padding:20px; border-left:4px solid #a855f7; display:flex; flex-direction:column; justify-content:center;">
+        <div style="font-size:11px; color:var(--text-secondary); margin-bottom:8px; text-transform:uppercase; letter-spacing:1px;">Total Perangkat</div>
+        <div style="font-size:24px; font-weight:800; color:#a855f7;"><?= array_sum($stats_raw) ?> <span style="font-size:14px; color:var(--text-secondary); font-weight:normal;">Unit</span></div>
+        <div style="font-size:11px; color:var(--text-secondary); margin-top:5px;">OLT, ODC, ODP & Lainnya</div>
     </div>
 </div>
 
 <div class="glass-panel" style="padding:25px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-        <h3 style="margin:0;"><i class="fas fa-boxes text-primary"></i> Daftar Inventaris Aset</h3>
-        <button class="btn btn-primary" onclick="showAssetModal()"><i class="fas fa-plus"></i> Tambah Aset</button>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; flex-wrap:wrap; gap:15px;">
+        <h3 style="margin:0;"><i class="fas fa-boxes text-primary"></i> Operasi Infrastruktur Jaringan</h3>
+        <div style="display:flex; gap:10px;">
+            <div class="view-toggle" style="background:rgba(255,255,255,0.05); padding:4px; border-radius:10px; display:flex;">
+                <button class="btn btn-sm <?= ($_GET['view']??'table') == 'table' ? 'btn-primary' : 'btn-ghost' ?>" onclick="location.href='index.php?page=admin_assets&view=table'">
+                    <i class="fas fa-table"></i> Daftar
+                </button>
+                <button class="btn btn-sm <?= ($_GET['view']??'') == 'tree' ? 'btn-primary' : 'btn-ghost' ?>" onclick="location.href='index.php?page=admin_assets&view=tree'">
+                    <i class="fas fa-network-wired"></i> Topologi
+                </button>
+            </div>
+            <button class="btn btn-primary" onclick="showAssetModal()"><i class="fas fa-plus"></i> Tambah Aset</button>
+        </div>
     </div>
 
+    <?php if(($_GET['view']??'table') === 'table'): ?>
     <div class="table-container shadow-sm">
         <table>
             <thead>
@@ -145,6 +195,99 @@ $total_investment = $db->query("SELECT SUM(price) FROM infrastructure_assets")->
             </tbody>
         </table>
     </div>
+    <?php else: ?>
+    <!-- Network Topology Tree View -->
+    <div class="network-tree-container" style="padding:10px 0;">
+        <?php
+        $tree = buildNetworkTree($db);
+
+        if (!function_exists('getCustomersForAsset')) {
+            function getCustomersForAsset($db, $assetId) {
+                $stmt = $db->prepare("SELECT name, customer_code FROM customers WHERE odp_id = ? ORDER BY name ASC");
+                $stmt->execute([$assetId]);
+                return $stmt->fetchAll();
+            }
+        }
+
+        if (!function_exists('renderTreeItem')) {
+            function renderTreeItem($db, $item, $level = 0) {
+            $usage_pct = ($item['total_ports'] > 0) ? ($item['total_active_downstream'] / $item['total_ports']) * 100 : 0;
+            $color = 'var(--primary)';
+            if($item['type'] == 'ODC') $color = '#a855f7';
+            if($item['type'] == 'ODP') $color = '#ec4899';
+            if($item['type'] == 'Router') $color = '#f59e0b';
+            
+            $icon = 'fa-server';
+            if($item['type'] == 'ODC') $icon = 'fa-boxes-stacked';
+            if($item['type'] == 'ODP') $icon = 'fa-plug-circle-bolt';
+            if($item['type'] == 'Router') $icon = 'fa-router';
+
+            echo '<div class="tree-item" style="margin-left:' . ($level * 35) . 'px; border-left: 2px solid rgba(255,255,255,0.05); padding-left: 25px; position:relative; margin-bottom:15px;">';
+            if($level > 0) {
+                echo '<div style="position:absolute; left:0; top:35px; width:25px; height:2px; background:rgba(255,255,255,0.05);"></div>';
+            }
+            
+            echo '<div class="glass-panel" style="padding:15px 20px; display:flex; justify-content:space-between; align-items:center; border-left:4px solid ' . $color . '; min-height:80px; transition:all 0.2s;">';
+            
+            echo '<div style="display:flex; align-items:center; gap:20px;">';
+            echo '<div style="width:48px; height:48px; background:' . $color . '15; color:' . $color . '; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:20px;"><i class="fas ' . $icon . '"></i></div>';
+            echo '<div>';
+            echo '<div style="font-weight:700; font-size:16px; color:var(--text-primary);">' . htmlspecialchars($item['name']) . ' <span style="font-size:11px; opacity:0.5; font-weight:normal; margin-left:8px; text-transform:uppercase;">' . $item['type'] . '</span></div>';
+            echo '<div style="font-size:12px; color:var(--text-secondary); margin-top:4px;"><i class="fas fa-network-wired" style="font-size:10px; margin-right:5px;"></i> ' . $item['total_active_downstream'] . ' Total Jalur Aktif</div>';
+            echo '</div>';
+            echo '</div>';
+            
+            echo '<div style="display:flex; align-items:center; gap:25px;">';
+            echo '<div style="text-align:right; width:120px;">';
+            echo '<div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-secondary); margin-bottom:6px;">';
+            echo '<span>Utilisasi Port</span>';
+            echo '<span style="font-weight:800; color:' . ($usage_pct > 85 ? 'var(--danger)' : 'var(--text-primary)') . '">' . round($usage_pct) . '%</span>';
+            echo '</div>';
+            echo '<div style="width:100%; height:8px; background:rgba(255,255,255,0.05); border-radius:4px; overflow:hidden;">';
+            echo '<div style="width:' . $usage_pct . '%; height:100%; background:' . ($usage_pct > 85 ? 'var(--danger)' : 'var(--success)') . '; box-shadow: 0 0 10px ' . ($usage_pct > 85 ? 'var(--danger)' : 'var(--success)') . '44;"></div>';
+            echo '</div>';
+            echo '</div>';
+            
+            echo '<div style="display:flex; gap:8px;">';
+            if($item['lat'] && $item['lng']) {
+                echo '<a href="index.php?page=admin_map&lat=' . $item['lat'] . '&lng=' . $item['lng'] . '" class="btn btn-sm btn-ghost" title="Lihat di Peta" style="color:#06b6d4;"><i class="fas fa-location-dot"></i></a>';
+            }
+            echo '<button class="btn btn-sm btn-ghost" style="color:var(--text-secondary);" onclick=\'editAsset(' . json_encode($item) . ')\'><i class="fas fa-edit"></i></button>';
+            echo '</div>';
+            echo '</div>';
+            
+            echo '</div>'; // end glass-panel
+
+            // List Customers if it's an ODP or has customers
+            $customers = getCustomersForAsset($db, $item['id']);
+            if(!empty($customers)) {
+                echo '<div style="margin-left: 68px; margin-top: -10px; margin-bottom: 20px; font-size: 11px; padding: 10px 15px; background: rgba(255,255,255,0.03); border-radius: 0 0 12px 12px; border: 1px solid rgba(255,255,255,0.05); border-top:none;">';
+                echo '<div style="color:var(--text-secondary); margin-bottom:5px; font-weight:700;"><i class="fas fa-users-viewfinder"></i> PELANGGAN TERHUBUNG:</div>';
+                foreach($customers as $c) {
+                    echo '<div style="display:inline-block; margin-right:15px; color:var(--text-primary);"><i class="fas fa-user" style="font-size:9px; opacity:0.5;"></i> ' . htmlspecialchars($c['name']) . ' (' . $c['customer_code'] . ')</div>';
+                }
+                echo '</div>';
+            }
+            
+            if(!empty($item['children'])) {
+                foreach($item['children'] as $child) {
+                    renderTreeItem($db, $child, $level + 1);
+                }
+            }
+            echo '</div>'; // end tree-item
+        }
+    }
+
+    foreach($tree as $root) renderTreeItem($db, $root);
+        
+        if(empty($tree)) {
+            echo '<div style="text-align:center; padding:80px; color:var(--text-secondary); opacity:0.6;">';
+            echo '<i class="fas fa-network-wired" style="font-size:60px; margin-bottom:20px; display:block; opacity:0.1;"></i> Belum ada infrastruktur terdaftar atau periksa filter Parent.';
+            echo '</div>';
+        }
+        ?>
+    </div>
+    <?php endif; ?>
 </div>
 
 <!-- Asset Modal -->

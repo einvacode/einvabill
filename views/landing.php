@@ -395,9 +395,11 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
 
     <!-- Nav -->
     <nav class="navbar">
-        <a href="#" class="nav-brand">
+        <a href="#" class="nav-brand" style="display:flex; align-items:center;">
             <?php if(!empty($site['company_logo'])): ?>
-                <img src="<?= htmlspecialchars($site['company_logo']) ?>" style="height:35px;" alt="Logo">
+                <div class="brand-logo-wrapper navbar-logo-box">
+                    <img src="<?= htmlspecialchars($site['company_logo']) ?>" alt="Logo">
+                </div>
             <?php else: ?>
                 <i class="fas fa-wifi" style="color:var(--primary);"></i>
             <?php endif; ?>
@@ -412,7 +414,8 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
                 <i class="fas fa-moon theme-icon-light"></i>
             </button>
             <a href="index.php?page=customer_portal" style="color:var(--success); font-weight:600;"><i class="fas fa-receipt"></i> Cek Tagihan</a>
-            <a href="index.php?page=login" class="btn btn-sm btn-primary" style="padding: 10px 20px; border-radius:30px;"><i class="fas fa-sign-in-alt"></i> Portal Login</a>
+            <a href="index.php?page=login&role=customer" class="btn btn-sm btn-ghost" style="padding: 10px 15px; border-radius:30px; border:1px solid var(--primary);"><i class="fas fa-user-circle"></i> Portal Pelanggan</a>
+            <a href="index.php?page=login&role=staff" class="btn btn-sm btn-primary" style="padding: 10px 20px; border-radius:30px;"><i class="fas fa-shield-alt"></i> Area Staff</a>
         </div>
         <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">
             <i class="fas fa-bars"></i>
@@ -424,7 +427,8 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
         <a href="#about" onclick="toggleMobileMenu()">Tentang Kami</a>
         <a href="#services" onclick="toggleMobileMenu()">Layanan</a>
         <a href="index.php?page=customer_portal" onclick="toggleMobileMenu()" style="color:var(--success);"><i class="fas fa-receipt"></i> Cek Tagihan</a>
-        <a href="index.php?page=login" onclick="toggleMobileMenu()" style="color:var(--primary);"><i class="fas fa-sign-in-alt"></i> Portal Login</a>
+        <a href="index.php?page=login&role=customer" onclick="toggleMobileMenu()" style="color:var(--primary);"><i class="fas fa-user-circle"></i> Portal Pelanggan</a>
+        <a href="index.php?page=login&role=staff" onclick="toggleMobileMenu()" style="color:var(--danger);"><i class="fas fa-shield-alt"></i> Area Staff</a>
         <a href="https://wa.me/<?= $wa_contact ?>" target="_blank"><i class="fab fa-whatsapp" style="color:#25D366;"></i> Hubungi Kami</a>
         <div style="margin-top:20px;">
             <button class="btn btn-ghost" onclick="toggleTheme(); toggleMobileMenu();" style="width:100%; justify-content:center; gap:10px;">
@@ -435,17 +439,14 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
 
     <!-- Hero -->
     <section class="hero-section">
-        <div class="glow-blob blue"></div>
-        <div class="glow-blob purple"></div>
         <div style="z-index: 2; position:relative; animation: fadeIn 1s ease-out;">
             <div style="display:inline-block; padding:8px 20px; background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.3); border-radius:50px; color:#60a5fa; font-weight:600; font-size:14px; margin-bottom:25px;">
                 <i class="fas fa-bolt"></i> Internet Cepat Tanpa Batas
             </div>
             <h1 class="hero-title"><?= htmlspecialchars($site['landing_hero_title'] ?? 'Koneksi Super Cepat & Stabil') ?></h1>
             <p class="hero-subtitle"><?= htmlspecialchars($site['landing_hero_text'] ?? 'Solusi internet dan IT untuk kebutuhan personal dan korporasi.') ?></p>
-            <div style="display:flex; justify-content:center; gap:20px; flex-wrap:wrap;">
-                <a href="#services" class="btn btn-primary" style="padding:15px 40px; font-size:18px; border-radius:50px;">Lihat Paket <i class="fas fa-arrow-right" style="margin-left:10px;"></i></a>
-                <a href="index.php?page=login" class="btn" style="padding:15px 40px; font-size:18px; border-radius:50px; background:rgba(255,255,255,0.05); box-shadow:inset 0 0 0 1px rgba(255,255,255,0.2);"><i class="fas fa-user-circle"></i> Portal Pelanggan</a>
+            <div style="display:flex; flex-direction:column; align-items:center; gap:25px;">
+                <a href="#services" class="btn btn-primary" style="padding:18px 60px; font-size:20px; border-radius:50px; width:100%; max-width:400px; box-shadow: 0 15px 30px rgba(59, 130, 246, 0.3);">Lihat Paket <i class="fas fa-arrow-right" style="margin-left:10px;"></i></a>
             </div>
         </div>
     </section>

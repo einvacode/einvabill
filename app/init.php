@@ -128,6 +128,10 @@ try {
 
 // Auto-generate customer_code for existing customers without one (unique random)
 try {
+    $db->exec("ALTER TABLE invoices ADD COLUMN discount REAL DEFAULT 0");
+} catch(Exception $e) {}
+
+try {
     $nocode = $db->query("SELECT id FROM customers WHERE customer_code IS NULL OR customer_code = ''")->fetchAll();
     if (count($nocode) > 0) {
         $stmt_code = $db->prepare("UPDATE customers SET customer_code = ? WHERE id = ?");
@@ -198,6 +202,17 @@ try { $db->exec("ALTER TABLE customers ADD COLUMN odp_id INTEGER DEFAULT 0"); } 
 try { $db->exec("ALTER TABLE customers ADD COLUMN odp_port INTEGER"); } catch(Exception $e) {}
 try { $db->exec("ALTER TABLE customers ADD COLUMN path_json TEXT"); } catch(Exception $e) {}
 try { $db->exec("ALTER TABLE infrastructure_assets ADD COLUMN path_json TEXT"); } catch(Exception $e) {}
+
+// Banners Table
+$db->exec("CREATE TABLE IF NOT EXISTS banners (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    content TEXT,
+    image_path TEXT,
+    target_role TEXT DEFAULT 'all', -- all, partner, customer
+    is_active INTEGER DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)");
 
 // Fetch Settings for License Check
 $site_settings = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
