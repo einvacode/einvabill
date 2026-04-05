@@ -449,17 +449,24 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
 <?php if($coll_tab === 'pelanggan'): ?>
 <!-- TAB: Data Pelanggan -->
 <div class="glass-panel" style="padding:20px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
-        <h3 style="font-size:18px; margin:0;"><i class="fas fa-users"></i> Daftar Pelanggan</h3>
-        <div style="display:flex; gap:10px; flex:1; justify-content:flex-end; flex-wrap:wrap;">
-            <button class="btn btn-primary btn-sm" onclick="showAddCustomerModal()" style="padding:8px 16px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:16px; border-bottom:1px solid var(--glass-border); padding-bottom:15px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <div style="width:34px; height:34px; border-radius:8px; background:var(--primary); color:white; display:flex; align-items:center; justify-content:center; font-size:14px;">
+                <i class="fas fa-users"></i>
+            </div>
+            <h3 style="font-size:18px; font-weight:700; margin:0;">Daftar Pelanggan</h3>
+        </div>
+        <div style="display:flex; gap:10px; flex:1; justify-content:flex-end; flex-wrap:wrap; align-items:center;">
+            <button class="btn btn-primary" onclick="showAddCustomerModal()" style="padding:10px 20px; font-weight:700; border-radius:10px; font-size:13px; width:fit-content; height:42px;">
                 <i class="fas fa-plus"></i> Tambah Pelanggan
             </button>
-            <form method="GET" style="display:flex; gap:5px; flex:1; max-width:300px;">
+            <form method="GET" style="display:flex; gap:0; flex:1; max-width:320px; position:relative;">
                 <input type="hidden" name="page" value="collector">
                 <input type="hidden" name="tab" value="pelanggan">
-                <input type="text" name="search_cust" class="form-control" placeholder="Cari pelanggan..." value="<?= htmlspecialchars($search_cust) ?>" style="padding:8px 12px; font-size:13px;">
-                <button type="submit" class="btn btn-primary btn-sm" style="padding:8px 12px;"><i class="fas fa-search"></i></button>
+                <input type="text" name="search_cust" class="form-control" placeholder="Cari pelanggan..." value="<?= htmlspecialchars($search_cust) ?>" style="padding:10px 45px 10px 20px; font-size:13px; height:42px; width:100%; border-radius:10px 0 0 10px; border-right:none;">
+                <button type="submit" class="btn btn-primary" style="padding:0 18px; height:42px; position:absolute; right:0; border-radius:0 10px 10px 0; display:flex; align-items:center; justify-content:center; box-shadow:none;">
+                    <i class="fas fa-search"></i>
+                </button>
             </form>
         </div>
     </div>
@@ -586,161 +593,8 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
             </tbody>
         </table>
     </div>
-</div>
-
-<!-- Modal Buat Tagihan Manual -->
-<div id="createInvoiceModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:9999;">
-    <div class="glass-panel" style="width:100%; max-width:400px; padding:24px; margin:20px;">
-        <h3 style="margin-bottom:20px;"><i class="fas fa-file-invoice-dollar"></i> Buat Tagihan Manual</h3>
-        <div style="font-size:14px; color:var(--text-secondary); margin-bottom:15px;">Pelanggan: <strong id="modalCustName"></strong></div>
-        <form action="index.php?page=collector&action=create_invoice" method="POST">
-            <input type="hidden" name="customer_id" id="modalCustId">
-            <div class="form-group">
-                <label>Nominal Tagihan (Rp)</label>
-                <input type="number" name="amount" id="modalAmount" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label>Jatuh Tempo</label>
-                <input type="date" name="due_date" class="form-control" value="<?= date('Y-m-d', strtotime('+5 days')) ?>" required>
-            </div>
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
-                <button type="button" class="btn btn-sm btn-ghost" onclick="document.getElementById('createInvoiceModal').style.display='none'">Batal</button>
-                <button type="submit" class="btn btn-sm" style="background:var(--primary); color:white;">Buat Tagihan</button>
-            </div>
-        </form>
-    </div>
-</div>
-<!-- Modal Ubah Nomor HP -->
-<div id="updateContactModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:9999;">
-    <div class="glass-panel" style="width:100%; max-width:400px; padding:24px; margin:20px;">
-        <h3 style="margin-bottom:20px;"><i class="fas fa-edit"></i> Ubah Nomor HP</h3>
-        <div style="font-size:14px; color:var(--text-secondary); margin-bottom:15px;">Pelanggan: <strong id="modalContactCustName"></strong></div>
-        <form action="index.php?page=collector&action=update_contact" method="POST">
-            <input type="hidden" name="customer_id" id="modalContactCustId">
-            <div class="form-group">
-                <label>Nomor HP Baru</label>
-                <input type="text" name="contact" id="modalContactValue" class="form-control" placeholder="Contoh: 08123456789" required>
-            </div>
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
-                <button type="button" class="btn btn-sm btn-ghost" onclick="document.getElementById('updateContactModal').style.display='none'">Batal</button>
-                <button type="submit" class="btn btn-sm" style="background:var(--primary); color:white;">Simpan Perubahan</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-</div>
-
-<!-- Modal Tambah Pelanggan -->
-<div id="addCustomerModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:9999; backdrop-filter: blur(4px);">
-    <div class="glass-panel scroll-container" style="width:100%; max-width:550px; padding:24px; margin:20px; max-height:90vh; overflow-y:auto;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h3 style="margin:0;"><i class="fas fa-user-plus text-primary"></i> Registrasi Pelanggan Baru</h3>
-            <button onclick="document.getElementById('addCustomerModal').style.display='none'" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:18px;"><i class="fas fa-times"></i></button>
-        </div>
-        
-        <form action="index.php?page=collector&action=add_customer" method="POST" id="addCustomerForm">
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
-                <div class="form-group" style="grid-column: span 2;">
-                    <label>Nama Lengkap</label>
-                    <input type="text" name="name" class="form-control" required placeholder="Nama sesuai KTP">
-                </div>
-                <div class="form-group">
-                    <label>Tipe Layanan</label>
-                    <select name="type" id="add_type" class="form-control" required>
-                        <option value="customer">Rumahan (SLA)</option>
-                        <option value="partner">Mitra (B2B)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Nomor WhatsApp</label>
-                    <input type="text" name="contact" class="form-control" placeholder="0812..." required>
-                </div>
-            </div>
-
-            <div class="form-group" style="margin-bottom:15px;">
-                <label>Alamat Pemasangan</label>
-                <textarea name="address" class="form-control" rows="2" placeholder="Alamat lengkap..."></textarea>
-            </div>
-
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
-                <div class="form-group">
-                    <label>Pilih Paket</label>
-                    <select name="package_name" id="add_package_name" class="form-control" required onchange="syncAddPrice(this)">
-                        <option value="">-- Pilih Paket --</option>
-                        <?php foreach($packages_all as $p): ?>
-                            <option value="<?= htmlspecialchars($p['name']) ?>" data-fee="<?= $p['fee'] ?>"><?= htmlspecialchars($p['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Biaya Bulanan (Rp)</label>
-                    <input type="number" name="monthly_fee" id="add_monthly_fee" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label>Area / Lokasi</label>
-                    <select name="area" class="form-control" required>
-                        <option value="">-- Pilih Area --</option>
-                        <?php foreach($areas_all as $a): ?>
-                            <option value="<?= htmlspecialchars($a['name']) ?>" <?= strtolower($a['name']) == strtolower($collector_area) ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($a['name']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Tanggal Tagihan (1-28)</label>
-                    <input type="number" name="billing_date" class="form-control" min="1" max="28" value="<?= date('d') ?>" required>
-                </div>
-                <div class="form-group">
-                    <label>Tanggal Registrasi</label>
-                    <input type="date" name="registration_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
-                </div>
-            </div>
-
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:25px; padding-top:15px; border-top:1px solid var(--glass-border);">
-                <button type="button" class="btn btn-ghost" onclick="document.getElementById('addCustomerModal').style.display='none'">Batal</button>
-                <button type="submit" class="btn btn-primary" style="padding:10px 25px;"><i class="fas fa-save"></i> Daftarkan Pelanggan</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script>
-function showAddCustomerModal() {
-    document.getElementById('addCustomerModal').style.display = 'flex';
-}
-
-function syncAddPrice(select) {
-    const fee = select.options[select.selectedIndex].getAttribute('data-fee');
-    if(fee) {
-        document.getElementById('add_monthly_fee').value = fee;
-    }
-}
-
-function showCreateInvoice(id, name, fee) {
-    document.getElementById('modalCustId').value = id;
-    document.getElementById('modalCustName').textContent = name;
-    document.getElementById('modalAmount').value = fee;
-    document.getElementById('createInvoiceModal').style.display = 'flex';
-}
-
-function showUpdateContact(id, name, contact) {
-    document.getElementById('modalContactCustId').value = id;
-    document.getElementById('modalContactCustName').textContent = name;
-    document.getElementById('modalContactValue').value = contact;
-    document.getElementById('updateContactModal').style.display = 'flex';
-}
-</script>
-
-<style>
-/* Show mobile card list, hide desktop table on mobile */
-@media (max-width: 768px) {
-    .customer-list-mobile { display: block !important; }
-    .customer-list-desktop { display: none !important; }
-    .desktop-tabs { display: none !important; }
-}
-</style>
+    </div> <!-- end .table-container -->
+</div> <!-- end .glass-panel (Tab: Data Pelanggan) -->
 
 <?php elseif($coll_tab === 'tugas'): ?>
 <!-- TAB: Tugas Penagihan (existing content) -->
@@ -916,34 +770,36 @@ function showUpdateContact(id, name, contact) {
                 </div>
             </div>
             
-            <!-- Amount + Actions -->
-            <div style="display:flex; justify-content:space-between; align-items:center; padding-top:14px; border-top:1px solid var(--glass-border);">
-                <div>
-                    <div style="font-size:12px; color:var(--text-secondary);">Total Tagihan:</div>
-                    <div style="font-size:18px; font-weight:800; color:var(--primary);">Rp <?= number_format($grand_total, 0, ',', '.') ?></div>
-                </div>
-                <div style="display:flex; gap:6px;">
-                    <?php if($wa_number): ?>
-                        <a href="https://api.whatsapp.com/send?phone=<?= $wa_number ?>&text=<?= $wa_text ?>" target="_blank" class="btn btn-sm" style="background:#25D366; color:white; padding:10px 14px; border-radius:8px;" title="Hubungi Pelanggan">
-                            <i class="fab fa-whatsapp" style="font-size:16px;"></i>
-                        </a>
-                    <?php endif; ?>
-                    
-                    <button type="button" class="btn btn-sm btn-ghost" style="padding:10px 14px; border:1px solid var(--glass-border); border-radius:8px;" onclick="showUpdateContact(<?= $inv['cust_id'] ?>, '<?= addslashes($inv['name']) ?>', '<?= htmlspecialchars($inv['contact'] ?: '') ?>')" title="Ubah No HP">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    
-                    <div style="display:flex; gap:6px; flex:1;">
-                        <form id="payForm_<?= $inv['cust_id'] ?>" action="index.php?page=admin_invoices&action=mark_paid_bulk" method="POST" style="display:none;">
-                            <input type="hidden" name="customer_id" value="<?= $inv['cust_id'] ?>">
-                            <input type="hidden" name="num_months" id="numMonths_<?= $inv['cust_id'] ?>" value="1">
-                        </form>
-                        
-                        <button type="button" class="btn btn-success" style="width:100%; padding:12px; font-weight:700; border-radius:10px; display:flex; align-items:center; justify-content:center; gap:8px;" 
-                                onclick="handlePay(<?= $inv['cust_id'] ?>, <?= $num_arrears ?>, '<?= addslashes($inv['name']) ?>')">
-                            <i class="fas fa-cash-register"></i> Bayar Tagihan
-                        </button>
+            <!-- Amount + Actions (Redesigned for better density and alignment) -->
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--glass-border);">
+                <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:10px;">
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-secondary); margin-bottom:2px;">Total Tagihan</div>
+                        <div style="font-size:20px; font-weight:900; color:var(--primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                            Rp <?= number_format($grand_total, 0, ',', '.') ?>
+                        </div>
                     </div>
+                    
+                    <div style="display:flex; gap:6px; flex-shrink:0;">
+                        <?php if($wa_number): ?>
+                            <a href="https://api.whatsapp.com/send?phone=<?= $wa_number ?>&text=<?= $wa_text ?>" target="_blank" class="btn btn-sm" style="background:#20c997; color:white; width:42px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:12px; transition:transform 0.2s;" title="WhatsApp">
+                                <i class="fab fa-whatsapp" style="font-size:18px;"></i>
+                            </a>
+                        <?php endif; ?>
+                        
+                    </div>
+                </div>
+
+                <!-- Primary Action Button (Full Width Mobile style) -->
+                <div style="margin-top:12px;">
+                    <form id="payForm_<?= $inv['cust_id'] ?>" action="index.php?page=admin_invoices&action=mark_paid_bulk" method="POST" style="display:none;">
+                        <input type="hidden" name="customer_id" value="<?= $inv['cust_id'] ?>">
+                        <input type="hidden" name="num_months" id="numMonths_<?= $inv['cust_id'] ?>" value="1">
+                    </form>
+                    <button type="button" class="btn btn-primary" style="width:100%; padding:14px; font-weight:800; border-radius:14px; display:flex; align-items:center; justify-content:center; gap:10px; font-size:14px; box-shadow: 0 4px 15px rgba(35, 206, 217, 0.2);" 
+                            onclick="handlePay(<?= $inv['cust_id'] ?>, <?= $num_arrears ?>, '<?= addslashes($inv['name']) ?>')">
+                        <i class="fas fa-wallet"></i> Bayar Tagihan
+                    </button>
                 </div>
             </div>
         </div>
@@ -1039,7 +895,169 @@ function showUpdateContact(id, name, contact) {
     </div>
 <?php endif; ?>
 
+<!-- Modal Buat Tagihan Manual -->
+<div id="createInvoiceModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:9999;">
+    <div class="glass-panel" style="width:100%; max-width:400px; padding:24px; margin:20px;">
+        <h3 style="margin-bottom:20px;"><i class="fas fa-file-invoice-dollar"></i> Buat Tagihan Manual</h3>
+        <div style="font-size:14px; color:var(--text-secondary); margin-bottom:15px;">Pelanggan: <strong id="modalCustName"></strong></div>
+        <form action="index.php?page=collector&action=create_invoice" method="POST">
+            <input type="hidden" name="customer_id" id="modalCustId">
+            <div class="form-group">
+                <label>Nominal Tagihan (Rp)</label>
+                <input type="number" name="amount" id="modalAmount" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>Jatuh Tempo</label>
+                <input type="date" name="due_date" class="form-control" value="<?= date('Y-m-d', strtotime('+5 days')) ?>" required>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                <button type="button" class="btn btn-sm btn-ghost" onclick="document.getElementById('createInvoiceModal').style.display='none'">Batal</button>
+                <button type="submit" class="btn btn-sm" style="background:var(--primary); color:white;">Buat Tagihan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Ubah Nomor HP -->
+<div id="updateContactModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:9999;">
+    <div class="glass-panel" style="width:100%; max-width:400px; padding:24px; margin:20px;">
+        <h3 style="margin-bottom:20px;"><i class="fas fa-edit"></i> Ubah Nomor HP</h3>
+        <div style="font-size:14px; color:var(--text-secondary); margin-bottom:15px;">Pelanggan: <strong id="modalContactCustName"></strong></div>
+        <form action="index.php?page=collector&action=update_contact" method="POST">
+            <input type="hidden" name="customer_id" id="modalContactCustId">
+            <div class="form-group">
+                <label>Nomor HP Baru</label>
+                <input type="text" name="contact" id="modalContactValue" class="form-control" placeholder="Contoh: 08123456789" required>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                <button type="button" class="btn btn-sm btn-ghost" onclick="document.getElementById('updateContactModal').style.display='none'">Batal</button>
+                <button type="submit" class="btn btn-sm" style="background:var(--primary); color:white;">Simpan Perubahan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Tambah Pelanggan (Redesigned for Premium Layout) -->
+<div id="addCustomerModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:9999; backdrop-filter: blur(8px);">
+    <div class="glass-panel scroll-container" style="width:100%; max-width:600px; padding:0; margin:20px; max-height:85vh; overflow-y:auto; border-radius:18px; border:1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 50px rgba(0,0,0,0.3);">
+        <!-- Modal Header -->
+        <div style="padding:22px 28px; border-bottom:1px solid var(--glass-border); display:flex; justify-content:space-between; align-items:center; background:rgba(35, 206, 217, 0.05);">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:36px; height:36px; border-radius:10px; background:var(--primary); color:white; display:flex; align-items:center; justify-content:center; font-size:16px;">
+                    <i class="fas fa-user-plus"></i>
+                </div>
+                <h3 style="margin:0; font-size:18px; font-weight:700;">Tambah Pelanggan Baru</h3>
+            </div>
+            <button onclick="document.getElementById('addCustomerModal').style.display='none'" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:18px; transition:color 0.2s;" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text-secondary)'">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form action="index.php?page=collector&action=add_customer" method="POST" id="addCustomerForm" style="padding:28px;">
+            <!-- Group: Identity -->
+            <div style="margin-bottom:24px;">
+                <div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--primary); margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-id-card"></i> Informasi Identitas
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:18px;">
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Nama Lengkap Pelanggan</label>
+                        <input type="text" name="name" class="form-control" required placeholder="Sesuai KTP" style="padding:12px 16px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">WhatsApp / HP</label>
+                        <input type="text" name="contact" class="form-control" placeholder="0812..." required style="padding:12px 16px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Tipe Pelanggan</label>
+                        <select name="type" class="form-control" required style="padding:12px 16px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px;">
+                            <option value="customer">Rumahan (Standard)</option>
+                            <option value="partner">Mitra (B2B)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Group: Service -->
+            <div style="margin-bottom:24px;">
+                <div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--primary); margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-wifi"></i> Paket & Lokasi
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:18px;">
+                    <div class="form-group">
+                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Paket Internet</label>
+                        <select name="package_name" class="form-control" onchange="syncAddPrice(this)" required style="padding:12px 16px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px;">
+                            <option value="">-- Pilih Paket --</option>
+                            <?php foreach($packages_all as $pkg): ?>
+                                <option value="<?= htmlspecialchars($pkg['name']) ?>" data-fee="<?= $pkg['price'] ?>"><?= htmlspecialchars($pkg['name']) ?> (Rp<?= number_format($pkg['price'],0,',','.') ?>)</option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Biaya Bulanan (Rp)</label>
+                        <input type="number" name="monthly_fee" id="add_monthly_fee" class="form-control" required style="padding:12px 16px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Area Pemasangan</label>
+                        <select name="area" class="form-control" required style="padding:12px 16px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px;">
+                            <option value="">-- Pilih Area --</option>
+                            <?php foreach($areas_all as $area): ?>
+                                <option value="<?= htmlspecialchars($area['name']) ?>"><?= htmlspecialchars($area['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Tanggal Tagih</label>
+                        <select name="billing_date" class="form-control" style="padding:12px 16px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px;">
+                            <?php for($d=1;$d<=28;$d++): ?>
+                                <option value="<?= $d ?>">Tanggal <?= $d ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Alamat Lengkap</label>
+                        <textarea name="address" class="form-control" rows="3" placeholder="Jl. Contoh No. 1, Desa/Dusun, RT/RW..." style="padding:12px 16px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer: Actions -->
+            <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:10px; padding-top:24px; border-top:1px solid var(--glass-border);">
+                <button type="button" class="btn btn-ghost" onclick="document.getElementById('addCustomerModal').style.display='none'" style="padding:12px 24px; border-radius:12px; font-weight:600; font-size:14px;">Batal</button>
+                <button type="submit" class="btn btn-primary" style="padding:12px 30px; border-radius:12px; font-weight:800; font-size:14px; box-shadow: 0 4px 15px rgba(35, 206, 217, 0.2);">
+                    <i class="fas fa-save" style="margin-right:8px;"></i> Daftarkan Pelanggan
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
+function showAddCustomerModal() {
+    document.getElementById('addCustomerModal').style.display = 'flex';
+}
+
+function syncAddPrice(select) {
+    const fee = select.options[select.selectedIndex].getAttribute('data-fee');
+    if(fee) {
+        document.getElementById('add_monthly_fee').value = fee;
+    }
+}
+
+function showCreateInvoice(id, name, fee) {
+    document.getElementById('modalCustId').value = id;
+    document.getElementById('modalCustName').textContent = name;
+    document.getElementById('modalAmount').value = fee;
+    document.getElementById('createInvoiceModal').style.display = 'flex';
+}
+
+function showUpdateContact(id, name, contact) {
+    document.getElementById('modalContactCustId').value = id;
+    document.getElementById('modalContactCustName').textContent = name;
+    document.getElementById('modalContactValue').value = contact;
+    document.getElementById('updateContactModal').style.display = 'flex';
+}
+
 function handlePay(custId, maxMonths, custName) {
     let months = maxMonths;
     

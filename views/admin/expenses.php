@@ -97,7 +97,7 @@ $total_expense_month = $db->query("SELECT SUM(amount) FROM expenses WHERE date B
                     <td>
                         <div style="display:flex; gap:8px;">
                             <button onclick="editExpense(<?= htmlspecialchars(json_encode($e)) ?>)" class="btn btn-sm btn-ghost" title="Edit"><i class="fas fa-edit"></i></button>
-                            <a href="index.php?page=admin_expenses&action=delete&id=<?= $e['id'] ?>" onclick="return confirm('Hapus catatan ini?')" class="btn btn-sm btn-ghost" style="color:var(--danger)" title="Hapus"><i class="fas fa-trash"></i></a>
+                            <a href="index.php?page=admin_expenses&action=delete&id=<?= $e['id'] ?>" onclick="return confirm('Hapus catatan ini?')" class="btn btn-sm btn-danger" title="Hapus"><i class="fas fa-trash"></i></a>
                         </div>
                     </td>
                 </tr>

@@ -54,7 +54,7 @@ if ($action === 'delete') {
                     <td>
                         <div style="display:flex; gap:8px;">
                             <button onclick="editPackage(<?= $p['id'] ?>, '<?= addslashes($p['name']) ?>', <?= $p['fee'] ?>)" class="btn btn-sm btn-ghost" title="Edit"><i class="fas fa-edit"></i></button>
-                            <a href="index.php?page=admin_packages&action=delete&id=<?= $p['id'] ?>" onclick="return confirm('Hapus paket ini?')" class="btn btn-sm btn-ghost" style="color:var(--danger)" title="Hapus"><i class="fas fa-trash"></i></a>
+                            <a href="index.php?page=admin_packages&action=delete&id=<?= $p['id'] ?>" onclick="return confirm('Hapus paket ini?')" class="btn btn-sm btn-danger" title="Hapus"><i class="fas fa-trash"></i></a>
                         </div>
                     </td>
                 </tr>

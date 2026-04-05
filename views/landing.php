@@ -265,56 +265,132 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
 
         /* Powered By Section */
         .powered-section {
-            padding: 50px 20px;
+            padding: 60px 0;
             text-align: center;
+            overflow: hidden;
             position: relative;
         }
 
         .powered-label {
-            font-size: 13px;
+            font-size: 14px;
             text-transform: uppercase;
-            letter-spacing: 3px;
+            letter-spacing: 4px;
             color: var(--text-secondary);
-            margin-bottom: 30px;
-            font-weight: 600;
+            margin-bottom: 40px;
+            font-weight: 700;
         }
 
-        .powered-grid {
+        .marquee-container {
+            width: 100%;
+            overflow: hidden;
+            position: relative;
+            padding: 20px 0;
+        }
+
+        .marquee-track {
             display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 50px;
-            flex-wrap: wrap;
-            max-width: 900px;
-            margin: 0 auto;
+            gap: 40px;
+            width: max-content;
+            animation: marquee 30s linear infinite;
+        }
+
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
         }
 
         .powered-item {
-            padding: 15px 20px;
+            flex: 0 0 auto;
+            padding: 25px 35px;
             background: var(--glass-bg);
             border: 1px solid var(--glass-border);
-            border-radius: 12px;
+            border-radius: 20px;
             transition: all 0.4s ease;
-        }
-
-        .powered-item:hover {
-            background: rgba(30, 41, 59, 0.6);
-            border-color: rgba(96, 165, 250, 0.2);
-            transform: translateY(-3px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 220px;
         }
 
         .powered-item img {
-            max-height: 45px;
-            max-width: 140px;
-            filter: grayscale(100%) brightness(0.7);
-            opacity: 0.6;
+            max-height: 65px;
+            max-width: 180px;
+            filter: grayscale(100%) brightness(1) contrast(0.5);
+            opacity: 0.4;
             transition: all 0.4s ease;
         }
 
+        .marquee-container:hover .marquee-track {
+            animation-play-state: paused;
+        }
+
+        .powered-item:hover {
+            transform: translateY(-8px) scale(1.05);
+            background: rgba(255,255,255,0.08);
+            border-color: var(--primary);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+        }
+
         .powered-item:hover img {
-            filter: grayscale(0%) brightness(1);
+            filter: grayscale(0%) brightness(1.2) contrast(1);
             opacity: 1;
+        }
+
+        /* Feature Cards */
+        .feature-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 40px 30px;
+            text-align: center;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-12px);
+            background: rgba(255,255,255,0.03);
+            border-color: var(--primary);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        .feature-icon-wrapper {
+            width: 70px;
+            height: 70px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin-bottom: 5px;
+            transition: transform 0.4s ease;
+        }
+
+        .feature-card:hover .feature-icon-wrapper {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .icon-blue { background: rgba(59, 130, 246, 0.1); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.2); }
+        .icon-green { background: rgba(35, 206, 217, 0.1); color: #23CED9; border: 1px solid rgba(35, 206, 217, 0.2); }
+        .icon-purple { background: rgba(167, 139, 250, 0.1); color: #a78bfa; border: 1px solid rgba(167, 139, 250, 0.2); }
+
+        .feature-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .feature-desc {
+            font-size: 15px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin: 0;
         }
 
         .mobile-menu-toggle {
@@ -414,7 +490,7 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
                 <i class="fas fa-moon theme-icon-light"></i>
             </button>
             <a href="index.php?page=customer_portal" style="color:var(--success); font-weight:600;"><i class="fas fa-receipt"></i> Cek Tagihan</a>
-            <a href="index.php?page=login&role=customer" class="btn btn-sm btn-ghost" style="padding: 10px 15px; border-radius:30px; border:1px solid var(--primary);"><i class="fas fa-user-circle"></i> Portal Pelanggan</a>
+            <a href="index.php?page=login&role=partner" class="btn btn-sm btn-ghost" style="padding: 10px 15px; border-radius:30px; border:1px solid var(--primary);"><i class="fas fa-handshake"></i> Portal Partner</a>
             <a href="index.php?page=login&role=staff" class="btn btn-sm btn-primary" style="padding: 10px 20px; border-radius:30px;"><i class="fas fa-shield-alt"></i> Area Staff</a>
         </div>
         <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">
@@ -427,7 +503,7 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
         <a href="#about" onclick="toggleMobileMenu()">Tentang Kami</a>
         <a href="#services" onclick="toggleMobileMenu()">Layanan</a>
         <a href="index.php?page=customer_portal" onclick="toggleMobileMenu()" style="color:var(--success);"><i class="fas fa-receipt"></i> Cek Tagihan</a>
-        <a href="index.php?page=login&role=customer" onclick="toggleMobileMenu()" style="color:var(--primary);"><i class="fas fa-user-circle"></i> Portal Pelanggan</a>
+        <a href="index.php?page=login&role=partner" onclick="toggleMobileMenu()" style="color:var(--primary);"><i class="fas fa-handshake"></i> Portal Partner</a>
         <a href="index.php?page=login&role=staff" onclick="toggleMobileMenu()" style="color:var(--danger);"><i class="fas fa-shield-alt"></i> Area Staff</a>
         <a href="https://wa.me/<?= $wa_contact ?>" target="_blank"><i class="fab fa-whatsapp" style="color:#25D366;"></i> Hubungi Kami</a>
         <div style="margin-top:20px;">
@@ -451,42 +527,58 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
         </div>
     </section>
 
-    <!-- Powered By -->
+    <!-- Powered By (Auto-Scrolling Marquee) -->
     <?php if(count($partner_logos) > 0): ?>
     <section class="powered-section">
         <div class="powered-label">Didukung Oleh</div>
-        <div class="powered-grid">
-            <?php foreach($partner_logos as $p): ?>
-                <div class="powered-item">
-                    <img src="<?= htmlspecialchars($p['image_path']) ?>" alt="Partner Logo">
-                </div>
-            <?php endforeach; ?>
+        <div class="marquee-container">
+            <div class="marquee-track">
+                <?php 
+                // Render logos twice for seamless infinite loop
+                for($i=0; $i<2; $i++):
+                    foreach($partner_logos as $p): ?>
+                    <div class="powered-item">
+                        <img src="<?= htmlspecialchars($p['image_path']) ?>" alt="Partner Logo">
+                    </div>
+                <?php endforeach; endfor; ?>
+            </div>
         </div>
     </section>
     <?php endif; ?>
 
-    <!-- About -->
-    <section id="about" class="section" style="background: rgba(15,23,42,0.3); border-radius:30px; border:1px solid rgba(255,255,255,0.02); margin-bottom:80px;">
-        <h2 class="section-title">Kenapa Memilih Kami?</h2>
-        <p class="about-text">
-            <?= nl2br(htmlspecialchars($site['landing_about_us'] ?? 'PT Einva Inti Data hadir untuk memberikan layanan yang andal.')) ?>
-        </p>
+    <!-- About / Features -->
+    <section id="about" class="section">
+        <div style="text-align: center; margin-bottom: 60px;">
+            <div style="display:inline-block; padding:6px 15px; background:rgba(35, 206, 217, 0.1); border:1px solid rgba(35, 206, 217, 0.2); border-radius:50px; color:#23CED9; font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:2px; margin-bottom:20px;">
+                Eksplorasi Keunggulan
+            </div>
+            <h2 class="section-title" style="margin-bottom:20px;">Kenapa Memilih Kami?</h2>
+            <p class="about-text" style="opacity:0.8;">
+                <?= nl2br(htmlspecialchars($site['landing_about_us'] ?? 'PT Einva Inti Data hadir untuk memberikan layanan yang andal.')) ?>
+            </p>
+        </div>
         
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:30px; margin-top:60px; text-align:center;">
-            <div>
-                <i class="fas fa-tachometer-alt" style="font-size:40px; color:#60a5fa; margin-bottom:15px;"></i>
-                <h4 style="font-size:20px; margin-bottom:10px;">Koneksi Stabil</h4>
-                <p style="color:var(--text-secondary); font-size:14px;">99% Uptime dengan perangkat jaringan mutakhir.</p>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:30px;">
+            <div class="feature-card">
+                <div class="feature-icon-wrapper icon-blue">
+                    <i class="fas fa-tachometer-alt"></i>
+                </div>
+                <h4 class="feature-title">Koneksi Stabil</h4>
+                <p class="feature-desc">99% Uptime dengan perangkat jaringan mutakhir serta monitoring real-time untuk memastikan bisnis Anda tetap berjalan lancar.</p>
             </div>
-            <div>
-                <i class="fas fa-headset" style="font-size:40px; color:#34d399; margin-bottom:15px;"></i>
-                <h4 style="font-size:20px; margin-bottom:10px;">Bantuan 24/7</h4>
-                <p style="color:var(--text-secondary); font-size:14px;">Tim teknis siap sedia menangani keluhan Anda kapanpun.</p>
+            <div class="feature-card">
+                <div class="feature-icon-wrapper icon-green">
+                    <i class="fas fa-headset"></i>
+                </div>
+                <h4 class="feature-title">Bantuan 24/7</h4>
+                <p class="feature-desc">Tim teknis kami yang berpengalaman siap sedia menangani setiap keluhan dan kebutuhan teknis Anda kapanpun dibutuhkan.</p>
             </div>
-            <div>
-                <i class="fas fa-shield-alt" style="font-size:40px; color:#a78bfa; margin-bottom:15px;"></i>
-                <h4 style="font-size:20px; margin-bottom:10px;">Aman & Terenkripsi</h4>
-                <p style="color:var(--text-secondary); font-size:14px;">Perlindungan berlapis untuk data Anda yang berharga.</p>
+            <div class="feature-card">
+                <div class="feature-icon-wrapper icon-purple">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <h4 class="feature-title">Aman & Terenkripsi</h4>
+                <p class="feature-desc">Perlindungan berlapis pada seluruh infrastruktur kami untuk menjamin keamanan data dan privasi setiap pelanggan kami.</p>
             </div>
         </div>
     </section>

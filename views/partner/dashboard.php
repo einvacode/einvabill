@@ -1,8 +1,11 @@
 <?php
 // Partner view
-$user_id = $_SESSION['user_id'];
-$u = $db->query("SELECT customer_id FROM users WHERE id = " . intval($user_id))->fetch();
+$user_id = intval($_SESSION['user_id']);
+$stmt_u = $db->prepare("SELECT customer_id FROM users WHERE id = ?");
+$stmt_u->execute([$user_id]);
+$u = $stmt_u->fetch();
 $partner_cid = $u['customer_id'] ?? 0;
+
 $company_wa = $db->query("SELECT company_contact FROM settings WHERE id=1")->fetchColumn();
 
 // Date filter
@@ -10,13 +13,18 @@ $date_from = $_GET['date_from'] ?? '';
 $date_to = $_GET['date_to'] ?? '';
 $filter_status = $_GET['filter_status'] ?? '';
 
+$params = [$partner_cid];
 $date_where = '';
 if ($date_from && $date_to) {
-    $date_where = " AND i.due_date BETWEEN " . $db->quote($date_from) . " AND " . $db->quote($date_to);
+    $date_where = " AND i.due_date BETWEEN ? AND ? ";
+    $params[] = $date_from;
+    $params[] = $date_to;
 } elseif ($date_from) {
-    $date_where = " AND i.due_date >= " . $db->quote($date_from);
+    $date_where = " AND i.due_date >= ? ";
+    $params[] = $date_from;
 } elseif ($date_to) {
-    $date_where = " AND i.due_date <= " . $db->quote($date_to);
+    $date_where = " AND i.due_date <= ? ";
+    $params[] = $date_to;
 }
 
 $status_where = '';
@@ -27,22 +35,26 @@ elseif ($filter_status === 'belum') $status_where = " AND i.status = 'Belum Luna
 $partner_stats = null;
 $partner_invoices = [];
 if ($partner_cid) {
-    $partner_stats = $db->query("
+    $stmt_stats = $db->prepare("
         SELECT 
             COUNT(*) as total,
             SUM(CASE WHEN i.status='Lunas' THEN 1 ELSE 0 END) as lunas,
             SUM(CASE WHEN i.status='Belum Lunas' THEN 1 ELSE 0 END) as belum,
             COALESCE(SUM(CASE WHEN i.status='Lunas' THEN i.amount ELSE 0 END),0) as total_lunas,
             COALESCE(SUM(CASE WHEN i.status='Belum Lunas' THEN i.amount ELSE 0 END),0) as total_belum
-        FROM invoices i WHERE i.customer_id = " . intval($partner_cid) . " $date_where $status_where
-    ")->fetch();
+        FROM invoices i WHERE i.customer_id = ? $date_where $status_where
+    ");
+    $stmt_stats->execute($params);
+    $partner_stats = $stmt_stats->fetch();
     
-    $partner_invoices = $db->query("
+    $stmt_inv = $db->prepare("
         SELECT i.*, c.name FROM invoices i 
         JOIN customers c ON i.customer_id = c.id 
-        WHERE c.id = " . intval($partner_cid) . " $date_where $status_where
+        WHERE c.id = ? $date_where $status_where
         ORDER BY id DESC
-    ")->fetchAll();
+    ");
+    $stmt_inv->execute($params);
+    $partner_invoices = $stmt_inv->fetchAll();
 }
 
 // Fetch Active Banners

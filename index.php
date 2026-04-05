@@ -20,11 +20,22 @@ if ($page === 'login_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $user = $stmt->fetch();
     
     if ($user && password_verify($password, $user['password'])) {
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['user_role'] = $user['role'];
-        $_SESSION['user_name'] = $user['name'];
-        header("Location: index.php");
-        exit;
+        $req_role = $_POST['requested_role'] ?? '';
+        
+        // Enforce Role Restriction: Partner must use Partner Portal, Staff must use Staff Portal
+        if ($req_role === 'partner' && $user['role'] !== 'partner') {
+            $error = "Akses Ditolak! Akun Anda bukan Akun Partner.";
+            $page = 'login';
+        } elseif ($req_role === 'staff' && !in_array($user['role'], ['admin', 'collector'])) {
+            $error = "Akses Ditolak! Silakan gunakan Portal Partner.";
+            $page = 'login';
+        } else {
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['user_role'] = $user['role'];
+            $_SESSION['user_name'] = $user['name'];
+            header("Location: index.php");
+            exit;
+        }
     } else {
         $error = "Username atau password salah!";
         $page = 'login';

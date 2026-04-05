@@ -185,7 +185,7 @@ $utilization_pct = ($total_ports_capacity > 0) ? ($total_ports_used / $total_por
                     </td>
                     <td>
                         <button class="btn btn-sm btn-ghost" onclick='editAsset(<?= json_encode($a) ?>)'><i class="fas fa-edit"></i></button>
-                        <a href="index.php?page=admin_assets&action=delete&id=<?= $a['id'] ?>" class="btn btn-sm btn-ghost" style="color:var(--danger);" onclick="return confirm('Hapus aset ini?')"><i class="fas fa-trash"></i></a>
+                        <a href="index.php?page=admin_assets&action=delete&id=<?= $a['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus aset ini?')"><i class="fas fa-trash"></i></a>
                     </td>
                 </tr>
                 <?php endforeach; ?>

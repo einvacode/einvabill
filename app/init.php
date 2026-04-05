@@ -253,6 +253,15 @@ if ($license_key === $MASTER_KEY) {
 define('LICENSE_ST', $LICENSE_ST);
 define('LICENSE_MSG', $LICENSE_MSG);
 
+// Performance Optimization: Add missing indexes for faster searching and reporting
+try { $db->exec("CREATE INDEX IF NOT EXISTS idx_invoices_customer ON invoices(customer_id)"); } catch(Exception $e) {}
+try { $db->exec("CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status)"); } catch(Exception $e) {}
+try { $db->exec("CREATE INDEX IF NOT EXISTS idx_invoices_due ON invoices(due_date)"); } catch(Exception $e) {}
+try { $db->exec("CREATE INDEX IF NOT EXISTS idx_payments_invoice ON payments(invoice_id)"); } catch(Exception $e) {}
+try { $db->exec("CREATE INDEX IF NOT EXISTS idx_customers_type ON customers(type)"); } catch(Exception $e) {}
+try { $db->exec("CREATE INDEX IF NOT EXISTS idx_customers_area ON customers(area)"); } catch(Exception $e) {}
+try { $db->exec("CREATE INDEX IF NOT EXISTS idx_customers_code ON customers(customer_code)"); } catch(Exception $e) {}
+
 // Insert default users if not exists
 $stmt = $db->query("SELECT COUNT(*) FROM users");
 if ($stmt->fetchColumn() == 0) {

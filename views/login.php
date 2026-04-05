@@ -39,13 +39,13 @@
 <body>
     <?php 
     $company = $db->query("SELECT company_name, company_logo FROM settings WHERE id=1")->fetch(); 
-    $requested_role = $_GET['role'] ?? 'customer';
+    $requested_role = $_GET['role'] ?? 'partner';
     
     $is_staff = ($requested_role === 'staff');
-    $portal_title = $is_staff ? 'Portal Staff & Admin' : 'Portal Pelanggan & Mitra';
-    $portal_desc = $is_staff ? 'Manajemen Billing & Operasional' : 'Layanan Mandiri & Cek Tagihan';
-    $portal_icon = $is_staff ? 'fa-shield-alt' : 'fa-user-circle';
-    $portal_color = $is_staff ? '#ef4444' : 'var(--primary)';
+    $portal_title = $is_staff ? 'Portal Staff & Admin' : 'Portal Partner (B2B)';
+    $portal_desc = $is_staff ? 'Manajemen Billing & Operasional' : 'Layanan Mandiri Khusus Mitra Terdaftar';
+    $portal_icon = $is_staff ? 'fa-shield-alt' : 'fa-handshake';
+    $portal_color = $is_staff ? '#ef4444' : '#23CED9';
     ?>
     <div class="login-container">
         <div class="glass-panel login-box">
@@ -62,6 +62,7 @@
             <?php endif; ?>
 
             <form action="index.php?page=login_post" method="POST">
+                <input type="hidden" name="requested_role" value="<?= $is_staff ? 'staff' : 'partner' ?>">
                 <div class="form-group" style="position:relative;">
                     <i class="fas fa-user" style="position:absolute; left:16px; top:15px; color:var(--text-secondary);"></i>
                     <input type="text" name="username" class="form-control" required placeholder="Nama Pengguna" style="padding-left: 45px;">
@@ -75,9 +76,9 @@
             
             <div style="text-align:center; margin-top:20px; font-size:13px; color:var(--text-secondary);">
                 <?php if($is_staff): ?>
-                    Bukan Staff? <a href="index.php?page=login&role=customer" style="color:var(--primary); font-weight:600; text-decoration:none;">Portal Pelanggan</a>
+                    Bukan Staff? <a href="index.php?page=login&role=partner" style="color:var(--primary); font-weight:600; text-decoration:none;">Portal Partner</a>
                 <?php else: ?>
-                    Bukan Pelanggan? <a href="index.php?page=login&role=staff" style="color:#ef4444; font-weight:600; text-decoration:none;">Akses Staff</a>
+                    Bukan Partner? <a href="index.php?page=login&role=staff" style="color:#ef4444; font-weight:600; text-decoration:none;">Akses Staff</a>
                 <?php endif; ?>
                 <div style="margin-top:25px;">
                     <a href="index.php?page=landing" class="btn btn-ghost btn-sm" style="font-size:13px; color:var(--text-secondary); padding: 8px 15px;">

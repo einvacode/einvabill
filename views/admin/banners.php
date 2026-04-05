@@ -187,7 +187,7 @@ if ($action === 'edit' && isset($_GET['id'])) {
                                 <a href="index.php?page=admin_banners&action=edit&id=<?= $b['id'] ?>" class="btn btn-sm btn-ghost" title="Edit">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <a href="index.php?page=admin_banners&action=delete&id=<?= $b['id'] ?>" class="btn btn-sm btn-ghost" style="color:var(--danger);" onclick="return confirm('Hapus banner ini?')">
+                                <a href="index.php?page=admin_banners&action=delete&id=<?= $b['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus banner ini?')">
                                     <i class="fas fa-trash"></i>
                                 </a>
                             </div>

@@ -73,16 +73,21 @@ if ($action === 'edit_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if ($action === 'mark_paid') {
-    $id = $_GET['id'];
-    $inv = $db->query("SELECT amount, discount FROM invoices WHERE id = $id")->fetch();
-    $net_amount = $inv['amount'] - ($inv['discount'] ?? 0);
-    $receiver_id = $_SESSION['user_id'];
-    $payment_date = date('Y-m-d H:i:s');
+    $id = intval($_GET['id']);
+    $stmt = $db->prepare("SELECT amount, discount FROM invoices WHERE id = ?");
+    $stmt->execute([$id]);
+    $inv = $stmt->fetch();
     
-    $db->prepare("UPDATE invoices SET status = 'Lunas' WHERE id = ?")->execute([$id]);
-    $db->prepare("INSERT INTO payments (invoice_id, amount, received_by, payment_date) VALUES (?, ?, ?, ?)")->execute([$id, $net_amount, $receiver_id, $payment_date]);
+    if ($inv) {
+        $net_amount = $inv['amount'] - ($inv['discount'] ?? 0);
+        $receiver_id = $_SESSION['user_id'];
+        $payment_date = date('Y-m-d H:i:s');
+        
+        $db->prepare("UPDATE invoices SET status = 'Lunas' WHERE id = ?")->execute([$id]);
+        $db->prepare("INSERT INTO payments (invoice_id, amount, received_by, payment_date) VALUES (?, ?, ?, ?)")->execute([$id, $net_amount, $receiver_id, $payment_date]);
+    }
     
-    header("Location: " . $_SERVER['HTTP_REFERER']);
+    header("Location: " . ($_SERVER['HTTP_REFERER'] ?? 'index.php?page=admin_invoices'));
     exit;
 }
 
@@ -109,18 +114,23 @@ if ($action === 'mark_paid_bulk' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if ($action === 'print') {
-    $id = $_GET['id'];
-    $invoice = $db->query("
-        SELECT i.*, c.name, c.address, c.contact, c.package_name, c.type 
+    $id = intval($_GET['id']);
+    $stmt = $db->prepare("
+        SELECT i.*, c.name, c.address, c.contact, c.package_name, c.type, c.id as customer_id
         FROM invoices i 
         JOIN customers c ON i.customer_id = c.id 
-        WHERE i.id = $id
-    ")->fetch();
+        WHERE i.id = ?
+    ");
+    $stmt->execute([$id]);
+    $invoice = $stmt->fetch();
 
     // Security Cross-Check for Partners
     if ($_SESSION['user_role'] === 'partner') {
-        $u = $db->query("SELECT customer_id FROM users WHERE id = " . intval($_SESSION['user_id']))->fetch();
+        $stmt_u = $db->prepare("SELECT customer_id FROM users WHERE id = ?");
+        $stmt_u->execute([$_SESSION['user_id']]);
+        $u = $stmt_u->fetch();
         $partner_cid = $u['customer_id'] ?? 0;
+        
         if (!$invoice || $invoice['customer_id'] != $partner_cid) {
             echo "<div class='glass-panel' style='padding:40px; text-align:center;'>
                     <h1 style='color:#ef4444;'>Akses Ditolak</h1>
@@ -626,18 +636,20 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
             </div>
         </div>
         <?php endif; ?>
-    </div>
-</div>
-    <!-- BROADCAST SECTION -->
-    <div class="glass-panel" style="margin-top:20px; padding:20px; background:rgba(37, 211, 102, 0.08); border-radius:12px; border:1.5px solid rgba(37,211,102,0.3); display:flex; flex-wrap:wrap; gap:15px; justify-content:space-between; align-items:center;">
-        <div style="flex:1; min-width:250px;">
-            <h4 style="color:#25D366; margin:0; font-size:18px;"><i class="fab fa-whatsapp"></i> Broadcast Massal (Tagihan)</h4>
-            <div style="font-size:13px; color:var(--text-secondary); margin-top:5px; line-height:1.4;">Jalankan pengiriman pesan otomatis ke pelanggan terpilih. Sistem akan membuka tab baru setiap 10 detik.</div>
-            <div id="waProgressText" style="font-size:13px; font-weight:bold; color:var(--warning); margin-top:8px;"></div>
-        </div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <a href="https://web.whatsapp.com" target="_blank" class="btn btn-ghost btn-sm" style="border-color:#25D366; color:var(--text-primary);"><i class="fas fa-qrcode"></i> 1. Scan Login</a>
-            <button onclick="startMassWaWeb()" id="btnMassWa" class="btn btn-sm" style="background:#25D366; color:white; font-weight:bold;"><i class="fas fa-paper-plane"></i> 2. Kirim Terpilih</button>
+        <!-- BROADCAST SECTION (Integrated Action Bar) -->
+        <div style="margin-top:24px; padding:20px; background:rgba(37, 211, 102, 0.06); border-radius:16px; border:1px solid rgba(37,211,102,0.3); display:flex; flex-wrap:wrap; gap:20px; justify-content:space-between; align-items:center;">
+            <div style="flex:1; min-width:250px;">
+                <h4 style="color:#25D366; margin:0; font-size:16px; font-weight:800;"><i class="fab fa-whatsapp"></i> Broadcast Tagihan Massal</h4>
+                <p style="font-size:12px; color:var(--text-secondary); margin-top:4px; line-height:1.5;">Kirim pesan tagihan otomatis ke seluruh pelanggan yang dipilih di atas.</p>
+                <div style="margin-top:8px; display:flex; align-items:center; gap:10px;">
+                    <div id="waSelectedCount" style="background:#25D366; color:white; padding:2px 10px; border-radius:20px; font-size:11px; font-weight:800;">0 Terpilih</div>
+                    <div id="waProgressText" style="font-size:12px; font-weight:700; color:var(--warning);"></div>
+                </div>
+            </div>
+            <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                <a href="https://web.whatsapp.com" target="_blank" class="btn btn-ghost btn-sm" style="border-radius:10px; border-color:rgba(37,211,102,0.5); color:var(--text-primary); font-size:12px;"><i class="fas fa-qrcode"></i> 1. Scan Login</a>
+                <button onclick="startMassWaWeb()" id="btnMassWa" class="btn btn-sm" style="background:#25D366; color:white; font-weight:800; border-radius:10px; padding:8px 20px; font-size:13px;"><i class="fas fa-paper-plane"></i> 2. Kirim Terpilih</button>
+            </div>
         </div>
     </div>
 </div>
@@ -650,11 +662,23 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
 </style>
 
 <script>
+    function updateWaSelectedCount() {
+        let count = document.querySelectorAll('.cb-invoice:checked').length;
+        document.getElementById('waSelectedCount').innerText = count + ' Terpilih';
+        document.getElementById('waSelectedCount').style.background = count > 0 ? '#25D366' : '#64748b';
+    }
+
+    document.querySelectorAll('.cb-invoice').forEach(cb => {
+        cb.addEventListener('change', updateWaSelectedCount);
+    });
+
     document.getElementById('checkAll').addEventListener('change', function() {
         document.querySelectorAll('.cb-desktop').forEach(cb => cb.checked = this.checked);
+        updateWaSelectedCount();
     });
     document.getElementById('checkAll_mobile').addEventListener('change', function() {
         document.querySelectorAll('.cb-mobile').forEach(cb => cb.checked = this.checked);
+        updateWaSelectedCount();
     });
 
     async function startMassWaWeb() {
