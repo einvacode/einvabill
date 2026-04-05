@@ -143,12 +143,12 @@ $settings = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
             <div class="form-group">
                 <label>Template Pesan (Belum Lunas)</label>
                 <textarea name="wa_template" class="form-control" rows="5"><?= htmlspecialchars($settings['wa_template'] ?? '') ?></textarea>
-                <small style="color:var(--text-secondary); margin-top:5px; display:block;">Gunakan: {nama}, {id_cust}, {paket}, {bulan}, {tagihan}, {jatuh_tempo}, {rekening}, {tunggakan}, {total_harus}</small>
+                <small style="color:var(--text-secondary); margin-top:5px; display:block;">Gunakan: {nama}, *{id_cust}*, {paket}, {bulan}, *{tagihan}*, *{jatuh_tempo}*, *{rekening}*, *{tunggakan}*, *{total_harus}*</small>
             </div>
             <div class="form-group">
                 <label>Template Kwitansi (Lunas)</label>
                 <textarea name="wa_template_paid" class="form-control" rows="5"><?= htmlspecialchars($settings['wa_template_paid'] ?? '') ?></textarea>
-                <small style="color:var(--text-secondary); margin-top:5px; display:block;">Gunakan: {nama}, {id_cust}, {paket}, {bulan}, {tagihan}, {tunggakan}</small>
+                <small style="color:var(--text-secondary); margin-top:5px; display:block;">Gunakan: {nama}, *{id_cust}*, {paket}, {bulan}, *{tagihan}*, *{tunggakan}*, *{waktu_bayar}*, *{admin}*</small>
             </div>
         </div>
 

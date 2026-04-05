@@ -299,13 +299,23 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                 foreach($unpaid_list as $up) $all_unpaid_data[$up['customer_id']][] = $up;
             }
             
-            // Pre-fetch payment dates to avoid N+1 query
+            // Pre-fetch payment data (date and receiver) to avoid N+1 query
             $inv_ids = array_column($invoices, 'id');
-            $payment_dates = [];
+            $payment_info = [];
             if(!empty($inv_ids)) {
                 $inv_ids_str = implode(',', $inv_ids);
-                $pay_list = $db->query("SELECT invoice_id, payment_date FROM payments WHERE invoice_id IN ($inv_ids_str)")->fetchAll();
-                foreach($pay_list as $pl) $payment_dates[$pl['invoice_id']] = $pl['payment_date'];
+                $pay_list = $db->query("
+                    SELECT p.invoice_id, p.payment_date, u.name as admin_name 
+                    FROM payments p 
+                    LEFT JOIN users u ON p.received_by = u.id
+                    WHERE p.invoice_id IN ($inv_ids_str)
+                ")->fetchAll();
+                foreach($pay_list as $pl) {
+                    $payment_info[$pl['invoice_id']] = [
+                        'date' => $pl['payment_date'],
+                        'admin' => $pl['admin_name'] ?: 'System'
+                    ];
+                }
             }
 
             foreach($invoices as $inv): 
@@ -319,8 +329,9 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                 $nominal_display = 'Rp ' . number_format($inv['amount'], 0, ',', '.');
                 
                 if ($inv['status'] == 'Lunas') {
-                    $payment_date = $payment_dates[$inv['id']] ?? null;
-                    $realtime_bayar = $payment_date ? date('Y-m-d H:i:s', strtotime($payment_date)) : '-';
+                    $pay_meta = $payment_info[$inv['id']] ?? null;
+                    $realtime_bayar = $pay_meta ? date('Y-m-d H:i:s', strtotime($pay_meta['date'])) : '-';
+                    $admin_bayar = $pay_meta['admin'] ?? '-';
                     
                     // Calculate remaining arrears after this payment
                     $tunggakan_remain = 0;
@@ -331,16 +342,24 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                     $t_remain_display = $tunggakan_remain > 0 ? 'Rp ' . number_format($tunggakan_remain, 0, ',', '.') : 'LUNAS SELURUHNYA';
 
                     $msg = str_replace(
-                        ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{tunggakan}'], 
-                        [$inv['customer_name'], $cust_id_display, $package_display, $inv_month, $nominal_display, $t_remain_display], 
+                        ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{tunggakan}', '{admin}'], 
+                        [$inv['customer_name'], '*' . $cust_id_display . '*', $package_display, $inv_month, '*' . $nominal_display . '*', '*' . $t_remain_display . '*', '*' . $admin_bayar . '*'], 
                         $wa_tpl_paid
                     );
                     
                     if(strpos($msg, '{tunggakan}') === false && strpos($msg, 'Tunggakan') === false) {
                         $msg .= "\n*Sisa Tunggakan : $t_remain_display*";
                     }
+                    
+                    // Final emphasis on LUNAS
+                    $msg = str_ireplace('LUNAS', '*LUNAS*', $msg);
+                    $msg = str_replace('**', '*', $msg); // Clean up potential double bolding
 
-                    if(strpos($msg, 'Waktu Lunas') === false) $msg .= "\n\n*Informasi Sistem:*\n- Waktu Lunas: $realtime_bayar";
+                    if(strpos($msg, '{waktu_bayar}') !== false) {
+                        $msg = str_replace('{waktu_bayar}', '*' . $realtime_bayar . '*', $msg);
+                    } elseif(strpos($msg, 'Waktu Lunas') === false) {
+                        $msg .= "\n\n*Informasi Sistem:*\n- Waktu Lunas: *$realtime_bayar*\n- Petugas: *$admin_bayar*";
+                    }
                 } else {
                     // Calculate previous arrears
                     $tunggakan_prev = 0;
@@ -354,7 +373,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
 
                     $msg = str_replace(
                         ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{tunggakan}', '{total_harus}'], 
-                        [$inv['customer_name'], $cust_id_display, $package_display, $inv_month, $nominal_display, date('d M Y', strtotime($inv['due_date'])), $settings['bank_account'], $t_prev_display, $total_harus_display], 
+                        [$inv['customer_name'], '*' . $cust_id_display . '*', $package_display, $inv_month, '*' . $nominal_display . '*', '*' . date('d/m/Y', strtotime($inv['due_date'])) . '*', '*' . trim($settings['bank_account']) . '*', '*' . $t_prev_display . '*', '*' . $total_harus_display . '*'], 
                         $wa_tpl
                     );
 
@@ -382,7 +401,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                         <?php else: ?>
                             <span style="font-size:9px; background:#3b82f6; color:white; padding:1px 5px; border-radius:3px; font-weight:700;">PERSONAL</span>
                         <?php endif; ?>
-                        <div style="font-size:12px; color:var(--text-secondary);">INV-<?= str_pad($inv['id'], 5, "0", STR_PAD_LEFT) ?> • <?= date('d M Y', strtotime($inv['due_date'])) ?></div>
+                        <div style="font-size:12px; color:var(--text-secondary);">INV-<?= str_pad($inv['id'], 5, "0", STR_PAD_LEFT) ?> • <?= date('d/m/Y', strtotime($inv['due_date'])) ?></div>
                     </div>
                 </div>
                 <div style="text-align:right;">
@@ -451,8 +470,9 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                     $nominal_display = 'Rp ' . number_format($inv['amount'], 0, ',', '.');
                     
                     if ($inv['status'] == 'Lunas') {
-                        $payment_date = $payment_dates[$inv['id']] ?? null;
-                        $realtime_bayar = $payment_date ? date('Y-m-d H:i:s', strtotime($payment_date)) : '-';
+                        $pay_meta = $payment_info[$inv['id']] ?? null;
+                        $realtime_bayar = $pay_meta ? date('d/m/Y H:i', strtotime($pay_meta['date'])) : '-';
+                        $admin_bayar = $pay_meta['admin'] ?? '-';
                         
                         // Calculate remaining arrears
                         $tunggakan_remain = 0;
@@ -463,8 +483,8 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                         $t_remain_display = $tunggakan_remain > 0 ? 'Rp ' . number_format($tunggakan_remain, 0, ',', '.') : 'LUNAS SELURUHNYA';
 
                         $msg = str_replace(
-                            ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{tunggakan}'], 
-                            [$inv['customer_name'], $cust_id_display, $package_display, $inv_month, $nominal_display, $t_remain_display], 
+                            ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{tunggakan}', '{admin}'], 
+                            [$inv['customer_name'], '*' . $cust_id_display . '*', $package_display, $inv_month, '*' . $nominal_display . '*', '*' . $t_remain_display . '*', '*' . $admin_bayar . '*'], 
                             $wa_tpl_paid
                         );
                         
@@ -472,7 +492,15 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                             $msg .= "\n*Sisa Tunggakan : $t_remain_display*";
                         }
 
-                        if(strpos($msg, 'Waktu Lunas') === false) $msg .= "\n\n*Informasi Sistem:*\n- Waktu Lunas: $realtime_bayar";
+                        // Final emphasis on LUNAS
+                        $msg = str_ireplace('LUNAS', '*LUNAS*', $msg);
+                        $msg = str_replace('**', '*', $msg); // Clean up potential double bolding
+
+                        if(strpos($msg, '{waktu_bayar}') !== false) {
+                            $msg = str_replace('{waktu_bayar}', '*' . $realtime_bayar . '*', $msg);
+                        } elseif(strpos($msg, 'Waktu Lunas') === false) {
+                            $msg .= "\n\n*Informasi Sistem:*\n- Waktu Lunas: *$realtime_bayar*\n- Petugas: *$admin_bayar*";
+                        }
                     } else {
                         // Calculate previous arrears
                         $tunggakan_prev = 0;
@@ -486,7 +514,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
 
                         $msg = str_replace(
                             ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{tunggakan}', '{total_harus}'], 
-                            [$inv['customer_name'], $cust_id_display, $package_display, $inv_month, $nominal_display, date('d M Y', strtotime($inv['due_date'])), $settings['bank_account'], $t_prev_display, $total_harus_display], 
+                            [$inv['customer_name'], '*' . $cust_id_display . '*', $package_display, $inv_month, '*' . $nominal_display . '*', '*' . date('d/m/Y', strtotime($inv['due_date'])) . '*', '*' . trim($settings['bank_account']) . '*', '*' . $t_prev_display . '*', '*' . $total_harus_display . '*'], 
                             $wa_tpl
                         );
 
@@ -522,7 +550,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                             <?php endif; ?>
                         </div>
                     </td>
-                    <td style="vertical-align: middle;"><?= date('d M Y', strtotime($inv['due_date'])) ?> <?= $is_grouped ? '<br><small style="color:var(--text-secondary);">Mulai Periode</small>' : '' ?></td>
+                    <td style="vertical-align: middle;"><?= date('d/m/Y', strtotime($inv['due_date'])) ?> <?= $is_grouped ? '<br><small style="color:var(--text-secondary);">Mulai Periode</small>' : '' ?></td>
                     <td style="vertical-align: middle; font-weight:800; color:var(--stat-value-color);">Rp <?= number_format($inv['amount'], 0, ',', '.') ?></td>
                     <td style="vertical-align: middle; color:var(--danger); font-weight:700;">
                         <?= $inv['discount'] > 0 ? '-Rp ' . number_format($inv['discount'], 0, ',', '.') : '-' ?>

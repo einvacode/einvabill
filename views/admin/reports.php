@@ -4,7 +4,17 @@ $action = $_GET['action'] ?? 'view';
 $filter_month = $_GET['month'] ?? date('m');
 $filter_year = $_GET['year'] ?? date('Y');
 $filter_user = $_GET['user_id'] ?? 'all';
+
+// NEW: Date range filters
+$date_from = $_GET['date_from'] ?? date('Y-m-01');
+$date_to = $_GET['date_to'] ?? date('Y-m-d');
+$period_display = date('d F Y', strtotime($date_from)) . ' - ' . date('d F Y', strtotime($date_to));
+
 $period = sprintf("%04d-%02d", $filter_year, $filter_month);
+
+// Helper for date SQL
+$sql_date_from = $date_from . ' 00:00:00';
+$sql_date_to = $date_to . ' 23:59:59';
 
 // Fetch all admins and collectors for filter (Excluding partners as they are not collectors)
 $available_users = $db->query("SELECT id, name, role FROM users WHERE role IN ('admin', 'collector') ORDER BY name ASC")->fetchAll();
@@ -15,15 +25,15 @@ $months = [
     '09' => 'September', '10' => 'Oktober', '11' => 'November', '12' => 'Desember'
 ];
 
-// Metrics Queries
+// Metrics Queries (Using Date Range)
 $sql_lunas_tepat = "
     SELECT SUM(p.amount) as total
     FROM payments p
     JOIN invoices i ON p.invoice_id = i.id
-    WHERE strftime('%Y-%m', p.payment_date) = ?
-      AND strftime('%Y-%m', i.due_date) = ?
+    WHERE p.payment_date BETWEEN ? AND ?
+      AND strftime('%Y-%m', p.payment_date) = strftime('%Y-%m', i.due_date)
 ";
-$params_lunas_tepat = [$period, $period];
+$params_lunas_tepat = [$sql_date_from, $sql_date_to];
 if ($filter_user !== 'all') {
     $sql_lunas_tepat .= " AND p.received_by = ?";
     $params_lunas_tepat[] = $filter_user;
@@ -36,10 +46,10 @@ $sql_tunggakan_dibayar = "
     SELECT SUM(p.amount) as total
     FROM payments p
     JOIN invoices i ON p.invoice_id = i.id
-    WHERE strftime('%Y-%m', p.payment_date) = ?
-      AND strftime('%Y-%m', i.due_date) < ?
+    WHERE p.payment_date BETWEEN ? AND ?
+      AND strftime('%Y-%m', p.payment_date) > strftime('%Y-%m', i.due_date)
 ";
-$params_tunggakan_dibayar = [$period, $period];
+$params_tunggakan_dibayar = [$sql_date_from, $sql_date_to];
 if ($filter_user !== 'all') {
     $sql_tunggakan_dibayar .= " AND p.received_by = ?";
     $params_tunggakan_dibayar[] = $filter_user;
@@ -51,29 +61,29 @@ $tunggakan_dibayar = $q_tunggakan_dibayar->fetchColumn() ?: 0;
 $q_belum_bayar = $db->prepare("
     SELECT SUM(amount - discount) as total
     FROM invoices 
-    WHERE strftime('%Y-%m', due_date) = ? 
+    WHERE due_date BETWEEN ? AND ? 
       AND status = 'Belum Lunas'
 ");
-$q_belum_bayar->execute([$period]);
+$q_belum_bayar->execute([$date_from, $date_to]);
 $belum_bayar = $q_belum_bayar->fetchColumn() ?: 0;
 
 $q_tertunggak_lama = $db->prepare("
     SELECT SUM(amount - discount) as total
     FROM invoices 
-    WHERE strftime('%Y-%m', due_date) < ? 
+    WHERE due_date < ? 
       AND status = 'Belum Lunas'
 ");
-$q_tertunggak_lama->execute([$period]);
+$q_tertunggak_lama->execute([$date_from]);
 $tertunggak_lama = $q_tertunggak_lama->fetchColumn() ?: 0;
 
-// NEW: Realized Discounts (Discounts on Invoices PAID this month)
+// Realized Discounts
 $sql_discount = "
     SELECT SUM(i.discount) 
     FROM invoices i
     JOIN payments p ON i.id = p.invoice_id
-    WHERE strftime('%Y-%m', p.payment_date) = ?
+    WHERE p.payment_date BETWEEN ? AND ?
 ";
-$params_discount = [$period];
+$params_discount = [$sql_date_from, $sql_date_to];
 if ($filter_user !== 'all') {
     $sql_discount .= " AND p.received_by = ?";
     $params_discount[] = $filter_user;
@@ -82,9 +92,9 @@ $q_discount = $db->prepare($sql_discount);
 $q_discount->execute($params_discount);
 $total_discount = $q_discount->fetchColumn() ?: 0;
 
-// NEW: Expenses for the period
-$q_expenses = $db->prepare("SELECT SUM(amount) FROM expenses WHERE strftime('%Y-%m', date) = ?");
-$q_expenses->execute([$period]);
+// Expenses for the period
+$q_expenses = $db->prepare("SELECT SUM(amount) FROM expenses WHERE date BETWEEN ? AND ?");
+$q_expenses->execute([$date_from, $date_to]);
 $total_expenses = $q_expenses->fetchColumn() ?: 0;
 
 
@@ -103,9 +113,9 @@ $sql_table_p = "
     FROM payments p
     JOIN invoices i ON p.invoice_id = i.id
     JOIN customers c ON i.customer_id = c.id
-    WHERE strftime('%Y-%m', p.payment_date) = ?
+    WHERE p.payment_date BETWEEN ? AND ?
 ";
-$params_table = [$period];
+$params_table = [$sql_date_from, $sql_date_to];
 if ($filter_user !== 'all') {
     $sql_table_p .= " AND p.received_by = ?";
     $params_table[] = $filter_user;
@@ -126,11 +136,12 @@ $sql_table = $sql_table_p . "
         'Belum Lunas' as status
     FROM invoices i
     JOIN customers c ON i.customer_id = c.id
-    WHERE strftime('%Y-%m', i.due_date) = ? AND i.status = 'Belum Lunas'
+    WHERE i.due_date BETWEEN ? AND ? AND i.status = 'Belum Lunas'
     
     ORDER BY activity_date DESC
 ";
-$params_table[] = $period;
+$params_table[] = $date_from;
+$params_table[] = $date_to;
 
 $q_table = $db->prepare($sql_table);
 $q_table->execute($params_table);
@@ -138,7 +149,7 @@ $report_data = $q_table->fetchAll();
 
 if ($action === 'export') {
     header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="Laporan_Keuangan_' . $period . '.csv"');
+    header('Content-Disposition: attachment; filename="Laporan_Keuangan_' . $date_from . '_sd_' . $date_to . '.csv"');
     $output = fopen('php://output', 'w');
     
     // Add BOM to fix UTF-8 in Excel
@@ -167,8 +178,8 @@ if ($action === 'print') {
     $total_income = $lunas_tepat + $tunggakan_dibayar;
     
     // Expenses for the printed period
-    $q_expenses_print = $db->prepare("SELECT * FROM expenses WHERE strftime('%Y-%m', date) = ? ORDER BY date ASC");
-    $q_expenses_print->execute([$period]);
+    $q_expenses_print = $db->prepare("SELECT * FROM expenses WHERE date BETWEEN ? AND ? ORDER BY date ASC");
+    $q_expenses_print->execute([$date_from, $date_to]);
     $expenses_list = $q_expenses_print->fetchAll();
     $total_expenses_print = 0;
     foreach($expenses_list as $e) $total_expenses_print += $e['amount'];
@@ -183,7 +194,7 @@ if ($action === 'print') {
     <html lang="id">
     <head>
         <meta charset="UTF-8">
-        <title>Laporan Keuangan - <?= $months[$filter_month] ?> <?= $filter_year ?></title>
+        <title>Laporan Keuangan - <?= $period_display ?></title>
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
             body { 
@@ -288,7 +299,7 @@ if ($action === 'print') {
                 </div>
                 <div class="header-right">
                     <div class="report-brand">IKHTISAR KEUANGAN</div>
-                    <div class="period-label">PERIODE: <?= strtoupper($months[$filter_month]) ?> <?= $filter_year ?></div>
+                    <div class="period-label">PERIODE: <?= strtoupper($period_display) ?></div>
                     <?php if($filter_user !== 'all'): 
                         $uname = 'Unknown';
                         foreach($available_users as $u) { if($u['id'] == $filter_user) { $uname = $u['name']; break; } }
@@ -316,7 +327,7 @@ if ($action === 'print') {
                 <div class="summary-box danger">
                     <h3>Total Piutang Berjalan</h3>
                     <div class="val" style="color:#ef4444;">Rp <?= number_format($belum_bayar, 0, ',', '.') ?></div>
-                    <div class="subtext">Tagihan Belum Lunas (Bulan Ini)</div>
+                    <div class="subtext">Tagihan Belum Lunas (Jatuh Tempo Periode Ini)</div>
                 </div>
                 <div class="summary-box danger" style="border-top:4px solid #ef4444;">
                     <h3>Total Pengeluaran</h3>
@@ -445,20 +456,12 @@ if ($action === 'print') {
         <form method="GET" action="index.php" style="display:flex; gap:10px; align-items:flex-end;">
             <input type="hidden" name="page" value="admin_reports">
             <div>
-                <label style="font-size:12px; color:var(--text-secondary); display:block; margin-bottom:5px;">Pilih Bulan</label>
-                <select name="month" class="form-control" style="padding:8px 12px; width:150px;">
-                    <?php foreach($months as $m_num => $m_name): ?>
-                        <option value="<?= $m_num ?>" <?= $filter_month == $m_num ? 'selected' : '' ?>><?= $m_name ?></option>
-                    <?php endforeach; ?>
-                </select>
+                <label style="font-size:12px; color:var(--text-secondary); display:block; margin-bottom:5px;">Dari Tanggal</label>
+                <input type="date" name="date_from" class="form-control" value="<?= $date_from ?>" style="padding:8px 12px; width:160px;">
             </div>
             <div>
-                <label style="font-size:12px; color:var(--text-secondary); display:block; margin-bottom:5px;">Pilih Tahun</label>
-                <select name="year" class="form-control" style="padding:8px 12px; width:100px;">
-                    <?php for($i = date('Y') - 2; $i <= date('Y') + 1; $i++): ?>
-                        <option value="<?= $i ?>" <?= $filter_year == $i ? 'selected' : '' ?>><?= $i ?></option>
-                    <?php endfor; ?>
-                </select>
+                <label style="font-size:12px; color:var(--text-secondary); display:block; margin-bottom:5px;">Sampai Tanggal</label>
+                <input type="date" name="date_to" class="form-control" value="<?= $date_to ?>" style="padding:8px 12px; width:160px;">
             </div>
             <div>
                 <label style="font-size:12px; color:var(--text-secondary); display:block; margin-bottom:5px;">Diterima Oleh</label>
@@ -484,7 +487,7 @@ if ($action === 'print') {
         <div class="stat-card glass-panel" style="background:rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3);">
             <div class="stat-title" style="color:var(--success)"><i class="fas fa-check-circle"></i> Tepat Waktu</div>
             <div class="stat-value text-success">Rp <?= number_format($lunas_tepat, 0, ',', '.') ?></div>
-            <div style="font-size:11px; color:var(--text-secondary); margin-top:10px;">Dari tagihan <?= $months[$filter_month] ?>.</div>
+            <div style="font-size:11px; color:var(--text-secondary); margin-top:10px;">Pelunasan di bulan jatuh tempo.</div>
         </div>
         
         <div class="stat-card glass-panel" style="background:rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3);">
@@ -520,11 +523,11 @@ if ($action === 'print') {
     
     <!-- Table Activity -->
     <div style="display:flex; justify-content:space-between; align-items:center; margin: 30px 0 15px 0; flex-wrap:wrap; gap:10px;">
-        <h4 style="margin:0;">Rincian Transaksi - <?= $months[$filter_month] ?> <?= $filter_year ?></h4>
+        <h4 style="margin:0;">Rincian Transaksi - <?= $period_display ?></h4>
         <div style="display:flex; gap:10px;">
             <a href="index.php?page=admin_report_assets" class="btn btn-sm btn-ghost" style="border: 1px solid var(--glass-border);"><i class="fas fa-boxes"></i> Laporan Aset</a>
-            <a href="index.php?page=admin_reports&action=print&month=<?= $filter_month ?>&year=<?= $filter_year ?>&user_id=<?= $filter_user ?>" target="_blank" class="btn btn-sm btn-primary"><i class="fas fa-print"></i> Cetak Laporan (HTML)</a>
-            <a href="index.php?page=admin_reports&action=export&month=<?= $filter_month ?>&year=<?= $filter_year ?>&user_id=<?= $filter_user ?>" class="btn btn-sm btn-success"><i class="fas fa-file-excel"></i> Export Excel (CSV)</a>
+            <a href="index.php?page=admin_reports&action=print&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&user_id=<?= $filter_user ?>" target="_blank" class="btn btn-sm btn-primary"><i class="fas fa-print"></i> Cetak Laporan (HTML)</a>
+            <a href="index.php?page=admin_reports&action=export&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&user_id=<?= $filter_user ?>" class="btn btn-sm btn-success"><i class="fas fa-file-excel"></i> Export Excel (CSV)</a>
         </div>
     </div>
 
@@ -573,7 +576,7 @@ if ($action === 'print') {
                 </tr>
                 <?php endforeach; ?>
                 <?php if(count($report_data) == 0): ?>
-                    <tr><td colspan="5" style="text-align:center; padding: 30px;">Tidak ada transaksi pembayaran atau tagihan di bulan ini.</td></tr>
+                    <tr><td colspan="5" style="text-align:center; padding: 30px;">Tidak ada transaksi pembayaran atau tagihan di periode ini.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>

@@ -16,6 +16,12 @@ if ($filter_billing_date !== "") {
     $billing_where = " AND c.billing_date = " . intval($filter_billing_date);
 }
 
+// NEW: Date range filters for Collector
+$date_from = $_GET['date_from'] ?? date('Y-m-01');
+$date_to = $_GET['date_to'] ?? date('Y-m-d');
+$sql_date_from = $date_from . ' 00:00:00';
+$sql_date_to = $date_to . ' 23:59:59';
+
 // === SEARCH FILTERS ===
 $search_tugas = $_GET['search_tugas'] ?? '';
 $where_search_tugas = "";
@@ -78,12 +84,14 @@ $paid_total_month = $db->query("
     $area_filter $billing_where
 ")->fetchColumn();
 
-// Total seluruh pendapatan (sepanjang masa)
-$paid_total_all = $db->query("
+// Total seluruh pendapatan (RESPECT DATE RANGE)
+$paid_total_range = $db->query("
     SELECT COALESCE(SUM(p.amount), 0) FROM payments p 
     JOIN invoices i ON p.invoice_id = i.id
     JOIN customers c ON i.customer_id = c.id 
-    WHERE i.status = 'Lunas' $area_filter $billing_where
+    WHERE i.status = 'Lunas' 
+    AND p.payment_date BETWEEN '$sql_date_from' AND '$sql_date_to'
+    $area_filter $billing_where
 ")->fetchColumn();
 
 // Persentase progres penagihan (Monetary Based)
@@ -114,24 +122,32 @@ $query = "
 ";
 $unpaid_invoices = $db->query($query)->fetchAll();
 
+// Recent Paid List (Respect Date Range now)
 $recent_paid = $db->query("
-    SELECT i.*, c.name, c.contact, c.customer_code, c.package_name, p.payment_date, p.amount as paid_amount,
+    SELECT i.*, c.name, c.contact, c.customer_code, c.package_name, p.payment_date, p.amount as paid_amount, u.name as admin_name,
     (SELECT COALESCE(SUM(amount - discount), 0) FROM invoices WHERE customer_id = i.customer_id AND status = 'Belum Lunas') as total_tunggakan
     FROM invoices i 
     JOIN customers c ON i.customer_id = c.id 
     JOIN payments p ON p.invoice_id = i.id
-    WHERE i.status = 'Lunas' $area_filter $billing_where
+    LEFT JOIN users u ON p.received_by = u.id
+    WHERE i.status = 'Lunas' 
+    AND p.payment_date BETWEEN '$sql_date_from' AND '$sql_date_to'
+    $area_filter $billing_where
     ORDER BY p.id DESC
-    LIMIT 50
+    LIMIT 100
 ")->fetchAll();
 
 $coll_tab = $_GET['tab'] ?? 'tugas';
 $settings = $db->query("SELECT company_name, wa_template, wa_template_paid, bank_account FROM settings WHERE id=1")->fetch();
-$wa_tpl = $settings['wa_template'] ?: "Halo {nama}, tagihan internet Anda sebesar {tagihan} jatuh tempo pada {jatuh_tempo}. Transfer ke {rekening}";
+$wa_tpl = $settings['wa_template'] ?? "Halo {nama}, tagihan internet Anda sebesar {tagihan} jatuh tempo pada {jatuh_tempo}. Transfer ke {rekening}";
 $wa_tpl_paid = $settings['wa_template_paid'] ?: "Halo {nama}, terima kasih. Pembayaran {tagihan} sudah lunas.";
 
 // Fetch Banners for Collector
 $banners = $db->query("SELECT * FROM banners WHERE is_active = 1 AND target_role IN ('all', 'collector') ORDER BY created_at DESC")->fetchAll();
+
+// Fetch Packages & Areas for Adding Customers
+$packages_all = $db->query("SELECT * FROM packages ORDER BY name ASC")->fetchAll();
+$areas_all = $db->query("SELECT * FROM areas ORDER BY name ASC")->fetchAll();
 
 // Handle manual invoice creation by collector
 if (isset($_GET['action']) && $_GET['action'] === 'create_invoice' && $_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -142,6 +158,60 @@ if (isset($_GET['action']) && $_GET['action'] === 'create_invoice' && $_SERVER['
     $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Lunas', ?)")
        ->execute([$cid, $amt, $due, $now]);
     header("Location: index.php?page=collector&msg=invoice_created");
+    exit;
+}
+
+// Handle update contact by collector
+if (isset($_GET['action']) && $_GET['action'] === 'update_contact' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $cid = intval($_POST['customer_id']);
+    $contact = $_POST['contact'];
+    $db->prepare("UPDATE customers SET contact = ? WHERE id = ?")
+       ->execute([$contact, $cid]);
+    header("Location: index.php?page=collector&msg=contact_updated");
+    exit;
+}
+
+// Handle Add Customer by collector
+if (isset($_GET['action']) && $_GET['action'] === 'add_customer' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $name = $_POST['name'];
+    $address = $_POST['address'];
+    $contact = $_POST['contact'];
+    $package_name = $_POST['package_name'];
+    $monthly_fee = $_POST['monthly_fee'];
+    $type = $_POST['type'] ?? 'customer';
+    $registration_date = $_POST['registration_date'] ?: date('Y-m-d');
+    $billing_date = intval($_POST['billing_date'] ?: 1);
+    $area = $_POST['area'] ?? '';
+    $collector_id = $_SESSION['user_id'];
+    
+    // Auto-generate unique random customer code
+    $stmt_check = $db->prepare("SELECT COUNT(*) FROM customers WHERE customer_code = ?");
+    do {
+        $customer_code = 'CUST-' . str_pad(mt_rand(100000, 999999), 6, '0', STR_PAD_LEFT);
+        $stmt_check->execute([$customer_code]);
+    } while ($stmt_check->fetchColumn() > 0);
+    
+    $stmt = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, package_name, monthly_fee, type, registration_date, billing_date, area, collector_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$customer_code, $name, $address, $contact, $package_name, $monthly_fee, $type, $registration_date, $billing_date, $area, $collector_id]);
+    $new_id = $db->lastInsertId();
+
+    // Create Initial Invoice
+    if ($monthly_fee > 0) {
+        $now = date('Y-m-d H:i:s');
+        if ($type === 'customer') {
+            // RUMAHAN: Tagihan Terbit di Hari Registrasi
+            $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Belum Lunas', ?)");
+            $stmt_inv->execute([$new_id, $monthly_fee, $registration_date, $now]);
+        } else {
+            // MITRA: Bayar Bulan Depan
+            $next_month = date('Y-m', strtotime("+1 month"));
+            $bday = str_pad($billing_date, 2, '0', STR_PAD_LEFT);
+            $due_date = "{$next_month}-{$bday}";
+            $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Belum Lunas', ?)");
+            $stmt_inv->execute([$new_id, $monthly_fee, $due_date, $now]);
+        }
+    }
+    header("Location: index.php?page=collector&tab=pelanggan&msg=customer_added");
     exit;
 }
 
@@ -170,6 +240,18 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
 </div>
 <?php endif; ?>
 
+<?php if(isset($_GET['msg']) && $_GET['msg'] === 'contact_updated'): ?>
+<div style="padding:12px 20px; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.4); border-radius:10px; margin-bottom:15px; color:var(--success);">
+    <i class="fas fa-check-circle"></i> Nomor HP pelanggan berhasil diperbarui!
+</div>
+<?php endif; ?>
+
+<?php if(isset($_GET['msg']) && $_GET['msg'] === 'customer_added'): ?>
+<div style="padding:12px 20px; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.4); border-radius:10px; margin-bottom:15px; color:var(--success);">
+    <i class="fas fa-check-circle"></i> Pelanggan baru berhasil ditambahkan dan ditugaskan kepada Anda!
+</div>
+<?php endif; ?>
+
 <?php if(isset($_GET['msg']) && $_GET['msg'] === 'paid' && isset($_GET['last_id'])): 
     $last_id = intval($_GET['last_id']);
     $inv_data = $db->query("
@@ -186,18 +268,22 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
     $bulan_inv = $mon_name[intval(date('m', strtotime($inv_data['due_date']))) - 1] . ' ' . date('Y', strtotime($inv_data['due_date']));
     
     $parsed_msg = str_replace(
-        ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{perusahaan}', '{tunggakan}'],
+        ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{perusahaan}', '{tunggakan}', '{waktu_bayar}', '{admin}'],
         [
             $inv_data['name'], 
-            $inv_data['customer_code'] ?: $inv_data['customer_id'], 
+            '*' . ($inv_data['customer_code'] ?: $inv_data['customer_id']) . '*', 
             $inv_data['package_name'], 
             $bulan_inv,
-            'Rp ' . number_format($inv_data['amount'], 0, ',', '.'), 
+            '*Rp ' . number_format($inv_data['amount'], 0, ',', '.') . '*', 
             $settings['company_name'],
-            'Rp ' . number_format($inv_data['total_tunggakan'], 0, ',', '.')
+            '*Rp ' . number_format($inv_data['total_tunggakan'], 0, ',', '.') . '*',
+            '*' . ($inv_data['payment_date'] ? date('d/m/Y H:i', strtotime($inv_data['payment_date'])) : date('d/m/Y H:i')) . '*',
+            '*' . $_SESSION['user_name'] . '*'
         ],
         $wa_tpl_paid
     );
+    $parsed_msg = str_ireplace('LUNAS', '*LUNAS*', $parsed_msg);
+    $parsed_msg = str_replace('**', '*', $parsed_msg); // Clean up
     $wa_msg = urlencode($parsed_msg);
 ?>
 <div class="glass-panel success-receipt-modal" style="margin-bottom:20px; border-left:4px solid var(--success); padding:20px; animation: slideDown 0.4s ease-out; background:rgba(16,185,129,0.08);">
@@ -274,36 +360,65 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
 </div>
 <?php endif; ?>
 
+<!-- Filter Header for Collector Dashboard (Global Period Filter) -->
+<div class="glass-panel" style="padding:15px 20px; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:15px; border-left:4px solid var(--primary); background:rgba(var(--primary-rgb), 0.03);">
+    <div style="display:flex; align-items:center; gap:12px;">
+        <div style="width:40px; height:40px; background:rgba(var(--primary-rgb), 0.1); color:var(--primary); border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <i class="fas fa-calendar-check" style="font-size:18px;"></i>
+        </div>
+        <div>
+            <div style="font-size:14px; font-weight:800; color:var(--text-primary);">Filter Periode Revenue</div>
+            <div style="font-size:11px; color:var(--text-secondary); margin-top:1px;">Mengatur statistik & riwayat pembayaran</div>
+        </div>
+    </div>
+    <form method="GET" style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-left:auto;">
+        <input type="hidden" name="page" value="collector">
+        <input type="hidden" name="tab" value="<?= htmlspecialchars($coll_tab) ?>">
+        <div>
+            <label style="font-size:10px; font-weight:700; color:var(--text-secondary); display:block; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">Mulai</label>
+            <input type="date" name="date_from" class="form-control" value="<?= $date_from ?>" style="padding:8px 12px; font-size:13px; width:145px; border-radius:10px;">
+        </div>
+        <div>
+            <label style="font-size:10px; font-weight:700; color:var(--text-secondary); display:block; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">Sampai</label>
+            <input type="date" name="date_to" class="form-control" value="<?= $date_to ?>" style="padding:8px 12px; font-size:13px; width:145px; border-radius:10px;">
+        </div>
+        <button type="submit" class="btn btn-primary" style="height:38px; width:45px; display:flex; align-items:center; justify-content:center; border-radius:10px;">
+            <i class="fas fa-filter"></i>
+        </button>
+    </form>
+</div>
+
 <!-- Statistik Cards - Mobile optimized adaptive grid -->
-<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:10px; margin-bottom:16px;">
+<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap:10px; margin-bottom:16px;">
     <!-- Total Pelanggan -->
-    <div class="glass-panel" style="padding:10px 12px; text-align:center; border-top:3px solid var(--primary); cursor:pointer;" onclick="location.href='index.php?page=collector&tab=pelanggan'">
+    <div class="glass-panel" style="padding:12px; text-align:center; border-top:3px solid var(--primary); cursor:pointer;" onclick="location.href='index.php?page=collector&tab=pelanggan&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>'">
         <i class="fas fa-users" style="font-size:18px; color:var(--primary); margin-bottom:4px;"></i>
         <div style="font-size:20px; font-weight:800; color:var(--stat-value-color);"><?= $total_customers ?></div>
         <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px;">Pelanggan</div>
     </div>
 
     <!-- Belum Bayar -->
-    <div class="glass-panel" style="padding:10px 12px; text-align:center; border-top:3px solid var(--danger); cursor:pointer;" onclick="location.href='index.php?page=collector&tab=tugas'">
+    <div class="glass-panel" style="padding:12px; text-align:center; border-top:3px solid var(--danger); cursor:pointer;" onclick="location.href='index.php?page=collector&tab=tugas&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>'">
         <i class="fas fa-exclamation-circle" style="font-size:18px; color:var(--danger); margin-bottom:4px;"></i>
         <div style="font-size:20px; font-weight:800; color:var(--stat-value-color);"><?= $unpaid_count ?></div>
         <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px;">Belum Lunas</div>
         <div style="font-size:11px; font-weight:700; color:var(--danger); margin-top:2px;">Rp<?= number_format($unpaid_total, 0, ',', '.') ?></div>
     </div>
 
-    <!-- Lunas Bulan Ini -->
-    <div class="glass-panel" style="padding:10px 12px; text-align:center; border-top:3px solid var(--success); cursor:pointer;" onclick="location.href='index.php?page=collector&tab=lunas'">
+    <!-- Lunas Periode Ini (Tied to date range) -->
+    <div class="glass-panel" style="padding:12px; text-align:center; border-top:3px solid var(--success); cursor:pointer;" onclick="location.href='index.php?page=collector&tab=lunas&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>'">
         <i class="fas fa-check-circle" style="font-size:18px; color:var(--success); margin-bottom:4px;"></i>
-        <div style="font-size:20px; font-weight:800; color:var(--stat-value-color);"><?= $paid_count_month ?></div>
-        <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px;">Sudah Lunas</div>
-        <div style="font-size:11px; font-weight:700; color:var(--success); margin-top:2px;">Rp<?= number_format($paid_total_month, 0, ',', '.') ?></div>
+        <div style="font-size:20px; font-weight:800; color:var(--stat-value-color);"><?= count($recent_paid) ?></div>
+        <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px;">Lunas Periode</div>
+        <div style="font-size:11px; font-weight:700; color:var(--success); margin-top:2px;">Rp<?= number_format($paid_total_range, 0, ',', '.') ?></div>
     </div>
 
-    <!-- Total Pendapatan -->
-    <div class="glass-panel" style="padding:10px 12px; text-align:center; border-top:3px solid var(--warning);">
+    <!-- Total Revenue (Primary clickable focus as per user request) -->
+    <div class="glass-panel" style="padding:12px; text-align:center; border-top:3px solid var(--warning); cursor:pointer;" onclick="location.href='index.php?page=collector&tab=lunas&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>'">
         <i class="fas fa-coins" style="font-size:18px; color:var(--warning); margin-bottom:4px;"></i>
-        <div style="font-size:16px; font-weight:800; color:var(--stat-value-color);">Rp<?= number_format($paid_total_all, 0, ',', '.') ?></div>
-        <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px;">Total Revenue</div>
+        <div style="font-size:16px; font-weight:800; color:var(--stat-value-color);">Rp<?= number_format($paid_total_range, 0, ',', '.') ?></div>
+        <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px;">Revenue</div>
+        <div style="font-size:9px; color:var(--text-secondary); margin-top:4px; font-weight:600;"><?= date('d/m', strtotime($date_from)) ?> - <?= date('d/m', strtotime($date_to)) ?></div>
     </div>
 </div>
 
@@ -336,12 +451,17 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
 <div class="glass-panel" style="padding:20px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
         <h3 style="font-size:18px; margin:0;"><i class="fas fa-users"></i> Daftar Pelanggan</h3>
-        <form method="GET" style="display:flex; gap:5px; flex:1; max-width:300px;">
-            <input type="hidden" name="page" value="collector">
-            <input type="hidden" name="tab" value="pelanggan">
-            <input type="text" name="search_cust" class="form-control" placeholder="Cari pelanggan..." value="<?= htmlspecialchars($search_cust) ?>" style="padding:8px 12px; font-size:13px;">
-            <button type="submit" class="btn btn-primary btn-sm" style="padding:8px 12px;"><i class="fas fa-search"></i></button>
-        </form>
+        <div style="display:flex; gap:10px; flex:1; justify-content:flex-end; flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" onclick="showAddCustomerModal()" style="padding:8px 16px;">
+                <i class="fas fa-plus"></i> Tambah Pelanggan
+            </button>
+            <form method="GET" style="display:flex; gap:5px; flex:1; max-width:300px;">
+                <input type="hidden" name="page" value="collector">
+                <input type="hidden" name="tab" value="pelanggan">
+                <input type="text" name="search_cust" class="form-control" placeholder="Cari pelanggan..." value="<?= htmlspecialchars($search_cust) ?>" style="padding:8px 12px; font-size:13px;">
+                <button type="submit" class="btn btn-primary btn-sm" style="padding:8px 12px;"><i class="fas fa-search"></i></button>
+            </form>
+        </div>
     </div>
     
     <!-- Mobile-friendly card list -->
@@ -377,7 +497,12 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                     $package_display = $ac['package_name'] ?: '-';
                     $nominal_display = 'Rp ' . number_format($ac['monthly_fee'], 0, ',', '.');
                     
-                    $reminder_msg = "Halo *{$ac['name']}*,\n\nBerikut adalah data tagihan internet Anda:\n- ID Cust: {$cust_id_display}\n- Paket: {$package_display}\n- Bulan: {$inv_month}\n- Nominal: {$nominal_display}\n\nMohon segera melakukan pembayaran. Terima kasih.";
+                    // Use template from settings
+                    $reminder_msg = str_replace(
+                        ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{tunggakan}', '{total_harus}'], 
+                        [$ac['name'], '*' . $cust_id_display . '*', $package_display, $inv_month, '*' . $nominal_display . '*', '-', '*' . trim($settings['bank_account']) . '*', '*Rp 0*', '*' . $nominal_display . '*'], 
+                        $wa_tpl
+                    );
                     $wa_text = urlencode($reminder_msg);
                 ?>
                     <a href="https://api.whatsapp.com/send?phone=<?= $wa_num ?>&text=<?= $wa_text ?>" target="_blank" class="btn btn-sm" style="background:#25D366; color:white;">
@@ -389,6 +514,9 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                         <i class="fas fa-phone"></i>
                     </a>
                 <?php endif; ?>
+                <button class="btn btn-sm btn-ghost" onclick="showUpdateContact(<?= $ac['id'] ?>, '<?= addslashes($ac['name']) ?>', '<?= htmlspecialchars($ac['contact'] ?: '') ?>')">
+                    <i class="fas fa-edit"></i> No HP
+                </button>
             </div>
         </div>
         <?php endforeach; ?>
@@ -431,18 +559,25 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                         <button class="btn btn-sm" style="background:var(--warning); color:white;" onclick="showCreateInvoice(<?= $ac['id'] ?>, '<?= addslashes($ac['name']) ?>', <?= $ac['monthly_fee'] ?>)">
                             <i class="fas fa-file-invoice-dollar"></i> Buat Tagihan
                         </button>
-                        <?php if($wa_num):
+                        <button class="btn btn-sm btn-ghost" onclick="showUpdateContact(<?= $ac['id'] ?>, '<?= addslashes($ac['name']) ?>', '<?= htmlspecialchars($ac['contact'] ?: '') ?>')">
+                            <i class="fas fa-edit"></i> No HP
+                        </button>
+                        <?php if($wa_num): 
                             $mon_id = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
                             $inv_month = $mon_id[intval(date('m')) - 1] . ' ' . date('Y');
                             $cust_id_display = $ac['customer_code'] ?: str_pad($ac['id'], 5, "0", STR_PAD_LEFT);
                             $package_display = $ac['package_name'] ?: '-';
                             $nominal_display = 'Rp ' . number_format($ac['monthly_fee'], 0, ',', '.');
-                            
-                            $reminder_msg = "Halo *{$ac['name']}*,\n\nBerikut adalah data tagihan internet Anda:\n- ID Cust: {$cust_id_display}\n- Paket: {$package_display}\n- Bulan: {$inv_month}\n- Nominal: {$nominal_display}\n\nMohon segera melakukan pembayaran. Terima kasih.";
-                            $wa_text = urlencode($reminder_msg);
+
+                            $reminder_msg_desk = str_replace(
+                                ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{tunggakan}', '{total_harus}'], 
+                                [$ac['name'], '*' . $cust_id_display . '*', $package_display, $inv_month, '*' . $nominal_display . '*', '-', '*' . trim($settings['bank_account']) . '*', '*Rp 0*', '*' . $nominal_display . '*'], 
+                                $wa_tpl
+                            );
+                            $wa_text = urlencode($reminder_msg_desk);
                         ?>
-                            <a href="https://api.whatsapp.com/send?phone=<?= $wa_num ?>&text=<?= $wa_text ?>" target="_blank" class="btn btn-sm" style="background:#25D366; color:white;">
-                                <i class="fab fa-whatsapp"></i> Reminder
+                            <a href="https://api.whatsapp.com/send?phone=<?= $wa_num ?>&text=<?= $wa_text ?>" target="_blank" class="btn btn-sm" style="background:#25D366; color:white; font-weight:800;">
+                                <i class="fab fa-whatsapp"></i> WA Tagih
                             </a>
                         <?php endif; ?>
                     </td>
@@ -475,13 +610,126 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
         </form>
     </div>
 </div>
+<!-- Modal Ubah Nomor HP -->
+<div id="updateContactModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:9999;">
+    <div class="glass-panel" style="width:100%; max-width:400px; padding:24px; margin:20px;">
+        <h3 style="margin-bottom:20px;"><i class="fas fa-edit"></i> Ubah Nomor HP</h3>
+        <div style="font-size:14px; color:var(--text-secondary); margin-bottom:15px;">Pelanggan: <strong id="modalContactCustName"></strong></div>
+        <form action="index.php?page=collector&action=update_contact" method="POST">
+            <input type="hidden" name="customer_id" id="modalContactCustId">
+            <div class="form-group">
+                <label>Nomor HP Baru</label>
+                <input type="text" name="contact" id="modalContactValue" class="form-control" placeholder="Contoh: 08123456789" required>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                <button type="button" class="btn btn-sm btn-ghost" onclick="document.getElementById('updateContactModal').style.display='none'">Batal</button>
+                <button type="submit" class="btn btn-sm" style="background:var(--primary); color:white;">Simpan Perubahan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+</div>
+
+<!-- Modal Tambah Pelanggan -->
+<div id="addCustomerModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:9999; backdrop-filter: blur(4px);">
+    <div class="glass-panel scroll-container" style="width:100%; max-width:550px; padding:24px; margin:20px; max-height:90vh; overflow-y:auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h3 style="margin:0;"><i class="fas fa-user-plus text-primary"></i> Registrasi Pelanggan Baru</h3>
+            <button onclick="document.getElementById('addCustomerModal').style.display='none'" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:18px;"><i class="fas fa-times"></i></button>
+        </div>
+        
+        <form action="index.php?page=collector&action=add_customer" method="POST" id="addCustomerForm">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+                <div class="form-group" style="grid-column: span 2;">
+                    <label>Nama Lengkap</label>
+                    <input type="text" name="name" class="form-control" required placeholder="Nama sesuai KTP">
+                </div>
+                <div class="form-group">
+                    <label>Tipe Layanan</label>
+                    <select name="type" id="add_type" class="form-control" required>
+                        <option value="customer">Rumahan (SLA)</option>
+                        <option value="partner">Mitra (B2B)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Nomor WhatsApp</label>
+                    <input type="text" name="contact" class="form-control" placeholder="0812..." required>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom:15px;">
+                <label>Alamat Pemasangan</label>
+                <textarea name="address" class="form-control" rows="2" placeholder="Alamat lengkap..."></textarea>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+                <div class="form-group">
+                    <label>Pilih Paket</label>
+                    <select name="package_name" id="add_package_name" class="form-control" required onchange="syncAddPrice(this)">
+                        <option value="">-- Pilih Paket --</option>
+                        <?php foreach($packages_all as $p): ?>
+                            <option value="<?= htmlspecialchars($p['name']) ?>" data-fee="<?= $p['fee'] ?>"><?= htmlspecialchars($p['name']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Biaya Bulanan (Rp)</label>
+                    <input type="number" name="monthly_fee" id="add_monthly_fee" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Area / Lokasi</label>
+                    <select name="area" class="form-control" required>
+                        <option value="">-- Pilih Area --</option>
+                        <?php foreach($areas_all as $a): ?>
+                            <option value="<?= htmlspecialchars($a['name']) ?>" <?= strtolower($a['name']) == strtolower($collector_area) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($a['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Tanggal Tagihan (1-28)</label>
+                    <input type="number" name="billing_date" class="form-control" min="1" max="28" value="<?= date('d') ?>" required>
+                </div>
+                <div class="form-group">
+                    <label>Tanggal Registrasi</label>
+                    <input type="date" name="registration_date" class="form-control" value="<?= date('Y-m-d') ?>" required>
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:25px; padding-top:15px; border-top:1px solid var(--glass-border);">
+                <button type="button" class="btn btn-ghost" onclick="document.getElementById('addCustomerModal').style.display='none'">Batal</button>
+                <button type="submit" class="btn btn-primary" style="padding:10px 25px;"><i class="fas fa-save"></i> Daftarkan Pelanggan</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <script>
+function showAddCustomerModal() {
+    document.getElementById('addCustomerModal').style.display = 'flex';
+}
+
+function syncAddPrice(select) {
+    const fee = select.options[select.selectedIndex].getAttribute('data-fee');
+    if(fee) {
+        document.getElementById('add_monthly_fee').value = fee;
+    }
+}
+
 function showCreateInvoice(id, name, fee) {
     document.getElementById('modalCustId').value = id;
     document.getElementById('modalCustName').textContent = name;
     document.getElementById('modalAmount').value = fee;
     document.getElementById('createInvoiceModal').style.display = 'flex';
+}
+
+function showUpdateContact(id, name, contact) {
+    document.getElementById('modalContactCustId').value = id;
+    document.getElementById('modalContactCustName').textContent = name;
+    document.getElementById('modalContactValue').value = contact;
+    document.getElementById('updateContactModal').style.display = 'flex';
 }
 </script>
 
@@ -581,7 +829,7 @@ function showCreateInvoice(id, name, fee) {
                         <td style="font-weight:bold; color:var(--success);">Rp <?= number_format($fp['paid_amount'], 0, ',', '.') ?></td>
                         <td style="font-size:13px; color:var(--text-secondary);">
                             <i class="fas fa-check-circle" style="color:var(--success);"></i>
-                            <?= date('d M Y H:i', strtotime($fp['payment_date'])) ?>
+                            <?= date('d/m/Y H:i', strtotime($fp['payment_date'])) ?>
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -616,8 +864,32 @@ function showCreateInvoice(id, name, fee) {
             $num_arrears = $inv['num_arrears'];
             $grand_total = $inv['total_unpaid'];
 
-            // Prepare WhatsApp message for consolidated arrears
-            $msg = "Halo *" . $inv['name'] . "*, kami dari *" . $settings['company_name'] . "* menginfokan bahwa terdapat *" . $num_arrears . " tunggakan* tagihan internet dengan total *Rp " . number_format($grand_total, 0, ',', '.') . "*.\n\nMohon segera melakukan pembayaran melalui kolektor kami atau transfer ke:\n" . $settings['bank_account'] . "\n\nTerima kasih.";
+            // Consolidated Arrears Reminder using WA Template
+            $mon_name = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+            $oldest_due = $inv['oldest_due_date'] ? date('d/m/Y', strtotime($inv['oldest_due_date'])) : '-';
+            $inv_month = $inv['oldest_due_date'] ? $mon_name[intval(date('m', strtotime($inv['oldest_due_date']))) - 1] . ' ' . date('Y', strtotime($inv['oldest_due_date'])) : '-';
+            
+            // Calculate breakdown for consolidated reminder
+            $total_all = $inv['total_unpaid'];
+            $num_inv = intval($inv['num_arrears']);
+            $current_tagihan = $num_inv > 0 ? $total_all / $num_inv : $total_all; // Average per month
+            $tunggakan_past = $total_all - $current_tagihan;
+
+            $tagihan_display = 'Rp ' . number_format($current_tagihan, 0, ',', '.');
+            $tunggakan_display = 'Rp ' . number_format($tunggakan_past, 0, ',', '.');
+            $total_display = 'Rp ' . number_format($total_all, 0, ',', '.');
+            
+            $msg = str_replace(
+                ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{tunggakan}', '{total_harus}'], 
+                [$inv['name'], '*' . $cust_id_display . '*', $inv['package_name'] ?: '-', $inv_month, '*' . $tagihan_display . '*', '*' . $oldest_due . '*', '*' . trim($settings['bank_account']) . '*', '*' . $tunggakan_display . '*', '*' . $total_display . '*'], 
+                $wa_tpl
+            );
+
+            // Safety check for clarity in multiple arrears
+            if (strpos($msg, 'TOTAL') === false && strpos($msg, 'total') === false && $num_inv > 1) {
+                $msg .= "\n\n*Informasi Penting:* Anda memiliki *$num_inv tunggakan* dengan total pembayaran *$total_display*.";
+            }
+            
             $wa_text = urlencode($msg);
         ?>
         <div class="glass-panel" style="padding:16px; border-left: 4px solid <?= $is_overdue ? 'var(--danger)' : 'var(--warning)' ?>;">
@@ -657,6 +929,10 @@ function showCreateInvoice(id, name, fee) {
                         </a>
                     <?php endif; ?>
                     
+                    <button type="button" class="btn btn-sm btn-ghost" style="padding:10px 14px; border:1px solid var(--glass-border); border-radius:8px;" onclick="showUpdateContact(<?= $inv['cust_id'] ?>, '<?= addslashes($inv['name']) ?>', '<?= htmlspecialchars($inv['contact'] ?: '') ?>')" title="Ubah No HP">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    
                     <div style="display:flex; gap:6px; flex:1;">
                         <form id="payForm_<?= $inv['cust_id'] ?>" action="index.php?page=admin_invoices&action=mark_paid_bulk" method="POST" style="display:none;">
                             <input type="hidden" name="customer_id" value="<?= $inv['cust_id'] ?>">
@@ -685,7 +961,7 @@ function showCreateInvoice(id, name, fee) {
 <!-- TAB: Sudah Lunas -->
 <div class="glass-panel" style="padding:20px;">
     <h3 style="font-size:16px; margin-bottom:16px; color:var(--success);">
-        <i class="fas fa-check-double"></i> Pelanggan Sudah Lunas (Bulan Ini)
+        <i class="fas fa-check-double"></i> Pelanggan Sudah Lunas (<?= date('d M', strtotime($date_from)) ?> - <?= date('d M', strtotime($date_to)) ?>)
     </h3>
     <div class="scroll-container" style="max-height:600px; overflow-y:auto; padding-right:5px;">
         <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px;">
@@ -695,7 +971,7 @@ function showCreateInvoice(id, name, fee) {
                 <div>
                     <div style="font-weight:bold; font-size:15px;"><?= htmlspecialchars($rp['name']) ?></div>
                     <div style="font-size:11px; color:var(--text-secondary); margin-top:2px;">
-                        <i class="fas fa-calendar-check" style="color:var(--success);"></i> Bayar: <?= date('d M Y H:i', strtotime($rp['payment_date'])) ?>
+                        <i class="fas fa-calendar-check" style="color:var(--success);"></i> Bayar: <?= date('d/m/Y H:i', strtotime($rp['payment_date'])) ?>
                     </div>
                 </div>
                 <div style="text-align:right;">
@@ -716,18 +992,22 @@ function showCreateInvoice(id, name, fee) {
                         $bulan_rp = $mon_name[intval(date('m', strtotime($rp['due_date']))) - 1] . ' ' . date('Y', strtotime($rp['due_date']));
                         
                         $parsed_msg_rp = str_replace(
-                            ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{perusahaan}', '{tunggakan}'],
+                            ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{perusahaan}', '{tunggakan}', '{waktu_bayar}', '{admin}'],
                             [
                                 $rp['name'], 
-                                $rp['customer_code'] ?: $rp['customer_id'], 
+                                '*' . ($rp['customer_code'] ?: $rp['customer_id']) . '*', 
                                 $rp['package_name'], 
                                 $bulan_rp,
-                                'Rp ' . number_format($rp['paid_amount'], 0, ',', '.'), 
+                                '*Rp ' . number_format($rp['paid_amount'], 0, ',', '.') . '*', 
                                 $settings['company_name'],
-                                'Rp ' . number_format($rp['total_tunggakan'] ?? 0, 0, ',', '.')
+                                '*Rp ' . number_format($rp['total_tunggakan'] ?? 0, 0, ',', '.') . '*',
+                                '*' . date('d/m/Y H:i', strtotime($rp['payment_date'])) . '*',
+                                '*' . ($rp['admin_name'] ?: 'System') . '*'
                             ],
                             $wa_tpl_paid
-                        );
+                            );
+                        $parsed_msg_rp = str_ireplace('LUNAS', '*LUNAS*', $parsed_msg_rp);
+                        $parsed_msg_rp = str_replace('**', '*', $parsed_msg_rp); // Clean up
                         $wa_msg_rp = urlencode($parsed_msg_rp);
                     ?>
                         <a href="https://api.whatsapp.com/send?phone=<?= $wa_num_rp ?>&text=<?= $wa_msg_rp ?>" target="_blank" class="btn btn-sm btn-ghost" style="color:#25D366; border:1px solid #25D36633;" title="Kirim WA">

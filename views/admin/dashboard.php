@@ -73,7 +73,7 @@ $cash_monthly = $db->query("
         <div style="flex:1; overflow:hidden;">
             <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Retail</div>
             <div style="font-size:18px; font-weight:800; line-height:1.2;"><?= number_format($total_customers, 0) ?> <small style="font-size:10px; opacity:0.6;">User</small></div>
-            <div style="font-size:10px; color:#3b82f6; font-weight:700; margin-top:2px;">Est: Rp<?= number_format($est_revenue_cust/1000, 0) ?>k</div>
+            <div style="font-size:10px; color:#3b82f6; font-weight:700; margin-top:2px;">Est: Rp<?= number_format($est_revenue_cust, 0, ',', '.') ?></div>
         </div>
     </div>
 
@@ -85,7 +85,7 @@ $cash_monthly = $db->query("
         <div style="flex:1; overflow:hidden;">
             <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Mitra</div>
             <div style="font-size:18px; font-weight:800; line-height:1.2;"><?= number_format($total_partners, 0) ?> <small style="font-size:10px; opacity:0.6;">B2B</small></div>
-            <div style="font-size:10px; color:#a855f7; font-weight:700; margin-top:2px;">Est: Rp<?= number_format($est_revenue_part/1000, 0) ?>k</div>
+            <div style="font-size:10px; color:#a855f7; font-weight:700; margin-top:2px;">Est: Rp<?= number_format($est_revenue_part, 0, ',', '.') ?></div>
         </div>
     </div>
 
@@ -96,7 +96,7 @@ $cash_monthly = $db->query("
         </div>
         <div style="flex:1; overflow:hidden;">
             <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Baru</div>
-            <div style="font-size:18px; font-weight:800; line-height:1.2;"><?= number_format($new_customers_month, 0) ?> <small style="font-size:10px; opacity:0.6;">Bln Ini</small></div>
+            <div style="font-size:18px; font-weight:800; line-height:1.2;"><?= number_format($new_customers_month, 0) ?> <small style="font-size:10px; opacity:0.6;">Bulan Ini</small></div>
             <div style="font-size:10px; opacity:0.6; margin-top:2px;">Growth</div>
         </div>
     </div>
