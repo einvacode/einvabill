@@ -214,6 +214,18 @@ $db->exec("CREATE TABLE IF NOT EXISTS banners (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )");
 
+// Ensure at least one settings row exists
+$check_settings = $db->query("SELECT COUNT(*) FROM settings")->fetchColumn();
+if ($check_settings == 0) {
+    try {
+        $db->exec("INSERT INTO settings (id, company_name, company_tagline, company_address, wa_template) 
+                  VALUES (1, 'EinvaBill ISP', 'Internet Cepat & Layanan Prima', 'Alamat Perusahaan Anda', 'Halo {nama}, tagihan Anda sebesar {tagihan} sudah terbit.')");
+    } catch(Exception $e) {
+        // Fallback for missing columns during insertion
+        $db->exec("INSERT INTO settings (id, company_name) VALUES (1, 'EinvaBill ISP')");
+    }
+}
+
 // Fetch Settings for License Check
 $site_settings = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
 
