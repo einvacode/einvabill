@@ -107,7 +107,7 @@ if ($page === 'admin_updater_run' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         <div style="margin-top: 30px; background: rgba(59, 130, 246, 0.05); padding: 20px; border-radius: 12px; border: 1px dashed var(--primary);">
             <h5 style="margin: 0 0 10px 0; font-size: 14px;"><i class="fas fa-lightbulb" style="color: var(--primary);"></i> Tentang Update</h5>
             <p style="margin: 0; font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
-                Fitur ini akan menarik kode terbaru dari repository <strong>einvacode/einvabilling</strong>. Seluruh perbaikan bug, fitur baru, dan optimasi akan langsung diterapkan ke aplikasi ini tanpa menghapus data pelanggan Anda.
+                Fitur ini akan menarik kode terbaru dari repository resmi **EinvaBill**. Seluruh perbaikan bug, fitur baru, dan optimasi akan langsung diterapkan ke aplikasi ini tanpa menghapus data pelanggan Anda.
             </p>
         </div>
     <?php endif; ?>
