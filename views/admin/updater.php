@@ -16,11 +16,13 @@ if ($git_available) {
     $git_status = shell_exec('git status -uno 2>&1');
     
     $update_available = (strpos($git_status, 'behind') !== false);
-    $up_to_date = (strpos($git_status, 'up to date') !== false);
+    $up_to_date = (strpos($git_status, 'up to date') !== false || strpos($git_status, 'ahead') !== false);
     
     // Debug: If neither, show the raw status to admin
-    if (!$update_available && !$up_to_date) {
+    if (!$update_available && !$up_to_date && !empty($git_status)) {
         $update_error = "Git Status: " . $git_status;
+    } else {
+        $update_error = ""; // Clear error if resolved
     }
 }
 
