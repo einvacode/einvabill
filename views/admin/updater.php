@@ -12,11 +12,16 @@ if ($git_version) {
 
 // Action: Fetch updates to see status
 if ($git_available) {
-    shell_exec('git fetch origin main 2>&1');
+    $fetch_res = shell_exec('git fetch origin main 2>&1');
     $git_status = shell_exec('git status -uno 2>&1');
     
-    $update_available = (strpos($git_status, 'Your branch is behind') !== false);
-    $up_to_date = (strpos($git_status, 'Your branch is up to date') !== false);
+    $update_available = (strpos($git_status, 'behind') !== false);
+    $up_to_date = (strpos($git_status, 'up to date') !== false);
+    
+    // Debug: If neither, show the raw status to admin
+    if (!$update_available && !$up_to_date) {
+        $update_error = "Git Status: " . $git_status;
+    }
 }
 
 // Action: Perform Update
@@ -53,6 +58,12 @@ if ($page === 'admin_updater_run' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             Aplikasi tidak dapat melakukan update otomatis karena software 'Git' tidak terdeteksi di server ini. Silakan instal Git atau hubungi tim IT Anda.
         </div>
     <?php else: ?>
+        <?php if ($update_error): ?>
+            <div style="padding: 15px; background: rgba(244, 63, 94, 0.05); border: 1px dashed var(--danger); color: var(--danger); border-radius: 12px; margin-bottom: 25px; font-size: 13px; font-family: monospace;">
+                <i class="fas fa-info-circle"></i> <?= nl2br(htmlspecialchars($update_error)) ?>
+            </div>
+        <?php endif; ?>
+
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px;">
             <div style="background: rgba(0,0,0,0.2); padding: 25px; border-radius: 15px; border: 1px solid var(--glass-border);">
                 <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">Versi Lokal:</div>
