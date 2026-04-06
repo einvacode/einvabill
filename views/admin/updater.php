@@ -15,15 +15,22 @@ if ($git_available) {
     $fetch_res = shell_exec('git fetch origin main 2>&1');
     $git_status = shell_exec('git status -uno 2>&1');
     
-    // Case-insensitive checks for better reliability
-    $update_available = (stripos($git_status, 'behind') !== false);
-    $up_to_date = (stripos($git_status, 'up to date') !== false || stripos($git_status, 'ahead') !== false || stripos($git_status, 'nothing to commit') !== false);
-    
-    // Debug: If neither, show the raw status to admin
-    if (!$update_available && !$up_to_date && !empty($git_status)) {
-        $update_error = "Git Status Debug: " . $git_status;
+    // Detect if we can even fetch (network or permissions)
+    if (stripos($fetch_res, 'fatal') !== false || stripos($fetch_res, 'error') !== false) {
+        $update_error = "Fetch Failed: " . $fetch_res;
+        $update_available = false;
+        $up_to_date = false;
     } else {
-        $update_error = ""; // Clear error if resolved
+        // Case-insensitive checks for better reliability
+        $update_available = (stripos($git_status, 'behind') !== false || stripos($git_status, 'diverged') !== false);
+        $up_to_date = (stripos($git_status, 'up to date') !== false || (stripos($git_status, 'ahead') !== false && stripos($git_status, 'diverged') === false));
+        
+        // Debug: If neither, show the raw status to admin
+        if (!$update_available && !$up_to_date && !empty($git_status)) {
+            $update_error = "Git Status Debug: " . $git_status;
+        } else {
+            $update_error = ""; // Clear error if resolved
+        }
     }
 }
 
