@@ -16,7 +16,7 @@ if ($action === 'save_router' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($id) {
         // Ownership Check
         $check = $db->query("SELECT created_by FROM routers WHERE id = $id")->fetchColumn();
-        $is_owner = ($u_role === 'admin') ? ($check == 0 || $check === NULL) : ($check == $u_id);
+        $is_owner = ($u_role === 'admin') ? ($check == $u_id || $check == 0 || $check === NULL) : ($check == $u_id);
         if ($is_owner) {
             $db->prepare("UPDATE routers SET name=?, host=?, port=?, username=?, password=? WHERE id=?")->execute([$name, $host, $port, $username, $password, $id]);
         }
@@ -31,7 +31,7 @@ if ($action === 'delete_router') {
     $id = intval($_GET['id']);
     // Ownership Check
     $check = $db->query("SELECT created_by FROM routers WHERE id = $id")->fetchColumn();
-    $is_owner = ($u_role === 'admin') ? ($check == 0 || $check === NULL) : ($check == $u_id);
+    $is_owner = ($u_role === 'admin') ? ($check == $u_id || $check == 0 || $check === NULL) : ($check == $u_id);
     if ($is_owner) {
         $db->exec("DELETE FROM routers WHERE id=$id");
     }
@@ -40,7 +40,7 @@ if ($action === 'delete_router') {
 }
 
 // Scoping Logic
-$scope_where = ($u_role === 'admin') ? "WHERE (created_by = 0 OR created_by IS NULL)" : "WHERE (created_by = $u_id)";
+$scope_where = ($u_role === 'admin') ? "WHERE (created_by = $u_id OR created_by = 0 OR created_by IS NULL)" : "WHERE (created_by = $u_id)";
 
 // Helper formatting inside view
 if (!function_exists('formatBytes')) {
@@ -172,7 +172,7 @@ function editRouter(rt) {
     }
 
     // Ownership Check
-    $is_owner = ($u_role === 'admin') ? ($router['created_by'] == 0 || $router['created_by'] === NULL) : ($router['created_by'] == $u_id);
+    $is_owner = ($u_role === 'admin') ? ($router['created_by'] == $u_id || $router['created_by'] == 0 || $router['created_by'] === NULL) : ($router['created_by'] == $u_id);
     if (!$is_owner) {
         header("Location: index.php?page=admin_router");
         exit;

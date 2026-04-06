@@ -3,32 +3,36 @@
  * Dashboard Admin Sederhana & Modern
  * Fokus pada 6 Parameter Utama sesuai permintaan User.
  */
+$u_id = $_SESSION['user_id'];
+$u_role = $_SESSION['user_role'] ?? 'admin';
+$scope_where = " AND (created_by = $u_id OR created_by = 0 OR created_by IS NULL) ";
+$c_scope = " AND (c.created_by = $u_id OR c.created_by = 0 OR c.created_by IS NULL) ";
 
 // 1. Total Pelanggan (User) - Count & Est. Revenue (Scoped)
-$res_cust = $db->query("SELECT COUNT(*) as jml, SUM(monthly_fee) as est FROM customers WHERE type='customer' AND (created_by = 0 OR created_by IS NULL)")->fetch();
+$res_cust = $db->query("SELECT COUNT(*) as jml, SUM(monthly_fee) as est FROM customers WHERE type='customer' $scope_where")->fetch();
 $total_customers = $res_cust['jml'];
 $est_revenue_cust = $res_cust['est'] ?: 0;
 
 // 2. Total Mitra (B2B) - Count & Est. Revenue (Scoped)
-$res_part = $db->query("SELECT COUNT(*) as jml, SUM(monthly_fee) as est FROM customers WHERE type='partner' AND (created_by = 0 OR created_by IS NULL)")->fetch();
+$res_part = $db->query("SELECT COUNT(*) as jml, SUM(monthly_fee) as est FROM customers WHERE type='partner' $scope_where")->fetch();
 $total_partners = $res_part['jml'];
 $est_revenue_part = $res_part['est'] ?: 0;
 
 // 3. Pelanggan Baru Bulan Ini (Scoped)
-$new_customers_month = $db->query("SELECT COUNT(*) FROM customers WHERE strftime('%Y-%m', registration_date) = strftime('%Y-%m', 'now') AND (created_by = 0 OR created_by IS NULL)")->fetchColumn();
+$new_customers_month = $db->query("SELECT COUNT(*) FROM customers WHERE strftime('%Y-%m', registration_date) = strftime('%Y-%m', 'now') $scope_where")->fetchColumn();
 
 // 4. Belum Bayar (Piutang) - Split Retail vs Partner
 $res_unpaid_cust = $db->query("SELECT COUNT(DISTINCT i.customer_id) as jml, SUM(i.amount - i.discount) as total 
     FROM invoices i 
     JOIN customers c ON i.customer_id = c.id 
-    WHERE i.status='Belum Lunas' AND c.type='customer' AND (c.created_by = 0 OR c.created_by IS NULL)")->fetch();
+    WHERE i.status='Belum Lunas' AND c.type='customer' $c_scope")->fetch();
 $count_unpaid_cust = $res_unpaid_cust['jml'];
 $total_unpaid_cust = $res_unpaid_cust['total'] ?: 0;
 
 $res_unpaid_part = $db->query("SELECT COUNT(DISTINCT i.customer_id) as jml, SUM(i.amount - i.discount) as total 
     FROM invoices i 
     JOIN customers c ON i.customer_id = c.id 
-    WHERE i.status='Belum Lunas' AND c.type='partner' AND (c.created_by = 0 OR c.created_by IS NULL)")->fetch();
+    WHERE i.status='Belum Lunas' AND c.type='partner' $c_scope")->fetch();
 $count_unpaid_part = $res_unpaid_part['jml'];
 $total_unpaid_part = $res_unpaid_part['total'] ?: 0;
 
@@ -37,13 +41,13 @@ $total_received_cust = $db->query("SELECT SUM(p.amount)
     FROM payments p 
     JOIN invoices i ON p.invoice_id = i.id 
     JOIN customers c ON i.customer_id = c.id
-    WHERE c.type='customer' AND (c.created_by = 0 OR c.created_by IS NULL)")->fetchColumn() ?: 0;
+    WHERE c.type='customer' $c_scope")->fetchColumn() ?: 0;
 
 $total_received_part = $db->query("SELECT SUM(p.amount) 
     FROM payments p 
     JOIN invoices i ON p.invoice_id = i.id 
     JOIN customers c ON i.customer_id = c.id
-    WHERE c.type='partner' AND (c.created_by = 0 OR c.created_by IS NULL)")->fetchColumn() ?: 0;
+    WHERE c.type='partner' $c_scope")->fetchColumn() ?: 0;
 
 // 6. Arus Kas Bulanan - Split Retail vs Partner
 $cash_monthly_cust = $db->query("
@@ -53,7 +57,7 @@ $cash_monthly_cust = $db->query("
     JOIN customers c ON i.customer_id = c.id
     WHERE c.type='customer' AND strftime('%Y-%m', i.due_date) = strftime('%Y-%m', 'now')
       AND strftime('%Y-%m', p.payment_date) = strftime('%Y-%m', 'now')
-      AND (c.created_by = 0 OR c.created_by IS NULL)
+      $c_scope
 ")->fetchColumn() ?: 0;
 
 $cash_monthly_part = $db->query("
@@ -63,7 +67,7 @@ $cash_monthly_part = $db->query("
     JOIN customers c ON i.customer_id = c.id
     WHERE c.type='partner' AND strftime('%Y-%m', i.due_date) = strftime('%Y-%m', 'now')
       AND strftime('%Y-%m', p.payment_date) = strftime('%Y-%m', 'now')
-      AND (c.created_by = 0 OR c.created_by IS NULL)
+      $c_scope
 ")->fetchColumn() ?: 0;
 $settings = $db->query("SELECT company_name, wa_template_paid, site_url FROM settings WHERE id = 1")->fetch();
 
@@ -275,7 +279,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
                         SUM(i.amount - i.discount) as total_debt
                     FROM invoices i
                     JOIN customers c ON i.customer_id = c.id
-                    WHERE i.status = 'Belum Lunas' AND (c.created_by = 0 OR c.created_by IS NULL)
+                    WHERE i.status = 'Belum Lunas' $c_scope
                     GROUP BY c.id
                     ORDER BY months_owed DESC, total_debt DESC
                     LIMIT 5
@@ -335,7 +339,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
             JOIN invoices i ON p.invoice_id = i.id 
             JOIN customers c ON i.customer_id = c.id 
             LEFT JOIN users u ON p.received_by = u.id
-            WHERE (c.created_by = 0 OR c.created_by IS NULL)
+            WHERE 1=1 $c_scope
             ORDER BY p.payment_date DESC LIMIT 10
         ")->fetchAll();
         

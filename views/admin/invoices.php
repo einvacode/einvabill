@@ -69,11 +69,11 @@ if ($action === 'create_itemized' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $check = $db->query("SELECT created_by FROM customers WHERE id = $customer_id")->fetchColumn();
     $is_owner = false;
     if ($u_role === 'admin') {
-        if ($check == 0 || $check === NULL) $is_owner = true;
+        if ($check == $u_id || $check == 0 || $check === NULL) $is_owner = true;
     } elseif ($u_role === 'partner') {
         if ($check == $u_id) $is_owner = true;
     } elseif ($u_role === 'collector') {
-        $cid_check = isset($customer_id) ? $customer_id : $db->query("SELECT customer_id FROM invoices WHERE id = $id")->fetchColumn();
+        $cid_check = isset($customer_id) ? $customer_id : ($db->query("SELECT customer_id FROM invoices WHERE id = " . intval($id ?? 0))->fetchColumn() ?: 0);
         if ($db->query("SELECT collector_id FROM customers WHERE id = $cid_check")->fetchColumn() == $u_id) $is_owner = true;
     }
     if (!$is_owner) { header("Location: index.php?page=admin_invoices&msg=forbidden"); exit; }
@@ -112,11 +112,11 @@ if ($action === 'create_auto' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $check = $db->query("SELECT created_by FROM customers WHERE id = $customer_id")->fetchColumn();
     $is_owner = false;
     if ($u_role === 'admin') {
-        if ($check == 0 || $check === NULL) $is_owner = true;
+        if ($check == $u_id || $check == 0 || $check === NULL) $is_owner = true;
     } elseif ($u_role === 'partner') {
         if ($check == $u_id) $is_owner = true;
     } elseif ($u_role === 'collector') {
-        $cid_check = isset($customer_id) ? $customer_id : $db->query("SELECT customer_id FROM invoices WHERE id = $id")->fetchColumn();
+        $cid_check = isset($customer_id) ? $customer_id : ($db->query("SELECT customer_id FROM invoices WHERE id = " . intval($id ?? 0))->fetchColumn() ?: 0);
         if ($db->query("SELECT collector_id FROM customers WHERE id = $cid_check")->fetchColumn() == $u_id) $is_owner = true;
     }
     if (!$is_owner) { header("Location: index.php?page=admin_invoices&msg=forbidden"); exit; }
@@ -140,11 +140,11 @@ if ($action === 'delete') {
         $check = $db->query("SELECT created_by FROM customers WHERE id = " . intval($invoice['customer_id']))->fetchColumn();
         $is_owner = false;
     if ($u_role === 'admin') {
-        if ($check == 0 || $check === NULL) $is_owner = true;
+        if ($check == $u_id || $check == 0 || $check === NULL) $is_owner = true;
     } elseif ($u_role === 'partner') {
         if ($check == $u_id) $is_owner = true;
     } elseif ($u_role === 'collector') {
-        $cid_check = isset($customer_id) ? $customer_id : $db->query("SELECT customer_id FROM invoices WHERE id = $id")->fetchColumn();
+        $cid_check = isset($customer_id) ? $customer_id : ($db->query("SELECT customer_id FROM invoices WHERE id = " . intval($id ?? 0))->fetchColumn() ?: 0);
         if ($db->query("SELECT collector_id FROM customers WHERE id = $cid_check")->fetchColumn() == $u_id) $is_owner = true;
     }
         
@@ -155,7 +155,12 @@ if ($action === 'delete') {
             $db->exec("DELETE FROM invoices WHERE id = $id");
         }
     }
-    header("Location: index.php?page=admin_invoices");
+    $ref = $_GET['ref'] ?? '';
+    if ($ref === 'customer_details' && isset($_GET['cust_id'])) {
+        header("Location: index.php?page=admin_customers&action=details&id=" . intval($_GET['cust_id']) . "&msg=deleted");
+    } else {
+        header("Location: index.php?page=admin_invoices&msg=deleted");
+    }
     exit;
 }
 
@@ -172,18 +177,24 @@ if ($action === 'edit_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $check = $db->query("SELECT created_by FROM customers WHERE id = (SELECT customer_id FROM invoices WHERE id = $id)")->fetchColumn();
     $is_owner = false;
     if ($u_role === 'admin') {
-        if ($check == 0 || $check === NULL) $is_owner = true;
+        if ($check == $u_id || $check == 0 || $check === NULL) $is_owner = true;
     } elseif ($u_role === 'partner') {
         if ($check == $u_id) $is_owner = true;
     } elseif ($u_role === 'collector') {
-        $cid_check = isset($customer_id) ? $customer_id : $db->query("SELECT customer_id FROM invoices WHERE id = $id")->fetchColumn();
+        $cid_check = isset($customer_id) ? $customer_id : ($db->query("SELECT customer_id FROM invoices WHERE id = " . intval($id ?? 0))->fetchColumn() ?: 0);
         if ($db->query("SELECT collector_id FROM customers WHERE id = $cid_check")->fetchColumn() == $u_id) $is_owner = true;
     }
     
     if ($is_owner) {
         $db->prepare("UPDATE invoices SET amount=?, discount=?, due_date=? WHERE id=?")->execute([$amount, $discount, $due_date, $id]);
     }
-    header("Location: index.php?page=admin_invoices");
+    
+    $ref = $_POST['ref'] ?? '';
+    if ($ref === 'customer_details' && isset($_POST['cust_id'])) {
+        header("Location: index.php?page=admin_customers&action=details&id=" . intval($_POST['cust_id']) . "&msg=updated");
+    } else {
+        header("Location: index.php?page=admin_invoices&msg=updated");
+    }
     exit;
 }
 
@@ -200,7 +211,7 @@ if ($action === 'mark_paid') {
         $cust = $db->query("SELECT created_by, collector_id FROM customers WHERE id = (SELECT customer_id FROM invoices WHERE id = $id)")->fetch();
         $is_auth = false;
         if ($u_role === 'admin') {
-            if ($cust['created_by'] == 0 || $cust['created_by'] === NULL) $is_auth = true;
+            if ($cust['created_by'] == $u_id || $cust['created_by'] == 0 || $cust['created_by'] === NULL) $is_auth = true;
         } elseif ($u_role === 'partner') {
             if ($cust['created_by'] == $u_id) $is_auth = true;
         } elseif ($u_role === 'collector') {
@@ -216,7 +227,12 @@ if ($action === 'mark_paid') {
         $db->prepare("INSERT INTO payments (invoice_id, amount, received_by, payment_date) VALUES (?, ?, ?, ?)")->execute([$id, $net_amount, $receiver_id, $payment_date]);
     }
     
-    header("Location: " . ($_SERVER['HTTP_REFERER'] ?? 'index.php?page=admin_invoices'));
+    $ref = $_GET['ref'] ?? '';
+    if ($ref === 'customer_details' && isset($_GET['cust_id'])) {
+        header("Location: index.php?page=admin_customers&action=details&id=" . intval($_GET['cust_id']) . "&msg=paid");
+    } else {
+        header("Location: index.php?page=admin_invoices&action=list&msg=paid");
+    }
     exit;
 }
 
@@ -233,11 +249,11 @@ if ($action === 'mark_paid_bulk' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $check = $db->query("SELECT created_by FROM customers WHERE id = $customer_id")->fetchColumn();
     $is_owner = false;
     if ($u_role === 'admin') {
-        if ($check == 0 || $check === NULL) $is_owner = true;
+        if ($check == $u_id || $check == 0 || $check === NULL) $is_owner = true;
     } elseif ($u_role === 'partner') {
         if ($check == $u_id) $is_owner = true;
     } elseif ($u_role === 'collector') {
-        $cid_check = isset($customer_id) ? $customer_id : $db->query("SELECT customer_id FROM invoices WHERE id = $id")->fetchColumn();
+        $cid_check = isset($customer_id) ? $customer_id : ($db->query("SELECT customer_id FROM invoices WHERE id = " . intval($id ?? 0))->fetchColumn() ?: 0);
         if ($db->query("SELECT collector_id FROM customers WHERE id = $cid_check")->fetchColumn() == $u_id) $is_owner = true;
     }
     if (!$is_owner) { header("Location: index.php?page=admin_invoices&msg=forbidden"); exit; }
@@ -283,8 +299,8 @@ if ($action === 'unpay') {
         }
         
         if ($can_unpay) {
-            $db->prepare("UPDATE invoices SET status = 'Belum Lunas' WHERE id = ?")->execute([$id]);
             $db->prepare("DELETE FROM payments WHERE invoice_id = ?")->execute([$id]);
+            $db->prepare("UPDATE invoices SET status = 'Belum Lunas' WHERE id = ?")->execute([$id]);
             $msg_type = "unpay_success";
         } else {
             $msg_type = "forbidden";
@@ -307,7 +323,7 @@ if ($action === 'create_auto_bulk' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Scope Filter for Admin vs Collectors/Others
     if ($u_role === 'admin') {
-        $scope_sql = ($filter_type === 'partner') ? "" : " AND (created_by = 0 OR created_by IS NULL)";
+        $scope_sql = ($filter_type === 'partner') ? "" : " AND (created_by = $u_id OR created_by = 0 OR created_by IS NULL)";
     } else {
         $scope_sql = " AND created_by = $u_id";
     }
@@ -424,7 +440,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
         if ($filter_type === 'partner') {
             $scope_where = " AND c.type = 'partner'"; 
         } else {
-            $scope_where = " AND (c.created_by = 0 OR c.created_by IS NULL) AND c.type = 'customer'"; 
+            $scope_where = " AND (c.created_by = $u_id OR c.created_by = 0 OR c.created_by IS NULL) AND c.type = 'customer'"; 
         }
     } elseif ($u_role === 'partner') {
         $partner_cid = $db->query("SELECT customer_id FROM users WHERE id = $u_id")->fetchColumn() ?: 0;
@@ -573,7 +589,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
 
     <!-- INVOICE LIST -->
     <?php
-        $settings = $db->query("SELECT wa_template, wa_template_paid, bank_account FROM settings WHERE id=1")->fetch();
+        $settings = $db->query("SELECT wa_template, wa_template_paid, bank_account, site_url FROM settings WHERE id=1")->fetch();
         $wa_tpl = $settings['wa_template'] ?: "Halo {nama}, tagihan internet Anda sebesar {tagihan} jatuh tempo pada {jatuh_tempo}. Transfer ke {rekening}";
         $wa_tpl_paid = $settings['wa_template_paid'] ?: "Halo {nama}, terima kasih. Pembayaran {tagihan} sudah lunas.";
         
@@ -663,7 +679,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
             foreach($invoices as $inv): 
                 // Security context for actions
                 $check_owner = $db->query("SELECT created_by FROM customers WHERE id = " . intval($inv['customer_id']))->fetchColumn();
-                $can_manage_item = ($u_role === 'admin') ? ($check_owner == 0 || $check_owner === NULL) : ($check_owner == $u_id);
+                $can_manage_item = ($u_role === 'admin') ? ($check_owner == $u_id || $check_owner == 0 || $check_owner === NULL) : ($check_owner == $u_id);
 
                 $wa_number = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $inv['contact']));
                 // (WA Template Logic)
@@ -805,10 +821,19 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                     <i class="fas fa-print" style="font-size:16px;"></i>
                 </a>
                 
+                <?php if($inv['status'] != 'Lunas' && $wa_number): ?>
+                    <a href="https://api.whatsapp.com/send?phone=<?= $wa_number ?>&text=<?= $wa_text ?>" target="_blank" class="btn btn-ghost" style="width:44px; height:40px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; color:#25D366;">
+                        <i class="fab fa-whatsapp" style="font-size:18px;"></i>
+                    </a>
+                <?php endif; ?>
+                
                 <?php if($can_manage_item): ?>
-                    <button onclick="showEditInvoice(<?= $inv['id'] ?>, <?= $inv['amount'] ?>, <?= $inv['discount'] ?? 0 ?>, '<?= $inv['due_date'] ?>')" class="btn btn-ghost" style="width:44px; height:40px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; color:var(--warning);">
+                    <button onclick="showEditInvoice(<?= $inv['id'] ?>, <?= $inv['amount'] ?>, <?= $inv['discount'] ?? 0 ?>, '<?= $inv['due_date'] ?>')" class="btn btn-ghost" style="width:40px; height:40px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; color:var(--warning);">
                         <i class="fas fa-edit" style="font-size:15px;"></i>
                     </button>
+                    <a href="index.php?page=admin_invoices&action=delete&id=<?= $inv['id'] ?>" class="btn btn-ghost" style="width:40px; height:40px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; color:var(--danger);" onclick="return confirm('Hapus tagihan ini?')">
+                        <i class="fas fa-trash" style="font-size:15px;"></i>
+                    </a>
                 <?php endif; ?>
             </div>
         </div>
@@ -851,9 +876,10 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                         }
                         $t_remain_display = $tunggakan_remain > 0 ? 'Rp ' . number_format($tunggakan_remain, 0, ',', '.') : 'LUNAS SELURUHNYA';
 
+                        $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . $cust_id_display;
                         $msg = str_replace(
-                            ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{tunggakan}', '{admin}'], 
-                            [$inv['customer_name'], '*' . $cust_id_display . '*', $package_display, $inv_month, '*' . $nominal_display . '*', '*' . $t_remain_display . '*', '*' . $admin_bayar . '*'], 
+                            ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{tunggakan}', '{admin}', '{link_tagihan}'], 
+                            [$inv['customer_name'], '*' . $cust_id_display . '*', $package_display, $inv_month, '*' . $nominal_display . '*', '*' . $t_remain_display . '*', '*' . $admin_bayar . '*', $portal_link], 
                             $wa_tpl_paid
                         );
                         
@@ -881,9 +907,10 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                         $total_harus = $inv['amount'] + $tunggakan_prev;
                         $total_harus_display = 'Rp ' . number_format($total_harus, 0, ',', '.');
 
+                        $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . $cust_id_display;
                         $msg = str_replace(
-                            ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{tunggakan}', '{total_harus}'], 
-                            [$inv['customer_name'], '*' . $cust_id_display . '*', $package_display, $inv_month, '*' . $nominal_display . '*', '*' . date('d/m/Y', strtotime($inv['due_date'])) . '*', '*' . trim($settings['bank_account']) . '*', '*' . $t_prev_display . '*', '*' . $total_harus_display . '*'], 
+                            ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{tunggakan}', '{total_harus}', '{link_tagihan}'], 
+                            [$inv['customer_name'], '*' . $cust_id_display . '*', $package_display, $inv_month, '*' . $nominal_display . '*', '*' . date('d/m/Y', strtotime($inv['due_date'])) . '*', '*' . trim($settings['bank_account'] ?? '') . '*', '*' . $t_prev_display . '*', '*' . $total_harus_display . '*', $portal_link], 
                             $wa_tpl
                         );
 
@@ -974,14 +1001,20 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                                 <?php endif; ?>
                             <?php endif; ?>
                             
+                             
+                            <?php if($inv['status'] != 'Lunas' && $wa_number): ?>
+                                <a href="https://api.whatsapp.com/send?phone=<?= $wa_number ?>&text=<?= $wa_text ?>" target="_blank" class="btn btn-sm btn-ghost" title="Kirim WA" style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; padding:0; background:rgba(37, 211, 102, 0.05); color:#25D366;"><i class="fab fa-whatsapp" style="font-size:15px;"></i></a>
+                            <?php endif; ?>
+
                             <a href="index.php?page=admin_invoices&action=print&id=<?= $inv['id'] ?>" target="_blank" class="btn btn-sm btn-ghost" title="Print Nota" style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; padding:0; background:rgba(255,255,255,0.05);"><i class="fas fa-print" style="font-size:13px;"></i></a>
                             
                             <?php 
                                 $check_owner = $db->query("SELECT created_by FROM customers WHERE id = " . intval($inv['customer_id']))->fetchColumn();
-                                $can_manage = ($u_role === 'admin') ? ($check_owner == 0 || $check_owner === NULL) : ($check_owner == $u_id);
+                                $can_manage = ($u_role === 'admin') ? ($check_owner == $u_id || $check_owner == 0 || $check_owner === NULL) : ($check_owner == $u_id);
                                 if($can_manage): 
                             ?>
                                 <button onclick="showEditInvoice(<?= $inv['id'] ?>, <?= $inv['amount'] ?>, <?= $inv['discount'] ?? 0 ?>, '<?= $inv['due_date'] ?>')" class="btn btn-sm btn-ghost" title="Edit" style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; padding:0; background:rgba(245, 158, 11, 0.05); color:var(--warning);"><i class="fas fa-edit" style="font-size:13px;"></i></button>
+                                <a href="index.php?page=admin_invoices&action=delete&id=<?= $inv['id'] ?>" class="btn btn-sm btn-ghost" title="Hapus" style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; padding:0; background:rgba(239, 68, 68, 0.05); color:var(--danger);" onclick="return confirm('Hapus tagihan ini permanent?')"><i class="fas fa-trash" style="font-size:13px;"></i></a>
                             <?php endif; ?>
                         </div>
                     </td>

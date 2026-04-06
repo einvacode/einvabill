@@ -26,7 +26,7 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Ownership Check
     $check = $db->query("SELECT created_by FROM expenses WHERE id = $id")->fetchColumn();
-    $is_owner = ($u_role === 'admin') ? ($check == 0 || $check === NULL) : ($check == $u_id);
+    $is_owner = ($u_role === 'admin') ? ($check == $u_id || $check == 0 || $check === NULL) : ($check == $u_id);
     
     if ($is_owner) {
         $stmt = $db->prepare("UPDATE expenses SET category=?, amount=?, description=?, date=? WHERE id=?");
@@ -44,7 +44,7 @@ if ($action === 'delete') {
     
     // Ownership Check
     $check = $db->query("SELECT created_by FROM expenses WHERE id = $id")->fetchColumn();
-    $is_owner = ($u_role === 'admin') ? ($check == 0 || $check === NULL) : ($check == $u_id);
+    $is_owner = ($u_role === 'admin') ? ($check == $u_id || $check == 0 || $check === NULL) : ($check == $u_id);
     
     if ($is_owner) {
         $db->prepare("DELETE FROM expenses WHERE id = ?")->execute([$id]);
@@ -56,7 +56,7 @@ if ($action === 'delete') {
 }
 
 // Scoping Logic
-$scope_where = ($u_role === 'admin') ? "WHERE (created_by = 0 OR created_by IS NULL)" : "WHERE (created_by = $u_id)";
+$scope_where = ($u_role === 'admin') ? "WHERE (created_by = $u_id OR created_by = 0 OR created_by IS NULL)" : "WHERE (created_by = $u_id)";
 
 // Fetch Stats for current month
 $start_month = date('Y-m-01');

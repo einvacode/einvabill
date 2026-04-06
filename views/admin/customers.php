@@ -39,7 +39,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['id'])) {
 $u_id = $_SESSION['user_id'];
 $u_role = $_SESSION['user_role'] ?? 'admin';
 $scope_where = ($u_role === 'admin') ? " AND (a.created_by = $u_id OR a.created_by = 0 OR a.created_by IS NULL) " : " AND (a.created_by = $u_id) ";
-$pkg_scope = ($u_role === 'admin') ? "WHERE created_by = 0 OR created_by IS NULL" : "WHERE created_by = $u_id";
+$pkg_scope = ($u_role === 'admin') ? "WHERE created_by = $u_id OR created_by = 0 OR created_by IS NULL" : "WHERE created_by = $u_id";
 $packages_all = $db->query("SELECT * FROM packages $pkg_scope ORDER BY name ASC")->fetchAll();
 $packages_json = json_encode($packages_all);
 
@@ -137,7 +137,7 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $u_id = $_SESSION['user_id'];
     $u_role = $_SESSION['user_role'];
     $check = $db->query("SELECT created_by FROM customers WHERE id = $id")->fetchColumn();
-    $is_owner = ($u_role === 'admin') ? ($check == 0 || $check === NULL) : ($check == $u_id);
+    $is_owner = ($u_role === 'admin') ? ($check == $u_id || $check == 0 || $check === NULL) : ($check == $u_id);
     
     if (!$is_owner) {
         header("Location: index.php?page=admin_customers&msg=forbidden");
@@ -172,7 +172,7 @@ if ($action === 'delete') {
     $u_id = $_SESSION['user_id'];
     $u_role = $_SESSION['user_role'];
     $check = $db->query("SELECT created_by FROM customers WHERE id = $id")->fetchColumn();
-    $is_owner = ($u_role === 'admin') ? ($check == 0 || $check === NULL) : ($check == $u_id);
+    $is_owner = ($u_role === 'admin') ? ($check == $u_id || $check == 0 || $check === NULL) : ($check == $u_id);
     
     if (!$is_owner) {
         header("Location: index.php?page=admin_customers&msg=forbidden");
@@ -240,7 +240,8 @@ if ($action === 'export') {
     $u_role = $_SESSION['user_role'];
     $scope_where_exp = " AND (created_by = $u_id) ";
     if ($u_role === 'admin') {
-        $scope_where_exp = " AND (created_by = 0 OR created_by IS NULL) ";
+        $u_id_exp = $_SESSION['user_id'];
+        $scope_where_exp = " AND (created_by = $u_id_exp OR created_by = 0 OR created_by IS NULL) ";
     }
 
     $customers_export = $db->query("SELECT * FROM customers $where $scope_where_exp ORDER BY name ASC")->fetchAll();
@@ -530,7 +531,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- Mobile Card View (Hidden on Desktop) -->
     <div class="customers-mobile-container" style="display:none;">
         <?php
-        $rt_scope = ($u_role === 'admin') ? "WHERE created_by = 0 OR created_by IS NULL" : "WHERE created_by = $u_id";
+        $rt_scope = ($u_role === 'admin') ? "WHERE created_by = $u_id OR created_by = 0 OR created_by IS NULL" : "WHERE created_by = $u_id";
         $routers = [];
         try { $routers = $db->query("SELECT * FROM routers $rt_scope")->fetchAll(); } catch(Exception $e) {}
         $customers = $db->query("SELECT * FROM customers WHERE 1=1 $where_type $where_collector $where_search $scope_where ORDER BY id DESC LIMIT $items_per_page OFFSET $offset")->fetchAll();
@@ -642,6 +643,12 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                         <a href="index.php?page=admin_customers&action=details&id=<?= $c['id'] ?>" class="btn btn-sm btn-info" title="Detail & Riwayat"><i class="fas fa-eye"></i></a>
                         <a href="index.php?page=admin_customers&action=edit&id=<?= $c['id'] ?>" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></a>
                         <a href="index.php?page=admin_customers&action=delete&id=<?= $c['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus Pelanggan ini?')" title="Hapus"><i class="fas fa-trash"></i></a>
+                        
+                        <?php 
+                        $wa_number = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $c['contact']));
+                        $wa_text = "Halo " . urlencode($c['name']) . ", tagihan internet Anda sebesar Rp " . number_format($c['monthly_fee'], 0, ',', '.') . " telah tersedia. Mohon segera melakukan pembayaran.";
+                        ?>
+                        <a href="https://api.whatsapp.com/send?phone=<?= $wa_number ?>&text=<?= $wa_text ?>" target="_blank" class="btn btn-sm btn-ghost" style="color:#25D366;" title="Kirim WA"><i class="fab fa-whatsapp"></i></a>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -893,7 +900,7 @@ document.addEventListener("DOMContentLoaded", function() {
         if ($c) {
             $u_id = $_SESSION['user_id'];
             $u_role = $_SESSION['user_role'];
-            $is_owner = ($u_role === 'admin') ? ($c['created_by'] == 0 || $c['created_by'] === NULL) : ($c['created_by'] == $u_id);
+            $is_owner = ($u_role === 'admin') ? ($c['created_by'] == $u_id || $c['created_by'] == 0 || $c['created_by'] === NULL) : ($c['created_by'] == $u_id);
             if (!$is_owner) {
                 echo "<div class='glass-panel p-5 text-center'><h3>Akses Ditolak</h3><p>Anda tidak berwenang mengedit data ini.</p><a href='index.php?page=admin_customers' class='btn btn-primary'>Kembali</a></div>";
                 return;
@@ -972,7 +979,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 <select name="router_id" id="sel_router_id" class="form-control" onchange="loadPPPoE(this.value)">
                     <option value="0">-- Akses Manual --</option>
                     <?php
-                    $rt_scope = ($u_role === 'admin') ? "WHERE created_by = 0 OR created_by IS NULL" : "WHERE created_by = $u_id";
+                    $rt_scope = ($u_role === 'admin') ? "WHERE created_by = $u_id OR created_by = 0 OR created_by IS NULL" : "WHERE created_by = $u_id";
                     $routers = []; try { $routers = $db->query("SELECT * FROM routers $rt_scope")->fetchAll(); } catch(Exception $e) {}
                     foreach($routers as $r):
                     ?>
@@ -1240,13 +1247,13 @@ document.addEventListener("DOMContentLoaded", () => {
     // Ownership Check
     $u_id = $_SESSION['user_id'];
     $u_role = $_SESSION['user_role'];
-    $is_owner = ($u_role === 'admin') ? ($c['created_by'] == 0 || $c['created_by'] === NULL) : ($c['created_by'] == $u_id);
+    $is_owner = ($u_role === 'admin') ? ($c['created_by'] == $u_id || $c['created_by'] == 0 || $c['created_by'] === NULL) : ($c['created_by'] == $u_id);
     if (!$is_owner) {
         echo "<div class='glass-panel p-5 text-center'><h3>Akses Ditolak</h3><p>Anda tidak berwenang melihat data ini.</p><a href='index.php?page=admin_customers' class='btn btn-primary'>Kembali</a></div>";
         return;
     }
     
-    // Riwayat Pembayaran
+    // Riwayat Pembayaran (Lunas)
     $history = $db->query("
         SELECT p.*, i.due_date, u.name as receiver_name 
         FROM payments p 
@@ -1254,6 +1261,13 @@ document.addEventListener("DOMContentLoaded", () => {
         LEFT JOIN users u ON p.received_by = u.id
         WHERE i.customer_id = $id 
         ORDER BY p.payment_date DESC
+    ")->fetchAll();
+
+    // Tagihan Belum Lunas
+    $unpaid_invoices = $db->query("
+        SELECT * FROM invoices 
+        WHERE customer_id = $id AND status = 'Belum Lunas' 
+        ORDER BY due_date DESC
     ")->fetchAll();
 
     // Total Tunggakan / Kekurangan
@@ -1323,8 +1337,51 @@ document.addEventListener("DOMContentLoaded", () => {
 
     <div style="display:grid; grid-template-columns: 1fr 320px; gap:25px; align-items:start;" class="details-grid-container">
         <!-- Riwayat Pembayaran -->
+        <!-- Section Penagihan -->
         <div class="glass-panel" style="padding: 24px;">
-            <h3 style="font-size:18px; margin-bottom:20px;"><i class="fas fa-history text-primary"></i> Riwayat Pembayaran</h3>
+            <div style="margin-bottom:25px;">
+                <h3 style="font-size:18px; margin-bottom:15px; display:flex; align-items:center; gap:10px;">
+                    <i class="fas fa-file-invoice text-danger"></i> Tagihan Belum Lunas
+                </h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Periode</th>
+                                <th>Nominal</th>
+                                <th style="text-align:right;">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if(empty($unpaid_invoices)): ?>
+                                <tr><td colspan="3" style="text-align:center; padding:20px; color:var(--text-secondary);">Semua tagihan lunas! 🎉</td></tr>
+                            <?php endif; ?>
+                            <?php foreach($unpaid_invoices as $ui): ?>
+                                <tr>
+                                    <td><strong><?= date('M Y', strtotime($ui['due_date'])) ?></strong></td>
+                                    <td style="font-weight:700; color:var(--danger);">Rp <?= number_format($ui['amount'] - ($ui['discount'] ?? 0), 0, ',', '.') ?></td>
+                                    <td style="text-align:right;">
+                                        <div style="display:flex; justify-content:flex-end; gap:6px;">
+                                            <?php 
+                                                $wa_raw = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $c['contact']));
+                                                $wa_link = "https://api.whatsapp.com/send?phone=$wa_raw&text=" . urlencode("Halo Bapak/Ibu " . $c['name'] . ", mengingatkan untuk tagihan internet periode " . date('F Y', strtotime($ui['due_date'])) . " sebesar Rp " . number_format($ui['amount'], 0, ',', '.') . " sudah jatuh tempo. Mohon kesediaannya untuk melakukan pembayaran. Terima kasih.");
+                                            ?>
+                                            <a href="<?= $wa_link ?>" target="_blank" class="btn btn-xs btn-ghost" style="color:#25D366;" title="Kirim Pengingat WA"><i class="fab fa-whatsapp"></i></a>
+                                            <a href="index.php?page=admin_invoices&action=mark_paid&id=<?= $ui['id'] ?>&ref=customer_details&cust_id=<?= $id ?>" class="btn btn-xs btn-success" onclick="return confirm('Tandai tagihan ini Lunas?')"><i class="fas fa-check"></i> Bayar</a>
+                                            <button onclick="showEditInvoice(<?= $ui['id'] ?>, <?= $ui['amount'] ?>, <?= $ui['discount'] ?? 0 ?>, '<?= $ui['due_date'] ?>')" class="btn btn-xs btn-warning" title="Edit"><i class="fas fa-edit"></i></button>
+                                            <a href="index.php?page=admin_invoices&action=delete&id=<?= $ui['id'] ?>&ref=customer_details&cust_id=<?= $id ?>" class="btn btn-xs btn-ghost" style="color:var(--danger);" onclick="return confirm('Hapus tagihan ini?')"><i class="fas fa-trash"></i></a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <hr style="border:0; border-top:1px solid var(--glass-border); margin:25px 0;">
+
+            <h3 style="font-size:18px; margin-bottom:20px;"><i class="fas fa-history text-primary"></i> Riwayat Pembayaran (Lunas)</h3>
             <div class="table-container">
                 <table>
                     <thead>
@@ -1504,7 +1561,48 @@ document.querySelector('input[name="num_months"]').addEventListener('input', fun
     </div>
 </div>
 
+
+<!-- Modal Edit Invoice -->
+<div id="editInvoiceModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(5px); align-items:center; justify-content:center; z-index:9999;">
+    <div class="glass-panel" style="width:100%; max-width:400px; padding:24px; margin:20px; border-top:4px solid var(--warning);">
+        <h3 id="editTitle" style="margin-bottom:20px; font-weight:800;"><i class="fas fa-edit text-warning"></i> Edit Tagihan</h3>
+        <form action="index.php?page=admin_invoices&action=edit_post" method="POST">
+            <input type="hidden" name="id" id="editInvId">
+            <input type="hidden" name="ref" value="customer_details">
+            <input type="hidden" name="cust_id" value="<?= $id ?>">
+            <div class="form-group mb-3">
+                <label style="font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase;">Nominal Tagihan (Rp)</label>
+                <input type="number" name="amount" id="editInvAmount" class="form-control" required style="font-size:18px; font-weight:700; height:45px;">
+            </div>
+            <div class="form-group mb-3">
+                <label style="font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase;">Potongan / Restitusi (Rp)</label>
+                <input type="number" name="discount" id="editInvDiscount" class="form-control" value="0" style="color:var(--danger); font-weight:700;">
+            </div>
+            <div class="form-group mb-4">
+                <label style="font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase;">Jatuh Tempo</label>
+                <input type="date" name="due_date" id="editInvDate" class="form-control" required>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" class="btn btn-ghost" onclick="hideEditInvoice()">Batal</button>
+                <button type="submit" class="btn btn-warning" style="font-weight:800; padding:10px 25px;">SIMPAN PERUBAHAN</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
+function showEditInvoice(id, amount, discount, date) {
+    document.getElementById('editInvId').value = id;
+    document.getElementById('editInvAmount').value = amount;
+    document.getElementById('editInvDiscount').value = discount;
+    document.getElementById('editInvDate').value = date;
+    document.getElementById('editTitle').innerText = 'Edit INV-' + String(id).padStart(5, '0');
+    document.getElementById('editInvoiceModal').style.display = 'flex';
+}
+function hideEditInvoice() {
+    document.getElementById('editInvoiceModal').style.display = 'none';
+}
+
 function viewTR069(pppoe) {
     const modal = document.getElementById('tr069Modal');
     const content = document.getElementById('tr069-content');

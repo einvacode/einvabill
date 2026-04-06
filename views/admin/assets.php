@@ -3,7 +3,7 @@
 $action = $_GET['action'] ?? 'list';
 $u_id = $_SESSION['user_id'];
 $u_role = $_SESSION['user_role'] ?? 'admin';
-$scope_where = ($u_role === 'admin') ? " AND (a.created_by = 0 OR a.created_by IS NULL) " : " AND (a.created_by = $u_id) ";
+$scope_where = ($u_role === 'admin') ? " AND (a.created_by = $u_id OR a.created_by = 0 OR a.created_by IS NULL) " : " AND (a.created_by = $u_id) ";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'add' || $action === 'edit') {
@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $id = $_POST['id'];
             // Ownership Check
             $check = $db->query("SELECT created_by FROM infrastructure_assets WHERE id = $id")->fetchColumn();
-            $is_owner = ($u_role === 'admin') ? ($check == 0 || $check === NULL) : ($check == $u_id);
+            $is_owner = ($u_role === 'admin') ? ($check == $u_id || $check == 0 || $check === NULL) : ($check == $u_id);
             if ($is_owner) {
                 $stmt = $db->prepare("UPDATE infrastructure_assets SET name=?, type=?, parent_id=?, lat=?, lng=?, total_ports=?, brand=?, description=?, price=?, status=?, installation_date=? WHERE id=?");
                 $stmt->execute([$name, $type, $parent_id, $lat, $lng, $total_ports, $brand, $description, $price, $status, $installation_date, $id]);
@@ -41,7 +41,7 @@ if ($action === 'delete') {
     $id = $_GET['id'];
     // Ownership Check
     $check = $db->query("SELECT created_by FROM infrastructure_assets WHERE id = $id")->fetchColumn();
-    $is_owner = ($u_role === 'admin') ? ($check == 0 || $check === NULL) : ($check == $u_id);
+    $is_owner = ($u_role === 'admin') ? ($check == $u_id || $check == 0 || $check === NULL) : ($check == $u_id);
     
     if ($is_owner) {
         $db->prepare("DELETE FROM infrastructure_assets WHERE id = ?")->execute([$id]);
