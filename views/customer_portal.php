@@ -1,6 +1,8 @@
 <?php
-$site = $db->query("SELECT company_name, company_logo FROM settings WHERE id=1")->fetch();
+$site = $db->query("SELECT company_name, company_logo, company_address, company_contact, bank_account FROM settings WHERE id=1")->fetch();
 $comp_name = $site['company_name'] ?: 'RT RW NET';
+$comp_logo = $site['company_logo'] ?: 'assets/img/logo.png';
+$bank_info = $site['bank_account'] ?: '-';
 
 $customer = null;
 $invoices = [];
@@ -12,11 +14,41 @@ if ($code_input) {
     $customer = $stmt->fetch();
     
     if ($customer) {
+        // Branding Override for Partners
+        if (($customer['created_by'] ?? 0) != 0) {
+            $partner_id = intval($customer['created_by']);
+            $partner_brand = $db->query("SELECT brand_name, brand_logo, brand_address, brand_contact, brand_bank, brand_rekening FROM users WHERE id = $partner_id")->fetch();
+            
+            if ($partner_brand && !empty($partner_brand['brand_name'])) {
+                $comp_name = $partner_brand['brand_name'];
+                if (!empty($partner_brand['brand_logo'])) $comp_logo = $partner_brand['brand_logo'];
+                if (!empty($partner_brand['brand_bank'])) $bank_info = $partner_brand['brand_bank'] . " " . $partner_brand['brand_rekening'];
+            }
+        }
+
         $invoices = $db->query("
             SELECT i.* FROM invoices i 
             WHERE i.customer_id = " . intval($customer['id']) . "
             ORDER BY i.id DESC
         ")->fetchAll();
+        
+        // Handle Print Special Action from Portal
+        if (isset($_GET['action']) && $_GET['action'] === 'print' && isset($_GET['id'])) {
+            $inv_id = intval($_GET['id']);
+            // Verify this invoice belongs to this search result (security)
+            $invoice = null;
+            foreach ($invoices as $inv) {
+                if ($inv['id'] == $inv_id) {
+                    $invoice = array_merge($inv, $customer); // Merge for printing template
+                    break;
+                }
+            }
+            
+            if ($invoice) {
+                require __DIR__ . '/print.php';
+                exit;
+            }
+        }
     }
 }
 
@@ -43,9 +75,9 @@ $active_banners = $db->query("SELECT * FROM banners WHERE is_active = 1 AND targ
 <body>
     <div class="portal-container">
         <div class="portal-header">
-            <?php if(!empty($site['company_logo'])): ?>
+            <?php if(!empty($comp_logo)): ?>
                 <div class="brand-logo-wrapper" style="height:60px; width:auto; margin-bottom:15px;">
-                    <img src="<?= htmlspecialchars($site['company_logo']) ?>" alt="Logo">
+                    <img src="<?= htmlspecialchars($comp_logo) ?>" alt="Logo">
                 </div>
             <?php else: ?>
                 <i class="fas fa-wifi" style="font-size:40px; color:var(--primary); margin-bottom:15px;"></i>
@@ -117,6 +149,15 @@ $active_banners = $db->query("SELECT * FROM banners WHERE is_active = 1 AND targ
                     <div><i class="fas fa-calendar" style="width:20px;"></i> Tagih tgl <?= $customer['billing_date'] ?> setiap bulan</div>
                 </div>
             </div>
+            
+            <!-- Link Pembayaran -->
+            <?php if(!empty($bank_info)): ?>
+            <div class="glass-panel" style="padding:20px; margin-bottom:20px; border:1px solid rgba(var(--primary-rgb), 0.2); background:rgba(var(--primary-rgb), 0.05); text-align:center;">
+                <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">PEMBAYARAN TRANSFER KE:</div>
+                <div style="font-size:20px; font-weight:800; color:var(--primary);"><?= htmlspecialchars($bank_info) ?></div>
+                <div style="font-size:12px; color:var(--text-secondary); margin-top:5px;">Atas Nama: <strong><?= htmlspecialchars($comp_name) ?></strong></div>
+            </div>
+            <?php endif; ?>
 
             <!-- Ringkasan -->
             <?php
@@ -156,13 +197,18 @@ $active_banners = $db->query("SELECT * FROM banners WHERE is_active = 1 AND targ
                         <div style="font-weight:600; font-size:14px;">INV-<?= str_pad($inv['id'], 5, '0', STR_PAD_LEFT) ?></div>
                         <div style="font-size:12px; color:var(--text-secondary);">Jatuh tempo: <?= date('d M Y', strtotime($inv['due_date'])) ?></div>
                     </div>
-                    <div style="text-align:right;">
-                        <div style="font-weight:700; margin-bottom:4px;">Rp <?= number_format($inv['amount'], 0, ',', '.') ?></div>
-                        <?php if($inv['status'] === 'Lunas'): ?>
-                            <span class="badge badge-success" style="font-size:11px;"><i class="fas fa-check"></i> Lunas</span>
-                        <?php else: ?>
-                            <span class="badge" style="background:rgba(239,68,68,0.15); color:var(--danger); border:1px solid rgba(239,68,68,0.3); font-size:11px;">Belum Lunas</span>
-                        <?php endif; ?>
+                    <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
+                        <div style="font-weight:700;">Rp <?= number_format($inv['amount'], 0, ',', '.') ?></div>
+                        <div style="display:flex; gap:6px;">
+                            <?php if($inv['status'] === 'Lunas'): ?>
+                                <span class="badge badge-success" style="font-size:10px;"><i class="fas fa-check"></i> Lunas</span>
+                            <?php else: ?>
+                                <span class="badge" style="background:rgba(239,68,68,0.15); color:var(--danger); border:1px solid rgba(239,68,68,0.3); font-size:10px;">Belum Lunas</span>
+                            <?php endif; ?>
+                            <a href="index.php?page=customer_portal&code=<?= urlencode($code_input) ?>&action=print&id=<?= $inv['id'] ?>" target="_blank" class="btn btn-xs btn-ghost" style="padding:2px 8px; font-size:10px; border-radius:6px; border:1px solid var(--glass-border);">
+                                <i class="fas fa-print"></i> Cetak
+                            </a>
+                        </div>
                     </div>
                 </div>
                 <?php endforeach; ?>

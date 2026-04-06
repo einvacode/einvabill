@@ -5,6 +5,11 @@ if (isset($collector_area) && !empty(trim($collector_area))) {
     $area_filter = " AND c.area = " . $db->quote(trim($collector_area));
 }
 
+// Role-based scope filter
+$u_role = $_SESSION['user_role'] ?? 'admin';
+$u_id = $_SESSION['user_id'] ?? 0;
+$scope_where = ($u_role === 'admin') ? " AND (c.created_by = 0 OR c.created_by IS NULL) " : " AND (c.created_by = $u_id) ";
+
 // Query H-3 Jatuh Tempo (Grouped by Customer)
 $query_wa = "
     SELECT 
@@ -15,15 +20,25 @@ $query_wa = "
     JOIN customers c ON i.customer_id = c.id 
     WHERE i.status = 'Belum Lunas' 
       AND i.due_date <= date('now', '+3 days') 
+      $scope_where
       $area_filter
     GROUP BY c.id
     ORDER BY nearest_due ASC
 ";
 $targets = $db->query($query_wa)->fetchAll();
 
-// Setting WA dari database
-$stg = $db->query("SELECT wa_template, bank_account FROM settings WHERE id=1")->fetch();
-$wa_tpl = $stg['wa_template'] ?: "Halo {nama}, tagihan internet Anda sebesar {tagihan} jatuh tempo pada {jatuh_tempo}. Transfer ke {rekening}";
+// Setting WA dari database (Pusat)
+$stg = $db->query("SELECT wa_template, bank_account, site_url FROM settings WHERE id=1")->fetch();
+
+// Priority: Use Partner's custom template and bank if available
+if ($u_role === 'partner') {
+    $p_stg = $db->query("SELECT wa_template, brand_bank, brand_rekening FROM users WHERE id = $u_id")->fetch();
+    $wa_tpl = (!empty($p_stg['wa_template'])) ? $p_stg['wa_template'] : ($stg['wa_template'] ?: "Halo {nama}, tagihan internet Anda sebesar {tagihan} jatuh tempo pada {jatuh_tempo}. Transfer ke {rekening}");
+    $rekening_tpl = (!empty($p_stg['brand_bank'])) ? $p_stg['brand_bank'] . " " . $p_stg['brand_rekening'] : $stg['bank_account'];
+} else {
+    $wa_tpl = $stg['wa_template'] ?: "Halo {nama}, tagihan internet Anda sebesar {tagihan} jatuh tempo pada {jatuh_tempo}. Transfer ke {rekening}";
+    $rekening_tpl = $stg['bank_account'];
+}
 
 // Bangun JS Array
 $broadcast_data = [];
@@ -64,9 +79,10 @@ foreach($targets as $t) {
     $tunggakan_display = $tunggakan_prev > 0 ? 'Rp ' . number_format($tunggakan_prev, 0, ',', '.') : 'Rp 0';
     $total_harus_display = 'Rp ' . number_format($total_debt, 0, ',', '.');
 
+    $portal_link = ($stg['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . $cust_id_display;
     $msg = str_replace(
-        ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{tunggakan}', '{total_harus}'], 
-        [$t['name'], $cust_id_display, $package_display, $inv_month, $tagihan_display, date('d M Y', strtotime($t['nearest_due'])), $stg['bank_account'], $tunggakan_display, $total_harus_display], 
+        ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{tunggakan}', '{total_harus}', '{link_tagihan}'], 
+        [$t['name'], $cust_id_display, $package_display, $inv_month, $tagihan_display, date('d M Y', strtotime($t['nearest_due'])), $rekening_tpl, $tunggakan_display, $total_harus_display, $portal_link], 
         $wa_tpl
     );
     

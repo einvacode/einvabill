@@ -1,8 +1,9 @@
+<?php
 // Handle Asset Actions
 $action = $_GET['action'] ?? 'list';
 $u_id = $_SESSION['user_id'];
 $u_role = $_SESSION['user_role'] ?? 'admin';
-$scope_where = ($u_role === 'admin') ? " AND (created_by = 0 OR created_by IS NULL) " : " AND (created_by = $u_id) ";
+$scope_where = ($u_role === 'admin') ? " AND (a.created_by = 0 OR a.created_by IS NULL) " : " AND (a.created_by = $u_id) ";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'add' || $action === 'edit') {
@@ -50,7 +51,7 @@ if ($action === 'delete') {
 }
 
 // Fetch Basic Stats for non-PHP blocks
-$stats_raw = $db->query("SELECT type, COUNT(*) as count FROM infrastructure_assets WHERE 1=1 $scope_where GROUP BY type")->fetchAll(PDO::FETCH_KEY_PAIR);
+$stats_raw = $db->query("SELECT type, COUNT(*) as count FROM infrastructure_assets a WHERE 1=1 $scope_where GROUP BY type")->fetchAll(PDO::FETCH_KEY_PAIR);
 
 // Recursive Function to Build Network Tree
 function buildNetworkTree($db, $parentId = 0, $scope_where = "") {
@@ -83,10 +84,10 @@ function buildNetworkTree($db, $parentId = 0, $scope_where = "") {
 }
 
 // Enhanced Stats Calculation
-$total_investment = $db->query("SELECT SUM(price) FROM infrastructure_assets WHERE 1=1 $scope_where")->fetchColumn() ?: 0;
-$total_ports_capacity = $db->query("SELECT SUM(total_ports) FROM infrastructure_assets WHERE 1=1 $scope_where")->fetchColumn() ?: 0;
+$total_investment = $db->query("SELECT SUM(price) FROM infrastructure_assets a WHERE 1=1 $scope_where")->fetchColumn() ?: 0;
+$total_ports_capacity = $db->query("SELECT SUM(total_ports) FROM infrastructure_assets a WHERE 1=1 $scope_where")->fetchColumn() ?: 0;
 $used_by_customers = $db->query("SELECT COUNT(*) FROM customers c WHERE odp_id > 0 AND (SELECT created_by FROM infrastructure_assets WHERE id = c.odp_id) = " . ($u_role === 'admin' ? "0" : $u_id))->fetchColumn() ?: 0;
-$used_by_child_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets WHERE parent_id > 0 $scope_where")->fetchColumn() ?: 0;
+$used_by_child_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets a WHERE parent_id > 0 $scope_where")->fetchColumn() ?: 0;
 $total_ports_used = $used_by_customers + $used_by_child_assets;
 $idle_ports = $total_ports_capacity - $total_ports_used;
 $utilization_pct = ($total_ports_capacity > 0) ? ($total_ports_used / $total_ports_capacity) * 100 : 0;
@@ -332,7 +333,7 @@ $utilization_pct = ($total_ports_capacity > 0) ? ($total_ports_used / $total_por
                     <select name="parent_id" id="asset_parent" class="form-control">
                         <option value="0">TIDAK ADA / ROOT</option>
                         <?php 
-                        $parents = $db->query("SELECT id, name, type FROM infrastructure_assets WHERE type != 'ODP' $scope_where ORDER BY type DESC")->fetchAll();
+                        $parents = $db->query("SELECT a.id, a.name, a.type FROM infrastructure_assets a WHERE a.type != 'ODP' $scope_where ORDER BY a.type DESC")->fetchAll();
                         foreach($parents as $p) echo "<option value='{$p['id']}'>{$p['type']} - {$p['name']}</option>";
                         ?>
                     </select>

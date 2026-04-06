@@ -11,6 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $company_tagline = $_POST['company_tagline'];
     $company_contact = $_POST['company_contact'];
     $company_address = $_POST['company_address'];
+    $site_url = rtrim($_POST['site_url'] ?? 'http://fibernodeinternet.com', '/');
     $wa_template = $_POST['wa_template'] ?? '';
     $wa_template_paid = $_POST['wa_template_paid'] ?? '';
     $bank_account = $_POST['bank_account'] ?? '';
@@ -29,29 +30,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $acs_pass = $_POST['acs_pass'] ?? '';
     
     // Handle File Upload
+    $allowed_ext = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    
     if (isset($_FILES['logo_file']) && $_FILES['logo_file']['error'] === UPLOAD_ERR_OK) {
-        $upload_dir = __DIR__ . '/../../public/uploads/';
-        if(!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
-        $file_name = 'logo_' . time() . '_' . str_replace(' ', '_', basename($_FILES['logo_file']['name']));
-        $target_path = $upload_dir . $file_name;
-        if (move_uploaded_file($_FILES['logo_file']['tmp_name'], $target_path)) {
-            $company_logo = 'public/uploads/' . $file_name;
+        $ext = strtolower(pathinfo($_FILES['logo_file']['name'], PATHINFO_EXTENSION));
+        if (in_array($ext, $allowed_ext)) {
+            $upload_dir = __DIR__ . '/../../public/uploads/';
+            if(!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
+            $file_name = 'logo_' . time() . '_' . str_replace(' ', '_', basename($_FILES['logo_file']['name']));
+            $target_path = $upload_dir . $file_name;
+            if (move_uploaded_file($_FILES['logo_file']['tmp_name'], $target_path)) {
+                $company_logo = 'public/uploads/' . $file_name;
+            }
+        } else {
+            $error = "Format file logo tidak didukung! Gunakan JPG, PNG, atau WebP.";
         }
     }
 
     // Handle QRIS Upload
     if (isset($_FILES['qris_file']) && $_FILES['qris_file']['error'] === UPLOAD_ERR_OK) {
-        $upload_dir = __DIR__ . '/../../public/uploads/';
-        if(!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
-        $file_name = 'qris_' . time() . '_' . str_replace(' ', '_', basename($_FILES['qris_file']['name']));
-        $target_path = $upload_dir . $file_name;
-        if (move_uploaded_file($_FILES['qris_file']['tmp_name'], $target_path)) {
-            $company_qris = 'public/uploads/' . $file_name;
+        $ext = strtolower(pathinfo($_FILES['qris_file']['name'], PATHINFO_EXTENSION));
+        if (in_array($ext, $allowed_ext)) {
+            $upload_dir = __DIR__ . '/../../public/uploads/';
+            if(!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
+            $file_name = 'qris_' . time() . '_' . str_replace(' ', '_', basename($_FILES['qris_file']['name']));
+            $target_path = $upload_dir . $file_name;
+            if (move_uploaded_file($_FILES['qris_file']['tmp_name'], $target_path)) {
+                $company_qris = 'public/uploads/' . $file_name;
+            }
+        } else {
+            $error = "Format file QRIS tidak didukung! Gunakan JPG, PNG, atau WebP.";
         }
     }
 
-    $stmt = $db->prepare("UPDATE settings SET company_name=?, company_tagline=?, company_contact=?, company_address=?, company_logo=?, company_qris=?, wa_template=?, wa_template_paid=?, bank_account=?, router_ip=?, router_user=?, router_pass=?, router_port=?, acs_url=?, acs_user=?, acs_pass=? WHERE id=1");
-    $stmt->execute([$company_name, $company_tagline, $company_contact, $company_address, $company_logo, $company_qris, $wa_template, $wa_template_paid, $bank_account, $router_ip, $router_user, $router_pass, $router_port, $acs_url, $acs_user, $acs_pass]);
+    $stmt = $db->prepare("UPDATE settings SET company_name=?, company_tagline=?, company_contact=?, company_address=?, site_url=?, company_logo=?, company_qris=?, wa_template=?, wa_template_paid=?, bank_account=?, router_ip=?, router_user=?, router_pass=?, router_port=?, acs_url=?, acs_user=?, acs_pass=? WHERE id=1");
+    $stmt->execute([$company_name, $company_tagline, $company_contact, $company_address, $site_url, $company_logo, $company_qris, $wa_template, $wa_template_paid, $bank_account, $router_ip, $router_user, $router_pass, $router_port, $acs_url, $acs_user, $acs_pass]);
     
     $success = "Pengaturan berhasil disimpan.";
 }
@@ -93,6 +106,11 @@ $settings = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
             <div class="form-group">
                 <label>Alamat Kantor</label>
                 <textarea name="company_address" class="form-control" rows="2"><?= htmlspecialchars($settings['company_address']) ?></textarea>
+            </div>
+            <div class="form-group">
+                <label>Domain / URL Aplikasi (Untuk Link WA)</label>
+                <input type="text" name="site_url" class="form-control" value="<?= htmlspecialchars($settings['site_url'] ?? 'http://fibernodeinternet.com') ?>" placeholder="http://domainanda.com">
+                <small style="color:var(--text-secondary);">Gunakan domain Anda untuk membuat link otomatis di pesan WhatsApp.</small>
             </div>
             <div class="form-group" style="background:var(--hover-bg); padding:15px; border-radius:12px; border:1px solid var(--glass-border);">
                 <label style="margin-bottom:10px; display:flex; align-items:center; gap:8px;">
@@ -143,12 +161,12 @@ $settings = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
             <div class="form-group">
                 <label>Template Pesan (Belum Lunas)</label>
                 <textarea name="wa_template" class="form-control" rows="5"><?= htmlspecialchars($settings['wa_template'] ?? '') ?></textarea>
-                <small style="color:var(--text-secondary); margin-top:5px; display:block;">Gunakan: {nama}, *{id_cust}*, {paket}, {bulan}, *{tagihan}*, *{jatuh_tempo}*, *{rekening}*, *{tunggakan}*, *{total_harus}*</small>
+                <small style="color:var(--text-secondary); margin-top:5px; display:block;">Gunakan: {nama}, *{id_cust}*, {paket}, {bulan}, *{tagihan}*, *{jatuh_tempo}*, *{rekening}*, *{tunggakan}*, *{total_harus}*, *{link_tagihan}*</small>
             </div>
             <div class="form-group">
-                <label>Template Kwitansi (Lunas)</label>
-                <textarea name="wa_template_paid" class="form-control" rows="5"><?= htmlspecialchars($settings['wa_template_paid'] ?? '') ?></textarea>
-                <small style="color:var(--text-secondary); margin-top:5px; display:block;">Gunakan: {nama}, *{id_cust}*, {paket}, {bulan}, *{tagihan}*, *{tunggakan}*, *{waktu_bayar}*, *{admin}*</small>
+                <label style="font-weight: 700; font-size: 13px; margin-bottom: 8px; display: block;">Template Kuitansi (Lunas/Sudah Bayar)</label>
+                <textarea name="wa_template_paid" class="form-control" style="height: 120px; font-size: 13px;" placeholder="Gunakan: {nama}, {tagihan}, {id_cust}, {link_tagihan}"><?= htmlspecialchars($settings['wa_template_paid'] ?? '') ?></textarea>
+                <small style="color:var(--text-secondary); margin-top:5px; display:block; font-size:11px;">Gunakan: {nama}, {id_cust}, {paket}, {bulan}, {tagihan}, {total_bayar}, {tunggakan}, {sisa_tunggakan}, {status_pembayaran}, {waktu_bayar}, {admin}, {link_tagihan}</small>
             </div>
         </div>
 

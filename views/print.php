@@ -2,6 +2,22 @@
 // Ambil profil perusahaan dari DB
 $company = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
 
+// Branding Override for Partners
+if (($invoice['created_by'] ?? 0) != 0) {
+    $partner_id = intval($invoice['created_by']);
+    $partner_brand = $db->query("SELECT brand_name, brand_logo, brand_qris, brand_address, brand_contact, brand_bank, brand_rekening FROM users WHERE id = $partner_id")->fetch();
+    
+    if ($partner_brand && !empty($partner_brand['brand_name'])) {
+        $company['company_name'] = $partner_brand['brand_name'];
+        if (!empty($partner_brand['brand_address'])) $company['company_address'] = $partner_brand['brand_address'];
+        if (!empty($partner_brand['brand_contact'])) $company['company_contact'] = $partner_brand['brand_contact'];
+        if (!empty($partner_brand['brand_logo'])) $company['company_logo'] = $partner_brand['brand_logo'];
+        if (!empty($partner_brand['brand_qris'])) $company['company_qris'] = $partner_brand['brand_qris'];
+        if (!empty($partner_brand['brand_bank'])) $company['company_bank'] = $partner_brand['brand_bank'];
+        if (!empty($partner_brand['brand_rekening'])) $company['company_rekening'] = $partner_brand['brand_rekening'];
+    }
+}
+
 $format = $_GET['format'] ?? 'thermal'; // thermal or a4
 
 // Cek waktu pelunasan jika lunas
@@ -22,6 +38,12 @@ $bulan_bayar = str_replace(array_keys($bulan_indo), array_values($bulan_indo), $
 
 // Fetch items for itemized billing
 $invoice_items = $db->query("SELECT * FROM invoice_items WHERE invoice_id = " . intval($invoice['id']))->fetchAll();
+
+// Define Status Text Logic
+$status_label = strtoupper($invoice['status'] ?? 'BELUM LUNAS');
+if (($invoice['status'] ?? '') === 'Lunas') {
+    $status_label = ($tunggakan > 0) ? 'LUNAS (SEBAGIAN)' : 'LUNAS (SEPENUHNYA)';
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -162,7 +184,7 @@ $invoice_items = $db->query("SELECT * FROM invoice_items WHERE invoice_id = " . 
             <div class="divider"></div>
             
             <div class="mb-2" style="font-size:14px; font-weight:bold; text-align:center;">
-                STATUS: <?= strtoupper($invoice['status']) ?>
+                STATUS: <span style="color: <?= ($invoice['status'] === 'Lunas') ? '#10b981' : '#ef4444' ?>;"><?= $status_label ?></span>
             </div>
             
             <?php if($invoice['status'] === 'Lunas' && $payment_info): ?>
@@ -181,19 +203,22 @@ $invoice_items = $db->query("SELECT * FROM invoice_items WHERE invoice_id = " . 
             
             <div class="divider"></div>
             
-            <?php if(!empty($company['bank_account']) || !empty($company['company_qris'])): ?>
+            <?php if(!empty($company['bank_account']) || !empty($company['company_qris']) || !empty($company['company_bank'])): ?>
             <div style="font-size:12px; margin-bottom:10px;">
-                <?php if(!empty($company['bank_account'])): ?>
+                <?php if(!empty($company['company_bank']) && !empty($company['company_rekening'])): ?>
+                    <div class="text-center" style="margin-top:10px; border:1px dashed #000; padding:8px; border-radius:5px;">
+                        <strong>TRANSFER BANK:</strong><br>
+                        <?= htmlspecialchars($company['company_bank']) ?>: <?= htmlspecialchars($company['company_rekening']) ?>
+                    </div>
+                <?php elseif(!empty($company['bank_account'])): ?>
                     <strong>PEMBAYARAN VIA TRANSFER:</strong><br>
-                    <?= nl2br(htmlspecialchars($company['bank_account'])) ?><br><br>
+                    <?= nl2br(htmlspecialchars($company['bank_account'])) ?><br>
                 <?php endif; ?>
-                
-                <?php if($invoice['type'] !== 'partner' && !empty($company['company_qris'])): 
-                    $qris_src = preg_match('/^http/', $company['company_qris']) ? $company['company_qris'] : '/' . str_replace(' ', '%20', $company['company_qris']);
-                ?>
-                    <div class="text-center">
-                        <strong>SCAN QRIS:</strong><br>
-                        <img src="<?= $qris_src ?>" style="max-width:150px; margin-top:5px; border:1px solid #eee; padding:5px;">
+
+                <?php if(!empty($company['company_qris'])): ?>
+                    <div class="text-center" style="margin-top:15px; margin-bottom:10px;">
+                        <div style="font-size:10px; margin-bottom:5px; opacity:0.6;">SCAN QRIS PEMBAYARAN:</div>
+                        <img src="<?= $company['company_qris'] ?>" style="max-height:150px; border:1px solid #ddd; padding:5px; border-radius:5px;">
                     </div>
                 <?php endif; ?>
             </div>
@@ -301,9 +326,9 @@ $invoice_items = $db->query("SELECT * FROM invoice_items WHERE invoice_id = " . 
             <div style="margin-top:15px; text-align:right; font-size:16px; font-weight:900;">
                 STATUS: 
                 <?php if($invoice['status'] == 'Lunas'): ?>
-                    <span style="color:#10b981; border:2px solid #10b981; padding:2px 10px; border-radius:6px;">PAID / LUNAS</span>
+                    <span style="color:#10b981; border:2px solid #10b981; padding:4px 15px; border-radius:8px; display:inline-block;"><?= $status_label ?></span>
                 <?php else: ?>
-                    <span style="color:#ef4444; border:2px solid #ef4444; padding:2px 10px; border-radius:6px;">UNPAID / BELUM LUNAS</span>
+                    <span style="color:#ef4444; border:2px solid #ef4444; padding:4px 15px; border-radius:8px; display:inline-block;">UNPAID / BELUM LUNAS</span>
                 <?php endif; ?>
             </div>
 
@@ -313,24 +338,29 @@ $invoice_items = $db->query("SELECT * FROM invoice_items WHERE invoice_id = " . 
             </div>
             <?php endif; ?>
 
-            <?php if(!empty($company['bank_account']) || !empty($company['company_qris'])): ?>
-            <div style="margin-top:20px; padding:15px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
-                <div style="display:flex; gap:20px; align-items:center;">
-                    <?php if(!empty($company['bank_account'])): ?>
+            <?php if(!empty($company['company_bank']) || !empty($company['company_qris']) || !empty($company['bank_account'])): ?>
+            <div style="margin-top:20px; padding:20px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px;">
+                <div style="display:flex; gap:30px; align-items:center;">
                     <div style="flex:1;">
-                        <div style="font-weight:bold; font-size:11px; color:#64748b; margin-bottom:5px;">METODE PEMBAYARAN:</div>
-                        <div style="color:#475569; font-size:13px; line-height:1.4;">
-                            <?= nl2br(htmlspecialchars($company['bank_account'])) ?>
-                        </div>
+                        <?php if(!empty($company['company_bank']) && !empty($company['company_rekening'])): ?>
+                            <div style="font-weight:800; font-size:11px; color:#64748b; text-transform:uppercase; margin-bottom:8px;">Pembayaran via Transfer:</div>
+                            <div style="background:#fff; border:1px solid #e2e8f0; padding:12px; border-radius:10px;">
+                                <div style="font-size:14px; font-weight:800; color:#0f172a;"><?= htmlspecialchars($company['company_bank']) ?></div>
+                                <div style="font-size:20px; font-weight:900; color:#3b82f6; letter-spacing:1px; margin-top:2px;"><?= htmlspecialchars($company['company_rekening']) ?></div>
+                                <div style="font-size:12px; color:#94a3b8; margin-top:4px;">Atas Nama: <?= htmlspecialchars($company['company_name']) ?></div>
+                            </div>
+                        <?php elseif(!empty($company['bank_account'])): ?>
+                            <div style="font-weight:800; font-size:11px; color:#64748b; text-transform:uppercase; margin-bottom:8px;">Metode Pembayaran:</div>
+                            <div style="color:#475569; font-size:14px; line-height:1.4;">
+                                <?= nl2br(htmlspecialchars($company['bank_account'])) ?>
+                            </div>
+                        <?php endif; ?>
                     </div>
-                    <?php endif; ?>
 
-                    <?php if($invoice['type'] !== 'partner' && !empty($company['company_qris'])): 
-                        $qris_src_a4 = preg_match('/^http/', $company['company_qris']) ? $company['company_qris'] : '/' . str_replace(' ', '%20', $company['company_qris']);
-                    ?>
-                    <div style="text-align:center; padding:8px; background:#fff; border-radius:6px; border:1px solid #e2e8f0;">
-                        <div style="font-weight:bold; font-size:10px; color:#64748b; margin-bottom:5px;">SCAN QRIS:</div>
-                        <img src="<?= $qris_src_a4 ?>" style="height:100px; width:100px; object-fit:contain;">
+                    <?php if(!empty($company['company_qris'])): ?>
+                    <div style="text-align:center; padding:12px; background:#fff; border-radius:12px; border:1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                        <div style="font-weight:800; font-size:10px; color:#64748b; margin-bottom:8px; text-transform:uppercase;">Scan QRIS:</div>
+                        <img src="<?= $company['company_qris'] ?>" style="height:120px; width:120px; object-fit:contain;">
                     </div>
                     <?php endif; ?>
                 </div>

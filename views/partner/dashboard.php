@@ -96,8 +96,80 @@ $recent_revenue = $db->query("
     LIMIT 5
 ")->fetchAll();
 
-$settings = $db->query("SELECT wa_template, wa_template_paid, bank_account FROM settings WHERE id=1")->fetch();
+// Global Settings
+$settings = $db->query("SELECT * FROM settings WHERE id = 1")->fetch();
+
+// Partner Branding & Custom Templates
+$u_id = $_SESSION['user_id'];
+$p_stg = $db->query("SELECT wa_template_paid, brand_bank, brand_rekening FROM users WHERE id = $u_id")->fetch();
+
+$wa_tpl_paid = (!empty($p_stg['wa_template_paid'])) ? $p_stg['wa_template_paid'] : ($settings['wa_template_paid'] ?: "Halo {nama}, terima kasih. Pembayaran {tagihan} sebesar {nominal} sudah LUNAS. Terima kasih telah berlangganan.");
+$rekening_receipt = (!empty($p_stg['brand_bank'])) ? $p_stg['brand_bank'] . " " . $p_stg['brand_rekening'] : $settings['bank_account'];
+
+// Success Modal Data for Partner Dashboard
+$success_data = null;
+if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'])) {
+    $sid = intval($_GET['cust_id']);
+    $success_data = $db->query("SELECT id, name, contact, customer_code, package_name, monthly_fee FROM customers WHERE id = $sid")->fetch();
+    if ($success_data) {
+        $wa_num_paid = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $success_data['contact']));
+        $months_paid = intval($_GET['months'] ?? 1);
+        $total_paid = floatval($_GET['total'] ?? 0);
+        $total_display = 'Rp ' . number_format($total_paid, 0, ',', '.');
+        
+        $tunggakan_val = $db->query("SELECT COALESCE(SUM(amount - discount), 0) FROM invoices WHERE customer_id = $sid AND status = 'Belum Lunas'")->fetchColumn() ?: 0;
+        $tunggakan_display = 'Rp ' . number_format($tunggakan_val, 0, ',', '.');
+        $status_wa = ($tunggakan_val > 0) ? "LUNAS SEBAGIAN (Masih ada sisa tunggakan)" : "LUNAS SEPENUHNYA";
+        
+        $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . ($success_data['customer_code'] ?: $success_data['id']);
+        // Replace Tags
+        $receipt_msg = str_replace(
+            [
+                '{nama}', '{id_cust}', '{tagihan}', '{paket}', '{bulan}', 
+                '{tunggakan}', '{waktu_bayar}', '{admin}', '{link_tagihan}', '{rekening}', '{nominal}', '{status_pembayaran}', '{sisa_tunggakan}', '{total_bayar}'
+            ], 
+            [
+                $success_data['name'], 
+                ($success_data['customer_code'] ?: $success_data['id']), 
+                'Rp ' . number_format($success_data['monthly_fee'], 0, ',', '.'),
+                ($success_data['package_name'] ?: '-'),
+                $months_paid . ' Bulan',
+                $tunggakan_display,
+                date('d/m/Y H:i') . ' WIB',
+                $_SESSION['user_name'],
+                $portal_link,
+                $rekening_receipt,
+                $total_display,
+                $status_wa,
+                $tunggakan_display,
+                $total_display
+            ], 
+            $wa_tpl_paid
+        );
+        $success_data['wa_link'] = "https://api.whatsapp.com/send?phone=$wa_num_paid&text=" . urlencode($receipt_msg);
+    }
+}
 ?>
+
+<?php if($success_data): ?>
+<div class="glass-panel" style="margin-bottom:20px; border-left:4px solid var(--success); padding:20px; animation: slideDown 0.4s ease-out; background:rgba(16,185,129,0.1);">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
+        <div>
+            <h3 style="margin:0; color:var(--success); font-size:18px;"><i class="fas fa-check-circle"></i> Pembayaran Berhasil!</h3>
+            <p style="margin:5px 0 0; font-size:13px; color:var(--text-secondary);">Tagihan untuk <strong><?= htmlspecialchars($success_data['name']) ?></strong> telah diperbarui.</p>
+        </div>
+        <button onclick="this.parentElement.parentElement.style.display='none'" style="background:none; border:none; color:var(--text-secondary); cursor:pointer;"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <a href="<?= $success_data['wa_link'] ?>" target="_blank" class="btn" style="background:#25D366; color:white; flex:1; min-width:150px; padding:12px; font-weight:700; text-align:center; text-decoration:none; border-radius:10px;">
+            <i class="fab fa-whatsapp"></i> Kirim Notifikasi WA
+        </a>
+        <a href="index.php?page=admin_invoices&action=print&id=<?= intval($_GET['last_id'] ?? 0) ?>&format=thermal" target="_blank" class="btn btn-ghost" style="flex:1; min-width:150px; padding:12px; font-weight:700; border-radius:10px; text-align:center; text-decoration:none; border:1px solid var(--glass-border);">
+            <i class="fas fa-print"></i> Cetak Struk
+        </a>
+    </div>
+</div>
+<?php endif; ?>
 
 <?php if(count($active_banners) > 0): ?>
 <div class="banner-container" style="margin-bottom:20px;">
@@ -132,13 +204,13 @@ $settings = $db->query("SELECT wa_template, wa_template_paid, bank_account FROM 
     <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));">
         <?php if($partner_stats): ?>
         <div class="stat-card glass-panel" style="border-top:4px solid var(--success); background:linear-gradient(135deg, rgba(16, 185, 129, 0.1), transparent);">
-            <div class="stat-title" style="color:var(--success); font-weight:700;">LUNAS (SETORAN)</div>
-            <div class="stat-value" style="color:var(--success); font-size:22px;"><?= $partner_stats['lunas'] ?> <small style="font-size:12px; font-weight:normal;">Inv</small></div>
+            <div class="stat-title" style="color:var(--success); font-weight:700;">TERBAYAR KE ISP</div>
+            <div class="stat-value" style="color:var(--success); font-size:22px;"><?= $partner_stats['lunas'] ?></div>
             <div style="font-size:13px; font-weight:800; margin-top:5px;">Rp <?= number_format($partner_stats['total_lunas'], 0, ',', '.') ?></div>
         </div>
         <div class="stat-card glass-panel" style="border-top:4px solid var(--danger); background:linear-gradient(135deg, rgba(239, 68, 68, 0.1), transparent);">
-            <div class="stat-title" style="color:var(--danger); font-weight:700;">BELUM LUNAS</div>
-            <div class="stat-value" style="color:var(--danger); font-size:22px;"><?= $partner_stats['belum'] ?> <small style="font-size:12px; font-weight:normal;">Inv</small></div>
+            <div class="stat-title" style="color:var(--danger); font-weight:700;">BELUM BAYAR KE ISP</div>
+            <div class="stat-value" style="color:var(--danger); font-size:22px;"><?= $partner_stats['belum'] ?></div>
             <div style="font-size:13px; font-weight:800; margin-top:5px;">Rp <?= number_format($partner_stats['total_belum'], 0, ',', '.') ?></div>
         </div>
         <?php endif; ?>
@@ -202,7 +274,7 @@ $settings = $db->query("SELECT wa_template, wa_template_paid, bank_account FROM 
         <a href="index.php?page=admin_invoices&filter_status=belum" style="text-decoration:none; display:block; transition:transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
             <div style="background:var(--hover-bg); padding:15px; border-radius:12px; border:1px solid var(--glass-border); height:100%;">
                 <div style="font-size:11px; color:var(--text-secondary); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.5px;">Pelanggan Menunggak</div>
-                <div style="font-size:20px; font-weight:800; color:var(--danger);"><?= $count_unpaid ?> Org</div>
+                <div style="font-size:20px; font-weight:800; color:var(--danger);"><?= $count_unpaid ?></div>
                 <div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">Rp <?= number_format($my_inv_unpaid, 0, ',', '.') ?> <i class="fas fa-chevron-right" style="font-size:9px; margin-left:5px; opacity:0.5;"></i></div>
             </div>
         </a>
@@ -267,24 +339,24 @@ $settings = $db->query("SELECT wa_template, wa_template_paid, bank_account FROM 
     <h4 style="margin-bottom:15px; font-size:16px; font-weight:800;"><i class="fas fa-search text-primary"></i> Filter Riwayat Tagihan Utama</h4>
     <form method="GET" class="grid-filters">
         <input type="hidden" name="page" value="partner">
-        <div class="form-group" style="margin-bottom:0;">
-            <label style="font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:5px; display:block;">Dari Tanggal</label>
-            <input type="date" name="date_from" class="form-control" value="<?= htmlspecialchars($date_from) ?>">
+        <div class="filter-group">
+            <label>Jatuh Tempo</label>
+            <div class="filter-date-range">
+                <input type="date" name="date_from" class="form-control" value="<?= htmlspecialchars($date_from) ?>" style="font-size:12px; flex:1; min-width:0;">
+                <span style="opacity:0.3;">s/d</span>
+                <input type="date" name="date_to" class="form-control" value="<?= htmlspecialchars($date_to) ?>" style="font-size:12px; flex:1; min-width:0;">
+            </div>
         </div>
-        <div class="form-group" style="margin-bottom:0;">
-            <label style="font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:5px; display:block;">Sampai Tanggal</label>
-            <input type="date" name="date_to" class="form-control" value="<?= htmlspecialchars($date_to) ?>">
-        </div>
-        <div class="form-group" style="margin-bottom:0;">
-            <label style="font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:5px; display:block;">Status</label>
-            <select name="filter_status" class="form-control">
+        <div class="filter-group">
+            <label>Status</label>
+            <select name="filter_status" class="form-control" style="font-size:13px;">
                 <option value="">Semua Status</option>
                 <option value="lunas" <?= $filter_status === 'lunas' ? 'selected' : '' ?>>Lunas</option>
                 <option value="belum" <?= $filter_status === 'belum' ? 'selected' : '' ?>>Belum Lunas</option>
             </select>
         </div>
         <div class="grid-actions">
-            <button type="submit" class="btn btn-primary" style="height:46px; font-weight:700;"><i class="fas fa-filter"></i> Apply</button>
+            <button type="submit" class="btn btn-primary" style="height:46px; font-weight:700; width:100%;"><i class="fas fa-filter"></i> Apply Filter</button>
             <?php if($date_from || $date_to || $filter_status): ?>
                 <a href="index.php?page=partner" class="btn btn-ghost" style="height:46px; border:1px solid var(--glass-border); line-height:44px;"><i class="fas fa-times"></i> Reset</a>
             <?php endif; ?>
@@ -305,7 +377,7 @@ $settings = $db->query("SELECT wa_template, wa_template_paid, bank_account FROM 
 <!-- Daftar Tagihan -->
 <div class="glass-panel" style="padding: 24px;">
     <h4 style="margin-bottom:15px;"><i class="fas fa-file-invoice-dollar"></i> Daftar Tagihan Anda ke ISP Induk</h4>
-    <div class="table-container">
+    <div class="table-container desktop-only">
         <table>
             <thead>
                 <tr>
@@ -336,18 +408,6 @@ $settings = $db->query("SELECT wa_template, wa_template_paid, bank_account FROM 
                         <?php if($p_inv['discount'] > 0): ?>
                             <div style="font-size:11px; color:var(--danger);">- Rp <?= number_format($p_inv['discount'], 0, ',', '.') ?> (Potongan)</div>
                         <?php endif; ?>
-                        
-                        <?php if(!empty($partner_invoice_items[$p_inv['id']])): ?>
-                            <div style="margin-top:8px; padding:8px; background:rgba(255,255,255,0.03); border-radius:8px; border:1px dashed var(--glass-border);">
-                                <div style="font-size:10px; text-transform:uppercase; color:var(--text-secondary); margin-bottom:4px; letter-spacing:0.5px;">Rincian Layanan:</div>
-                                <?php foreach($partner_invoice_items[$p_inv['id']] as $p_item): ?>
-                                    <div style="display:flex; justify-content:space-between; font-size:11px; padding:2px 0;">
-                                        <span style="color:var(--text-primary); opacity:0.8;">• <?= htmlspecialchars($p_item['description']) ?></span>
-                                        <span style="font-weight:600;">Rp <?= number_format($p_item['amount'], 0, ',', '.') ?></span>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php endif; ?>
                     </td>
                     <td style="padding:15px 12px; vertical-align:top;">
                         <?php if($p_inv['status'] == 'Lunas'): ?>
@@ -361,14 +421,54 @@ $settings = $db->query("SELECT wa_template, wa_template_paid, bank_account FROM 
                     </td>
                 </tr>
                 <?php endforeach; ?>
-                <?php if(count($partner_invoices) == 0 && $partner_cid): ?>
-                    <tr><td colspan="5" style="text-align:center; color:var(--text-secondary); padding:30px;">
-                        <i class="fas fa-inbox" style="font-size:24px; opacity:0.3; display:block; margin-bottom:8px;"></i>
-                        <?= ($date_from || $date_to) ? 'Tidak ada tagihan dalam rentang tanggal ini.' : 'Belum ada riwayat tagihan.' ?>
-                    </td></tr>
-                <?php endif; ?>
             </tbody>
         </table>
+    </div>
+
+    <!-- Mobile View: Card-based list to prevent overflow -->
+    <div class="mobile-invoice-card-container mobile-invoice-card" style="display:none;">
+        <?php foreach($partner_invoices as $p_inv): ?>
+            <div class="mobile-invoice-card" style="display:block; padding:18px; margin-bottom:15px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                    <div>
+                        <div style="font-family:monospace; color:var(--text-secondary); font-size:11px;">#INV-<?= str_pad($p_inv['id'], 5, "0", STR_PAD_LEFT) ?></div>
+                        <div style="font-weight:700; font-size:13px; margin-top:2px;">Kewajiban Ke ISP Induk</div>
+                    </div>
+                    <?php if($p_inv['status'] == 'Lunas'): ?>
+                        <span class="badge badge-success" style="font-size:10px; padding:3px 10px;"><i class="fas fa-check-circle"></i> LUNAS</span>
+                    <?php else: ?>
+                        <span class="badge badge-danger" style="font-size:10px; padding:3px 10px;"><i class="fas fa-clock"></i> BELUM BAYAR</span>
+                    <?php endif; ?>
+                </div>
+
+                <div style="background:rgba(255,255,255,0.03); border-radius:12px; padding:12px; margin-bottom:15px; display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div>
+                        <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:700;">Jatuh Tempo</div>
+                        <div style="font-size:13px; font-weight:600;"><?= date('d M Y', strtotime($p_inv['due_date'])) ?></div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:700;">Total Tagihan</div>
+                        <div style="font-size:14px; font-weight:800; color:var(--primary);">Rp <?= number_format($p_inv['amount'], 0, ',', '.') ?></div>
+                    </div>
+                </div>
+
+                <div style="display:flex; gap:10px;">
+                    <a href="index.php?page=admin_invoices&action=print&id=<?= $p_inv['id'] ?>" target="_blank" class="btn btn-ghost" style="flex:1; border-radius:10px; font-size:12px;">
+                        <i class="fas fa-print"></i> Cetak Nota
+                    </a>
+                    <div style="flex:1; background:rgba(var(--primary-rgb), 0.1); color:var(--primary); font-size:10px; font-weight:700; border-radius:10px; display:flex; align-items:center; justify-content:center; border:1px solid var(--glass-border); padding:5px; text-align:center;">
+                         Konfirmasi Admin Utama
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+        
+        <?php if(count($partner_invoices) == 0 && $partner_cid): ?>
+            <div style="text-align:center; color:var(--text-secondary); padding:40px;">
+                <i class="fas fa-inbox" style="font-size:32px; opacity:0.2; display:block; margin-bottom:15px;"></i>
+                Belum ada data tagihan.
+            </div>
+        <?php endif; ?>
     </div>
 </div>
 

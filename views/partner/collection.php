@@ -56,25 +56,57 @@ $stats = [
     'total_nominal' => array_sum(array_column($unpaid_tasks, 'total_unpaid'))
 ];
 
-$settings = $db->query("SELECT wa_template, wa_template_paid, bank_account FROM settings WHERE id=1")->fetch();
-$wa_tpl = $settings['wa_template'] ?: "Halo {nama}, tagihan internet Anda sebesar {tagihan} jatuh tempo pada {jatuh_tempo}. Transfer ke {rekening}";
-$wa_tpl_paid = $settings['wa_template_paid'] ?: "Halo {nama}, terima kasih. Pembayaran {tagihan} sebesar {nominal} sudah LUNAS. Terima kasih telah berlangganan.";
+// Global Settings
+$settings = $db->query("SELECT * FROM settings WHERE id = 1")->fetch();
+
+// Partner Branding & Custom Templates
+$u_id = $_SESSION['user_id'];
+$p_stg = $db->query("SELECT wa_template, wa_template_paid, brand_bank, brand_rekening FROM users WHERE id = $u_id")->fetch();
+
+$wa_tpl = (!empty($p_stg['wa_template'])) ? $p_stg['wa_template'] : ($settings['wa_template'] ?: "Halo {nama}, tagihan internet Anda sebesar {tagihan} jatuh tempo pada {jatuh_tempo}. Transfer ke {rekening}");
+$wa_tpl_paid = (!empty($p_stg['wa_template_paid'])) ? $p_stg['wa_template_paid'] : ($settings['wa_template_paid'] ?: "Halo {nama}, terima kasih. Pembayaran {tagihan} sebesar {nominal} sudah LUNAS. Terima kasih telah berlangganan.");
+$rekening_receipt = (!empty($p_stg['brand_bank'])) ? $p_stg['brand_bank'] . " " . $p_stg['brand_rekening'] : $settings['bank_account'];
 
 // Success Modal Data
 $success_data = null;
 if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'])) {
     $sid = intval($_GET['cust_id']);
-    $success_data = $db->query("SELECT name, contact FROM customers WHERE id = $sid")->fetch();
+    // Fetch richer data for WA Receipt
+    $success_data = $db->query("SELECT id, name, contact, customer_code, package_name, monthly_fee FROM customers WHERE id = $sid")->fetch();
     if ($success_data) {
         $wa_num_paid = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $success_data['contact']));
+        
         $months_paid = intval($_GET['months'] ?? 1);
         $total_paid = floatval($_GET['total'] ?? 0);
         $total_display = 'Rp ' . number_format($total_paid, 0, ',', '.');
         
-        // Dynamic receipt info
+        // Calculate remaining arrears (Tunggakan)
+        $tunggakan_val = $db->query("SELECT COALESCE(SUM(amount - discount), 0) FROM invoices WHERE customer_id = $sid AND status = 'Belum Lunas'")->fetchColumn() ?: 0;
+        $tunggakan_display = 'Rp ' . number_format($tunggakan_val, 0, ',', '.');
+        $status_wa = ($tunggakan_val > 0) ? "LUNAS SEBAGIAN (Masih ada sisa tunggakan)" : "LUNAS SEPENUHNYA";
+        
+        $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . ($success_data['customer_code'] ?: $success_data['id']);
+        // Replace Tags
         $receipt_msg = str_replace(
-            ['{nama}', '{nominal}', '{bulan}'], 
-            [$success_data['name'], '*' . $total_display . '*', $months_paid . ' Bulan'], 
+            [
+                '{nama}', '{id_cust}', '{tagihan}', '{paket}', '{bulan}', 
+                '{tunggakan}', '{waktu_bayar}', '{admin}', '{link_tagihan}', '{rekening}', '{nominal}', '{status_pembayaran}', '{sisa_tunggakan}'
+            ], 
+            [
+                $success_data['name'], 
+                ($success_data['customer_code'] ?: $success_data['id']), 
+                'Rp ' . number_format($success_data['monthly_fee'], 0, ',', '.'),
+                ($success_data['package_name'] ?: '-'),
+                $months_paid . ' Bulan',
+                $tunggakan_display,
+                date('d/m/Y H:i') . ' WIB',
+                $_SESSION['user_name'],
+                $portal_link,
+                $rekening_receipt,
+                $total_display,
+                $status_wa,
+                $tunggakan_display
+            ], 
             $wa_tpl_paid
         );
         $success_data['wa_link'] = "https://api.whatsapp.com/send?phone=$wa_num_paid&text=" . urlencode($receipt_msg);
@@ -181,9 +213,10 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
                 $mon_id = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
                 $inv_month = $mon_id[intval(date('m', strtotime($task['oldest_due_date']))) - 1] . ' ' . date('Y', strtotime($task['oldest_due_date']));
                 
+                $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . $cust_id_display;
                 $msg = str_replace(
-                    ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{tunggakan}', '{total_harus}'], 
-                    [$task['name'], '*' . $cust_id_display . '*', $task['package_name'] ?: '-', $inv_month, '*' . $nominal_display . '*', '*' . $oldest_due . '*', '*' . trim($settings['bank_account']) . '*', '*' . $task['num_arrears'] . ' Bulan*', '*' . $nominal_display . '*'], 
+                    ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{tunggakan}', '{total_harus}', '{link_tagihan}'], 
+                    [$task['name'], '*' . $cust_id_display . '*', $task['package_name'] ?: '-', $inv_month, '*' . $nominal_display . '*', '*' . $oldest_due . '*', '*' . trim($rekening_receipt) . '*', '*' . $task['num_arrears'] . ' Bulan*', '*' . $nominal_display . '*', $portal_link], 
                     $wa_tpl
                 );
                 $wa_text = urlencode($msg);
@@ -320,7 +353,37 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
 </div>
 <?php endif; ?>
 
+<!-- Payment Selection Modal -->
+<div id="paymentSelectionModal" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:9998; display:none; align-items:center; justify-content:center; backdrop-filter:blur(8px); animation: fadeIn 0.3s ease;">
+    <div class="glass-panel" style="width:90%; max-width:400px; padding:25px; border-top:5px solid var(--primary);">
+        <h3 style="font-size:18px; font-weight:800; margin-bottom:15px; display:flex; align-items:center; gap:10px;">
+            <i class="fas fa-hand-holding-dollar text-primary"></i> Pembayaran Tagihan
+        </h3>
+        <p id="ps_cust_name" style="font-weight:700; color:var(--text-primary); margin-bottom:5px;"></p>
+        <p id="ps_cust_info" style="font-size:12px; color:var(--text-secondary); margin-bottom:20px;"></p>
+        
+        <div style="margin-bottom:20px;">
+            <label style="display:block; font-size:12px; font-weight:700; color:var(--text-secondary); margin-bottom:8px;">JUMLAH BULAN DIBAYAR</label>
+            <select id="ps_months_select" class="form-control" onchange="updatePSModalPrice()" style="height:48px; font-weight:700; border-radius:12px; background:var(--input-bg);">
+                <!-- Generated by JS -->
+            </select>
+        </div>
+
+        <div style="background:rgba(var(--primary-rgb), 0.05); padding:15px; border-radius:12px; border:1px solid var(--glass-border); margin-bottom:25px; display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:11px; font-weight:700; color:var(--text-secondary);">TOTAL HARUS DIBAYAR</span>
+            <span id="ps_total_price" style="font-size:20px; font-weight:900; color:var(--text-primary);">Rp 0</span>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <button onclick="document.getElementById('paymentSelectionModal').style.display='none'" class="btn btn-ghost" style="padding:12px; border-radius:10px; font-weight:600;">Batal</button>
+            <button onclick="submitQuickPay()" class="btn btn-primary" style="padding:12px; border-radius:10px; font-weight:800;">KONFIRMASI</button>
+        </div>
+    </div>
+</div>
+
 <script>
+let currentPsData = { id: 0, months: 1, perMonth: 0 };
+
 function switchColTab(tab) {
     // Hide all
     document.querySelectorAll('.collection-tab-content').forEach(el => el.style.display = 'none');
@@ -332,11 +395,40 @@ function switchColTab(tab) {
 }
 
 function quickPay(custId, name, months, total) {
-    const formattedTotal = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(total);
-    if (confirm(`Konfirmasi pembayaran dari ${name}?\n\nTotal: ${formattedTotal} (${months} Bulan)\n\nTindakan ini akan menandai tagihan sebagai LUNAS.`)) {
-        document.getElementById('qp_cust_id').value = custId;
-        document.getElementById('qp_num_months').value = months;
-        document.getElementById('quickPayForm').submit();
+    currentPsData = { 
+        id: custId, 
+        months: months, 
+        perMonth: total / months 
+    };
+    
+    document.getElementById('ps_cust_name').innerText = name;
+    document.getElementById('ps_cust_info').innerText = `Pelanggan memiliki tunggakan ${months} bulan.`;
+    
+    const select = document.getElementById('ps_months_select');
+    select.innerHTML = '';
+    for(let i=1; i<=months; i++) {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.innerText = `${i} Bulan`;
+        if (i === 1) opt.selected = true; // Default pay 1 month as requested
+        select.appendChild(opt);
     }
+    
+    updatePSModalPrice();
+    document.getElementById('paymentSelectionModal').style.display = 'flex';
+}
+
+function updatePSModalPrice() {
+    const months = parseInt(document.getElementById('ps_months_select').value);
+    const total = months * currentPsData.perMonth;
+    const formatted = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(total);
+    document.getElementById('ps_total_price').innerText = formatted;
+}
+
+function submitQuickPay() {
+    const months = document.getElementById('ps_months_select').value;
+    document.getElementById('qp_cust_id').value = currentPsData.id;
+    document.getElementById('qp_num_months').value = months;
+    document.getElementById('quickPayForm').submit();
 }
 </script>

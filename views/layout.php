@@ -77,6 +77,7 @@
                         <a href="index.php?page=admin_router" class="nav-link <?= $page == 'admin_router' ? 'active' : '' ?>"><i class="fas fa-network-wired"></i> Manajemen Router</a>
                         <a href="index.php?page=admin_invoices" class="nav-link <?= $page == 'admin_invoices' ? 'active' : '' ?>"><i class="fas fa-file-invoice-dollar"></i> Riwayat Tagihan</a>
                         <a href="index.php?page=admin_reports" class="nav-link <?= $page == 'admin_reports' ? 'active' : '' ?>"><i class="fas fa-chart-line"></i> Laporan Keuangan</a>
+                        <a href="index.php?page=partner_settings" class="nav-link <?= $page == 'partner_settings' ? 'active' : '' ?>"><i class="fas fa-id-card-alt" style="color:#10b981;"></i> Seting Profil</a>
                     <?php endif; ?>
                 </div>
             </div>
@@ -103,6 +104,7 @@
                         elseif($page == 'admin_backup') echo 'Backup & Restore Database';
                         elseif($page == 'collector') echo 'Dashboard Penagih';
                         elseif($page == 'partner') echo 'Dashboard Mitra';
+                        elseif($page == 'partner_settings') echo 'Pengaturan Profil Mitra';
                     ?>
                 </div>
                 <div class="user-profile">

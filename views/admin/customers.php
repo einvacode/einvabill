@@ -1,6 +1,40 @@
 <?php
 $action = $_GET['action'] ?? 'list';
 
+// Success Modal for Admin Customers
+$success_data = null;
+if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['id'])) {
+    $sid = intval($_GET['id']);
+    $success_data = $db->query("SELECT id, name, contact, customer_code, package_name, monthly_fee FROM customers WHERE id = $sid")->fetch();
+    $settings = $db->query("SELECT company_name, wa_template_paid, site_url FROM settings WHERE id=1")->fetch();
+    if ($success_data) {
+        $wa_num_paid = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $success_data['contact'] ?? ''));
+        $months_paid = intval($_GET['months'] ?? 1);
+        $tunggakan_val = $db->query("SELECT COALESCE(SUM(amount - discount), 0) FROM invoices WHERE customer_id = $sid AND status = 'Belum Lunas'")->fetchColumn() ?: 0;
+        $tunggakan_display = 'Rp ' . number_format($tunggakan_val, 0, ',', '.');
+        $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . ($success_data['customer_code'] ?: $success_data['id']);
+        $receipt_msg = str_replace(
+            ['{nama}', '{id_cust}', '{tagihan}', '{paket}', '{bulan}', '{tunggakan}', '{waktu_bayar}', '{admin}', '{perusahaan}', '{link_tagihan}'], 
+            [$success_data['name'], ($success_data['customer_code'] ?: $success_data['id']), 'Rp ' . number_format($success_data['monthly_fee'], 0, ',', '.'), ($success_data['package_name'] ?: '-'), $months_paid, $tunggakan_display, date('d/m/Y H:i') . ' WIB', $_SESSION['user_name'], $settings['company_name'], $portal_link], 
+            $settings['wa_template_paid'] ?: "Halo {nama}, pembayaran {tagihan} LUNAS. Cek nota: {link_tagihan}"
+        );
+        $success_data['wa_link'] = "https://api.whatsapp.com/send?phone=$wa_num_paid&text=" . urlencode($receipt_msg);
+    }
+}
+?>
+
+<?php if($success_data): ?>
+<div class="glass-panel" style="margin-bottom:20px; border-left:4px solid var(--success); padding:20px; background:rgba(16,185,129,0.1);">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+            <h3 style="margin:0; color:var(--success); font-size:16px;"><i class="fas fa-check-circle"></i> Pembayaran Berhasil!</h3>
+            <p style="margin:0; font-size:12px; color:var(--text-secondary);">Pelanggan <strong><?= htmlspecialchars($success_data['name']) ?></strong> telah diupdate.</p>
+        </div>
+        <a href="<?= $success_data['wa_link'] ?>" target="_blank" class="btn btn-sm btn-success"><i class="fab fa-whatsapp"></i> Kirim WA</a>
+    </div>
+</div>
+<?php endif; ?>
+<?php
 // Fetch all packages for dropdowns (Scoped)
 $u_id = $_SESSION['user_id'];
 $u_role = $_SESSION['user_role'] ?? 'admin';
@@ -166,10 +200,11 @@ if ($action === 'bulk_delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $db->prepare("DELETE FROM customers WHERE id IN ($id_placeholders)")->execute($ids);
         
         header("Location: index.php?page=admin_customers&msg=bulk_deleted");
+        exit;
     } else {
         header("Location: index.php?page=admin_customers");
+        exit;
     }
-    exit;
 }
 
 if ($action === 'bulk_move' && $_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -180,10 +215,11 @@ if ($action === 'bulk_move' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $params = array_merge([$target_collector], $ids);
         $db->prepare("UPDATE customers SET collector_id = ? WHERE id IN ($id_placeholders)")->execute($params);
         header("Location: index.php?page=admin_customers&msg=bulk_moved");
+        exit;
     } else {
         header("Location: index.php?page=admin_customers");
+        exit;
     }
-    exit;
 }
 
 if ($action === 'export') {
@@ -354,8 +390,8 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         <div class="grid-actions">
             <div class="btn-group">
-                <a href="<?= $export_url ?>" class="btn btn-sm btn-ghost" style="color:var(--success);"><i class="fas fa-file-download"></i> <span class="hide-mobile">Export</span></a>
-                <a href="index.php?page=admin_customers&action=import_view" class="btn btn-sm btn-ghost" style="color:var(--success);"><i class="fas fa-file-excel"></i> <span class="hide-mobile">Import</span></a>
+                <a href="<?= $export_url ?>" class="btn btn-sm btn-ghost" style="color:var(--success);"><i class="fas fa-arrow-down"></i> <span class="hide-mobile">Export</span></a>
+                <a href="index.php?page=admin_customers&action=import_view" class="btn btn-sm btn-ghost" style="color:var(--success);"><i class="fas fa-arrow-up"></i> <span class="hide-mobile">Import</span></a>
                 <a href="<?= $create_url ?>" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Tambah</a>
             </div>
         </div>
@@ -427,7 +463,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:25px;">
         <div class="glass-panel" style="padding:15px; border-left:4px solid var(--primary); background:linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(37, 99, 235, 0.05));">
             <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">Total <?= $filter_type == 'partner' ? 'Mitra' : 'Pelanggan' ?></div>
-            <div style="font-size:24px; font-weight:800; color:var(--primary);"><?= number_format($total_rows) ?> <span style="font-size:14px; color:var(--text-secondary); font-weight:normal;">Items</span></div>
+            <div style="font-size:24px; font-weight:800; color:var(--primary);"><?= number_format($total_rows) ?></div>
         </div>
         <?php
         $stats_q = "SELECT SUM(monthly_fee) as total_mrr, AVG(monthly_fee) as avg_fee FROM customers WHERE 1=1 $where_type $where_collector $where_search $scope_where";

@@ -65,7 +65,46 @@ $cash_monthly_part = $db->query("
       AND strftime('%Y-%m', p.payment_date) = strftime('%Y-%m', 'now')
       AND (c.created_by = 0 OR c.created_by IS NULL)
 ")->fetchColumn() ?: 0;
+$settings = $db->query("SELECT company_name, wa_template_paid, site_url FROM settings WHERE id = 1")->fetch();
+
+// Success Modal for Admin Dashboard
+$success_data = null;
+if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'])) {
+    $sid = intval($_GET['cust_id']);
+    $success_data = $db->query("SELECT id, name, contact, customer_code, package_name, monthly_fee FROM customers WHERE id = $sid")->fetch();
+    if ($success_data) {
+        $wa_num_paid = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $success_data['contact'] ?? ''));
+        $months_paid = intval($_GET['months'] ?? 1);
+        $total_paid = floatval($_GET['total'] ?? 0);
+        $total_display = 'Rp ' . number_format($total_paid, 0, ',', '.');
+        $tunggakan_val = $db->query("SELECT COALESCE(SUM(amount - discount), 0) FROM invoices WHERE customer_id = $sid AND status = 'Belum Lunas'")->fetchColumn() ?: 0;
+        $tunggakan_display = 'Rp ' . number_format($tunggakan_val, 0, ',', '.');
+        $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . ($success_data['customer_code'] ?: $success_data['id']);
+        $receipt_msg = str_replace(
+            ['{nama}', '{id_cust}', '{tagihan}', '{paket}', '{bulan}', '{tunggakan}', '{waktu_bayar}', '{admin}', '{perusahaan}', '{link_tagihan}'], 
+            [$success_data['name'], ($success_data['customer_code'] ?: $success_data['id']), 'Rp ' . number_format($success_data['monthly_fee'], 0, ',', '.'), ($success_data['package_name'] ?: '-'), $months_paid, $tunggakan_display, date('d/m/Y H:i') . ' WIB', $_SESSION['user_name'], $settings['company_name'], $portal_link], 
+            $settings['wa_template_paid'] ?: "Halo {nama}, pembayaran {tagihan} LUNAS. Cek nota: {link_tagihan}"
+        );
+        $success_data['wa_link'] = "https://api.whatsapp.com/send?phone=$wa_num_paid&text=" . urlencode($receipt_msg);
+    }
+}
 ?><!DOCTYPE html>
+
+<?php if($success_data): ?>
+<div class="glass-panel" style="margin-bottom:20px; border-left:4px solid var(--success); padding:20px; animation: slideDown 0.4s ease-out; background:rgba(16,185,129,0.1);">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
+        <div>
+            <h3 style="margin:0; color:var(--success); font-size:18px;"><i class="fas fa-check-circle"></i> Pembayaran Berhasil!</h3>
+            <p style="margin:5px 0 0; font-size:13px; color:var(--text-secondary);">Tagihan <strong><?= htmlspecialchars($success_data['name']) ?></strong> diperbarui.</p>
+        </div>
+        <button onclick="this.parentElement.parentElement.style.display='none'" style="background:none; border:none; color:var(--text-secondary); cursor:pointer;"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <a href="<?= $success_data['wa_link'] ?>" target="_blank" class="btn btn-sm btn-success" style="padding:10px 20px;"><i class="fab fa-whatsapp"></i> Kirim Notifikasi WA</a>
+    </div>
+</div>
+<style> @keyframes slideDown { from { transform: translateY(-10px); opacity:0; } to { transform: translateY(0); opacity:1; } } </style>
+<?php endif; ?>
 
 <!-- Banner Lisensi -->
 <?php if(LICENSE_ST === 'TRIAL'): ?>
@@ -104,7 +143,7 @@ $cash_monthly_part = $db->query("
         </div>
         <div style="flex:1; overflow:hidden;">
             <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Retail</div>
-            <div style="font-size:18px; font-weight:800; line-height:1.2;"><?= number_format($total_customers, 0) ?> <small style="font-size:10px; opacity:0.6;">User</small></div>
+            <div style="font-size:18px; font-weight:800; line-height:1.2;"><?= number_format($total_customers, 0) ?></div>
             <div style="font-size:10px; color:#3b82f6; font-weight:700; margin-top:2px;">Est: Rp<?= number_format($est_revenue_cust, 0, ',', '.') ?></div>
         </div>
     </div>
@@ -115,8 +154,7 @@ $cash_monthly_part = $db->query("
             <i class="fas fa-handshake"></i>
         </div>
         <div style="flex:1; overflow:hidden;">
-            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Mitra</div>
-            <div style="font-size:18px; font-weight:800; line-height:1.2;"><?= number_format($total_partners, 0) ?> <small style="font-size:10px; opacity:0.6;">B2B</small></div>
+            <div style="font-size:18px; font-weight:800; line-height:1.2;"><?= number_format($total_partners, 0) ?></div>
             <div style="font-size:10px; color:#a855f7; font-weight:700; margin-top:2px;">Est: Rp<?= number_format($est_revenue_part, 0, ',', '.') ?></div>
         </div>
     </div>
@@ -128,7 +166,7 @@ $cash_monthly_part = $db->query("
         </div>
         <div style="flex:1; overflow:hidden;">
             <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Baru</div>
-            <div style="font-size:18px; font-weight:800; line-height:1.2;"><?= number_format($new_customers_month, 0) ?> <small style="font-size:10px; opacity:0.6;">Bulan Ini</small></div>
+            <div style="font-size:18px; font-weight:800; line-height:1.2;"><?= number_format($new_customers_month, 0) ?></div>
             <div style="font-size:10px; opacity:0.6; margin-top:2px;">Growth</div>
         </div>
     </div>
@@ -141,7 +179,7 @@ $cash_monthly_part = $db->query("
         <div style="flex:1; overflow:hidden;">
             <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Piutang Retail</div>
             <div style="font-size:16px; font-weight:800; color:#ef4444; line-height:1.2;">Rp<?= number_format($total_unpaid_cust, 0, ',', '.') ?></div>
-            <div style="font-size:10px; color:#ef4444; font-weight:700; margin-top:2px;"><?= number_format($count_unpaid_cust) ?> User</div>
+            <div style="font-size:10px; color:#ef4444; font-weight:700; margin-top:2px;"><?= number_format($count_unpaid_cust) ?></div>
         </div>
     </div>
 
@@ -153,7 +191,7 @@ $cash_monthly_part = $db->query("
         <div style="flex:1; overflow:hidden;">
             <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Piutang Mitra</div>
             <div style="font-size:16px; font-weight:800; color:#f43f5e; line-height:1.2;">Rp<?= number_format($total_unpaid_part, 0, ',', '.') ?></div>
-            <div style="font-size:10px; color:#f43f5e; font-weight:700; margin-top:2px;"><?= number_format($count_unpaid_part) ?> Mitra</div>
+            <div style="font-size:10px; color:#f43f5e; font-weight:700; margin-top:2px;"><?= number_format($count_unpaid_part) ?></div>
         </div>
     </div>
 
@@ -237,7 +275,7 @@ $cash_monthly_part = $db->query("
                         SUM(i.amount - i.discount) as total_debt
                     FROM invoices i
                     JOIN customers c ON i.customer_id = c.id
-                    WHERE i.status = 'Belum Lunas'
+                    WHERE i.status = 'Belum Lunas' AND (c.created_by = 0 OR c.created_by IS NULL)
                     GROUP BY c.id
                     ORDER BY months_owed DESC, total_debt DESC
                     LIMIT 5
@@ -252,7 +290,7 @@ $cash_monthly_part = $db->query("
                     </td>
                     <td style="padding:12px;">
                         <span class="badge" style="background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.3); font-size:11px;">
-                             <i class="fas fa-history"></i> <?= $ls['months_owed'] ?> Bulan
+                             <i class="fas fa-history"></i> <?= $ls['months_owed'] ?>
                         </span>
                     </td>
                     <td style="padding:12px;">
@@ -297,6 +335,7 @@ $cash_monthly_part = $db->query("
             JOIN invoices i ON p.invoice_id = i.id 
             JOIN customers c ON i.customer_id = c.id 
             LEFT JOIN users u ON p.received_by = u.id
+            WHERE (c.created_by = 0 OR c.created_by IS NULL)
             ORDER BY p.payment_date DESC LIMIT 10
         ")->fetchAll();
         

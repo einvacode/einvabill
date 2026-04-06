@@ -178,6 +178,23 @@ body {
   box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.2);
 }
 
+/* Force better styling for date inputs */
+input[type="date"].form-control {
+  min-height: 44px;
+  position: relative;
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--input-bg);
+  color: var(--input-color);
+}
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.6;
+}
+[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
 /* ===== BUTTON SYSTEM ===== */
 .btn {
   display: inline-flex;
@@ -528,6 +545,23 @@ tbody tr:hover {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.filter-date-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .filter-date-range {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .filter-date-range span {
+    display: none; 
+  }
 }
 
 .filter-group label {
@@ -1043,4 +1077,22 @@ tbody tr:hover {
 
 .desktop-only {
     display: block;
+}
+
+/* Mobile Responsive Cards for Tables */
+.mobile-invoice-card {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .invoices-desktop-table, .desktop-only { display: none !important; }
+    .invoices-mobile-container, .mobile-invoice-card { display: block !important; }
+    .mobile-invoice-card {
+        display: block;
+        margin-bottom: 12px;
+        padding: 16px;
+        border-radius: 15px;
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+    }
 }

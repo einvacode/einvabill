@@ -84,7 +84,8 @@ $db->exec("
         router_ip TEXT,
         router_user TEXT,
         router_pass TEXT,
-        router_port INTEGER
+        router_port INTEGER,
+        site_url TEXT
     );
 
     CREATE TABLE IF NOT EXISTS routers (
@@ -134,6 +135,15 @@ try { $db->exec("ALTER TABLE customers ADD COLUMN customer_code TEXT"); } catch(
 try { $db->exec("ALTER TABLE customers ADD COLUMN area TEXT"); } catch(Exception $e) {}
 try { $db->exec("ALTER TABLE users ADD COLUMN area TEXT"); } catch(Exception $e) {}
 try { $db->exec("ALTER TABLE users ADD COLUMN customer_id INTEGER"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE users ADD COLUMN brand_name TEXT"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE users ADD COLUMN brand_logo TEXT"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE users ADD COLUMN brand_qris TEXT"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE users ADD COLUMN brand_address TEXT"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE users ADD COLUMN brand_contact TEXT"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE users ADD COLUMN brand_bank TEXT"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE users ADD COLUMN brand_rekening TEXT"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE users ADD COLUMN wa_template TEXT"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE users ADD COLUMN wa_template_paid TEXT"); } catch(Exception $e) {}
 try { $db->exec("ALTER TABLE customers ADD COLUMN created_by INTEGER DEFAULT 0"); } catch(Exception $e) {}
 try { $db->exec("ALTER TABLE routers ADD COLUMN created_by INTEGER DEFAULT 0"); } catch(Exception $e) {}
 
@@ -220,6 +230,7 @@ try { $db->exec("ALTER TABLE settings ADD COLUMN license_key TEXT"); } catch(Exc
 try { $db->exec("ALTER TABLE settings ADD COLUMN license_expiry TEXT"); } catch(Exception $e) {}
 try { $db->exec("ALTER TABLE settings ADD COLUMN license_type TEXT"); } catch(Exception $e) {}
 try { $db->exec("ALTER TABLE settings ADD COLUMN installation_date TEXT"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE settings ADD COLUMN site_url TEXT DEFAULT 'http://fibernodeinternet.com'"); } catch(Exception $e) {}
 
 // TR-069 ACS Settings
 try { $db->exec("ALTER TABLE settings ADD COLUMN acs_url TEXT"); } catch(Exception $e) {}

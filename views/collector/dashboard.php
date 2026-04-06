@@ -138,7 +138,7 @@ $recent_paid = $db->query("
 ")->fetchAll();
 
 $coll_tab = $_GET['tab'] ?? 'tugas';
-$settings = $db->query("SELECT company_name, wa_template, wa_template_paid, bank_account FROM settings WHERE id=1")->fetch();
+$settings = $db->query("SELECT company_name, wa_template, wa_template_paid, site_url FROM settings WHERE id=1")->fetch();
 $wa_tpl = $settings['wa_template'] ?? "Halo {nama}, tagihan internet Anda sebesar {tagihan} jatuh tempo pada {jatuh_tempo}. Transfer ke {rekening}";
 $wa_tpl_paid = $settings['wa_template_paid'] ?: "Halo {nama}, terima kasih. Pembayaran {tagihan} sudah lunas.";
 
@@ -273,24 +273,33 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
     $mon_name = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
     $bulan_inv = $mon_name[intval(date('m', strtotime($inv_data['due_date']))) - 1] . ' ' . date('Y', strtotime($inv_data['due_date']));
     
-    $parsed_msg = str_replace(
-        ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{perusahaan}', '{tunggakan}', '{waktu_bayar}', '{admin}'],
-        [
-            $inv_data['name'], 
-            '*' . ($inv_data['customer_code'] ?: $inv_data['customer_id']) . '*', 
-            $inv_data['package_name'], 
-            $bulan_inv,
-            '*Rp ' . number_format($inv_data['amount'], 0, ',', '.') . '*', 
-            $settings['company_name'],
-            '*Rp ' . number_format($inv_data['total_tunggakan'], 0, ',', '.') . '*',
-            '*' . ($inv_data['payment_date'] ? date('d/m/Y H:i', strtotime($inv_data['payment_date'])) : date('d/m/Y H:i')) . '*',
-            '*' . $_SESSION['user_name'] . '*'
-        ],
-        $wa_tpl_paid
-    );
-    $parsed_msg = str_ireplace('LUNAS', '*LUNAS*', $parsed_msg);
-    $parsed_msg = str_replace('**', '*', $parsed_msg); // Clean up
-    $wa_msg = urlencode($parsed_msg);
+        $status_wa = ($inv_data['total_tunggakan'] > 0) ? "LUNAS SEBAGIAN (Masih ada sisa tunggakan)" : "LUNAS SEPENUHNYA";
+        $tunggakan_display = 'Rp ' . number_format($inv_data['total_tunggakan'], 0, ',', '.');
+        $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . ($inv_data['customer_code'] ?: $inv_data['customer_id']);
+        
+        $receipt_msg = str_replace(
+            [
+                '{nama}', '{id_cust}', '{tagihan}', '{paket}', '{bulan}', 
+                '{tunggakan}', '{waktu_bayar}', '{admin}', '{perusahaan}', '{link_tagihan}', '{status_pembayaran}', '{sisa_tunggakan}', '{total_bayar}'
+            ], 
+            [
+                $inv_data['name'], 
+                ($inv_data['customer_code'] ?: $inv_data['customer_id']), 
+                'Rp ' . number_format($inv_data['monthly_fee'] ?: ($inv_data['amount']), 0, ',', '.'),
+                ($inv_data['package_name'] ?: '-'),
+                '1 Bulan',
+                $tunggakan_display,
+                date('d/m/Y H:i', strtotime($inv_data['payment_date'] ?: 'now')) . ' WIB',
+                $_SESSION['user_name'],
+                $settings['company_name'],
+                $portal_link,
+                $status_wa,
+                $tunggakan_display,
+                'Rp ' . number_format($inv_data['amount'], 0, ',', '.')
+            ], 
+            $wa_tpl_paid
+        );
+    $wa_msg = urlencode($receipt_msg);
 ?>
 <div class="glass-panel success-receipt-modal" style="margin-bottom:20px; border-left:4px solid var(--success); padding:20px; animation: slideDown 0.4s ease-out; background:rgba(16,185,129,0.08);">
     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
@@ -407,7 +416,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
     <!-- Belum Bayar -->
     <div class="glass-panel" style="padding:15px; text-align:center; border-top:4px solid var(--danger); background:linear-gradient(135deg, rgba(239, 68, 68, 0.1), transparent); cursor:pointer;" onclick="location.href='index.php?page=collector&tab=tugas&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>'">
         <i class="fas fa-exclamation-circle" style="font-size:20px; color:var(--danger); margin-bottom:8px;"></i>
-        <div style="font-size:22px; font-weight:800; color:var(--stat-value-color);"><?= $unpaid_count ?> <span style="font-size:12px; font-weight:normal;">Item</span></div>
+        <div style="font-size:22px; font-weight:800; color:var(--stat-value-color);"><?= $unpaid_count ?></div>
         <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; font-weight:600;">Belum Lunas</div>
         <div style="font-size:13px; font-weight:800; color:var(--danger); margin-top:5px;">Rp<?= number_format($unpaid_total, 0, ',', '.') ?></div>
     </div>
