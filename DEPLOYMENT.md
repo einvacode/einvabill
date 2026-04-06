@@ -37,7 +37,7 @@ Pindah ke folder web server dan tarik kode Anda:
 cd /var/www/html
 
 # Clone dari repository Anda
-git clone https://github.com/einvacode/einvabilling.git einvabill
+git clone https://github.com/einvacode/einvabill.git einvabill
 
 # (Opsional) Hapus file index default apache jika ada
 rm index.html

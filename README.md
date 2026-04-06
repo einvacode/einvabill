@@ -33,7 +33,7 @@
 
 1.  **Download / Clone**:
     ```bash
-    git clone https://github.com/einvacode/einvabilling.git einvabill
+    git clone https://github.com/einvacode/einvabill.git einvabill
     ```
 2.  **Pindahkan ke htdocs**: Masukkan seluruh folder ke dalam root server Anda (misal: `C:\xampp\htdocs\einvabill`).
 3.  **Buka di Browser**: Akses melalui `http://localhost/einvabill`.
