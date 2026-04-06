@@ -81,6 +81,28 @@ if ($action === 'delete_backup') {
     exit;
 }
 
+// === RESET DATA: Danger Zone ===
+if ($action === 'reset_data' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    // 1. Pre-reset Backup for safety
+    $pre_reset = 'pre_reset_' . date('Y-m-d_His') . '.sqlite';
+    copy($db_path, $backup_dir . $pre_reset);
+
+    // 2. Clear Tables
+    $tables = [
+        'customers', 'invoices', 'payments', 'invoice_items', 
+        'expenses', 'areas', 'packages', 'infrastructure_assets',
+        'banners', 'landing_packages', 'landing_logos'
+    ];
+    
+    foreach ($tables as $t) {
+        $db->exec("DELETE FROM $t");
+        $db->exec("DELETE FROM sqlite_sequence WHERE name='$t'"); // Reset AI counters
+    }
+
+    header("Location: index.php?page=admin_backup&msg=reset_complete");
+    exit;
+}
+
 // === VIEW ===
 $msg = $_GET['msg'] ?? '';
 $backups = [];
@@ -126,6 +148,10 @@ function formatSize($bytes) {
 <?php elseif($msg === 'error'): ?>
     <div style="padding:12px 20px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); border-radius:10px; margin-bottom:20px; color:var(--danger);">
         <i class="fas fa-exclamation-triangle"></i> Terjadi kesalahan. Pastikan file valid dan coba lagi.
+    </div>
+<?php elseif($msg === 'reset_complete'): ?>
+    <div style="padding:12px 20px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); border-radius:10px; margin-bottom:20px; color:var(--danger); font-weight:700;">
+        <i class="fas fa-biohazard"></i> RESET DATA BERHASIL! Database pelanggan dan transaksi telah dibersihkan.
     </div>
 <?php endif; ?>
 
@@ -231,7 +257,40 @@ function formatSize($bytes) {
         <div style="font-size:12px; margin-top:5px;">Klik "Simpan di Server" untuk membuat backup pertama Anda.</div>
     </div>
     <?php endif; ?>
+<!-- Danger Zone -->
+<div class="glass-panel" style="padding:24px; border: 1px solid rgba(239,68,68,0.3); background: rgba(239,68,68,0.05); margin-top:20px;">
+    <h3 style="margin-bottom:15px; color:#ef4444;"><i class="fas fa-biohazard"></i> Zona Bahaya (Danger Zone)</h3>
+    <div style="display:grid; grid-template-columns: 1fr 250px; gap:20px; align-items:center;">
+        <div style="font-size:13px; color:var(--text-secondary); line-height:1.6;">
+            Fitur ini akan menghapus <strong>SELURUH</strong> data pelanggan, tagihan, pembayaran, pengeluaran, area, dan paket layanan.<br>
+            <span style="color:#ef4444; font-weight:700;">Tindakan ini tidak dapat dibatalkan, namun sistem akan membuat backup otomatis sebelum penghapusan.</span><br>
+            <br>
+            <strong>Yang tetap aman:</strong> Akun Admin, License Key, Profil Perusahaan, dan Konfigurasi Router.
+        </div>
+        <div>
+            <form id="resetForm" action="index.php?page=admin_backup&action=reset_data" method="POST">
+                <button type="button" class="btn btn-danger" style="width:100%; padding:15px; border-radius:12px; font-weight:700; gap:8px;" onclick="handleReset()">
+                    <i class="fas fa-trash-alt"></i> RESET SEMUA DATA
+                </button>
+            </form>
+        </div>
+    </div>
 </div>
+
+<script>
+function handleReset() {
+    const confirmPhrase = "HAPUS";
+    const userConfirm = prompt("PERINGATAN KRITIKAL!\n\nSeluruh data pelanggan & transaksi akan DIHAPUS PERMANEN.\n\nKetik kata '" + confirmPhrase + "' di bawah ini untuk melanjutkan:");
+    
+    if (userConfirm === confirmPhrase) {
+        if (confirm("KONFIRMASI TERAKHIR: Anda yakin 100% ingin memulai ulang database dari nol?")) {
+            document.getElementById('resetForm').submit();
+        }
+    } else if (userConfirm !== null) {
+        alert("Konfirmasi gagal. Kata kunci yang Anda masukkan salah.");
+    }
+}
+</script>
 
 <style>
 @media (max-width: 768px) {
