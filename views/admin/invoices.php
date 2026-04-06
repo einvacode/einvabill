@@ -590,10 +590,10 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                         <?php endif; ?>
                         
                         <a href="index.php?page=admin_invoices&action=print&id=<?= $inv['id'] ?>" target="_blank" class="btn btn-sm btn-ghost" title="Thermal"><i class="fas fa-print"></i></a>
-                        <a href="index.php?page=admin_invoices&action=print&id=<?= $inv['id'] ?>&format=a4" target="_blank" class="btn btn-sm" style="background:var(--primary); color:white;" title="A4"><i class="fas fa-file-pdf"></i></a>
+                        <a href="index.php?page=admin_invoices&action=print&id=<?= $inv['id'] ?>&format=a4" target="_blank" class="btn btn-sm btn-primary" title="A4"><i class="fas fa-file-pdf"></i></a>
                         
                         <?php if(isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin'): ?>
-                            <a href="#" onclick="showEditInvoice(<?= $inv['id'] ?>, <?= $inv['amount'] ?>, <?= $inv['discount'] ?? 0 ?>, '<?= $inv['due_date'] ?>')" class="btn btn-sm" style="background:var(--warning); color:white;" title="Edit"><i class="fas fa-edit"></i></a>
+                            <a href="#" onclick="showEditInvoice(<?= $inv['id'] ?>, <?= $inv['amount'] ?>, <?= $inv['discount'] ?? 0 ?>, '<?= $inv['due_date'] ?>')" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></a>
                             <a href="index.php?page=admin_invoices&action=delete&id=<?= $inv['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('PERINGATAN: Hapus tagihan ini secara permanen dari database?')" title="Hapus"><i class="fas fa-trash"></i></a>
                         <?php endif; ?>
                     </td>

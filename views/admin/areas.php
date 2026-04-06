@@ -57,7 +57,7 @@ if ($action === 'delete') {
                     <td style="font-size:12px; color:var(--text-secondary);"><?= date('d M Y', strtotime($a['created_at'])) ?></td>
                     <td>
                         <div style="display:flex; gap:8px;">
-                            <button onclick="editArea(<?= $a['id'] ?>, '<?= addslashes($a['name']) ?>')" class="btn btn-sm btn-ghost" title="Edit"><i class="fas fa-edit"></i></button>
+                            <button onclick="editArea(<?= $a['id'] ?>, '<?= addslashes($a['name']) ?>')" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></button>
                             <a href="index.php?page=admin_areas&action=delete&id=<?= $a['id'] ?>" onclick="return confirm('Hapus area ini?')" class="btn btn-sm btn-danger" title="Hapus"><i class="fas fa-trash"></i></a>
                         </div>
                     </td>

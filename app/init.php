@@ -7,6 +7,23 @@ $db = new PDO('sqlite:' . $db_file);
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
+// Enable WAL Mode for better concurrency and stability on Linux (Proxmox/LXC)
+$db->exec("PRAGMA journal_mode=WAL;");
+$db->exec("PRAGMA synchronous=NORMAL;");
+
+// Check write health (to prevent 'Empty Data' issue on Proxmox/Linux)
+if (!is_writable($db_file) || !is_writable(dirname($db_file))) {
+    die("<div style='padding:40px; text-align:center; font-family:sans-serif;'>
+        <h2 style='color:#ef4444;'>⚠️ Izin Akses Database Ditolak (Permisson Denied)</h2>
+        <p>Aplikasi tidak bisa menyimpan data ke file database. Ini biasanya terjadi pada instalasi <b>Linux / Proxmox</b>.</p>
+        <div style='background:#f3f4f6; padding:20px; border-radius:10px; display:inline-block; text-align:left; border:1px solid #d1d5db;'>
+            <code>chown -R www-data:www-data " . dirname(__DIR__) . "</code><br>
+            <code>chmod -R 775 " . dirname(__DIR__) . "</code>
+        </div>
+        <p style='color:#6b7280; font-size:14px; margin-top:20px;'>Jalankan perintah di atas melalui terminal Proxmox/Linux Anda, lalu refresh halaman ini.</p>
+    </div>");
+}
+
 // Buat tabel jika belum ada
 $db->exec("
     CREATE TABLE IF NOT EXISTS users (
@@ -173,6 +190,11 @@ try { $db->exec("ALTER TABLE settings ADD COLUMN acs_url TEXT"); } catch(Excepti
 try { $db->exec("ALTER TABLE settings ADD COLUMN acs_user TEXT"); } catch(Exception $e) {}
 try { $db->exec("ALTER TABLE settings ADD COLUMN acs_pass TEXT"); } catch(Exception $e) {}
 
+// Landing Page Settings
+try { $db->exec("ALTER TABLE settings ADD COLUMN landing_hero_title TEXT"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE settings ADD COLUMN landing_hero_text TEXT"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE settings ADD COLUMN landing_about_us TEXT"); } catch(Exception $e) {}
+
 // Infrastructure Assets Table (NIM)
 $db->exec("CREATE TABLE IF NOT EXISTS infrastructure_assets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -237,7 +259,7 @@ if (empty($site_settings['installation_date'])) {
 }
 
 // === LICENSE ENGINE ===
-$MASTER_KEY = "AG-ULTIMATE-2026";
+$MASTER_KEY = "EB-ULTIMATE-2026";
 $license_key = $site_settings['license_key'] ?? '';
 $install_date = $site_settings['installation_date'];
 $expiry_date = $site_settings['license_expiry'] ?? '';

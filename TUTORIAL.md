@@ -45,7 +45,7 @@ Langkah awal setelah aplikasi menyala di server baru.
 ---
 
 ## 🔄 TAHAP 5: Maintenance & Update
-Bagaimana cara mendapatkan fitur baru dari saya (Antigravity)?
+Bagaimana cara mendapatkan fitur baru dari saya (EinvaBill)?
 
 1.  **Update di Lokal**: Saya (AI) akan mengedit kode di komputer lokal Anda.
 2.  **Push ke GitHub**: Anda mengunggah kode baru tersebut ke GitHub Anda via GitHub Desktop.

@@ -98,7 +98,7 @@ $areas_all = $db->query("SELECT * FROM areas ORDER BY name ASC")->fetchAll();
                         <?php endif; ?>
                     </td>
                     <td>
-                        <a href="index.php?page=admin_users&action=edit&id=<?= $u['id'] ?>" class="btn btn-sm" style="background:var(--warning); color:white;"><i class="fas fa-edit"></i></a>
+                        <a href="index.php?page=admin_users&action=edit&id=<?= $u['id'] ?>" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></a>
                         <?php if($u['id'] != 1 && $u['id'] != $_SESSION['user_id']): ?>
                             <a href="index.php?page=admin_users&action=delete&id=<?= $u['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus user ini?')"><i class="fas fa-trash"></i></a>
                         <?php endif; ?>

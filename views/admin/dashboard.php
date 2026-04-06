@@ -148,7 +148,7 @@ $cash_monthly = $db->query("
         <div style="display:flex; align-items:center; gap:10px;">
             <i class="fas fa-user-clock text-danger"></i> Daftar Tunggakan Pelanggan (Teragregasi)
         </div>
-        <a href="index.php?page=admin_invoices&filter_status=belum" class="btn btn-sm btn-ghost" style="font-size:11px;">Lihat Semua</a>
+        <a href="index.php?page=admin_invoices&filter_status=belum" class="btn btn-sm btn-info" style="font-size:11px;">Lihat Semua</a>
     </div>
     
     <div class="table-container">

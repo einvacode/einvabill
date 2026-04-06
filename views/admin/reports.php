@@ -436,7 +436,7 @@ if ($action === 'print') {
 
         <div class="footer">
             <div>Dicetak oleh: <?= htmlspecialchars($_SESSION['user_name'] ?? 'System') ?></div>
-            <div>Waktu Cetak: <?= date('d/m/Y H:i:s') ?> WIB • Antigravity Billing System</div>
+            <div>Waktu Cetak: <?= date('d/m/Y H:i:s') ?> WIB • EinvaBill Billing System</div>
         </div>
 
         <script>

@@ -533,8 +533,8 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                         <?php if(!empty($c['pppoe_name'])): ?>
                             <button class="btn btn-sm btn-ghost" onclick="viewTR069('<?= htmlspecialchars($c['pppoe_name']) ?>')" title="Monitoring TR-069"><i class="fas fa-satellite-dish"></i></button>
                         <?php endif; ?>
-                        <a href="index.php?page=admin_customers&action=details&id=<?= $c['id'] ?>" class="btn btn-sm" style="background:var(--primary); color:white;" title="Detail & Riwayat"><i class="fas fa-eye"></i></a>
-                        <a href="index.php?page=admin_customers&action=edit&id=<?= $c['id'] ?>" class="btn btn-sm" style="background:var(--warning); color:white;" title="Edit"><i class="fas fa-edit"></i></a>
+                        <a href="index.php?page=admin_customers&action=details&id=<?= $c['id'] ?>" class="btn btn-sm btn-info" title="Detail & Riwayat"><i class="fas fa-eye"></i></a>
+                        <a href="index.php?page=admin_customers&action=edit&id=<?= $c['id'] ?>" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></a>
                         <a href="index.php?page=admin_customers&action=delete&id=<?= $c['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus Pelanggan ini?')" title="Hapus"><i class="fas fa-trash"></i></a>
                     </td>
                 </tr>

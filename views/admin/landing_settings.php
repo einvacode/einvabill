@@ -149,7 +149,7 @@ $partner_logos = $db->query("SELECT * FROM landing_logos ORDER BY sort_order ASC
                         <?= $pkg['is_active'] ? '<span class="badge badge-success">Aktif / Tampil</span>' : '<span class="badge badge-danger">Disembunyikan</span>' ?>
                     </td>
                     <td>
-                        <button onclick="editPackage(<?= htmlspecialchars(json_encode($pkg)) ?>)" class="btn btn-sm" style="background:#f59e0b; color:white;"><i class="fas fa-edit"></i> Edit</button>
+                        <button onclick="editPackage(<?= htmlspecialchars(json_encode($pkg)) ?>)" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i> Edit</button>
                         <a href="index.php?page=admin_landing&action=delete_package&id=<?= $pkg['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus etalase layanan ini?')"><i class="fas fa-trash"></i></a>
                     </td>
                 </tr>

@@ -177,7 +177,7 @@ function formatSize($bytes) {
                 <div style="font-size:13px; color:var(--text-secondary); margin-bottom:10px;">Pilih file .sqlite backup</div>
                 <input type="file" name="restore_file" accept=".sqlite,.db" required class="form-control" style="font-size:13px;">
             </div>
-            <button type="submit" class="btn" style="width:100%; background:var(--warning); color:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; gap:8px;">
+            <button type="submit" class="btn btn-warning" style="width:100%; border-radius:10px; display:flex; align-items:center; justify-content:center; gap:8px;">
                 <i class="fas fa-undo"></i> Restore dari File
             </button>
         </form>
@@ -212,7 +212,7 @@ function formatSize($bytes) {
                     <td><?= formatSize($b['size']) ?></td>
                     <td style="font-size:13px; color:var(--text-secondary);"><?= $b['date'] ?></td>
                     <td style="white-space:nowrap;">
-                        <a href="index.php?page=admin_backup&action=restore_local&file=<?= urlencode($b['name']) ?>" class="btn btn-sm" style="background:var(--warning); color:#fff;" onclick="return confirm('Restore database dari backup ini?\n\n<?= htmlspecialchars($b['name']) ?>\n\nData saat ini akan di-backup otomatis sebelum ditimpa.')">
+                        <a href="index.php?page=admin_backup&action=restore_local&file=<?= urlencode($b['name']) ?>" class="btn btn-sm btn-warning" onclick="return confirm('Restore database dari backup ini?\n\n<?= htmlspecialchars($b['name']) ?>\n\nData saat ini akan di-backup otomatis sebelum ditimpa.')">
                             <i class="fas fa-undo"></i> Restore
                         </a>
                         <a href="index.php?page=admin_backup&action=delete_backup&file=<?= urlencode($b['name']) ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus file backup ini permanen?')">

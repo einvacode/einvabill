@@ -50,11 +50,16 @@ Di Linux, server web (Apache) perlu izin khusus untuk menulis database dan file 
 
 ```bash
 # Berikan kepemilikan folder ke user web (www-data)
+# SANGAT PENTING: Jika tidak dilakukan, data akan 'kosong' karena database tidak bisa menyimpan perubahan.
 chown -R www-data:www-data /var/www/html/einvabill
 
 # Berikan izin tulis (Write Access)
 chmod -R 775 /var/www/html/einvabill
 ```
+
+> [!IMPORTANT]
+> **Data Kosong di Proxmox/Linux?**
+> Jika Anda login dan data tidak tersimpan (selalu kembali ke default), pastikan user `www-data` memiliki izin akses **TULIS** ke folder aplikasi DAN file `database.sqlite`. Perintah `chown` di atas adalah kunci utama untuk memperbaiki masalah ini.
 
 ---
 

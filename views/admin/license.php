@@ -16,7 +16,7 @@ if ($page === 'admin_license_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $formatted_date = substr($date_str, 0, 4) . '-' . substr($date_str, 4, 2) . '-' . substr($date_str, 6, 2);
         
         // Simple CRC Check
-        $salt = "ANTIGRAVITY_SECRET";
+        $salt = "EINVABILL_SECRET";
         $expected_crc = strtoupper(substr(md5($date_str . $salt), 0, 4));
         
         if ($crc_str === $expected_crc) {
@@ -81,7 +81,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'activated') {
                 </button>
             </form>
             <p style="font-size: 12px; color: var(--text-secondary); margin-top: 20px;">
-                Belum punya lisensi? <a href="https://wa.me/6281234567890?text=Halo%20Admin,%20saya%20ingin%20memesan%20lisensi%20Antigravity%20Billing" target="_blank" style="color: var(--primary);">Hubungi Administrator Utama</a>
+                Belum punya lisensi? <a href="https://wa.me/6281234567890?text=Halo%20Admin,%20saya%20ingin%20memesan%20lisensi%20EinvaBill%20Billing" target="_blank" style="color: var(--primary);">Hubungi Administrator Utama</a>
             </p>
         <?php else: ?>
             <a href="index.php" class="btn btn-ghost" style="width: 100%; padding: 15px; border-radius: 12px;">Kembali ke Utama</a>

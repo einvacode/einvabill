@@ -35,8 +35,8 @@
     ```bash
     git clone https://github.com/einvacode/einvabilling.git
     ```
-2.  **Pindahkan ke htdocs**: Masukkan seluruh folder ke dalam root server Anda (misal: `C:\xampp\htdocs\antigravity`).
-3.  **Buka di Browser**: Akses melalui `http://localhost/antigravity`.
+2.  **Pindahkan ke htdocs**: Masukkan seluruh folder ke dalam root server Anda (misal: `C:\xampp\htdocs\einvabill`).
+3.  **Buka di Browser**: Akses melalui `http://localhost/einvabill`.
 4.  **Selesai!** Database akan dibuat secara otomatis pada kunjungan pertama.
 
 ---

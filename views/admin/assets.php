@@ -184,7 +184,7 @@ $utilization_pct = ($total_ports_capacity > 0) ? ($total_ports_used / $total_por
                         <div style="font-size:10px; color:var(--text-secondary);"><?= $a['installation_date'] ? 'Pasang: '.$a['installation_date'] : '-' ?></div>
                     </td>
                     <td>
-                        <button class="btn btn-sm btn-ghost" onclick='editAsset(<?= json_encode($a) ?>)'><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-sm btn-warning" onclick='editAsset(<?= json_encode($a) ?>)' title="Edit"><i class="fas fa-edit"></i></button>
                         <a href="index.php?page=admin_assets&action=delete&id=<?= $a['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus aset ini?')"><i class="fas fa-trash"></i></a>
                     </td>
                 </tr>

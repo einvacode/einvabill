@@ -1,6 +1,6 @@
 <?php
 /**
- * ANTIGRAVITY LICENSE KEY GENERATOR
+ * EINVABILL LICENSE KEY GENERATOR
  * Keep this script private. Use it to generate keys for your customers.
  */
 
@@ -11,7 +11,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'admin') {
     die("Akses Ditolak.");
 }
 
-$salt = "ANTIGRAVITY_SECRET";
+$salt = "EINVABILL_SECRET";
 
 function generate_annual_key($expiry_date, $salt) {
     $date_str = str_replace('-', '', $expiry_date); // YYYYMMDD
