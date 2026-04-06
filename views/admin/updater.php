@@ -15,12 +15,13 @@ if ($git_available) {
     $fetch_res = shell_exec('git fetch origin main 2>&1');
     $git_status = shell_exec('git status -uno 2>&1');
     
-    $update_available = (strpos($git_status, 'behind') !== false);
-    $up_to_date = (strpos($git_status, 'up to date') !== false || strpos($git_status, 'ahead') !== false);
+    // Case-insensitive checks for better reliability
+    $update_available = (stripos($git_status, 'behind') !== false);
+    $up_to_date = (stripos($git_status, 'up to date') !== false || stripos($git_status, 'ahead') !== false || stripos($git_status, 'nothing to commit') !== false);
     
     // Debug: If neither, show the raw status to admin
     if (!$update_available && !$up_to_date && !empty($git_status)) {
-        $update_error = "Git Status: " . $git_status;
+        $update_error = "Git Status Debug: " . $git_status;
     } else {
         $update_error = ""; // Clear error if resolved
     }
