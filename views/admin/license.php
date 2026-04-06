@@ -4,7 +4,7 @@ $msg_error = '';
 
 if ($page === 'admin_license_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $key = trim($_POST['license_key'] ?? '');
-    $MASTER_KEY = "AG-ULTIMATE-2026";
+    $MASTER_KEY = "EB-ULTIMATE-2026";
     
     if ($key === $MASTER_KEY) {
         $db->prepare("UPDATE settings SET license_key = ?, license_type = 'unlimited' WHERE id = 1")->execute([$key]);

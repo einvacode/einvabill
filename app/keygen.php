@@ -19,7 +19,7 @@ function generate_annual_key($expiry_date, $salt) {
     return "EXP-" . $date_str . "-" . $crc;
 }
 
-$master_key = "AG-ULTIMATE-2026";
+$master_key = "EB-ULTIMATE-2026";
 $results = [];
 
 if (isset($_POST['gen_annual'])) {
