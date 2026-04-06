@@ -155,7 +155,6 @@ $active_banners = $db->query("SELECT * FROM banners WHERE is_active = 1 AND targ
             <div class="glass-panel" style="padding:20px; margin-bottom:20px; border:1px solid rgba(var(--primary-rgb), 0.2); background:rgba(var(--primary-rgb), 0.05); text-align:center;">
                 <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">PEMBAYARAN TRANSFER KE:</div>
                 <div style="font-size:20px; font-weight:800; color:var(--primary);"><?= htmlspecialchars($bank_info) ?></div>
-                <div style="font-size:12px; color:var(--text-secondary); margin-top:5px;">Atas Nama: <strong><?= htmlspecialchars($comp_name) ?></strong></div>
             </div>
             <?php endif; ?>
 
