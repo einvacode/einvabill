@@ -1,8 +1,15 @@
 <?php
 $site = $db->query("SELECT company_name, company_logo, company_contact, landing_hero_title, landing_hero_text, landing_about_us FROM settings WHERE id=1")->fetch();
 
-$packages = $db->query("SELECT * FROM landing_packages WHERE is_active = 1 ORDER BY sort_order ASC, id ASC")->fetchAll();
-$partner_logos = $db->query("SELECT image_path FROM landing_logos ORDER BY sort_order ASC, id ASC")->fetchAll();
+$packages = [];
+$partner_logos = [];
+
+try {
+    $packages = $db->query("SELECT * FROM landing_packages WHERE is_active = 1 ORDER BY sort_order ASC, id ASC")->fetchAll();
+    $partner_logos = $db->query("SELECT image_path FROM landing_logos ORDER BY sort_order ASC, id ASC")->fetchAll();
+} catch (Exception $e) {
+    // Silently fail to keep the page running; admin must configure tables
+}
 
 $comp_name = $site['company_name'] ?: 'PT Einva Inti Data';
 $wa_contact = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $site['company_contact'] ?? ''));

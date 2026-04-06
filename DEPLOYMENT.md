@@ -58,8 +58,13 @@ chmod -R 775 /var/www/html/einvabill
 ```
 
 > [!IMPORTANT]
-> **Data Kosong di Proxmox/Linux?**
-> Jika Anda login dan data tidak tersimpan (selalu kembali ke default), pastikan user `www-data` memiliki izin akses **TULIS** ke folder aplikasi DAN file `database.sqlite`. Perintah `chown` di atas adalah kunci utama untuk memperbaiki masalah ini.
+> **Optimasi Proxmox/Linux (Versi 1.5+)**
+> Versi terbaru sekarang menyertakan **Self-Bootstrapping**. Saat pertama kali dijalankan, sistem akan otomatis:
+> 1. Membangun seluruh tabel database (termasuk Landing Page).
+> 2. Mengisi data awal (Seeding) agar tampilan tidak kosong.
+> 3. Membuat akun admin default (**admin** / **admin123**).
+>
+> Jika Anda masih melihat "Data Kosong" atau error, pastikan user `www-data` memiliki izin akses **TULIS** ke folder aplikasi DAN file `database.sqlite`. Perintah `chown` di atas adalah solusi mutlak untuk masalah ini.
 
 ---
 

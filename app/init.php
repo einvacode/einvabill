@@ -103,6 +103,27 @@ $db->exec("
         amount REAL NOT NULL,
         FOREIGN KEY(invoice_id) REFERENCES invoices(id)
     );
+
+    -- Landing Page Tables (Mandatory for Fresh Install)
+    CREATE TABLE IF NOT EXISTS landing_packages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        speed TEXT NOT NULL,
+        price INTEGER NOT NULL DEFAULT 0,
+        description TEXT,
+        features TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS landing_logos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        image_path TEXT,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
 ");
 
 // Auto-migrate new columns safely
@@ -244,12 +265,21 @@ $db->exec("CREATE TABLE IF NOT EXISTS banners (
 $check_settings = $db->query("SELECT COUNT(*) FROM settings")->fetchColumn();
 if ($check_settings == 0) {
     try {
-        $db->exec("INSERT INTO settings (id, company_name, company_tagline, company_address, wa_template) 
-                  VALUES (1, 'EinvaBill ISP', 'Internet Cepat & Layanan Prima', 'Alamat Perusahaan Anda', 'Halo {nama}, tagihan Anda sebesar {tagihan} sudah terbit.')");
+        $db->exec("INSERT INTO settings (id, company_name, company_tagline, company_address, wa_template, landing_hero_title, landing_hero_text) 
+                  VALUES (1, 'EinvaBill ISP', 'Internet Cepat & Layanan Prima', 'Alamat Perusahaan Anda', 'Halo {nama}, tagihan Anda sebesar {tagihan} sudah terbit.', 'Koneksi Super Cepat & Stabil', 'Solusi internet dan IT untuk kebutuhan personal dan korporasi.')");
     } catch(Exception $e) {
         // Fallback for missing columns during insertion
         $db->exec("INSERT INTO settings (id, company_name) VALUES (1, 'EinvaBill ISP')");
     }
+}
+
+// Seed Landing Packages if empty
+$check_landing = $db->query("SELECT COUNT(*) FROM landing_packages")->fetchColumn();
+if ($check_landing == 0) {
+    $stmt_pkg = $db->prepare("INSERT INTO landing_packages (name, speed, price, features, sort_order) VALUES (?, ?, ?, ?, ?)");
+    $stmt_pkg->execute(['Paket Basic', '10 Mbps', 150000, 'Koneksi Stabil, Uptime 99%, Dukungan 24/7', 1]);
+    $stmt_pkg->execute(['Paket Family', '20 Mbps', 250000, 'Koneksi Cepat, Gratis Router WiFi, Dukungan 24/7', 2]);
+    $stmt_pkg->execute(['Paket Pro', '50 Mbps', 450000, 'High Speed Fiber, Prioritas Traffic, Dukungan VVIP', 3]);
 }
 
 // Fetch Settings for License Check
@@ -303,11 +333,11 @@ try { $db->exec("CREATE INDEX IF NOT EXISTS idx_customers_code ON customers(cust
 // Insert default users if not exists
 $stmt = $db->query("SELECT COUNT(*) FROM users");
 if ($stmt->fetchColumn() == 0) {
-    // Password for all is '123456' using password_hash
-    $hash = password_hash('123456', PASSWORD_DEFAULT);
+    // Password for all is 'admin123' using password_hash
+    $hash = password_hash('admin123', PASSWORD_DEFAULT);
     $stmt = $db->prepare("INSERT INTO users (username, password, role, name) VALUES (?, ?, ?, ?)");
     $stmt->execute(['admin', $hash, 'admin', 'Administrator']);
-    $stmt->execute(['tagih', $hash, 'collector', 'Tukang Tagih']);
-    $stmt->execute(['mitra', $hash, 'partner', 'Mitra A']);
+    $stmt->execute(['tagih', $hash, 'collector', 'Petugas Tagih']);
+    $stmt->execute(['mitra', $hash, 'partner', 'Mitra Partner']);
 }
 ?>
