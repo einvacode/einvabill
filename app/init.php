@@ -3,6 +3,23 @@ session_start();
 date_default_timezone_set('Asia/Jakarta');
 
 $db_file = __DIR__ . '/../database.sqlite';
+
+// SANGAT PENTING: Cek izin tulis SEBELUM koneksi PDO agar bisa memberikan pesan error yang jelas di Linux/Proxmox
+// Jika direktori tidak bisa ditulisi, PDO akan fatal error sebelum sempat menjalankan kode di bawahnya.
+if (!file_exists($db_file)) {
+    if (!is_writable(dirname($db_file))) {
+        die("<div style='padding:40px; text-align:center; font-family:sans-serif;'>
+            <h2 style='color:#ef4444;'>⚠️ Izin Akses Direktori Ditolak (Permisson Denied)</h2>
+            <p>Sistem tidak dapat membuat file database. Ini terjadi karena folder <b>/var/www/html/einvabill</b> milik root, bukan web server.</p>
+            <div style='background:#f3f4f6; padding:20px; border-radius:10px; display:inline-block; text-align:left; border:1px solid #d1d5db;'>
+                <code>chown -R www-data:www-data " . realpath(dirname(__DIR__)) . "</code><br>
+                <code>chmod -R 775 " . realpath(dirname(__DIR__)) . "</code>
+            </div>
+            <p style='color:#6b7280; font-size:14px; margin-top:20px;'>Jalankan 2 perintah di atas pada terminal Proxmox Anda, lalu <b>Refresh</b> halaman ini.</p>
+        </div>");
+    }
+}
+
 $db = new PDO('sqlite:' . $db_file);
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
@@ -10,19 +27,6 @@ $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 // Enable WAL Mode for better concurrency and stability on Linux (Proxmox/LXC)
 $db->exec("PRAGMA journal_mode=WAL;");
 $db->exec("PRAGMA synchronous=NORMAL;");
-
-// Check write health (to prevent 'Empty Data' issue on Proxmox/Linux)
-if (!is_writable($db_file) || !is_writable(dirname($db_file))) {
-    die("<div style='padding:40px; text-align:center; font-family:sans-serif;'>
-        <h2 style='color:#ef4444;'>⚠️ Izin Akses Database Ditolak (Permisson Denied)</h2>
-        <p>Aplikasi tidak bisa menyimpan data ke file database. Ini biasanya terjadi pada instalasi <b>Linux / Proxmox</b>.</p>
-        <div style='background:#f3f4f6; padding:20px; border-radius:10px; display:inline-block; text-align:left; border:1px solid #d1d5db;'>
-            <code>chown -R www-data:www-data " . dirname(__DIR__) . "</code><br>
-            <code>chmod -R 775 " . dirname(__DIR__) . "</code>
-        </div>
-        <p style='color:#6b7280; font-size:14px; margin-top:20px;'>Jalankan perintah di atas melalui terminal Proxmox/Linux Anda, lalu refresh halaman ini.</p>
-    </div>");
-}
 
 // Buat tabel jika belum ada
 $db->exec("
