@@ -1,10 +1,12 @@
 <?php
 $action = $_GET['action'] ?? 'list';
+$u_id = $_SESSION['user_id'];
+$u_role = $_SESSION['user_role'] ?? 'admin';
 
 if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = $_POST['name'];
     $fee = $_POST['fee'];
-    $db->prepare("INSERT INTO packages (name, fee) VALUES (?, ?)")->execute([$name, $fee]);
+    $db->prepare("INSERT INTO packages (name, fee, created_by) VALUES (?, ?, ?)")->execute([$name, $fee, $u_id]);
     header("Location: index.php?page=admin_packages");
     exit;
 }
@@ -13,14 +15,26 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $id = $_POST['id'];
     $name = $_POST['name'];
     $fee = $_POST['fee'];
-    $db->prepare("UPDATE packages SET name=?, fee=? WHERE id=?")->execute([$name, $fee, $id]);
+    
+    // Ownership Check
+    $check = $db->query("SELECT created_by FROM packages WHERE id = $id")->fetchColumn();
+    $is_owner = ($u_role === 'admin') ? ($check == 0 || $check === NULL) : ($check == $u_id);
+    if ($is_owner) {
+        $db->prepare("UPDATE packages SET name=?, fee=? WHERE id=?")->execute([$name, $fee, $id]);
+    }
     header("Location: index.php?page=admin_packages");
     exit;
 }
 
 if ($action === 'delete') {
     $id = $_GET['id'];
-    $db->prepare("DELETE FROM packages WHERE id = ?")->execute([$id]);
+    
+    // Ownership Check
+    $check = $db->query("SELECT created_by FROM packages WHERE id = $id")->fetchColumn();
+    $is_owner = ($u_role === 'admin') ? ($check == 0 || $check === NULL) : ($check == $u_id);
+    if ($is_owner) {
+        $db->prepare("DELETE FROM packages WHERE id = ?")->execute([$id]);
+    }
     header("Location: index.php?page=admin_packages");
     exit;
 }
@@ -44,7 +58,8 @@ if ($action === 'delete') {
             </thead>
             <tbody>
                 <?php
-                $packages = $db->query("SELECT * FROM packages ORDER BY fee ASC")->fetchAll();
+                $scope_where = ($u_role === 'admin') ? "WHERE created_by = 0 OR created_by IS NULL" : "WHERE created_by = $u_id";
+                $packages = $db->query("SELECT * FROM packages $scope_where ORDER BY fee ASC")->fetchAll();
                 foreach($packages as $p):
                 ?>
                 <tr>

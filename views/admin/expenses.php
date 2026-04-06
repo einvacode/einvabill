@@ -1,5 +1,7 @@
 <?php
 $action = $_GET['action'] ?? 'list';
+$u_id = $_SESSION['user_id'];
+$u_role = $_SESSION['user_role'] ?? 'admin';
 
 // Handle ADD Expense
 if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -8,8 +10,8 @@ if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $description = $_POST['description'];
     $date = $_POST['date'];
     
-    $stmt = $db->prepare("INSERT INTO expenses (category, amount, description, date) VALUES (?, ?, ?, ?)");
-    $stmt->execute([$category, $amount, $description, $date]);
+    $stmt = $db->prepare("INSERT INTO expenses (category, amount, description, date, created_by) VALUES (?, ?, ?, ?, ?)");
+    $stmt->execute([$category, $amount, $description, $date, $u_id]);
     header("Location: index.php?page=admin_expenses&msg=added");
     exit;
 }
@@ -22,24 +24,44 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $description = $_POST['description'];
     $date = $_POST['date'];
     
-    $stmt = $db->prepare("UPDATE expenses SET category=?, amount=?, description=?, date=? WHERE id=?");
-    $stmt->execute([$category, $amount, $description, $date, $id]);
-    header("Location: index.php?page=admin_expenses&msg=updated");
+    // Ownership Check
+    $check = $db->query("SELECT created_by FROM expenses WHERE id = $id")->fetchColumn();
+    $is_owner = ($u_role === 'admin') ? ($check == 0 || $check === NULL) : ($check == $u_id);
+    
+    if ($is_owner) {
+        $stmt = $db->prepare("UPDATE expenses SET category=?, amount=?, description=?, date=? WHERE id=?");
+        $stmt->execute([$category, $amount, $description, $date, $id]);
+        header("Location: index.php?page=admin_expenses&msg=updated");
+    } else {
+        header("Location: index.php?page=admin_expenses&msg=forbidden");
+    }
     exit;
 }
 
 // Handle DELETE Expense
 if ($action === 'delete') {
     $id = $_GET['id'];
-    $db->prepare("DELETE FROM expenses WHERE id = ?")->execute([$id]);
-    header("Location: index.php?page=admin_expenses&msg=deleted");
+    
+    // Ownership Check
+    $check = $db->query("SELECT created_by FROM expenses WHERE id = $id")->fetchColumn();
+    $is_owner = ($u_role === 'admin') ? ($check == 0 || $check === NULL) : ($check == $u_id);
+    
+    if ($is_owner) {
+        $db->prepare("DELETE FROM expenses WHERE id = ?")->execute([$id]);
+        header("Location: index.php?page=admin_expenses&msg=deleted");
+    } else {
+        header("Location: index.php?page=admin_expenses&msg=forbidden");
+    }
     exit;
 }
+
+// Scoping Logic
+$scope_where = ($u_role === 'admin') ? "WHERE (created_by = 0 OR created_by IS NULL)" : "WHERE (created_by = $u_id)";
 
 // Fetch Stats for current month
 $start_month = date('Y-m-01');
 $end_month = date('Y-m-t');
-$total_expense_month = $db->query("SELECT SUM(amount) FROM expenses WHERE date BETWEEN '$start_month' AND '$end_month'")->fetchColumn() ?: 0;
+$total_expense_month = $db->query("SELECT SUM(amount) FROM expenses $scope_where AND date BETWEEN '$start_month' AND '$end_month'")->fetchColumn() ?: 0;
 ?>
 
 <div class="glass-panel" style="padding: 24px;">
@@ -78,7 +100,7 @@ $total_expense_month = $db->query("SELECT SUM(amount) FROM expenses WHERE date B
             </thead>
             <tbody>
                 <?php
-                $expenses = $db->query("SELECT * FROM expenses ORDER BY date DESC, id DESC LIMIT 100")->fetchAll();
+                $expenses = $db->query("SELECT * FROM expenses $scope_where ORDER BY date DESC, id DESC LIMIT 100")->fetchAll();
                 foreach($expenses as $e):
                     $catColor = '#3b82f6';
                     if($e['category'] == 'Operasional') $catColor = '#10b981';

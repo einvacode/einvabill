@@ -1,40 +1,42 @@
 <?php
 $action = $_GET['action'] ?? 'view';
+$u_id = $_SESSION['user_id'];
+$u_role = $_SESSION['user_role'] ?? 'admin';
 
 $filter_month = $_GET['month'] ?? date('m');
 $filter_year = $_GET['year'] ?? date('Y');
 $filter_user = $_GET['user_id'] ?? 'all';
 
-// NEW: Date range filters
+// Scoping Logic
+$scope_where = ($u_role === 'admin') ? " AND (c.created_by = 0 OR c.created_by IS NULL) " : " AND (c.created_by = $u_id) ";
+$exp_scope = ($u_role === 'admin') ? " AND (created_by = 0 OR created_by IS NULL) " : " AND (created_by = $u_id) ";
+
+// Date range filters
 $date_from = $_GET['date_from'] ?? date('Y-m-01');
 $date_to = $_GET['date_to'] ?? date('Y-m-d');
 $period_display = date('d F Y', strtotime($date_from)) . ' - ' . date('d F Y', strtotime($date_to));
 
-$period = sprintf("%04d-%02d", $filter_year, $filter_month);
-
-// Helper for date SQL
 $sql_date_from = $date_from . ' 00:00:00';
 $sql_date_to = $date_to . ' 23:59:59';
 
-// Fetch all admins and collectors for filter (Excluding partners as they are not collectors)
-$available_users = $db->query("SELECT id, name, role FROM users WHERE role IN ('admin', 'collector') ORDER BY name ASC")->fetchAll();
+// Available users for filter (Admin only)
+$available_users = [];
+if ($u_role === 'admin') {
+    $available_users = $db->query("SELECT id, name, role FROM users WHERE role IN ('admin', 'collector') ORDER BY name ASC")->fetchAll();
+}
 
-$months = [
-    '01' => 'Januari', '02' => 'Februari', '03' => 'Maret', '04' => 'April',
-    '05' => 'Mei', '06' => 'Juni', '07' => 'Juli', '08' => 'Agustus',
-    '09' => 'September', '10' => 'Oktober', '11' => 'November', '12' => 'Desember'
-];
-
-// Metrics Queries (Using Date Range)
+// Metrics Queries
 $sql_lunas_tepat = "
     SELECT SUM(p.amount) as total
     FROM payments p
     JOIN invoices i ON p.invoice_id = i.id
+    JOIN customers c ON i.customer_id = c.id
     WHERE p.payment_date BETWEEN ? AND ?
       AND strftime('%Y-%m', p.payment_date) = strftime('%Y-%m', i.due_date)
+      $scope_where
 ";
 $params_lunas_tepat = [$sql_date_from, $sql_date_to];
-if ($filter_user !== 'all') {
+if ($filter_user !== 'all' && $u_role === 'admin') {
     $sql_lunas_tepat .= " AND p.received_by = ?";
     $params_lunas_tepat[] = $filter_user;
 }
@@ -46,11 +48,13 @@ $sql_tunggakan_dibayar = "
     SELECT SUM(p.amount) as total
     FROM payments p
     JOIN invoices i ON p.invoice_id = i.id
+    JOIN customers c ON i.customer_id = c.id
     WHERE p.payment_date BETWEEN ? AND ?
       AND strftime('%Y-%m', p.payment_date) > strftime('%Y-%m', i.due_date)
+      $scope_where
 ";
 $params_tunggakan_dibayar = [$sql_date_from, $sql_date_to];
-if ($filter_user !== 'all') {
+if ($filter_user !== 'all' && $u_role === 'admin') {
     $sql_tunggakan_dibayar .= " AND p.received_by = ?";
     $params_tunggakan_dibayar[] = $filter_user;
 }
@@ -59,32 +63,37 @@ $q_tunggakan_dibayar->execute($params_tunggakan_dibayar);
 $tunggakan_dibayar = $q_tunggakan_dibayar->fetchColumn() ?: 0;
 
 $q_belum_bayar = $db->prepare("
-    SELECT SUM(amount - discount) as total
-    FROM invoices 
-    WHERE due_date BETWEEN ? AND ? 
-      AND status = 'Belum Lunas'
+    SELECT SUM(i.amount - i.discount) as total
+    FROM invoices i
+    JOIN customers c ON i.customer_id = c.id
+    WHERE i.due_date BETWEEN ? AND ? 
+      AND i.status = 'Belum Lunas'
+      $scope_where
 ");
 $q_belum_bayar->execute([$date_from, $date_to]);
 $belum_bayar = $q_belum_bayar->fetchColumn() ?: 0;
 
 $q_tertunggak_lama = $db->prepare("
-    SELECT SUM(amount - discount) as total
-    FROM invoices 
-    WHERE due_date < ? 
-      AND status = 'Belum Lunas'
+    SELECT SUM(i.amount - i.discount) as total
+    FROM invoices i
+    JOIN customers c ON i.customer_id = c.id
+    WHERE i.due_date < ? 
+      AND i.status = 'Belum Lunas'
+      $scope_where
 ");
 $q_tertunggak_lama->execute([$date_from]);
 $tertunggak_lama = $q_tertunggak_lama->fetchColumn() ?: 0;
 
-// Realized Discounts
 $sql_discount = "
     SELECT SUM(i.discount) 
     FROM invoices i
     JOIN payments p ON i.id = p.invoice_id
+    JOIN customers c ON i.customer_id = c.id
     WHERE p.payment_date BETWEEN ? AND ?
+      $scope_where
 ";
 $params_discount = [$sql_date_from, $sql_date_to];
-if ($filter_user !== 'all') {
+if ($filter_user !== 'all' && $u_role === 'admin') {
     $sql_discount .= " AND p.received_by = ?";
     $params_discount[] = $filter_user;
 }
@@ -92,13 +101,11 @@ $q_discount = $db->prepare($sql_discount);
 $q_discount->execute($params_discount);
 $total_discount = $q_discount->fetchColumn() ?: 0;
 
-// Expenses for the period
-$q_expenses = $db->prepare("SELECT SUM(amount) FROM expenses WHERE date BETWEEN ? AND ?");
+$q_expenses = $db->prepare("SELECT SUM(amount) FROM expenses WHERE date BETWEEN ? AND ? $exp_scope");
 $q_expenses->execute([$date_from, $date_to]);
 $total_expenses = $q_expenses->fetchColumn() ?: 0;
 
-
-// Table Data Query (UNION of Payments received this month AND Unpaid Invoices due this month)
+// Table Data Scoping
 $sql_table_p = "
     SELECT 
         'Pembayaran Masuk' as activity_type,
@@ -114,9 +121,10 @@ $sql_table_p = "
     JOIN invoices i ON p.invoice_id = i.id
     JOIN customers c ON i.customer_id = c.id
     WHERE p.payment_date BETWEEN ? AND ?
+    $scope_where
 ";
 $params_table = [$sql_date_from, $sql_date_to];
-if ($filter_user !== 'all') {
+if ($filter_user !== 'all' && $u_role === 'admin') {
     $sql_table_p .= " AND p.received_by = ?";
     $params_table[] = $filter_user;
 }
@@ -137,6 +145,7 @@ $sql_table = $sql_table_p . "
     FROM invoices i
     JOIN customers c ON i.customer_id = c.id
     WHERE i.due_date BETWEEN ? AND ? AND i.status = 'Belum Lunas'
+    $scope_where
     
     ORDER BY activity_date DESC
 ";
@@ -155,19 +164,35 @@ if ($action === 'export') {
     // Add BOM to fix UTF-8 in Excel
     fputs($output, $bom =(chr(0xEF) . chr(0xBB) . chr(0xBF)));
     
-    fputcsv($output, ['Tipe Transaksi', 'Tanggal Aktivitas', 'Nama Pelanggan / Mitra', 'Area', 'No. Invoice', 'Tgl Jatuh Tempo', 'Nominal (Rp)', 'Status Pembayaran']);
+    if ($u_role === 'admin') {
+        fputcsv($output, ['Tipe Transaksi', 'Tanggal Aktivitas', 'Nama Pelanggan / Mitra', 'Area', 'No. Invoice', 'Tgl Jatuh Tempo', 'Nominal (Rp)', 'Status Pembayaran']);
+    } else {
+        fputcsv($output, ['Tipe Transaksi', 'Tanggal Aktivitas', 'Nama Pelanggan / Mitra', 'No. Invoice', 'Tgl Jatuh Tempo', 'Nominal (Rp)', 'Status Pembayaran']);
+    }
     
     foreach ($report_data as $row) {
-        fputcsv($output, [
-            $row['activity_type'],
-            $row['activity_date'],
-            $row['customer_name'] . ($row['customer_type'] == 'partner' ? ' (Mitra)' : ''),
-            $row['area'] ?: '-',
-            'INV-' . str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT),
-            $row['due_date'],
-            $row['amount'],
-            $row['status']
-        ]);
+        if ($u_role === 'admin') {
+            fputcsv($output, [
+                $row['activity_type'],
+                $row['activity_date'],
+                $row['customer_name'] . ($row['customer_type'] == 'partner' ? ' (Mitra)' : ''),
+                $row['area'] ?: '-',
+                'INV-' . str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT),
+                $row['due_date'],
+                $row['amount'],
+                $row['status']
+            ]);
+        } else {
+            fputcsv($output, [
+                $row['activity_type'],
+                $row['activity_date'],
+                $row['customer_name'] . ($row['customer_type'] == 'partner' ? ' (Mitra)' : ''),
+                'INV-' . str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT),
+                $row['due_date'],
+                $row['amount'],
+                $row['status']
+            ]);
+        }
     }
     fclose($output);
     exit;
@@ -450,133 +475,197 @@ if ($action === 'print') {
 ?>
 
 <div class="glass-panel" style="padding: 24px;">
-    <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:20px; flex-wrap:wrap; gap:15px;">
-        <h3 style="font-size:20px; margin:0;"><i class="fas fa-chart-line"></i> Laporan Keuangan</h3>
-        
-        <form method="GET" action="index.php" style="display:flex; gap:10px; align-items:flex-end;">
+    <div class="grid-header">
+        <div>
+            <h3 style="font-size:22px; font-weight:800; margin:0; display:flex; align-items:center; gap:12px;">
+                <i class="fas fa-chart-line text-primary"></i> Laporan Keuangan
+            </h3>
+            <div style="font-size:12px; color:var(--text-secondary); margin-top:4px; opacity:0.8;">
+                Ringkasan performa bisnis dan arus kas periode ini.
+            </div>
+        </div>
+        <div class="grid-actions">
+            <div class="btn-group">
+                <a href="index.php?page=admin_reports&action=print&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&user_id=<?= $filter_user ?>" target="_blank" class="btn btn-sm btn-primary">
+                    <i class="fas fa-print"></i> <span>Cetak</span>
+                </a>
+                <a href="index.php?page=admin_reports&action=export&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&user_id=<?= $filter_user ?>" class="btn btn-sm btn-success" style="background:#10b981; border:none; color:white;">
+                    <i class="fas fa-file-excel"></i> <span>Export</span>
+                </a>
+                <a href="index.php?page=admin_report_assets" class="btn btn-sm btn-ghost" style="border: 1px solid var(--glass-border);">
+                    <i class="fas fa-boxes"></i> <span>Aset</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Standardized Filter Bar -->
+    <div style="padding:20px; margin-bottom:25px; background:rgba(var(--primary-rgb), 0.05); border-radius:15px; border:1px solid rgba(var(--primary-rgb), 0.1);">
+        <form method="GET" action="index.php" class="grid-filters">
             <input type="hidden" name="page" value="admin_reports">
-            <div>
-                <label style="font-size:12px; color:var(--text-secondary); display:block; margin-bottom:5px;">Dari Tanggal</label>
-                <input type="date" name="date_from" class="form-control" value="<?= $date_from ?>" style="padding:8px 12px; width:160px;">
+            
+            <div class="filter-group">
+                <label><i class="fas fa-calendar-alt"></i> Dari Tanggal</label>
+                <div style="position:relative;">
+                    <i class="fas fa-calendar" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); opacity:0.5; font-size:12px;"></i>
+                    <input type="date" name="date_from" class="form-control" value="<?= $date_from ?>" style="padding-left:35px; font-size:13px;">
+                </div>
             </div>
-            <div>
-                <label style="font-size:12px; color:var(--text-secondary); display:block; margin-bottom:5px;">Sampai Tanggal</label>
-                <input type="date" name="date_to" class="form-control" value="<?= $date_to ?>" style="padding:8px 12px; width:160px;">
+
+            <div class="filter-group">
+                <label><i class="fas fa-calendar-check"></i> Sampai Tanggal</label>
+                <div style="position:relative;">
+                    <i class="fas fa-calendar" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); opacity:0.5; font-size:12px;"></i>
+                    <input type="date" name="date_to" class="form-control" value="<?= $date_to ?>" style="padding-left:35px; font-size:13px;">
+                </div>
             </div>
-            <div>
-                <label style="font-size:12px; color:var(--text-secondary); display:block; margin-bottom:5px;">Diterima Oleh</label>
-                <select name="user_id" class="form-control" style="padding:8px 12px; width:160px;">
+
+            <?php if ($u_role === 'admin'): ?>
+            <div class="filter-group">
+                <label><i class="fas fa-user-tie"></i> Diterima Oleh</label>
+                <select name="user_id" class="form-control" style="font-size:13px;">
                     <option value="all">-- Semua --</option>
                     <?php foreach($available_users as $u): ?>
                         <option value="<?= $u['id'] ?>" <?= $filter_user == $u['id'] ? 'selected' : '' ?>><?= $u['name'] ?> (<?= ucfirst($u['role']) ?>)</option>
                     <?php endforeach; ?>
                 </select>
             </div>
-            <button type="submit" class="btn btn-primary btn-sm" style="height: 38px;"><i class="fas fa-filter"></i> Filter</button>
+            <?php endif; ?>
+
+            <div class="grid-actions" style="margin-top:auto;">
+                <button type="submit" class="btn btn-primary" style="height:44px; width:100%;"><i class="fas fa-sync-alt"></i> Apply Filter</button>
+            </div>
         </form>
     </div>
 
     <!-- Summary Cards -->
-    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-        <div class="stat-card glass-panel" style="background:linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(37, 99, 235, 0.05)); border: 2px solid var(--primary);">
-            <div class="stat-title" style="color:var(--primary); font-weight:800;"><i class="fas fa-wallet"></i> Total Pendapatan Terkumpul</div>
-            <div class="stat-value" style="color:var(--primary);">Rp <?= number_format($lunas_tepat + $tunggakan_dibayar, 0, ',', '.') ?></div>
-            <div style="font-size:12px; color:var(--text-secondary); margin-top:10px;">Total uang masuk bulan ini.</div>
+    <!-- Metrics Dashboard -->
+    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px;">
+        <div class="stat-card glass-panel" style="background:linear-gradient(135deg, rgba(35, 206, 217, 0.15), rgba(35, 206, 217, 0.05)); border: 2px solid var(--primary); padding: 20px;">
+            <div class="stat-title" style="color:var(--primary); font-weight:800; font-size:11px; text-transform:uppercase; letter-spacing:0.5px;"><i class="fas fa-wallet"></i> Total Pendapatan Terkumpul</div>
+            <div class="stat-value" style="color:var(--primary); font-size:22px; margin-top:5px;">Rp <?= number_format($lunas_tepat + $tunggakan_dibayar, 0, ',', '.') ?></div>
+            <div style="font-size:11px; color:var(--text-secondary); margin-top:8px; opacity:0.7;">Total uang masuk periode ini.</div>
         </div>
 
-        <div class="stat-card glass-panel" style="background:rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3);">
-            <div class="stat-title" style="color:var(--success)"><i class="fas fa-check-circle"></i> Tepat Waktu</div>
-            <div class="stat-value text-success">Rp <?= number_format($lunas_tepat, 0, ',', '.') ?></div>
-            <div style="font-size:11px; color:var(--text-secondary); margin-top:10px;">Pelunasan di bulan jatuh tempo.</div>
+        <div class="stat-card glass-panel" style="background:rgba(16, 185, 129, 0.08); border-color: rgba(16, 185, 129, 0.2); padding: 20px;">
+            <div class="stat-title" style="color:var(--success); font-size:11px; font-weight:700; text-transform:uppercase;"><i class="fas fa-check-circle"></i> Pelunasan Berjalan</div>
+            <div class="stat-value text-success" style="font-size:22px; margin-top:5px;">Rp <?= number_format($lunas_tepat, 0, ',', '.') ?></div>
+            <div style="font-size:11px; color:var(--text-secondary); margin-top:8px; opacity:0.7;">Tagihan jatuh tempo saat ini.</div>
         </div>
         
-        <div class="stat-card glass-panel" style="background:rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3);">
-            <div class="stat-title" style="color:#60a5fa"><i class="fas fa-hand-holding-usd"></i> Tunggakan</div>
-            <div class="stat-value" style="color:#60a5fa">Rp <?= number_format($tunggakan_dibayar, 0, ',', '.') ?></div>
-            <div style="font-size:11px; color:var(--text-secondary); margin-top:10px;">Pelunasan hutang lama.</div>
+        <div class="stat-card glass-panel" style="background:rgba(59, 130, 246, 0.08); border-color: rgba(59, 130, 246, 0.2); padding: 20px;">
+            <div class="stat-title" style="color:#60a5fa; font-size:11px; font-weight:700; text-transform:uppercase;"><i class="fas fa-hand-holding-usd"></i> Pelunasan Tunggakan</div>
+            <div class="stat-value" style="color:#60a5fa; font-size:22px; margin-top:5px;">Rp <?= number_format($tunggakan_dibayar, 0, ',', '.') ?></div>
+            <div style="font-size:11px; color:var(--text-secondary); margin-top:8px; opacity:0.7;">Pembayaran atas hutang lama.</div>
         </div>
 
-        <div class="stat-card glass-panel" style="background:rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3);">
-            <div class="stat-title" style="color:var(--warning)"><i class="fas fa-clock"></i> Belum Lunas</div>
-            <div class="stat-value text-warning">Rp <?= number_format($belum_bayar, 0, ',', '.') ?></div>
-            <div style="font-size:11px; color:var(--text-secondary); margin-top:10px;">Piutang bulan ini.</div>
+        <div class="stat-card glass-panel" style="background:rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.2); padding: 20px;">
+            <div class="stat-title" style="color:var(--danger); font-size:11px; font-weight:700; text-transform:uppercase;"><i class="fas fa-money-bill-wave"></i> Total Pengeluaran</div>
+            <div class="stat-value text-danger" style="font-size:22px; margin-top:5px;">Rp <?= number_format($total_expenses, 0, ',', '.') ?></div>
+            <div style="font-size:11px; color:var(--text-secondary); margin-top:8px; opacity:0.7;">Biaya operasional & belanja.</div>
         </div>
 
-        <div class="stat-card glass-panel" style="background:rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3);">
-            <div class="stat-title" style="color:var(--danger)"><i class="fas fa-wallet"></i> Pengeluaran</div>
-            <div class="stat-value text-danger">Rp <?= number_format($total_expenses, 0, ',', '.') ?></div>
-            <div style="font-size:11px; color:var(--text-secondary); margin-top:10px;">Biaya operasional & barang.</div>
+        <div class="stat-card glass-panel" style="background:rgba(245, 158, 11, 0.08); border-color: rgba(245, 158, 11, 0.2); padding: 20px;">
+            <div class="stat-title" style="color:var(--warning); font-size:11px; font-weight:700; text-transform:uppercase;"><i class="fas fa-hourglass-half"></i> Piutang Berjalan</div>
+            <div class="stat-value text-warning" style="font-size:22px; margin-top:5px;">Rp <?= number_format($belum_bayar, 0, ',', '.') ?></div>
+            <div style="font-size:11px; color:var(--text-secondary); margin-top:8px; opacity:0.7;">Tagihan yang belum terselesaikan.</div>
         </div>
 
-        <div class="stat-card glass-panel" style="background:rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3);">
-            <div class="stat-title" style="color:var(--warning)"><i class="fas fa-gift"></i> Total Potongan</div>
-            <div class="stat-value text-warning">Rp <?= number_format($total_discount, 0, ',', '.') ?></div>
-            <div style="font-size:11px; color:var(--text-secondary); margin-top:10px;">Total diskon yang diberikan.</div>
-        </div>
-
-        <div class="stat-card glass-panel" style="background:rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3);">
-            <div class="stat-title" style="color:var(--success)"><i class="fas fa-hand-holding-usd"></i> Laba Bersih</div>
-            <div class="stat-value text-success">Rp <?= number_format(($lunas_tepat + $tunggakan_dibayar) - $total_expenses, 0, ',', '.') ?></div>
-            <div style="font-size:11px; color:var(--text-secondary); margin-top:10px;">Dana Masuk - Pengeluaran.</div>
+        <div class="stat-card glass-panel" style="background:linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05)); border: 2px solid var(--success); padding: 20px;">
+            <div class="stat-title" style="color:var(--success); font-weight:800; font-size:11px; text-transform:uppercase; letter-spacing:0.5px;"><i class="fas fa-trophy"></i> Estimasi Laba Bersih</div>
+            <div class="stat-value text-success" style="font-size:22px; margin-top:5px;">Rp <?= number_format(($lunas_tepat + $tunggakan_dibayar) - $total_expenses, 0, ',', '.') ?></div>
+            <div style="font-size:11px; color:var(--text-secondary); margin-top:8px; opacity:0.7;">Income Bersih (Terkumpul - Belanja).</div>
         </div>
     </div>
     
-    <!-- Table Activity -->
-    <div style="display:flex; justify-content:space-between; align-items:center; margin: 30px 0 15px 0; flex-wrap:wrap; gap:10px;">
-        <h4 style="margin:0;">Rincian Transaksi - <?= $period_display ?></h4>
-        <div style="display:flex; gap:10px;">
-            <a href="index.php?page=admin_report_assets" class="btn btn-sm btn-ghost" style="border: 1px solid var(--glass-border);"><i class="fas fa-boxes"></i> Laporan Aset</a>
-            <a href="index.php?page=admin_reports&action=print&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&user_id=<?= $filter_user ?>" target="_blank" class="btn btn-sm btn-primary"><i class="fas fa-print"></i> Cetak Laporan (HTML)</a>
-            <a href="index.php?page=admin_reports&action=export&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&user_id=<?= $filter_user ?>" class="btn btn-sm btn-success"><i class="fas fa-file-excel"></i> Export Excel (CSV)</a>
-        </div>
+    <!-- Activity List View -->
+    <div class="grid-header" style="margin-top:30px; border-top:1px solid var(--glass-border); padding-top:20px;">
+        <h4 style="margin:0; font-weight:800; display:flex; align-items:center; gap:10px;">
+            <i class="fas fa-list-ul text-primary"></i> Rincian Aktivitas Periode: <?= $period_display ?>
+        </h4>
+        <span class="badge" style="background:var(--nav-active-bg); color:var(--primary); font-size:11px;"><?= count($report_data) ?> Transaksi</span>
     </div>
 
-    <div class="table-container">
-        <table>
+    <!-- Mobile View: Task Cards -->
+    <div class="mobile-only" style="display:none; margin-top:15px;">
+        <?php foreach($report_data as $row): 
+            $is_incoming = ($row['activity_type'] == 'Pembayaran Masuk');
+            $is_debt = ($is_incoming && date('Y-m', strtotime($row['due_date'])) < date('Y-m', strtotime($row['activity_date'])));
+        ?>
+        <div class="glass-panel" style="padding:16px; margin-bottom:12px; border-left:4px solid <?= $is_incoming ? 'var(--success)' : 'var(--warning)' ?>;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+                <div>
+                    <div style="font-size:10px; font-weight:700; color:<?= $is_incoming ? 'var(--success)' : 'var(--warning)' ?>; text-transform:uppercase;"><?= $row['activity_type'] ?></div>
+                    <div style="font-weight:700; font-size:15px; margin-top:2px;"><?= htmlspecialchars($row['customer_name']) ?></div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:14px; font-weight:800; color:var(--stat-value-color);">Rp <?= number_format($row['amount'], 0, ',', '.') ?></div>
+                    <div style="font-size:10px; color:var(--text-secondary);"><?= date('d M Y', strtotime($row['activity_date'])) ?></div>
+                </div>
+            </div>
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; opacity:0.8; padding-top:8px; border-top:1px solid rgba(255,255,255,0.05);">
+                <div style="font-family:monospace;">INV-<?= str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT) ?></div>
+                <div>
+                    <?php if($is_debt): ?>
+                        <span class="badge" style="background:#fff7ed; color:#c2410c; border:1px solid #fdba74; font-size:9px; padding:1px 4px;">TUNGGAKAN</span>
+                    <?php endif; ?>
+                    <span class="badge <?= $row['status'] == 'Lunas' ? 'badge-success' : 'badge-danger' ?>" style="font-size:9px; padding:1px 6px;">
+                        <?= strtoupper($row['status']) ?>
+                    </span>
+                </div>
+            </div>
+        </div>
+        <?php endforeach; ?>
+    </div>
+
+    <!-- Desktop View: Professional Table -->
+    <div class="table-container desktop-only">
+        <table style="width:100%; border-collapse:collapse;">
             <thead>
                 <tr>
-                    <th>Waktu / Transaksi</th>
-                    <th>Nama Pelanggan</th>
+                    <th style="padding:15px;">Waktu / Transaksi</th>
+                    <th>Nama Pelanggan / Mitra</th>
                     <th>No. Invoice</th>
-                    <th>Nominal</th>
-                    <th>Status</th>
+                    <th style="text-align:right;">Nominal</th>
+                    <th style="text-align:center;">Status</th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach($report_data as $row): ?>
                 <tr>
-                    <td>
-                        <div style="font-weight:bold; color: <?= $row['activity_type'] == 'Pembayaran Masuk' ? 'var(--success)' : 'var(--warning)' ?>;"><?= $row['activity_type'] ?></div>
-                        <div style="font-size:12px; color:var(--text-secondary);"><?= date('d M Y', strtotime($row['activity_date'])) ?></div>
-                        <?php 
-                        // Check if this payment is for an older debt
-                        if($row['activity_type'] == 'Pembayaran Masuk' && date('Y-m', strtotime($row['due_date'])) < date('Y-m', strtotime($row['activity_date']))): 
-                        ?>
-                            <div style="margin-top:4px;"><span class="badge" style="background:#fff7ed; color:#c2410c; border:1px solid #fdba74; font-size:9px; padding:2px 5px;">PELUNASAN TUNGGAKAN</span></div>
+                    <td style="padding:15px;">
+                        <div style="font-weight:700; color: <?= $row['activity_type'] == 'Pembayaran Masuk' ? 'var(--success)' : 'var(--warning)' ?>;"><?= $row['activity_type'] ?></div>
+                        <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;"><?= date('d M Y', strtotime($row['activity_date'])) ?></div>
+                        <?php if($row['activity_type'] == 'Pembayaran Masuk' && date('Y-m', strtotime($row['due_date'])) < date('Y-m', strtotime($row['activity_date']))): ?>
+                            <div style="margin-top:6px;"><span class="badge" style="background:rgba(245,158,11,0.1); color:var(--warning); border:1px solid rgba(245,158,11,0.2); font-size:9px; padding:2px 5px;">PELUNASAN TUNGGAKAN</span></div>
                         <?php endif; ?>
                     </td>
                     <td>
-                        <div style="font-weight:600;"><?= htmlspecialchars($row['customer_name']) ?> <?php if($row['customer_type']=='partner') echo '<span class="badge badge-warning" style="font-size:10px;">Mitra</span>'; ?></div>
-                        <div style="font-size:12px; color:var(--text-secondary);"><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($row['area'] ?: '-') ?></div>
+                        <div style="font-weight:600; font-size:15px; color:var(--text-primary);"><?= htmlspecialchars($row['customer_name']) ?></div>
+                        <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+                            <?php if($row['customer_type']=='partner') echo '<span class="badge" style="background:rgba(35,206,217,0.1); color:var(--primary); font-size:9px; padding:1px 5px; border:1px solid rgba(35,206,217,0.2);">MITRA</span>'; ?>
+                            <?php if($u_role === 'admin'): ?>
+                                <span style="font-size:11px; color:var(--text-secondary); opacity:0.7;"><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($row['area'] ?: '-') ?></span>
+                            <?php endif; ?>
+                        </div>
                     </td>
                     <td>
-                        <div style="font-family:monospace;">INV-<?= str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT) ?></div>
-                        <div style="font-size:12px; color:var(--text-secondary);">Jt: <?= date('d M', strtotime($row['due_date'])) ?></div>
+                        <div style="font-family:monospace; font-weight:600; opacity:0.8;">INV-<?= str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT) ?></div>
+                        <div style="font-size:11px; color:var(--text-secondary); margin-top:2px;">Jatuh Tempo: <?= date('d M', strtotime($row['due_date'])) ?></div>
                     </td>
-                    <td style="font-weight:bold; font-size:15px;">
+                    <td style="font-weight:800; font-size:16px; text-align:right; color:var(--stat-value-color);">
                         Rp <?= number_format($row['amount'], 0, ',', '.') ?>
                     </td>
-                    <td>
-                        <?php if($row['status'] == 'Lunas'): ?>
-                            <span class="badge badge-success"><i class="fas fa-check"></i> Lunas</span>
-                        <?php else: ?>
-                            <span class="badge badge-danger" style="background:rgba(239,68,68,0.2); color:#ef4444; border:1px solid #ef4444;">Belum Lunas</span>
-                        <?php endif; ?>
+                    <td style="text-align:center;">
+                        <span class="badge <?= $row['status'] == 'Lunas' ? 'badge-success' : 'badge-danger' ?>" style="padding:5px 12px; border-radius:50px;">
+                            <?= strtoupper($row['status']) ?>
+                        </span>
                     </td>
                 </tr>
                 <?php endforeach; ?>
                 <?php if(count($report_data) == 0): ?>
-                    <tr><td colspan="5" style="text-align:center; padding: 30px;">Tidak ada transaksi pembayaran atau tagihan di periode ini.</td></tr>
+                    <tr><td colspan="5" style="text-align:center; padding: 50px; opacity:0.5; color:var(--text-secondary);">Tidak ada transaksi pembayaran atau tagihan di periode ini.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>

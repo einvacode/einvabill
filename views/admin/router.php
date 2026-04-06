@@ -2,6 +2,8 @@
 require_once __DIR__ . '/../../app/routeros_api.class.php';
 
 $action = $_GET['action'] ?? 'list';
+$u_id = $_SESSION['user_id'];
+$u_role = $_SESSION['user_role'] ?? 'admin';
 
 if ($action === 'save_router' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $id = $_POST['id'] ?? null;
@@ -11,13 +13,15 @@ if ($action === 'save_router' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'];
     $password = $_POST['password'];
     
-    // Auto migrasi jika SQLite error karena table routers belum ada (safety fallback)
-    $db->exec("CREATE TABLE IF NOT EXISTS routers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, host TEXT, port INTEGER, username TEXT, password TEXT)");
-
     if ($id) {
-        $db->prepare("UPDATE routers SET name=?, host=?, port=?, username=?, password=? WHERE id=?")->execute([$name, $host, $port, $username, $password, $id]);
+        // Ownership Check
+        $check = $db->query("SELECT created_by FROM routers WHERE id = $id")->fetchColumn();
+        $is_owner = ($u_role === 'admin') ? ($check == 0 || $check === NULL) : ($check == $u_id);
+        if ($is_owner) {
+            $db->prepare("UPDATE routers SET name=?, host=?, port=?, username=?, password=? WHERE id=?")->execute([$name, $host, $port, $username, $password, $id]);
+        }
     } else {
-        $db->prepare("INSERT INTO routers (name, host, port, username, password) VALUES (?, ?, ?, ?, ?)")->execute([$name, $host, $port, $username, $password]);
+        $db->prepare("INSERT INTO routers (name, host, port, username, password, created_by) VALUES (?, ?, ?, ?, ?, ?)")->execute([$name, $host, $port, $username, $password, $u_id]);
     }
     header("Location: index.php?page=admin_router");
     exit;
@@ -25,10 +29,18 @@ if ($action === 'save_router' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 if ($action === 'delete_router') {
     $id = intval($_GET['id']);
-    $db->exec("DELETE FROM routers WHERE id=$id");
+    // Ownership Check
+    $check = $db->query("SELECT created_by FROM routers WHERE id = $id")->fetchColumn();
+    $is_owner = ($u_role === 'admin') ? ($check == 0 || $check === NULL) : ($check == $u_id);
+    if ($is_owner) {
+        $db->exec("DELETE FROM routers WHERE id=$id");
+    }
     header("Location: index.php?page=admin_router");
     exit;
 }
+
+// Scoping Logic
+$scope_where = ($u_role === 'admin') ? "WHERE (created_by = 0 OR created_by IS NULL)" : "WHERE (created_by = $u_id)";
 
 // Helper formatting inside view
 if (!function_exists('formatBytes')) {
@@ -46,7 +58,7 @@ if (!function_exists('formatBytes')) {
 <?php if ($action === 'list'): ?>
 <?php 
     try {
-        $routers = $db->query("SELECT * FROM routers")->fetchAll();
+        $routers = $db->query("SELECT * FROM routers $scope_where")->fetchAll();
     } catch(Exception $e) { $routers = []; } 
 ?>
 <div class="glass-panel" style="padding:24px;">
@@ -153,6 +165,18 @@ function editRouter(rt) {
 <?php
     $id = intval($_GET['id']);
     $router = $db->query("SELECT * FROM routers WHERE id = $id")->fetch();
+
+    if (!$router) {
+        header("Location: index.php?page=admin_router");
+        exit;
+    }
+
+    // Ownership Check
+    $is_owner = ($u_role === 'admin') ? ($router['created_by'] == 0 || $router['created_by'] === NULL) : ($router['created_by'] == $u_id);
+    if (!$is_owner) {
+        header("Location: index.php?page=admin_router");
+        exit;
+    }
 
     $connected = false;
     $api = new RouterosAPI();

@@ -1,6 +1,8 @@
-<?php
 // Handle Asset Actions
 $action = $_GET['action'] ?? 'list';
+$u_id = $_SESSION['user_id'];
+$u_role = $_SESSION['user_role'] ?? 'admin';
+$scope_where = ($u_role === 'admin') ? " AND (created_by = 0 OR created_by IS NULL) " : " AND (created_by = $u_id) ";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'add' || $action === 'edit') {
@@ -17,34 +19,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $installation_date = $_POST['installation_date'] ?? date('Y-m-d');
 
         if ($action === 'add') {
-            $stmt = $db->prepare("INSERT INTO infrastructure_assets (name, type, parent_id, lat, lng, total_ports, brand, description, price, status, installation_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$name, $type, $parent_id, $lat, $lng, $total_ports, $brand, $description, $price, $status, $installation_date]);
+            $stmt = $db->prepare("INSERT INTO infrastructure_assets (name, type, parent_id, lat, lng, total_ports, brand, description, price, status, installation_date, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$name, $type, $parent_id, $lat, $lng, $total_ports, $brand, $description, $price, $status, $installation_date, $u_id]);
             $success = "Aset berhasil ditambahkan.";
         } else {
             $id = $_POST['id'];
-            $stmt = $db->prepare("UPDATE infrastructure_assets SET name=?, type=?, parent_id=?, lat=?, lng=?, total_ports=?, brand=?, description=?, price=?, status=?, installation_date=? WHERE id=?");
-            $stmt->execute([$name, $type, $parent_id, $lat, $lng, $total_ports, $brand, $description, $price, $status, $installation_date, $id]);
-            $success = "Aset berhasil diperbarui.";
+            // Ownership Check
+            $check = $db->query("SELECT created_by FROM infrastructure_assets WHERE id = $id")->fetchColumn();
+            $is_owner = ($u_role === 'admin') ? ($check == 0 || $check === NULL) : ($check == $u_id);
+            if ($is_owner) {
+                $stmt = $db->prepare("UPDATE infrastructure_assets SET name=?, type=?, parent_id=?, lat=?, lng=?, total_ports=?, brand=?, description=?, price=?, status=?, installation_date=? WHERE id=?");
+                $stmt->execute([$name, $type, $parent_id, $lat, $lng, $total_ports, $brand, $description, $price, $status, $installation_date, $id]);
+                $success = "Aset berhasil diperbarui.";
+            }
         }
     }
 }
 
 if ($action === 'delete') {
     $id = $_GET['id'];
-    $db->prepare("DELETE FROM infrastructure_assets WHERE id = ?")->execute([$id]);
+    // Ownership Check
+    $check = $db->query("SELECT created_by FROM infrastructure_assets WHERE id = $id")->fetchColumn();
+    $is_owner = ($u_role === 'admin') ? ($check == 0 || $check === NULL) : ($check == $u_id);
+    
+    if ($is_owner) {
+        $db->prepare("DELETE FROM infrastructure_assets WHERE id = ?")->execute([$id]);
+    }
     header("Location: index.php?page=admin_assets");
     exit;
 }
 
 // Fetch Basic Stats for non-PHP blocks
-$stats_raw = $db->query("SELECT type, COUNT(*) as count FROM infrastructure_assets GROUP BY type")->fetchAll(PDO::FETCH_KEY_PAIR);
+$stats_raw = $db->query("SELECT type, COUNT(*) as count FROM infrastructure_assets WHERE 1=1 $scope_where GROUP BY type")->fetchAll(PDO::FETCH_KEY_PAIR);
 
 // Recursive Function to Build Network Tree
-function buildNetworkTree($db, $parentId = 0) {
+function buildNetworkTree($db, $parentId = 0, $scope_where = "") {
     if ($parentId == 0) {
-        $stmt = $db->prepare("SELECT a.*, (SELECT COUNT(*) FROM customers WHERE odp_id = a.id) as cust_count FROM infrastructure_assets a WHERE parent_id = 0 ORDER BY type ASC, name ASC");
+        $stmt = $db->prepare("SELECT a.*, (SELECT COUNT(*) FROM customers WHERE odp_id = a.id) as cust_count FROM infrastructure_assets a WHERE parent_id = 0 $scope_where ORDER BY type ASC, name ASC");
     } else {
-        $stmt = $db->prepare("SELECT a.*, (SELECT COUNT(*) FROM customers WHERE odp_id = a.id) as cust_count FROM infrastructure_assets a WHERE parent_id = ? ORDER BY type ASC, name ASC");
+        $stmt = $db->prepare("SELECT a.*, (SELECT COUNT(*) FROM customers WHERE odp_id = a.id) as cust_count FROM infrastructure_assets a WHERE parent_id = ? $scope_where ORDER BY type ASC, name ASC");
     }
     
     if ($parentId == 0) $stmt->execute();
@@ -54,7 +67,7 @@ function buildNetworkTree($db, $parentId = 0) {
     $tree = [];
     
     foreach ($assets as $asset) {
-        $children = buildNetworkTree($db, $asset['id']);
+        $children = buildNetworkTree($db, $asset['id'], $scope_where);
         
         // Calculate Total Active Downstream (Recursive)
         $total_child_usage = 0;
@@ -70,10 +83,10 @@ function buildNetworkTree($db, $parentId = 0) {
 }
 
 // Enhanced Stats Calculation
-$total_investment = $db->query("SELECT SUM(price) FROM infrastructure_assets")->fetchColumn() ?: 0;
-$total_ports_capacity = $db->query("SELECT SUM(total_ports) FROM infrastructure_assets")->fetchColumn() ?: 0;
-$used_by_customers = $db->query("SELECT COUNT(*) FROM customers WHERE odp_id > 0")->fetchColumn() ?: 0;
-$used_by_child_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets WHERE parent_id > 0")->fetchColumn() ?: 0;
+$total_investment = $db->query("SELECT SUM(price) FROM infrastructure_assets WHERE 1=1 $scope_where")->fetchColumn() ?: 0;
+$total_ports_capacity = $db->query("SELECT SUM(total_ports) FROM infrastructure_assets WHERE 1=1 $scope_where")->fetchColumn() ?: 0;
+$used_by_customers = $db->query("SELECT COUNT(*) FROM customers c WHERE odp_id > 0 AND (SELECT created_by FROM infrastructure_assets WHERE id = c.odp_id) = " . ($u_role === 'admin' ? "0" : $u_id))->fetchColumn() ?: 0;
+$used_by_child_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets WHERE parent_id > 0 $scope_where")->fetchColumn() ?: 0;
 $total_ports_used = $used_by_customers + $used_by_child_assets;
 $idle_ports = $total_ports_capacity - $total_ports_used;
 $utilization_pct = ($total_ports_capacity > 0) ? ($total_ports_used / $total_ports_capacity) * 100 : 0;
@@ -135,7 +148,7 @@ $utilization_pct = ($total_ports_capacity > 0) ? ($total_ports_used / $total_por
             </thead>
             <tbody>
                 <?php
-                $assets = $db->query("SELECT a.*, p.name as parent_name FROM infrastructure_assets a LEFT JOIN infrastructure_assets p ON a.parent_id = p.id ORDER BY a.type DESC, a.name ASC")->fetchAll();
+                $assets = $db->query("SELECT a.*, p.name as parent_name FROM infrastructure_assets a LEFT JOIN infrastructure_assets p ON a.parent_id = p.id WHERE 1=1 $scope_where ORDER BY a.type DESC, a.name ASC")->fetchAll();
                 foreach($assets as $a):
                     // Hitung Penggunaan Port Fisik (Hanya 1 Tingkat / Direct)
                     $usage_cust = $db->prepare("SELECT COUNT(*) FROM customers WHERE odp_id = ?");
@@ -199,7 +212,7 @@ $utilization_pct = ($total_ports_capacity > 0) ? ($total_ports_used / $total_por
     <!-- Network Topology Tree View -->
     <div class="network-tree-container" style="padding:10px 0;">
         <?php
-        $tree = buildNetworkTree($db);
+        $tree = buildNetworkTree($db, 0, $scope_where);
 
         if (!function_exists('getCustomersForAsset')) {
             function getCustomersForAsset($db, $assetId) {
@@ -319,7 +332,7 @@ $utilization_pct = ($total_ports_capacity > 0) ? ($total_ports_used / $total_por
                     <select name="parent_id" id="asset_parent" class="form-control">
                         <option value="0">TIDAK ADA / ROOT</option>
                         <?php 
-                        $parents = $db->query("SELECT id, name, type FROM infrastructure_assets WHERE type != 'ODP' ORDER BY type DESC")->fetchAll();
+                        $parents = $db->query("SELECT id, name, type FROM infrastructure_assets WHERE type != 'ODP' $scope_where ORDER BY type DESC")->fetchAll();
                         foreach($parents as $p) echo "<option value='{$p['id']}'>{$p['type']} - {$p['name']}</option>";
                         ?>
                     </select>

@@ -15,6 +15,14 @@
     </script>
 </head>
 <body>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    <header class="mobile-header">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <button class="burger-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+            <span style="font-weight: 800; font-size: 16px; letter-spacing: 0.5px;"><?= htmlspecialchars($site_settings['company_name'] ?? 'BILLING') ?></span>
+        </div>
+        <div onclick="toggleTheme()" style="cursor: pointer; opacity: 0.8;"><i class="fas fa-moon"></i></div>
+    </header>
     <div class="app-layout">
         <aside class="sidebar">
             <div>
@@ -37,8 +45,9 @@
                         <a href="index.php?page=admin_dashboard" class="nav-link <?= $page == 'admin_dashboard' ? 'active' : '' ?>"><i class="fas fa-home"></i> Dashboard</a>
                         <a href="index.php?page=admin_customers&filter_type=customer" class="nav-link <?= $page == 'admin_customers' && ($_GET['filter_type'] ?? '') == 'customer' ? 'active' : '' ?>"><i class="fas fa-users"></i> Pelanggan Rumahan</a>
                         <a href="index.php?page=admin_customers&filter_type=partner" class="nav-link <?= $page == 'admin_customers' && ($_GET['filter_type'] ?? '') == 'partner' ? 'active' : '' ?>"><i class="fas fa-handshake"></i> Kemitraan (B2B)</a>
-                        <a href="index.php?page=admin_invoices" class="nav-link <?= $page == 'admin_invoices' && ($filter_status ?? '') != 'belum' ? 'active' : '' ?>"><i class="fas fa-file-invoice-dollar"></i> Tagihan</a>
-                        <a href="index.php?page=admin_invoices&filter_status=belum" class="nav-link <?= $page == 'admin_invoices' && ($filter_status ?? '') == 'belum' ? 'active' : '' ?>"><i class="fas fa-user-clock" style="color:#f43f5e;"></i> User Tunggakan</a>
+                        <a href="index.php?page=admin_invoices&filter_type=customer" class="nav-link <?= $page == 'admin_invoices' && ($_GET['filter_type'] ?? '') == 'customer' && ($filter_status ?? '') != 'belum' ? 'active' : '' ?>"><i class="fas fa-file-invoice-dollar"></i> Tagihan Pelanggan</a>
+                        <a href="index.php?page=admin_invoices&filter_type=partner" class="nav-link <?= $page == 'admin_invoices' && ($_GET['filter_type'] ?? '') == 'partner' ? 'active' : '' ?>"><i class="fas fa-handshake" style="color:var(--primary);"></i> Tagihan Kemitraan</a>
+                        <a href="index.php?page=admin_invoices&filter_type=customer&filter_status=belum" class="nav-link <?= $page == 'admin_invoices' && ($filter_status ?? '') == 'belum' ? 'active' : '' ?>"><i class="fas fa-user-clock" style="color:#f43f5e;"></i> User Tunggakan</a>
                         <a href="index.php?page=admin_expenses" class="nav-link <?= $page == 'admin_expenses' ? 'active' : '' ?>"><i class="fas fa-wallet" style="color:var(--warning);"></i> Pengeluaran</a>
                         
                         <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">INFRASTRUKTUR</div>
@@ -61,7 +70,13 @@
                     <?php elseif($_SESSION['user_role'] === 'collector'): ?>
                         <a href="index.php?page=collector" class="nav-link active"><i class="fas fa-motorcycle"></i> Penagih</a>
                     <?php elseif($_SESSION['user_role'] === 'partner'): ?>
-                        <a href="index.php?page=partner" class="nav-link active"><i class="fas fa-handshake"></i> Mitra</a>
+                        <a href="index.php?page=partner" class="nav-link <?= $page == 'partner' ? 'active' : '' ?>"><i class="fas fa-handshake"></i> Dashboard</a>
+                        <a href="index.php?page=partner_collection" class="nav-link <?= $page == 'partner_collection' ? 'active' : '' ?>"><i class="fas fa-motorcycle" style="color:var(--warning);"></i> Penagihan Lapangan</a>
+                        <a href="index.php?page=admin_customers" class="nav-link <?= $page == 'admin_customers' ? 'active' : '' ?>"><i class="fas fa-users"></i> Pelanggan Saya</a>
+                        <a href="index.php?page=admin_packages" class="nav-link <?= $page == 'admin_packages' ? 'active' : '' ?>"><i class="fas fa-box"></i> Paket Internet</a>
+                        <a href="index.php?page=admin_router" class="nav-link <?= $page == 'admin_router' ? 'active' : '' ?>"><i class="fas fa-network-wired"></i> Manajemen Router</a>
+                        <a href="index.php?page=admin_invoices" class="nav-link <?= $page == 'admin_invoices' ? 'active' : '' ?>"><i class="fas fa-file-invoice-dollar"></i> Riwayat Tagihan</a>
+                        <a href="index.php?page=admin_reports" class="nav-link <?= $page == 'admin_reports' ? 'active' : '' ?>"><i class="fas fa-chart-line"></i> Laporan Keuangan</a>
                     <?php endif; ?>
                 </div>
             </div>
@@ -147,8 +162,14 @@
                 <i class="fas fa-sign-out-alt"></i><span>Keluar</span>
             </a>
         <?php elseif($_SESSION['user_role'] === 'partner'): ?>
-            <a href="index.php?page=partner" class="<?= $page == 'partner' ? 'active' : '' ?>">
-                <i class="fas fa-handshake"></i><span>Dashboard</span>
+            <a href="index.php?page=partner" class="nav-link <?= $page == 'partner' ? 'active' : '' ?>">
+                <i class="fas fa-home"></i><span>Home</span>
+            </a>
+            <a href="index.php?page=partner_collection" class="nav-link <?= $page == 'partner_collection' ? 'active' : '' ?>">
+                <i class="fas fa-motorcycle"></i><span>Penagihan</span>
+            </a>
+            <a href="index.php?page=admin_customers" class="nav-link <?= $page == 'admin_customers' ? 'active' : '' ?>">
+                <i class="fas fa-users"></i><span>Pelanggan</span>
             </a>
             <a href="index.php?page=logout" style="color:var(--danger);">
                 <i class="fas fa-sign-out-alt"></i><span>Keluar</span>
@@ -214,6 +235,19 @@
     </div>
 
     <script>
+    function toggleSidebar() {
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        sidebar.classList.toggle('active');
+        overlay.classList.toggle('active');
+        
+        if (sidebar.classList.contains('active')) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'auto';
+        }
+    }
+
     function toggleTheme() {
         const html = document.documentElement;
         const current = html.getAttribute('data-theme');
@@ -223,13 +257,15 @@
     }
     
     function toggleMobileMenu(e) {
-        e.preventDefault();
+        if(e) e.preventDefault();
         const overlay = document.getElementById('mobileMenuOverlay');
+        if(!overlay) return;
         overlay.style.display = overlay.style.display === 'flex' ? 'none' : 'flex';
     }
     
     function closeMobileMenu() {
-        document.getElementById('mobileMenuOverlay').style.display = 'none';
+        const overlay = document.getElementById('mobileMenuOverlay');
+        if(overlay) overlay.style.display = 'none';
     }
 
     function openImagePreview(src) {
@@ -244,6 +280,52 @@
         document.getElementById('globalImageModal').style.display = 'none';
         document.body.style.overflow = 'auto';
     }
+
+    // Global Notification Handler
+    window.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('msg') === 'bulk_paid' || urlParams.get('msg') === 'paid') {
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 80px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #10b981;
+                color: white;
+                padding: 12px 24px;
+                border-radius: 50px;
+                font-weight: 700;
+                box-shadow: 0 10px 25px rgba(16,185,129,0.3);
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-size: 14px;
+                transition: all 0.3s ease;
+            `;
+            toast.innerHTML = '<i class="fas fa-check-circle"></i> Pembayaran Berhasil Diproses!';
+            document.body.appendChild(toast);
+            
+            // Fade in animation
+            toast.style.opacity = '0';
+            toast.style.transform = 'translate(-50%, 20px)';
+            setTimeout(() => {
+                toast.style.opacity = '1';
+                toast.style.transform = 'translate(-50%, 0)';
+            }, 10);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translate(-50%, 20px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+
+            // Clean URL
+            const newUrl = window.location.href.replace(/[&?]msg=(bulk_paid|paid)/, '');
+            window.history.replaceState({}, '', newUrl);
+        }
+    });
     </script>
 </body>
 </html>

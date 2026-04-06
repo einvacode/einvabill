@@ -1,26 +1,15 @@
 <?php
 $action = $_GET['action'] ?? 'list';
 
-// ONE-TIME MIGRATION: Add collector_id if not exists
-try {
-    $db->query("SELECT collector_id FROM customers LIMIT 1");
-} catch (Exception $e) {
-    $db->exec("ALTER TABLE customers ADD COLUMN collector_id INTEGER DEFAULT 0");
-    // Initial sync based on Area
-    $colls = $db->query("SELECT id, area FROM users WHERE role = 'collector'")->fetchAll();
-    foreach($colls as $coll) {
-        if(!empty(trim($coll['area']))) {
-            $db->prepare("UPDATE customers SET collector_id = ? WHERE area = ?")->execute([$coll['id'], trim($coll['area'])]);
-        }
-    }
-}
-
-// Fetch all packages for dropdowns
-$packages_all = $db->query("SELECT * FROM packages ORDER BY name ASC")->fetchAll();
+// Fetch all packages for dropdowns (Scoped)
+$u_id = $_SESSION['user_id'];
+$u_role = $_SESSION['user_role'] ?? 'admin';
+$pkg_scope = ($u_role === 'admin') ? "WHERE created_by = 0 OR created_by IS NULL" : "WHERE created_by = $u_id";
+$packages_all = $db->query("SELECT * FROM packages $pkg_scope ORDER BY name ASC")->fetchAll();
 $packages_json = json_encode($packages_all);
 
-// Fetch all areas for dropdowns
-$areas_all = $db->query("SELECT * FROM areas ORDER BY name ASC")->fetchAll();
+// Fetch all areas for dropdowns (Scoped: Hidden for Partner)
+$areas_all = ($u_role === 'admin') ? $db->query("SELECT * FROM areas ORDER BY name ASC")->fetchAll() : [];
 
 if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = $_POST['name'];
@@ -48,8 +37,10 @@ if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt_check->execute([$customer_code]);
     } while ($stmt_check->fetchColumn() > 0);
     
-    $stmt = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, package_name, monthly_fee, ip_address, type, registration_date, billing_date, area, router_id, pppoe_name, collector_id, lat, lng, odp_id, odp_port) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$customer_code, $name, $address, $contact, $package_name, $monthly_fee, $ip_address, $type, $registration_date, $billing_date, $area, $router_id, $pppoe_name, $collector_id, $lat, $lng, $odp_id, $odp_port]);
+    $created_by = $_SESSION['user_id'];
+    
+    $stmt = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, package_name, monthly_fee, ip_address, type, registration_date, billing_date, area, router_id, pppoe_name, collector_id, lat, lng, odp_id, odp_port, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$customer_code, $name, $address, $contact, $package_name, $monthly_fee, $ip_address, $type, $registration_date, $billing_date, $area, $router_id, $pppoe_name, $collector_id, $lat, $lng, $odp_id, $odp_port, $created_by]);
     $id = $db->lastInsertId();
 
     // SELECTIVE AUTOMATIC PAYMENT ON REGISTRATION
@@ -107,6 +98,17 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $odp_id = intval($_POST['odp_id'] ?? 0);
     $odp_port = intval($_POST['odp_port'] ?? 0);
     
+    // Ownership Check
+    $u_id = $_SESSION['user_id'];
+    $u_role = $_SESSION['user_role'];
+    $check = $db->query("SELECT created_by FROM customers WHERE id = $id")->fetchColumn();
+    $is_owner = ($u_role === 'admin') ? ($check == 0 || $check === NULL) : ($check == $u_id);
+    
+    if (!$is_owner) {
+        header("Location: index.php?page=admin_customers&msg=forbidden");
+        exit;
+    }
+    
     $stmt = $db->prepare("UPDATE customers SET name=?, address=?, contact=?, package_name=?, monthly_fee=?, ip_address=?, type=?, registration_date=?, billing_date=?, area=?, router_id=?, pppoe_name=?, collector_id=?, lat=?, lng=?, odp_id=?, odp_port=? WHERE id=?");
     $stmt->execute([$name, $address, $contact, $package_name, $monthly_fee, $ip_address, $type, $registration_date, $billing_date, $area, $router_id, $pppoe_name, $collector_id, $lat, $lng, $odp_id, $odp_port, $id]);
     
@@ -130,13 +132,25 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 if ($action === 'delete') {
     $id = intval($_GET['id']);
-    // Cascade Delete: Hapus Tagihan & Pembayaran milik user ini agar tidak mengotori Dashboard
+    
+    // Ownership Check
+    $u_id = $_SESSION['user_id'];
+    $u_role = $_SESSION['user_role'];
+    $check = $db->query("SELECT created_by FROM customers WHERE id = $id")->fetchColumn();
+    $is_owner = ($u_role === 'admin') ? ($check == 0 || $check === NULL) : ($check == $u_id);
+    
+    if (!$is_owner) {
+        header("Location: index.php?page=admin_customers&msg=forbidden");
+        exit;
+    }
+
+    // Cascade Delete
     $db->prepare("DELETE FROM payments WHERE invoice_id IN (SELECT id FROM invoices WHERE customer_id = ?)")->execute([$id]);
     $db->prepare("DELETE FROM invoice_items WHERE invoice_id IN (SELECT id FROM invoices WHERE customer_id = ?)")->execute([$id]);
     $db->prepare("DELETE FROM invoices WHERE customer_id = ?")->execute([$id]);
     $db->prepare("DELETE FROM customers WHERE id = ?")->execute([$id]);
     
-    header("Location: index.php?page=admin_customers");
+    header("Location: index.php?page=admin_customers&msg=deleted");
     exit;
 }
 
@@ -185,7 +199,14 @@ if ($action === 'export') {
         }
     }
 
-    $customers_export = $db->query("SELECT * FROM customers $where ORDER BY name ASC")->fetchAll();
+    $u_id = $_SESSION['user_id'];
+    $u_role = $_SESSION['user_role'];
+    $scope_where_exp = " AND (created_by = $u_id) ";
+    if ($u_role === 'admin') {
+        $scope_where_exp = " AND (created_by = 0 OR created_by IS NULL) ";
+    }
+
+    $customers_export = $db->query("SELECT * FROM customers $where $scope_where_exp ORDER BY name ASC")->fetchAll();
     
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="Data_Pelanggan_' . date('Y-m-d') . '.csv"');
@@ -324,21 +345,19 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $page_title = $filter_type === 'partner' ? 'Manajemen Kemitraan (B2B)' : ($filter_type === 'customer' ? 'Manajemen Pelanggan Rumahan' : 'Pelanggan & Mitra');
     $title_icon = $filter_type === 'partner' ? 'fa-handshake' : 'fa-users';
     ?>
-    <div style="display:flex; justify-content:space-between; margin-bottom:20px; align-items:center; flex-wrap:wrap; gap:10px;">
-        <h3 style="font-size:20px;"><i class="fas <?= $title_icon ?> text-primary"></i> <?= $page_title ?></h3>
-        <div style="display:flex; gap:10px;">
-            <?php 
-            $export_params = $_GET; 
-            $export_params['action'] = 'export';
-            $export_url = "index.php?" . http_build_query($export_params);
-
-            // Add auto-type to the create button
-            $create_url = "index.php?page=admin_customers&action=create";
-            if ($filter_type) $create_url .= "&type=" . $filter_type;
-            ?>
-            <a href="<?= $export_url ?>" class="btn btn-sm btn-ghost" style="border-color:var(--success); color:var(--success);"><i class="fas fa-file-download"></i> Export</a>
-            <a href="index.php?page=admin_customers&action=import_view" class="btn btn-sm btn-ghost" style="border-color:var(--success); color:var(--success);"><i class="fas fa-file-excel"></i> Import</a>
-            <a href="<?= $create_url ?>" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Tambah</a>
+    <div class="grid-header">
+        <div>
+            <h3 style="font-size:20px; font-weight:800; margin:0;"><i class="fas <?= $title_icon ?> text-primary"></i> <?= $page_title ?></h3>
+            <div style="font-size:12px; color:var(--text-secondary); margin-top:4px; opacity:0.8;">
+                Manajemen data pelanggan & konfigurasi layanan
+            </div>
+        </div>
+        <div class="grid-actions">
+            <div class="btn-group">
+                <a href="<?= $export_url ?>" class="btn btn-sm btn-ghost" style="color:var(--success);"><i class="fas fa-file-download"></i> <span class="hide-mobile">Export</span></a>
+                <a href="index.php?page=admin_customers&action=import_view" class="btn btn-sm btn-ghost" style="color:var(--success);"><i class="fas fa-file-excel"></i> <span class="hide-mobile">Import</span></a>
+                <a href="<?= $create_url ?>" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Tambah</a>
+            </div>
         </div>
     </div>
     
@@ -378,6 +397,11 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $where_search = " AND (name LIKE $s OR customer_code LIKE $s OR address LIKE $s OR contact LIKE $s)";
     }
 
+    $filter_month = $_GET['filter_month'] ?? '';
+    if ($filter_month) {
+        $where_search .= " AND strftime('%Y-%m', registration_date) = " . $db->quote($filter_month);
+    }
+
     $collectors = $db->query("SELECT id, name FROM users WHERE role = 'collector' ORDER BY name ASC")->fetchAll();
 
     // Pagination Logic
@@ -385,53 +409,92 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $current_page = isset($_GET['p']) ? max(1, intval($_GET['p'])) : 1;
     $offset = ($current_page - 1) * $items_per_page;
     
+    // Scoping Logic (Multi-tenancy)
+    $u_id = $_SESSION['user_id'];
+    $u_role = $_SESSION['user_role'];
+    $scope_where = " AND (created_by = $u_id) ";
+    if ($u_role === 'admin') {
+        $scope_where = " AND (created_by = 0 OR created_by IS NULL) ";
+    }
+
     // Count total rows for this filter
-    $count_q = "SELECT COUNT(*) FROM customers WHERE 1=1 $where_type $where_collector $where_search";
+    $count_q = "SELECT COUNT(*) FROM customers WHERE 1=1 $where_type $where_collector $where_search $scope_where";
     $total_rows = $db->query($count_q)->fetchColumn();
     $total_pages = ceil($total_rows / $items_per_page);
     ?>
 
+    <!-- Stats Section -->
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:25px;">
+        <div class="glass-panel" style="padding:15px; border-left:4px solid var(--primary); background:linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(37, 99, 235, 0.05));">
+            <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">Total <?= $filter_type == 'partner' ? 'Mitra' : 'Pelanggan' ?></div>
+            <div style="font-size:24px; font-weight:800; color:var(--primary);"><?= number_format($total_rows) ?> <span style="font-size:14px; color:var(--text-secondary); font-weight:normal;">Items</span></div>
+        </div>
+        <?php
+        $stats_q = "SELECT SUM(monthly_fee) as total_mrr, AVG(monthly_fee) as avg_fee FROM customers WHERE 1=1 $where_type $where_collector $where_search $scope_where";
+        $stats_data = $db->query($stats_q)->fetch();
+        ?>
+        <div class="glass-panel" style="padding:15px; border-left:4px solid var(--success); background:linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));">
+            <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">Estimasi MRR</div>
+            <div style="font-size:24px; font-weight:800; color:var(--success);">Rp <?= number_format($stats_data['total_mrr'] ?? 0, 0, ',', '.') ?></div>
+        </div>
+        <div class="glass-panel" style="padding:15px; border-left:4px solid var(--warning); background:linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));">
+            <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">Rata-rata ARPU</div>
+            <div style="font-size:24px; font-weight:800; color:var(--warning);">Rp <?= number_format($stats_data['avg_fee'] ?? 0, 0, ',', '.') ?></div>
+        </div>
+    </div>
+
     <!-- Filter Bar -->
-    <div style="padding:15px; background:var(--hover-bg); border-radius:12px; margin-bottom:20px; border-left:4px solid var(--primary);">
-        <form method="GET" style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+    <div style="padding:20px; background:rgba(var(--primary-rgb), 0.05); border-radius:12px; margin-bottom:25px; border:1px solid rgba(var(--primary-rgb), 0.1);">
+        <form method="GET" class="grid-filters">
             <input type="hidden" name="page" value="admin_customers">
-            <div style="flex:1; min-width:200px;">
-                <label style="font-size:12px; color:var(--text-secondary); display:block; margin-bottom:4px;">Cari Nama / Kode / Alamat</label>
+            
+            <div class="filter-group">
+                <label><i class="fas fa-search"></i> Cari Pelanggan</label>
                 <div style="position:relative;">
-                    <i class="fas fa-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-secondary);"></i>
-                    <input type="text" name="search" class="form-control" placeholder="Ketik keyword..." value="<?= htmlspecialchars($search) ?>" style="padding:8px 12px 8px 35px; font-size:13px;">
+                    <i class="fas fa-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-secondary); opacity:0.5; font-size:12px;"></i>
+                    <input type="text" name="search" class="form-control" placeholder="Nama / Kode / HP..." value="<?= htmlspecialchars($search) ?>" style="padding-left:35px; font-size:13px; height:40px;">
                 </div>
             </div>
-            <div>
-                <label style="font-size:12px; color:var(--text-secondary); display:block; margin-bottom:4px;">Tipe</label>
-                <select name="filter_type" class="form-control" style="padding:8px 12px; font-size:13px;">
+
+            <div class="filter-group">
+                <label><i class="fas fa-user-tag"></i> Tipe</label>
+                <select name="filter_type" class="form-control" style="font-size:13px; height:40px;">
                     <option value="">Semua Tipe</option>
-                    <option value="customer" <?= $filter_type === 'customer' ? 'selected' : '' ?>>Pelanggan</option>
-                    <option value="partner" <?= $filter_type === 'partner' ? 'selected' : '' ?>>Mitra</option>
+                    <option value="customer" <?= $filter_type == 'customer' ? 'selected' : '' ?>>Rumahan</option>
+                    <option value="partner" <?= $filter_type == 'partner' ? 'selected' : '' ?>>Mitra / B2B</option>
                 </select>
             </div>
-            <div>
-                <label style="font-size:12px; color:var(--text-secondary); display:block; margin-bottom:4px;">Collector</label>
-                <select name="filter_collector" class="form-control" style="padding:8px 12px; font-size:13px;">
-                    <option value="">Semua Collector</option>
+
+            <?php if ($u_role === 'admin'): ?>
+            <div class="filter-group">
+                <label><i class="fas fa-user-tie"></i> Penagih</label>
+                <select name="filter_collector" class="form-control" style="font-size:13px; height:40px;">
+                    <option value="">Semua Penagih</option>
                     <?php foreach($collectors as $coll): ?>
                         <option value="<?= $coll['id'] ?>" <?= $filter_collector == $coll['id'] ? 'selected' : '' ?>><?= htmlspecialchars($coll['name']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
-            <button type="submit" class="btn btn-primary btn-sm" style="padding:8px 16px; height:38px;"><i class="fas fa-filter"></i> Cari & Filter</button>
-            <?php if($filter_type || $filter_collector || $search): ?>
-                <a href="index.php?page=admin_customers" class="btn btn-sm btn-ghost" style="padding:8px 16px; height:38px; display:flex; align-items:center;"><i class="fas fa-times"></i> Reset</a>
             <?php endif; ?>
+
+            <div class="grid-actions" style="margin-top:auto;">
+                <div class="btn-group" style="width:100%;">
+                    <button type="submit" class="btn btn-primary btn-sm" style="flex:1; height:40px;"><i class="fas fa-search"></i> Cari</button>
+                    <?php if($search || $filter_type || $filter_collector): ?>
+                        <a href="index.php?page=admin_customers" class="btn btn-ghost btn-sm" style="flex:0; width:45px; height:40px; display:flex; align-items:center; justify-content:center;"><i class="fas fa-sync"></i></a>
+                    <?php endif; ?>
+                </div>
+            </div>
         </form>
     </div>
 
     <!-- Mobile Card View (Hidden on Desktop) -->
     <div class="customers-mobile-container" style="display:none;">
         <?php
+        $rt_scope = ($u_role === 'admin') ? "WHERE created_by = 0 OR created_by IS NULL" : "WHERE created_by = $u_id";
         $routers = [];
-        try { $routers = $db->query("SELECT * FROM routers")->fetchAll(); } catch(Exception $e) {}
-        $customers = $db->query("SELECT * FROM customers WHERE 1=1 $where_type $where_collector $where_search ORDER BY id DESC LIMIT $items_per_page OFFSET $offset")->fetchAll();
+        try { $routers = $db->query("SELECT * FROM routers $rt_scope")->fetchAll(); } catch(Exception $e) {}
+        $customers = $db->query("SELECT * FROM customers WHERE 1=1 $where_type $where_collector $where_search $scope_where ORDER BY id DESC LIMIT $items_per_page OFFSET $offset")->fetchAll();
         
         foreach($customers as $c):
             $rtName = '-';
@@ -452,25 +515,27 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             
             <div style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;">
                 <div style="margin-bottom:3px;"><i class="fas fa-box" style="width:16px;"></i> <?= htmlspecialchars($c['package_name']) ?> — <strong>Rp <?= number_format($c['monthly_fee'], 0, ',', '.') ?></strong></div>
+                <?php if($u_role === 'admin'): ?>
                 <div style="margin-bottom:3px;"><i class="fas fa-map-marker-alt" style="width:16px;"></i> <?= htmlspecialchars($c['area'] ?: '-') ?></div>
+                <?php endif; ?>
                 <div style="margin-bottom:3px;"><i class="fas fa-phone" style="width:16px;"></i> <?= htmlspecialchars($c['contact']) ?></div>
                 <div style="font-family:monospace; font-size:11px;">
                     IP: <?= htmlspecialchars($c['ip_address'] ?: '-') ?> • RB: <?= htmlspecialchars($rtName) ?>
                 </div>
             </div>
 
-            <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--glass-border); padding-top:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--glass-border); padding-top:12px;">
                 <div class="conn-status" data-router="<?= htmlspecialchars($c['router_id'] ?? 0) ?>" data-pppoe="<?= htmlspecialchars($c['pppoe_name'] ?? '') ?>">
                     <i class="fas fa-spinner fa-spin text-warning"></i>
                 </div>
-                <div style="display:flex; gap:8px;">
-                    <button class="btn btn-sm btn-ghost" onclick="createInvoice(<?= $c['id'] ?>, <?= $c['monthly_fee'] ?>)">Tagih</button>
+                <div class="btn-group">
+                    <button class="btn btn-xs btn-ghost" onclick="createInvoice(<?= $c['id'] ?>, <?= $c['monthly_fee'] ?>)" title="Tagih"><i class="fas fa-file-invoice-dollar"></i></button>
                     <?php if(!empty($c['pppoe_name'])): ?>
-                        <button class="btn btn-sm btn-ghost" onclick="viewTR069('<?= htmlspecialchars($c['pppoe_name']) ?>')" title="TR-069"><i class="fas fa-satellite-dish"></i></button>
+                        <button class="btn btn-xs btn-ghost" onclick="viewTR069('<?= htmlspecialchars($c['pppoe_name']) ?>')" title="TR-069"><i class="fas fa-satellite-dish"></i></button>
                     <?php endif; ?>
-                    <a href="index.php?page=admin_customers&action=details&id=<?= $c['id'] ?>" class="btn btn-sm" style="background:var(--primary); color:white;"><i class="fas fa-eye"></i></a>
-                    <a href="index.php?page=admin_customers&action=edit&id=<?= $c['id'] ?>" class="btn btn-sm" style="background:var(--warning); color:white;"><i class="fas fa-edit"></i></a>
-                    <a href="index.php?page=admin_customers&action=delete&id=<?= $c['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus?')"><i class="fas fa-trash"></i></a>
+                    <a href="index.php?page=admin_customers&action=details&id=<?= $c['id'] ?>" class="btn btn-xs btn-ghost" style="color:var(--primary);" title="Detail"><i class="fas fa-eye"></i></a>
+                    <a href="index.php?page=admin_customers&action=edit&id=<?= $c['id'] ?>" class="btn btn-xs btn-ghost" style="color:var(--warning);" title="Edit"><i class="fas fa-edit"></i></a>
+                    <a href="index.php?page=admin_customers&action=delete&id=<?= $c['id'] ?>" class="btn btn-xs btn-danger" onclick="return confirm('Hapus?')" title="Hapus"><i class="fas fa-trash"></i></a>
                 </div>
             </div>
         </div>
@@ -484,7 +549,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 <tr>
                     <th style="width:40px; text-align:center;"><input type="checkbox" id="check-all-cust" style="transform:scale(1.2); cursor:pointer;"></th>
                     <th>Nama</th>
-                    <th>Tipe / Area</th>
+                    <th>Tipe <?= ($u_role === 'admin' ? '/ Area' : '') ?></th>
                     <th>Paket / Kontak</th>
                     <th>Biaya Bulanan</th>
                     <th>IP / Koneksi</th>
@@ -509,7 +574,9 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                         <?php else: ?>
                             <span class="badge badge-success">Pelanggan</span>
                         <?php endif; ?>
+                        <?php if($u_role === 'admin'): ?>
                         <div style="font-size:12px; margin-top:5px; color:var(--text-secondary);"><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($c['area'] ?: '-') ?></div>
+                        <?php endif; ?>
                     </td>
                     <td>
                         <div style="font-weight:600;"><?= htmlspecialchars($c['package_name']) ?></div>
@@ -590,6 +657,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         
         <div style="display:flex; gap:10px; align-items:center;">
+            <?php if ($u_role === 'admin'): ?>
             <div id="move-collector-box" style="display:none; align-items:center; gap:8px; background:var(--hover-bg); padding:5px 10px; border-radius:8px; border:1px solid var(--glass-border);">
                 <span style="font-size:12px; font-weight:600;">Pindah ke:</span>
                 <select id="bulk-target-collector" class="form-control" style="width:150px; padding:5px;">
@@ -606,6 +674,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             <button class="btn btn-sm btn-ghost" id="btn-move-trigger" onclick="toggleMoveBox(true)" style="color:var(--primary); font-weight:700;">
                 <i class="fas fa-exchange-alt"></i> Pindah Penagih
             </button>
+            <?php endif; ?>
             
             <button class="btn btn-sm btn-danger" onclick="submitBulkDelete()" style="font-weight:700;">
                 <i class="fas fa-trash"></i> Hapus Masal
@@ -778,10 +847,22 @@ document.addEventListener("DOMContentLoaded", function() {
 
 <?php elseif ($action === 'create' || $action === 'edit'): 
     if($action === 'edit') {
-        $id = $_GET['id'];
-        $c = $db->query("SELECT * FROM customers WHERE id = " . intval($id))->fetch();
+        $id = intval($_GET['id']);
+        $c = $db->query("SELECT * FROM customers WHERE id = $id")->fetch();
+        
+        // Ownership Check
+        if ($c) {
+            $u_id = $_SESSION['user_id'];
+            $u_role = $_SESSION['user_role'];
+            $is_owner = ($u_role === 'admin') ? ($c['created_by'] == 0 || $c['created_by'] === NULL) : ($c['created_by'] == $u_id);
+            if (!$is_owner) {
+                echo "<div class='glass-panel p-5 text-center'><h3>Akses Ditolak</h3><p>Anda tidak berwenang mengedit data ini.</p><a href='index.php?page=admin_customers' class='btn btn-primary'>Kembali</a></div>";
+                return;
+            }
+        }
     } else {
-        $default_type = $_GET['type'] ?? 'customer';
+        $u_role = $_SESSION['user_role'] ?? 'admin';
+        $default_type = ($u_role === 'partner') ? 'customer' : ($_GET['type'] ?? 'customer');
         $c = ['type'=>$default_type, 'registration_date'=>date('Y-m-d'), 'billing_date'=>'', 'router_id'=>0, 'pppoe_name'=>'', 'name'=>'', 'address'=>'', 'contact'=>'', 'package_name'=>'', 'monthly_fee'=>'', 'ip_address'=>'', 'area'=>''];
     }
 ?>
@@ -790,6 +871,7 @@ document.addEventListener("DOMContentLoaded", function() {
     <form action="index.php?page=admin_customers&action=<?= $action === 'edit' ? 'update' : 'add' ?>" method="POST" onsubmit="return validateAndSync(event)">
         <?php if($action === 'edit'): ?><input type="hidden" name="id" value="<?= $c['id'] ?>"><?php endif; ?>
         
+        <?php if ($u_role === 'admin'): ?>
         <div class="form-group">
             <label>Tipe Entitas</label>
             <select name="type" id="customer_type_selector" class="form-control" required onchange="togglePkgFields(this.value)">
@@ -797,6 +879,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 <option value="partner" <?= $c['type']=='partner'?'selected':'' ?>>Mitra (Bandwidth)</option>
             </select>
         </div>
+        <?php else: ?>
+            <input type="hidden" name="type" id="customer_type_selector" value="customer">
+        <?php endif; ?>
         <div class="form-group">
             <label>Nama Lengkap / Instansi</label>
             <input type="text" name="name" class="form-control" value="<?= htmlspecialchars($c['name']) ?>" required>
@@ -848,7 +933,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 <select name="router_id" id="sel_router_id" class="form-control" onchange="loadPPPoE(this.value)">
                     <option value="0">-- Akses Manual --</option>
                     <?php
-                    $routers = []; try { $routers = $db->query("SELECT * FROM routers")->fetchAll(); } catch(Exception $e) {}
+                    $rt_scope = ($u_role === 'admin') ? "WHERE created_by = 0 OR created_by IS NULL" : "WHERE created_by = $u_id";
+                    $routers = []; try { $routers = $db->query("SELECT * FROM routers $rt_scope")->fetchAll(); } catch(Exception $e) {}
                     foreach($routers as $r):
                     ?>
                     <option value="<?= $r['id'] ?>" <?= ($c['router_id'] ?? 0) == $r['id'] ? 'selected' : '' ?>><?= htmlspecialchars($r['name']) ?></option>
@@ -861,6 +947,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     <option value="<?= htmlspecialchars($c['pppoe_name'] ?? '') ?>"><?= htmlspecialchars($c['pppoe_name'] ?: '-- Pilih Router --') ?></option>
                 </select>
             </div>
+            <?php if ($u_role === 'admin'): ?>
             <div class="form-group" style="margin-bottom:0;">
                 <label>Petugas Penagih (Collector)</label>
                 <select name="collector_id" class="form-control">
@@ -873,8 +960,12 @@ document.addEventListener("DOMContentLoaded", function() {
                     <?php endforeach; ?>
                 </select>
             </div>
+            <?php else: ?>
+                <input type="hidden" name="collector_id" value="0">
+            <?php endif; ?>
         </div>
         
+        <?php if($u_role === 'admin'): ?>
         <div class="form-group">
             <label>IP Address & Area Penagihan</label>
             <div class="flex" style="gap:10px;">
@@ -891,7 +982,15 @@ document.addEventListener("DOMContentLoaded", function() {
             </div>
             <div style="font-size:10px; color:var(--text-secondary); margin-top:5px;">*Atur daftar area di menu Manajemen Area</div>
         </div>
+        <?php else: ?>
+            <div class="form-group">
+                <label>IP Address</label>
+                <input type="text" name="ip_address" class="form-control" value="<?= htmlspecialchars($c['ip_address']) ?>" placeholder="IP (192.168.x.x)">
+            </div>
+            <input type="hidden" name="area" value="">
+        <?php endif; ?>
 
+        <?php if ($u_role === 'admin'): ?>
         <!-- NEW: Infra & GIS Section -->
         <div style="padding:15px; background:rgba(236, 72, 153, 0.05); border-radius:12px; margin-bottom:20px; border:1px solid rgba(236, 72, 153, 0.2);">
             <div style="font-weight:700; color:#ec4899; margin-bottom:12px;"><i class="fas fa-network-wired"></i> Infra & GIS Jaringan</div>
@@ -932,6 +1031,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 <i class="fas fa-info-circle"></i> Tip: Gunakan Google Maps (Klik kanan di lokasi > Ambil koordinat) atau buka <a href="index.php?page=admin_map" target="_blank" style="color:#ec4899; font-weight:700;">Peta Jaringan</a> untuk referensi.
             </div>
         </div>
+        <?php endif; ?>
 
         <div class="flex" style="gap:15px;">
             <div class="form-group" style="flex:1;">
@@ -1097,6 +1197,15 @@ document.addEventListener("DOMContentLoaded", () => {
     $id = intval($_GET['id']);
     $c = $db->query("SELECT * FROM customers WHERE id = $id")->fetch();
     if(!$c) { echo "Pelanggan tidak ditemukan."; return; }
+    
+    // Ownership Check
+    $u_id = $_SESSION['user_id'];
+    $u_role = $_SESSION['user_role'];
+    $is_owner = ($u_role === 'admin') ? ($c['created_by'] == 0 || $c['created_by'] === NULL) : ($c['created_by'] == $u_id);
+    if (!$is_owner) {
+        echo "<div class='glass-panel p-5 text-center'><h3>Akses Ditolak</h3><p>Anda tidak berwenang melihat data ini.</p><a href='index.php?page=admin_customers' class='btn btn-primary'>Kembali</a></div>";
+        return;
+    }
     
     // Riwayat Pembayaran
     $history = $db->query("

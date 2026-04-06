@@ -93,7 +93,8 @@ $db->exec("
         host TEXT NOT NULL,
         port INTEGER DEFAULT 8728,
         username TEXT NOT NULL,
-        password TEXT NOT NULL
+        password TEXT NOT NULL,
+        created_by INTEGER DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS invoice_items (
@@ -133,14 +134,20 @@ try { $db->exec("ALTER TABLE customers ADD COLUMN customer_code TEXT"); } catch(
 try { $db->exec("ALTER TABLE customers ADD COLUMN area TEXT"); } catch(Exception $e) {}
 try { $db->exec("ALTER TABLE users ADD COLUMN area TEXT"); } catch(Exception $e) {}
 try { $db->exec("ALTER TABLE users ADD COLUMN customer_id INTEGER"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE customers ADD COLUMN created_by INTEGER DEFAULT 0"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE routers ADD COLUMN created_by INTEGER DEFAULT 0"); } catch(Exception $e) {}
 
 // Create packages table
 $db->exec("CREATE TABLE IF NOT EXISTS packages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     fee REAL NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_by INTEGER DEFAULT 0
 )");
+
+// Safely add created_by to existing packages if not present
+try { $db->exec("ALTER TABLE packages ADD COLUMN created_by INTEGER DEFAULT 0"); } catch(Exception $e) {}
 
 // Create areas table
 $db->exec("CREATE TABLE IF NOT EXISTS areas (
@@ -156,8 +163,12 @@ $db->exec("CREATE TABLE IF NOT EXISTS expenses (
     amount REAL NOT NULL,
     description TEXT,
     date TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_by INTEGER DEFAULT 0
 )");
+
+// Safely add created_by to existing expenses if not present
+try { $db->exec("ALTER TABLE expenses ADD COLUMN created_by INTEGER DEFAULT 0"); } catch(Exception $e) {}
 
 // Auto-migrate existing areas from customers to areas table
 try {
@@ -241,6 +252,7 @@ $db->exec("CREATE TABLE IF NOT EXISTS infrastructure_assets (
 try { $db->exec("ALTER TABLE infrastructure_assets ADD COLUMN price REAL DEFAULT 0"); } catch(Exception $e) {}
 try { $db->exec("ALTER TABLE infrastructure_assets ADD COLUMN status TEXT DEFAULT 'Deployed'"); } catch(Exception $e) {}
 try { $db->exec("ALTER TABLE infrastructure_assets ADD COLUMN installation_date TEXT"); } catch(Exception $e) {}
+try { $db->exec("ALTER TABLE infrastructure_assets ADD COLUMN created_by INTEGER DEFAULT 0"); } catch(Exception $e) {}
 
 // Customer GIS & Topology columns
 try { $db->exec("ALTER TABLE customers ADD COLUMN lat TEXT"); } catch(Exception $e) {}

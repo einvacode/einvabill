@@ -4,36 +4,68 @@
  * Fokus pada 6 Parameter Utama sesuai permintaan User.
  */
 
-// 1. Total Pelanggan (User) - Count & Est. Revenue
-$res_cust = $db->query("SELECT COUNT(*) as jml, SUM(monthly_fee) as est FROM customers WHERE type='customer'")->fetch();
+// 1. Total Pelanggan (User) - Count & Est. Revenue (Scoped)
+$res_cust = $db->query("SELECT COUNT(*) as jml, SUM(monthly_fee) as est FROM customers WHERE type='customer' AND (created_by = 0 OR created_by IS NULL)")->fetch();
 $total_customers = $res_cust['jml'];
 $est_revenue_cust = $res_cust['est'] ?: 0;
 
-// 2. Total Mitra (B2B) - Count & Est. Revenue
-$res_part = $db->query("SELECT COUNT(*) as jml, SUM(monthly_fee) as est FROM customers WHERE type='partner'")->fetch();
+// 2. Total Mitra (B2B) - Count & Est. Revenue (Scoped)
+$res_part = $db->query("SELECT COUNT(*) as jml, SUM(monthly_fee) as est FROM customers WHERE type='partner' AND (created_by = 0 OR created_by IS NULL)")->fetch();
 $total_partners = $res_part['jml'];
 $est_revenue_part = $res_part['est'] ?: 0;
 
-// 3. Pelanggan Baru Bulan Ini
-$new_customers_month = $db->query("SELECT COUNT(*) FROM customers WHERE strftime('%Y-%m', registration_date) = strftime('%Y-%m', 'now')")->fetchColumn();
+// 3. Pelanggan Baru Bulan Ini (Scoped)
+$new_customers_month = $db->query("SELECT COUNT(*) FROM customers WHERE strftime('%Y-%m', registration_date) = strftime('%Y-%m', 'now') AND (created_by = 0 OR created_by IS NULL)")->fetchColumn();
 
-// 4. Belum Bayar (Piutang) - Count & Net Total
-$res_unpaid = $db->query("SELECT COUNT(DISTINCT customer_id) as jml, SUM(amount - discount) as total FROM invoices WHERE status='Belum Lunas'")->fetch();
-$count_unpaid = $res_unpaid['jml'];
-$total_unpaid = $res_unpaid['total'] ?: 0;
+// 4. Belum Bayar (Piutang) - Split Retail vs Partner
+$res_unpaid_cust = $db->query("SELECT COUNT(DISTINCT i.customer_id) as jml, SUM(i.amount - i.discount) as total 
+    FROM invoices i 
+    JOIN customers c ON i.customer_id = c.id 
+    WHERE i.status='Belum Lunas' AND c.type='customer' AND (c.created_by = 0 OR c.created_by IS NULL)")->fetch();
+$count_unpaid_cust = $res_unpaid_cust['jml'];
+$total_unpaid_cust = $res_unpaid_cust['total'] ?: 0;
 
-// 5. Lunas Bayar (Total Pendapatan Terkumpul)
-$total_received_all = $db->query("SELECT SUM(amount) FROM payments")->fetchColumn() ?: 0;
+$res_unpaid_part = $db->query("SELECT COUNT(DISTINCT i.customer_id) as jml, SUM(i.amount - i.discount) as total 
+    FROM invoices i 
+    JOIN customers c ON i.customer_id = c.id 
+    WHERE i.status='Belum Lunas' AND c.type='partner' AND (c.created_by = 0 OR c.created_by IS NULL)")->fetch();
+$count_unpaid_part = $res_unpaid_part['jml'];
+$total_unpaid_part = $res_unpaid_part['total'] ?: 0;
 
-// 6. Transaksi Cash Bulanan (Hanya tagihan bulan ini yang dibayar bulan ini)
-$cash_monthly = $db->query("
+// 5. Total Pendapatan Terkumpul - Split Retail vs Partner
+$total_received_cust = $db->query("SELECT SUM(p.amount) 
+    FROM payments p 
+    JOIN invoices i ON p.invoice_id = i.id 
+    JOIN customers c ON i.customer_id = c.id
+    WHERE c.type='customer' AND (c.created_by = 0 OR c.created_by IS NULL)")->fetchColumn() ?: 0;
+
+$total_received_part = $db->query("SELECT SUM(p.amount) 
+    FROM payments p 
+    JOIN invoices i ON p.invoice_id = i.id 
+    JOIN customers c ON i.customer_id = c.id
+    WHERE c.type='partner' AND (c.created_by = 0 OR c.created_by IS NULL)")->fetchColumn() ?: 0;
+
+// 6. Arus Kas Bulanan - Split Retail vs Partner
+$cash_monthly_cust = $db->query("
     SELECT SUM(p.amount) 
     FROM payments p 
     JOIN invoices i ON p.invoice_id = i.id 
-    WHERE strftime('%Y-%m', i.due_date) = strftime('%Y-%m', 'now')
+    JOIN customers c ON i.customer_id = c.id
+    WHERE c.type='customer' AND strftime('%Y-%m', i.due_date) = strftime('%Y-%m', 'now')
       AND strftime('%Y-%m', p.payment_date) = strftime('%Y-%m', 'now')
+      AND (c.created_by = 0 OR c.created_by IS NULL)
 ")->fetchColumn() ?: 0;
-?>
+
+$cash_monthly_part = $db->query("
+    SELECT SUM(p.amount) 
+    FROM payments p 
+    JOIN invoices i ON p.invoice_id = i.id 
+    JOIN customers c ON i.customer_id = c.id
+    WHERE c.type='partner' AND strftime('%Y-%m', i.due_date) = strftime('%Y-%m', 'now')
+      AND strftime('%Y-%m', p.payment_date) = strftime('%Y-%m', 'now')
+      AND (c.created_by = 0 OR c.created_by IS NULL)
+")->fetchColumn() ?: 0;
+?><!DOCTYPE html>
 
 <!-- Banner Lisensi -->
 <?php if(LICENSE_ST === 'TRIAL'): ?>
@@ -101,42 +133,77 @@ $cash_monthly = $db->query("
         </div>
     </div>
 
-    <!-- 4. Belum Bayar -->
+    <!-- 4. Piutang Retail -->
     <div class="glass-panel" style="border-top: 4px solid #ef4444; display:flex; align-items:center; gap:12px; padding:12px 15px;">
         <div style="background:rgba(239, 68, 68, 0.1); color:#ef4444; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
             <i class="fas fa-exclamation-triangle"></i>
         </div>
         <div style="flex:1; overflow:hidden;">
-            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Piutang</div>
-            <div style="font-size:16px; font-weight:800; color:#ef4444; line-height:1.2;">Rp<?= number_format($total_unpaid, 0, ',', '.') ?></div>
-            <div style="font-size:10px; color:#ef4444; font-weight:700; margin-top:2px;"><?= number_format($count_unpaid) ?> User Belum Lunas</div>
+            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Piutang Retail</div>
+            <div style="font-size:16px; font-weight:800; color:#ef4444; line-height:1.2;">Rp<?= number_format($total_unpaid_cust, 0, ',', '.') ?></div>
+            <div style="font-size:10px; color:#ef4444; font-weight:700; margin-top:2px;"><?= number_format($count_unpaid_cust) ?> User</div>
         </div>
     </div>
 
-    <!-- 5. Koleksi Dana -->
+    <!-- 5. Piutang Mitra -->
+    <div class="glass-panel" style="border-top: 4px solid #f43f5e; display:flex; align-items:center; gap:12px; padding:12px 15px;">
+        <div style="background:rgba(244, 63, 94, 0.1); color:#f43f5e; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
+            <i class="fas fa-hand-holding-dollar"></i>
+        </div>
+        <div style="flex:1; overflow:hidden;">
+            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Piutang Mitra</div>
+            <div style="font-size:16px; font-weight:800; color:#f43f5e; line-height:1.2;">Rp<?= number_format($total_unpaid_part, 0, ',', '.') ?></div>
+            <div style="font-size:10px; color:#f43f5e; font-weight:700; margin-top:2px;"><?= number_format($count_unpaid_part) ?> Mitra</div>
+        </div>
+    </div>
+
+    <!-- 6. Koleksi Retail -->
     <div class="glass-panel" style="border-top: 4px solid #10b981; display:flex; align-items:center; gap:12px; padding:12px 15px;">
         <div style="background:rgba(16, 185, 129, 0.1); color:#10b981; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
             <i class="fas fa-coins"></i>
         </div>
         <div style="flex:1; overflow:hidden;">
-            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Koleksi</div>
-            <div style="font-size:16px; font-weight:800; color:#10b981; line-height:1.2;">Rp<?= number_format($total_received_all, 0, ',', '.') ?></div>
-            <div style="font-size:10px; opacity:0.6; margin-top:2px;">Total Masuk</div>
+            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Koleksi Retail</div>
+            <div style="font-size:16px; font-weight:800; color:#10b981; line-height:1.2;">Rp<?= number_format($total_received_cust, 0, ',', '.') ?></div>
+            <div style="font-size:10px; opacity:0.6; margin-top:2px;">Lunas</div>
         </div>
     </div>
 
-    <!-- 6. Arus Kas -->
+    <!-- 7. Koleksi Mitra -->
+    <div class="glass-panel" style="border-top: 4px solid #059669; display:flex; align-items:center; gap:12px; padding:12px 15px;">
+        <div style="background:rgba(5, 150, 105, 0.1); color:#059669; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
+            <i class="fas fa-vault"></i>
+        </div>
+        <div style="flex:1; overflow:hidden;">
+            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Koleksi Mitra</div>
+            <div style="font-size:16px; font-weight:800; color:#059669; line-height:1.2;">Rp<?= number_format($total_received_part, 0, ',', '.') ?></div>
+            <div style="font-size:10px; opacity:0.6; margin-top:2px;">Lunas</div>
+        </div>
+    </div>
+
+    <!-- 8. Kas Retail (Bulan Ini) -->
     <div class="glass-panel" style="border-top: 4px solid #f59e0b; display:flex; align-items:center; gap:12px; padding:12px 15px;">
         <div style="background:rgba(245, 158, 11, 0.1); color:#f59e0b; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
             <i class="fas fa-money-check-alt"></i>
         </div>
         <div style="flex:1; overflow:hidden;">
-            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Kas</div>
-            <div style="font-size:16px; font-weight:800; color:#f59e0b; line-height:1.2;">Rp<?= number_format($cash_monthly, 0, ',', '.') ?></div>
-            <div style="font-size:10px; opacity:0.6; margin-top:2px;">Bulan Berjalan</div>
+            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Kas Retail</div>
+            <div style="font-size:16px; font-weight:800; color:#f59e0b; line-height:1.2;">Rp<?= number_format($cash_monthly_cust, 0, ',', '.') ?></div>
+            <div style="font-size:10px; opacity:0.6; margin-top:2px;">Bulan Ini</div>
         </div>
     </div>
 
+    <!-- 9. Kas Mitra (Bulan Ini) -->
+    <div class="glass-panel" style="border-top: 4px solid #d97706; display:flex; align-items:center; gap:12px; padding:12px 15px;">
+        <div style="background:rgba(217, 119, 6, 0.1); color:#d97706; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
+            <i class="fas fa-briefcase"></i>
+        </div>
+        <div style="flex:1; overflow:hidden;">
+            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Kas Mitra</div>
+            <div style="font-size:16px; font-weight:800; color:#d97706; line-height:1.2;">Rp<?= number_format($cash_monthly_part, 0, ',', '.') ?></div>
+            <div style="font-size:10px; opacity:0.6; margin-top:2px;">Bulan Ini</div>
+        </div>
+    </div>
 </div>
 
 <!-- Secondary Components -->
@@ -192,9 +259,14 @@ $cash_monthly = $db->query("
                         <div style="font-weight:800; color:#ef4444; font-size:14px;">Rp <?= number_format($ls['total_debt'], 0, ',', '.') ?></div>
                     </td>
                     <td style="padding:12px; text-align:right;">
-                        <a href="https://wa.me/<?= preg_replace('/[^0-9]/', '', $ls['contact']) ?>" target="_blank" class="btn btn-sm btn-success" style="padding:5px 10px; font-size:11px;">
-                            <i class="fab fa-whatsapp"></i> Tagih
-                        </a>
+                        <div style="display:flex; justify-content:flex-end; gap:6px;">
+                            <button onclick="quickPay(<?= $ls['cust_id'] ?>, '<?= addslashes($ls['name']) ?>', <?= $ls['months_owed'] ?>, <?= $ls['total_debt'] ?>)" class="btn btn-sm btn-primary" style="padding:5px 10px; font-size:11px;">
+                                <i class="fas fa-money-bill-wave"></i> Bayar
+                            </button>
+                            <a href="https://wa.me/<?= preg_replace('/[^0-9]/', '', $ls['contact']) ?>" target="_blank" class="btn btn-sm btn-success" style="padding:5px 10px; font-size:11px;">
+                                <i class="fab fa-whatsapp"></i> Tagih
+                            </a>
+                        </div>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -258,14 +330,21 @@ $cash_monthly = $db->query("
     </div>
 </div>
 
-<style>
-@keyframes pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0.6; }
-    100% { opacity: 1; }
-}
-.stat-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-}
 </style>
+
+<!-- Hidden Form for Quick Pay -->
+<form id="quickPayForm" action="index.php?page=admin_invoices&action=mark_paid_bulk" method="POST" style="display:none;">
+    <input type="hidden" name="customer_id" id="qp_cust_id">
+    <input type="hidden" name="num_months" id="qp_num_months">
+</form>
+
+<script>
+function quickPay(custId, name, months, total) {
+    const formattedTotal = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(total);
+    if (confirm(`Proses pembayaran cepat untuk ${name}?\n\nTotal: ${formattedTotal} (${months} Bulan)\n\nTindakan ini akan menandai tagihan tertua sebagai LUNAS.`)) {
+        document.getElementById('qp_cust_id').value = custId;
+        document.getElementById('qp_num_months').value = months;
+        document.getElementById('quickPayForm').submit();
+    }
+}
+</script>
