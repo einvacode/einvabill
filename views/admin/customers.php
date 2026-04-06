@@ -38,6 +38,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['id'])) {
 // Fetch all packages for dropdowns (Scoped)
 $u_id = $_SESSION['user_id'];
 $u_role = $_SESSION['user_role'] ?? 'admin';
+$scope_where = ($u_role === 'admin') ? " AND (a.created_by = $u_id OR a.created_by = 0 OR a.created_by IS NULL) " : " AND (a.created_by = $u_id) ";
 $pkg_scope = ($u_role === 'admin') ? "WHERE created_by = 0 OR created_by IS NULL" : "WHERE created_by = $u_id";
 $packages_all = $db->query("SELECT * FROM packages $pkg_scope ORDER BY name ASC")->fetchAll();
 $packages_json = json_encode($packages_all);
@@ -378,6 +379,8 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="glass-panel" style="padding: 24px;">
     <?php
     $filter_type = $_GET['filter_type'] ?? '';
+    $create_url = "index.php?page=admin_customers&action=create" . ($filter_type ? "&type=$filter_type" : "");
+    $export_url = "index.php?page=admin_customers&action=export" . ($filter_type ? "&type=$filter_type" : "");
     $page_title = $filter_type === 'partner' ? 'Manajemen Kemitraan (B2B)' : ($filter_type === 'customer' ? 'Manajemen Pelanggan Rumahan' : 'Pelanggan & Mitra');
     $title_icon = $filter_type === 'partner' ? 'fa-handshake' : 'fa-users';
     ?>
@@ -450,7 +453,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $u_role = $_SESSION['user_role'];
     $scope_where = " AND (created_by = $u_id) ";
     if ($u_role === 'admin') {
-        $scope_where = " AND (created_by = 0 OR created_by IS NULL) ";
+        $scope_where = " AND (created_by = $u_id OR created_by = 0 OR created_by IS NULL) ";
     }
 
     // Count total rows for this filter
