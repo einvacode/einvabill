@@ -144,6 +144,10 @@ $recent_paid = $db->query("
 
 $coll_tab = $_GET['tab'] ?? 'tugas';
 $settings = $db->query("SELECT company_name, wa_template, wa_template_paid, site_url, bank_account FROM settings WHERE id=1")->fetch();
+$base_url = rtrim($settings['site_url'] ?? 'http://fibernodeinternet.com', '/');
+if (!empty($base_url) && !preg_match("~^(?:f|ht)tps?://~i", $base_url)) {
+    $base_url = "http://" . $base_url;
+}
 $wa_tpl = $settings['wa_template'] ?? "Halo {nama}, tagihan internet Anda sebesar {tagihan} jatuh tempo pada {jatuh_tempo}. Transfer ke {rekening}";
 $wa_tpl_paid = $settings['wa_template_paid'] ?: "Halo {nama}, terima kasih. Pembayaran {tagihan} sudah lunas.";
 
@@ -583,7 +587,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                             $package_display = $ac['package_name'] ?: '-';
                             $nominal_display = 'Rp ' . number_format($ac['monthly_fee'], 0, ',', '.');
 
-                            $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . $cust_id_display;
+                            $portal_link = $base_url . "/index.php?page=customer_portal&code=" . $cust_id_display;
                             $reminder_msg_desk = str_replace(
                                 ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{tunggakan}', '{total_harus}', '{link_tagihan}'], 
                                 [$ac['name'], '*' . $cust_id_display . '*', $package_display, $inv_month, '*' . $nominal_display . '*', '-', '*' . trim($settings['bank_account'] ?? '') . '*', '*Rp 0*', '*' . $nominal_display . '*', $portal_link], 
@@ -731,7 +735,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
             $tunggakan_display = 'Rp ' . number_format($inv['total_unpaid'] - ($inv['total_unpaid'] / max(1, $inv['num_arrears'])), 0, ',', '.');
             $total_display = 'Rp ' . number_format($inv['total_unpaid'], 0, ',', '.');
             
-            $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . $cust_id_display;
+            $portal_link = $base_url . "/index.php?page=customer_portal&code=" . $cust_id_display;
             $msg = str_replace(
                 ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{tunggakan}', '{total_harus}', '{link_tagihan}'], 
                 [$inv['name'], '*' . $cust_id_display . '*', $inv['package_name'] ?: '-', $inv_month, '*' . $tagihan_display . '*', '*' . $oldest_due . '*', '*' . trim($settings['bank_account'] ?? '') . '*', '*' . $tunggakan_display . '*', '*' . $total_display . '*', $portal_link], 
