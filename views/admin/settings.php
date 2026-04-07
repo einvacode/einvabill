@@ -12,6 +12,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $company_contact = $_POST['company_contact'];
     $company_address = $_POST['company_address'];
     $site_url = rtrim($_POST['site_url'] ?? 'http://fibernodeinternet.com', '/');
+    // Force http:// at the source to prevent https redirects
+    $site_url = "http://" . preg_replace("~^https?://~i", "", $site_url);
     $wa_template = $_POST['wa_template'] ?? '';
     $wa_template_paid = $_POST['wa_template_paid'] ?? '';
     $bank_account = $_POST['bank_account'] ?? '';

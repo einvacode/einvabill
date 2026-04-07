@@ -3,7 +3,11 @@ session_start();
 date_default_timezone_set('Asia/Jakarta');
 
 // Helper to get base URL dynamically
-function get_app_url() {
+function get_app_url($custom = null) {
+    if (!empty($custom)) {
+        // Strip any protocol and force http://
+        return "http://" . preg_replace("~^https?://~i", "", rtrim($custom, '/'));
+    }
     $protocol = 'http://';
     $host = $_SERVER['HTTP_HOST'] ?? 'fibernodeinternet.com';
     $script = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
@@ -11,6 +15,11 @@ function get_app_url() {
     $base = rtrim($protocol . $host . $dir, '/');
     return $base;
 }
+
+// Auto-clean site_url in database to force http:// and prevent browser redirects
+try {
+    $db->exec("UPDATE settings SET site_url = 'http://' || REPLACE(REPLACE(site_url, 'https://', ''), 'http://', '') WHERE id = 1 AND site_url LIKE 'https://%'");
+} catch(Exception $e) {}
 
 $db_file = __DIR__ . '/../database.sqlite';
 
