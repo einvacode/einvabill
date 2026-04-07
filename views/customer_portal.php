@@ -9,8 +9,11 @@ $invoices = [];
 $code_input = $_GET['code'] ?? '';
 
 if ($code_input) {
-    $stmt = $db->prepare("SELECT * FROM customers WHERE customer_code = ?");
-    $stmt->execute([strtoupper(trim($code_input))]);
+    $cleaned_code = strtoupper(trim($code_input));
+    $numeric_id = intval(preg_replace('/[^0-9]/', '', $cleaned_code));
+    
+    $stmt = $db->prepare("SELECT * FROM customers WHERE customer_code = ? OR id = ?");
+    $stmt->execute([$cleaned_code, $numeric_id]);
     $customer = $stmt->fetch();
     
     if ($customer) {

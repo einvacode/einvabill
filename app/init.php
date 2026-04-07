@@ -2,6 +2,16 @@
 session_start();
 date_default_timezone_set('Asia/Jakarta');
 
+// Helper to get base URL dynamically
+function get_app_url() {
+    $protocol = 'http://';
+    $host = $_SERVER['HTTP_HOST'] ?? 'fibernodeinternet.com';
+    $script = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
+    $dir = str_replace('\\', '/', dirname($script));
+    $base = rtrim($protocol . $host . $dir, '/');
+    return $base;
+}
+
 $db_file = __DIR__ . '/../database.sqlite';
 
 // SANGAT PENTING: Cek izin tulis SEBELUM koneksi PDO agar bisa memberikan pesan error yang jelas di Linux/Proxmox
