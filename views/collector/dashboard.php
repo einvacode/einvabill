@@ -143,7 +143,7 @@ $recent_paid = $db->query("
 ")->fetchAll();
 
 $coll_tab = $_GET['tab'] ?? 'tugas';
-$settings = $db->query("SELECT company_name, wa_template, wa_template_paid, site_url FROM settings WHERE id=1")->fetch();
+$settings = $db->query("SELECT company_name, wa_template, wa_template_paid, site_url, bank_account FROM settings WHERE id=1")->fetch();
 $wa_tpl = $settings['wa_template'] ?? "Halo {nama}, tagihan internet Anda sebesar {tagihan} jatuh tempo pada {jatuh_tempo}. Transfer ke {rekening}";
 $wa_tpl_paid = $settings['wa_template_paid'] ?: "Halo {nama}, terima kasih. Pembayaran {tagihan} sudah lunas.";
 
@@ -466,9 +466,6 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
         <i class="fas fa-users"></i> <span class="hide-mobile">Daftar Pelanggan</span><span class="show-mobile">Pelanggan</span>
     </a>
 </div>
-        <i class="fas fa-users"></i> Semua Pelanggan
-    </a>
-</div>
 
 <?php if($coll_tab === 'pelanggan'): ?>
 <!-- TAB: Data Pelanggan -->
@@ -589,7 +586,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                             $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . $cust_id_display;
                             $reminder_msg_desk = str_replace(
                                 ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{tunggakan}', '{total_harus}', '{link_tagihan}'], 
-                                [$ac['name'], '*' . $cust_id_display . '*', $package_display, $inv_month, '*' . $nominal_display . '*', '-', '*' . trim($settings['bank_account']) . '*', '*Rp 0*', '*' . $nominal_display . '*', $portal_link], 
+                                [$ac['name'], '*' . $cust_id_display . '*', $package_display, $inv_month, '*' . $nominal_display . '*', '-', '*' . trim($settings['bank_account'] ?? '') . '*', '*Rp 0*', '*' . $nominal_display . '*', $portal_link], 
                                 $wa_tpl
                             );
                             $wa_text = urlencode($reminder_msg_desk);
@@ -717,60 +714,43 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
         <i class="fas fa-list"></i> Tagihan Belum Lunas 
         <span class="badge badge-danger" style="font-size:13px; margin-left:5px;"><?= $unpaid_count ?></span>
     </h3>
-    <div class="scroll-container" style="max-height:600px; overflow-y:auto; padding-right:5px;">
-        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px;">
+    <div class="scroll-container" style="max-height:650px; overflow-y:auto; padding-right:5px;">
+        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px;">
             <?php 
             foreach($unpaid_invoices as $inv): 
             $wa_number = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $inv['contact']));
             $cust_id_display = $inv['customer_code'] ?: str_pad($inv['cust_id'], 5, "0", STR_PAD_LEFT);
-            
-            // Overdue check based on oldest invoice
             $is_overdue = strtotime($inv['oldest_due_date']) < time();
             $num_arrears = $inv['num_arrears'];
             $grand_total = $inv['total_unpaid'];
-
-            // Consolidated Arrears Reminder using WA Template
             $mon_name = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
             $oldest_due = $inv['oldest_due_date'] ? date('d/m/Y', strtotime($inv['oldest_due_date'])) : '-';
             $inv_month = $inv['oldest_due_date'] ? $mon_name[intval(date('m', strtotime($inv['oldest_due_date']))) - 1] . ' ' . date('Y', strtotime($inv['oldest_due_date'])) : '-';
             
-            // Calculate breakdown for consolidated reminder
-            $total_all = $inv['total_unpaid'];
-            $num_inv = intval($inv['num_arrears']);
-            $current_tagihan = $num_inv > 0 ? $total_all / $num_inv : $total_all; // Average per month
-            $tunggakan_past = $total_all - $current_tagihan;
-
-            $tagihan_display = 'Rp ' . number_format($current_tagihan, 0, ',', '.');
-            $tunggakan_display = 'Rp ' . number_format($tunggakan_past, 0, ',', '.');
-            $total_display = 'Rp ' . number_format($total_all, 0, ',', '.');
+            $tagihan_display = 'Rp ' . number_format($inv['total_unpaid'] / max(1, $inv['num_arrears']), 0, ',', '.');
+            $tunggakan_display = 'Rp ' . number_format($inv['total_unpaid'] - ($inv['total_unpaid'] / max(1, $inv['num_arrears'])), 0, ',', '.');
+            $total_display = 'Rp ' . number_format($inv['total_unpaid'], 0, ',', '.');
             
             $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . $cust_id_display;
             $msg = str_replace(
                 ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{tunggakan}', '{total_harus}', '{link_tagihan}'], 
-                [$inv['name'], '*' . $cust_id_display . '*', $inv['package_name'] ?: '-', $inv_month, '*' . $tagihan_display . '*', '*' . $oldest_due . '*', '*' . trim($settings['bank_account']) . '*', '*' . $tunggakan_display . '*', '*' . $total_display . '*', $portal_link], 
+                [$inv['name'], '*' . $cust_id_display . '*', $inv['package_name'] ?: '-', $inv_month, '*' . $tagihan_display . '*', '*' . $oldest_due . '*', '*' . trim($settings['bank_account'] ?? '') . '*', '*' . $tunggakan_display . '*', '*' . $total_display . '*', $portal_link], 
                 $wa_tpl
             );
-
-            // Safety check for clarity in multiple arrears
-            if (strpos($msg, 'TOTAL') === false && strpos($msg, 'total') === false && $num_inv > 1) {
-                $msg .= "\n\n*Informasi Penting:* Anda memiliki *$num_inv tunggakan* dengan total pembayaran *$total_display*.";
-            }
-            
+            if (intval($inv['num_arrears']) > 1 && strpos($msg, 'total') === false) { $msg .= "\n\n*Total:* $total_display"; }
             $wa_text = urlencode($msg);
         ?>
         <div class="glass-panel" style="padding:16px; border-left: 4px solid <?= $is_overdue ? 'var(--danger)' : 'var(--warning)' ?>;">
-            <!-- Header: Name + Badge -->
             <div style="display:flex; justify-content:space-between; margin-bottom:8px; align-items:flex-start;">
-                <div>
-                    <div style="font-weight:bold; font-size:16px; color:var(--text-primary);"><?= htmlspecialchars($inv['name']) ?></div>
+                <div style="min-width:0;">
+                    <div style="font-weight:bold; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><?= htmlspecialchars($inv['name']) ?></div>
                     <div style="font-size:11px; color:var(--text-secondary); margin-top:2px;">ID: <?= $cust_id_display ?></div>
                 </div>
-                <div class="badge <?= $is_overdue ? 'badge-danger' : 'badge-warning' ?>" style="font-size:11px; padding:4px 8px;">
+                <div class="badge <?= $is_overdue ? 'badge-danger' : 'badge-warning' ?>" style="font-size:10px; padding:3px 8px; flex-shrink:0;">
                     <i class="fas fa-history"></i> <?= $num_arrears ?> Tunggakan
                 </div>
             </div>
             
-            <!-- Info -->
             <div style="font-size:13px; margin: 12px 0; color:var(--text-secondary);">
                 <div style="margin-bottom:6px; display:flex; align-items:center; gap:8px;">
                     <i class="fas fa-map-marker-alt" style="width:14px; color:var(--primary); opacity:0.7;"></i> 
@@ -782,37 +762,28 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                 </div>
             </div>
             
-            <!-- Amount + Actions (Redesigned for better density and alignment) -->
-            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--glass-border);">
-                <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:10px;">
-                    <div style="flex: 1; min-width: 0;">
-                        <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-secondary); margin-bottom:2px;">Total Tagihan</div>
-                        <div style="font-size:20px; font-weight:900; color:var(--primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                            Rp <?= number_format($grand_total, 0, ',', '.') ?>
-                        </div>
-                    </div>
-                    
-                    <div style="display:flex; gap:6px; flex-shrink:0;">
-                <!-- Actions Grid -->
-                <div style="margin-top:12px; display:grid; grid-template-columns: 1fr 44px; gap:8px;">
-                    <form id="payForm_<?= $inv['cust_id'] ?>" action="index.php?page=admin_invoices&action=mark_paid_bulk" method="POST" style="display:none;">
-                        <input type="hidden" name="customer_id" value="<?= $inv['cust_id'] ?>">
-                        <input type="hidden" name="num_months" id="numMonths_<?= $inv['cust_id'] ?>" value="1">
-                    </form>
-                    <button type="button" class="btn btn-primary" style="padding:12px; font-weight:800; border-radius:12px; display:flex; align-items:center; justify-content:center; gap:8px; font-size:13px;" 
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--glass-border); display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-size:10px; text-transform:uppercase; color:var(--text-secondary);">Total Tagihan</div>
+                    <div style="font-size:18px; font-weight:900; color:var(--primary);">Rp <?= number_format($grand_total, 0, ',', '.') ?></div>
+                </div>
+                <div style="display:flex; gap:6px;">
+                    <button type="button" class="btn btn-primary" style="padding:10px 14px; font-weight:700; border-radius:10px; display:flex; align-items:center; gap:6px; font-size:12px;" 
                             onclick="handlePay(<?= $inv['cust_id'] ?>, <?= $num_arrears ?>, '<?= addslashes($inv['name']) ?>')">
                         <i class="fas fa-wallet"></i> BAYAR
                     </button>
-                    
                     <?php if($wa_number): ?>
-                        <a href="https://api.whatsapp.com/send?phone=<?= $wa_number ?>&text=<?= $wa_text ?>" target="_blank" class="btn btn-ghost" style="color:#20c997; border-color:rgba(32, 201, 151, 0.2); width:44px; height:44px; display:flex; align-items:center; justify-content:center; border-radius:12px; padding:0;" title="Kirim WA Tagihan">
+                        <a href="https://api.whatsapp.com/send?phone=<?= $wa_number ?>&text=<?= $wa_text ?>" target="_blank" class="btn btn-ghost" style="color:#20c997; border:1px solid rgba(32, 201, 151, 0.2); width:38px; height:38px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0;">
                             <i class="fab fa-whatsapp" style="font-size:18px;"></i>
                         </a>
                     <?php endif; ?>
                 </div>
             </div>
         </div>
-            <?php endforeach; ?>
+        <?php endforeach; ?>
+        <?php if(count($unpaid_invoices) == 0): ?>
+            <div style="grid-column: 1/-1; text-align:center; padding: 40px; color:var(--text-secondary);">Semua tugas penagihan sudah selesai.</div>
+        <?php endif; ?>
         </div>
     </div>
     
