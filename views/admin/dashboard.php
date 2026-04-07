@@ -70,8 +70,7 @@ $cash_monthly_part = $db->query("
       $c_scope
 ")->fetchColumn() ?: 0;
 $settings = $db->query("SELECT company_name, wa_template_paid, site_url FROM settings WHERE id = 1")->fetch();
-$base_url = rtrim($settings['site_url'] ?? 'http://fibernodeinternet.com', '/');
-$base_url = "http://" . preg_replace("~^https?://~i", "", $base_url);
+$base_url = "http://fibernodeinternet.com";
 
 // Success Modal for Admin Dashboard
 $success_data = null;

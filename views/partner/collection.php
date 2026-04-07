@@ -58,8 +58,7 @@ $stats = [
 
 // Global Settings
 $settings = $db->query("SELECT * FROM settings WHERE id = 1")->fetch();
-$base_url = rtrim($settings['site_url'] ?? 'http://fibernodeinternet.com', '/');
-$base_url = "http://" . preg_replace("~^https?://~i", "", $base_url);
+$base_url = "http://fibernodeinternet.com";
 
 // Partner Branding & Custom Templates
 $u_id = $_SESSION['user_id'];

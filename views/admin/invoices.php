@@ -590,9 +590,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
     <!-- INVOICE LIST -->
     <?php
         $settings = $db->query("SELECT wa_template, wa_template_paid, bank_account, site_url FROM settings WHERE id=1")->fetch();
-        $base_url = rtrim($settings['site_url'] ?? 'http://fibernodeinternet.com', '/');
-        // Force http protocol as requested
-        $base_url = "http://" . preg_replace("~^https?://~i", "", $base_url);
+        $base_url = "http://fibernodeinternet.com";
         $wa_tpl = $settings['wa_template'] ?: "Halo {nama}, tagihan internet Anda sebesar {tagihan} jatuh tempo pada {jatuh_tempo}. Transfer ke {rekening}";
         $wa_tpl_paid = $settings['wa_template_paid'] ?: "Halo {nama}, terima kasih. Pembayaran {tagihan} sudah lunas.";
         
