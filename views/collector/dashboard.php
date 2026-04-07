@@ -192,7 +192,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'add_customer' && $_SERVER['RE
     } while ($stmt_check->fetchColumn() > 0);
     
     $stmt = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, package_name, monthly_fee, type, registration_date, billing_date, area, collector_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$customer_code, $name, $address, $contact, $package_name, $monthly_fee, $type, $registration_date, $billing_date, $area, $collector_id, $u_id]);
+    $stmt->execute([$customer_code, $name, $address, $contact, $package_name, $monthly_fee, $type, $registration_date, $billing_date, $area, $collector_id, $user_id]);
     $new_id = $db->lastInsertId();
 
     // Create Initial Invoice
@@ -220,7 +220,7 @@ $p_cust = isset($_GET['p_cust']) ? max(1, intval($_GET['p_cust'])) : 1;
 $off_cust = ($p_cust - 1) * $items_per_page;
 $total_cust_pages = ceil($total_customers / $items_per_page);
 
-$cust_query = "SELECT * FROM customers c WHERE 1=1 $area_filter $billing_where $where_search_cust ORDER BY c.name ASC LIMIT $items_per_page OFFSET $off_cust";
+$cust_query = "SELECT * FROM customers c WHERE 1=1 $area_filter $billing_where $where_search_cust ORDER BY c.id DESC LIMIT $items_per_page OFFSET $off_cust";
 $area_customers = $db->query($cust_query)->fetchAll();
 
 $coll_tab = $_GET['tab'] ?? 'tugas';
