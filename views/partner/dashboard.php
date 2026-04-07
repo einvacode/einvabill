@@ -98,6 +98,8 @@ $recent_revenue = $db->query("
 
 // Global Settings
 $settings = $db->query("SELECT * FROM settings WHERE id = 1")->fetch();
+$base_url = rtrim($settings['site_url'] ?? 'http://fibernodeinternet.com', '/');
+$base_url = "http://" . preg_replace("~^https?://~i", "", $base_url);
 
 // Partner Branding & Custom Templates
 $u_id = $_SESSION['user_id'];
@@ -121,7 +123,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
         $tunggakan_display = 'Rp ' . number_format($tunggakan_val, 0, ',', '.');
         $status_wa = ($tunggakan_val > 0) ? "LUNAS SEBAGIAN (Masih ada sisa tunggakan)" : "LUNAS SEPENUHNYA";
         
-        $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . ($success_data['customer_code'] ?: $success_data['id']);
+        $portal_link = $base_url . "/index.php?page=customer_portal&code=" . ($success_data['customer_code'] ?: $success_data['id']);
         // Replace Tags
         $receipt_msg = str_replace(
             [

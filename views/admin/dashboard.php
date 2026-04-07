@@ -70,6 +70,8 @@ $cash_monthly_part = $db->query("
       $c_scope
 ")->fetchColumn() ?: 0;
 $settings = $db->query("SELECT company_name, wa_template_paid, site_url FROM settings WHERE id = 1")->fetch();
+$base_url = rtrim($settings['site_url'] ?? 'http://fibernodeinternet.com', '/');
+$base_url = "http://" . preg_replace("~^https?://~i", "", $base_url);
 
 // Success Modal for Admin Dashboard
 $success_data = null;
@@ -83,7 +85,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
         $total_display = 'Rp ' . number_format($total_paid, 0, ',', '.');
         $tunggakan_val = $db->query("SELECT COALESCE(SUM(amount - discount), 0) FROM invoices WHERE customer_id = $sid AND status = 'Belum Lunas'")->fetchColumn() ?: 0;
         $tunggakan_display = 'Rp ' . number_format($tunggakan_val, 0, ',', '.');
-        $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . ($success_data['customer_code'] ?: $success_data['id']);
+        $portal_link = $base_url . "/index.php?page=customer_portal&code=" . ($success_data['customer_code'] ?: $success_data['id']);
         $receipt_msg = str_replace(
             ['{nama}', '{id_cust}', '{tagihan}', '{paket}', '{bulan}', '{tunggakan}', '{waktu_bayar}', '{admin}', '{perusahaan}', '{link_tagihan}'], 
             [$success_data['name'], ($success_data['customer_code'] ?: $success_data['id']), 'Rp ' . number_format($success_data['monthly_fee'], 0, ',', '.'), ($success_data['package_name'] ?: '-'), $months_paid, $tunggakan_display, date('d/m/Y H:i') . ' WIB', $_SESSION['user_name'], $settings['company_name'], $portal_link], 

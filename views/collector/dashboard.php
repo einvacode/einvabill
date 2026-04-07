@@ -145,9 +145,8 @@ $recent_paid = $db->query("
 $coll_tab = $_GET['tab'] ?? 'tugas';
 $settings = $db->query("SELECT company_name, wa_template, wa_template_paid, site_url, bank_account FROM settings WHERE id=1")->fetch();
 $base_url = rtrim($settings['site_url'] ?? 'http://fibernodeinternet.com', '/');
-if (!empty($base_url) && !preg_match("~^(?:f|ht)tps?://~i", $base_url)) {
-    $base_url = "http://" . $base_url;
-}
+// Force http protocol as requested
+$base_url = "http://" . preg_replace("~^https?://~i", "", $base_url);
 $wa_tpl = $settings['wa_template'] ?? "Halo {nama}, tagihan internet Anda sebesar {tagihan} jatuh tempo pada {jatuh_tempo}. Transfer ke {rekening}";
 $wa_tpl_paid = $settings['wa_template_paid'] ?: "Halo {nama}, terima kasih. Pembayaran {tagihan} sudah lunas.";
 
