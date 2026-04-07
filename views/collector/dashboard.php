@@ -7,7 +7,12 @@ $collector_id = $_SESSION['user_id'];
 // Get collector area assignment
 $collector_area = $db->query("SELECT area FROM users WHERE id = " . intval($collector_id))->fetchColumn() ?: '';
 
-$area_filter = " AND c.collector_id = " . intval($collector_id);
+$collector_area_val = trim($collector_area);
+if (!empty($collector_area_val)) {
+    $area_filter = " AND (c.collector_id = " . intval($collector_id) . " OR (c.area = " . $db->quote($collector_area_val) . " AND (c.collector_id = 0 OR c.collector_id IS NULL))) ";
+} else {
+    $area_filter = " AND c.collector_id = " . intval($collector_id);
+}
 
 // Billing date filter
 $filter_billing_date = $_GET['filter_billing_date'] ?? '';
