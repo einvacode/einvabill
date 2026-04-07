@@ -1,5 +1,11 @@
 <?php
 session_start();
+// Force HTTP Redirect (Prevents browser from auto-upgrading to HTTPS)
+if ((isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS'] === 'on' || $_SERVER['HTTPS'] === 1)) || 
+    (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')) {
+    header("Location: http://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
+    exit();
+}
 date_default_timezone_set('Asia/Jakarta');
 
 // Helper to get base URL dynamically
