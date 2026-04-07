@@ -21,9 +21,15 @@ if ($filter_billing_date !== "") {
     $billing_where = " AND c.billing_date = " . intval($filter_billing_date);
 }
 
-// NEW: Date range filters for Collector
-$date_from = $_GET['date_from'] ?? date('Y-m-01');
-$date_to = $_GET['date_to'] ?? date('Y-m-d');
+// NEW: Month selector logic for comprehensive dashboard filtering
+$selected_month = $_GET['month'] ?? date('Y-m');
+$date_from = date('Y-m-01', strtotime($selected_month . "-01"));
+$date_to = date('Y-m-t', strtotime($selected_month . "-01"));
+
+// Override if manual dates are provided (for backwards compatibility/finer control)
+if (isset($_GET['date_from'])) $date_from = $_GET['date_from'];
+if (isset($_GET['date_to'])) $date_to = $_GET['date_to'];
+
 $sql_date_from = $date_from . ' 00:00:00';
 $sql_date_to = $date_to . ' 23:59:59';
 
@@ -48,48 +54,39 @@ $total_customers = $db->query("
     SELECT COUNT(*) FROM customers c WHERE 1=1 $area_filter $billing_where $where_search_cust
 ")->fetchColumn();
 
-// Total tagihan belum lunas (JUMLAH PELANGGAN & NOMINAL)
+// Total tagihan belum lunas (JUMLAH PELANGGAN & NOMINAL) - RESPECT MONTH RANGE
 $unpaid_customers_count = $db->query("
     SELECT COUNT(DISTINCT customer_id) FROM invoices i 
     JOIN customers c ON i.customer_id = c.id 
-    WHERE i.status = 'Belum Lunas' $area_filter $billing_where $where_search_tugas
+    WHERE i.status = 'Belum Lunas' 
+    $area_filter $billing_where $where_search_tugas
 ")->fetchColumn();
 
 // Keep original unpaid_count (total invoices) for the badge
 $unpaid_count = $db->query("
     SELECT COUNT(*) FROM invoices i 
     JOIN customers c ON i.customer_id = c.id 
-    WHERE i.status = 'Belum Lunas' $area_filter $billing_where $where_search_tugas
+    WHERE i.status = 'Belum Lunas' 
+    $area_filter $billing_where $where_search_tugas
 ")->fetchColumn();
 
 $unpaid_total = $db->query("
-    SELECT COALESCE(SUM(i.amount - i.discount), 0) FROM invoices i 
+    SELECT COALESCE(SUM(i.amount - COALESCE(i.discount, 0)), 0) FROM invoices i 
     JOIN customers c ON i.customer_id = c.id 
-    WHERE i.status = 'Belum Lunas' $area_filter $billing_where $where_search_tugas
+    WHERE i.status = 'Belum Lunas' 
+    $area_filter $billing_where $where_search_tugas
 ")->fetchColumn();
 
-// Total tagihan lunas bulan ini
-$month_start = date('Y-m-01');
-$month_end = date('Y-m-t');
-
-$paid_count_month = $db->query("
+// Total tagihan lunas dalam periode yang dipilih
+$paid_count_range = $db->query("
     SELECT COUNT(*) FROM invoices i 
     JOIN customers c ON i.customer_id = c.id 
     JOIN payments p ON p.invoice_id = i.id
     WHERE i.status = 'Lunas' 
-    AND p.payment_date BETWEEN '$month_start' AND '$month_end 23:59:59'
+    AND p.payment_date BETWEEN '$sql_date_from' AND '$sql_date_to'
     $area_filter $billing_where
-")->fetchColumn();
+")->fetchColumn() ?: 0;
 
-$paid_total_month = $db->query("
-    SELECT COALESCE(SUM(p.amount), 0) FROM payments p 
-    JOIN invoices i ON p.invoice_id = i.id
-    JOIN customers c ON i.customer_id = c.id 
-    WHERE p.payment_date BETWEEN '$month_start' AND '$month_end 23:59:59'
-    $area_filter $billing_where
-")->fetchColumn();
-
-// Total seluruh pendapatan (RESPECT DATE RANGE)
 $paid_total_range = $db->query("
     SELECT COALESCE(SUM(p.amount), 0) FROM payments p 
     JOIN invoices i ON p.invoice_id = i.id
@@ -97,11 +94,28 @@ $paid_total_range = $db->query("
     WHERE i.status = 'Lunas' 
     AND p.payment_date BETWEEN '$sql_date_from' AND '$sql_date_to'
     $area_filter $billing_where
+")->fetchColumn() ?: 0;
+
+// Pelanggan Baru dalam periode ini
+$new_customers_range = $db->query("
+    SELECT COUNT(*) FROM customers c 
+    WHERE c.registration_date BETWEEN '$date_from' AND '$date_to'
+    $area_filter $billing_where
 ")->fetchColumn();
 
+// Total Pengeluaran (RESPECT DATE RANGE - showing only this collector's expenses)
+$expenses_range = $db->query("
+    SELECT COALESCE(SUM(amount), 0) FROM expenses 
+    WHERE date BETWEEN '$date_from' AND '$date_to'
+    AND created_by = " . intval($collector_id) . "
+")->fetchColumn();
+
+// Total Net Revenue (Payments - Expenses)
+$net_revenue = $paid_total_range - $expenses_range;
+
 // Persentase progres penagihan (Monetary Based)
-$total_potential = $unpaid_total + $paid_total_month;
-$percent_paid = $total_potential > 0 ? round(($paid_total_month / $total_potential) * 100) : 0;
+$total_potential = $unpaid_total + $paid_total_range;
+$percent_paid = $total_potential > 0 ? round(($paid_total_range / $total_potential) * 100) : 0;
 $percent_paid = min(100, $percent_paid); // Cap at 100%
 
 // Pagination Logic for Tasks
@@ -115,7 +129,7 @@ $query = "
     SELECT 
         c.id as cust_id, c.name, c.address, c.contact, c.area as cust_area, c.customer_code, c.package_name, c.type as customer_type,
         COUNT(i.id) as num_arrears,
-        SUM(i.amount - i.discount) as total_unpaid,
+        SUM(i.amount - COALESCE(i.discount, 0)) as total_unpaid,
         MIN(i.due_date) as oldest_due_date,
         MIN(i.id) as oldest_invoice_id
     FROM invoices i 
@@ -130,7 +144,7 @@ $unpaid_invoices = $db->query($query)->fetchAll();
 // Recent Paid List (Respect Date Range now)
 $recent_paid = $db->query("
     SELECT i.*, c.name, c.contact, c.customer_code, c.package_name, p.payment_date, p.amount as paid_amount, u.name as admin_name,
-    (SELECT COALESCE(SUM(amount - discount), 0) FROM invoices WHERE customer_id = i.customer_id AND status = 'Belum Lunas') as total_tunggakan
+    (SELECT COALESCE(SUM(amount - COALESCE(discount, 0)), 0) FROM invoices WHERE customer_id = i.customer_id AND status = 'Belum Lunas') as total_tunggakan
     FROM invoices i 
     JOIN customers c ON i.customer_id = c.id 
     JOIN payments p ON p.invoice_id = i.id
@@ -151,6 +165,49 @@ $wa_tpl_paid = $settings['wa_template_paid'] ?: "Halo {nama}, terima kasih. Pemb
 // Fetch Banners for Collector
 $banners = $db->query("SELECT * FROM banners WHERE is_active = 1 AND target_role IN ('all', 'collector') ORDER BY created_at DESC")->fetchAll();
 
+// Success Modal Data for Collector
+$success_data = null;
+if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'])) {
+    $sid = intval($_GET['cust_id']);
+    $success_data = $db->query("SELECT id, name, contact, customer_code, package_name, monthly_fee FROM customers WHERE id = $sid")->fetch();
+    if ($success_data) {
+        $wa_num_paid = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $success_data['contact']));
+        $months_paid = intval($_GET['months'] ?? 1);
+        $total_paid = floatval($_GET['total'] ?? 0);
+        $total_display = 'Rp ' . number_format($total_paid, 0, ',', '.');
+        
+        $tunggakan_val = $db->query("SELECT COALESCE(SUM(amount - discount), 0) FROM invoices WHERE customer_id = $sid AND status = 'Belum Lunas'")->fetchColumn() ?: 0;
+        $tunggakan_display = 'Rp ' . number_format($tunggakan_val, 0, ',', '.');
+        $status_wa = ($tunggakan_val > 0) ? "LUNAS SEBAGIAN (Masih ada sisa tunggakan)" : "LUNAS SEPENUHNYA";
+        
+        $portal_link = $base_url . "/index.php?page=customer_portal&code=" . ($success_data['customer_code'] ?: $success_data['id']);
+        $receipt_msg = str_replace(
+            [
+                '{nama}', '{id_cust}', '{tagihan}', '{paket}', '{bulan}', 
+                '{tunggakan}', '{waktu_bayar}', '{admin}', '{link_tagihan}', '{rekening}', '{nominal}', '{status_pembayaran}', '{sisa_tunggakan}', '{total_bayar}'
+            ], 
+            [
+                $success_data['name'], 
+                ($success_data['customer_code'] ?: $success_data['id']), 
+                'Rp ' . number_format($success_data['monthly_fee'], 0, ',', '.'),
+                ($success_data['package_name'] ?: '-'),
+                $months_paid . ' Bulan',
+                $tunggakan_display,
+                date('d/m/Y H:i') . ' WIB',
+                $_SESSION['user_name'],
+                $portal_link,
+                $settings['bank_account'],
+                $total_display,
+                $status_wa,
+                $tunggakan_display,
+                $total_display
+            ], 
+            $wa_tpl_paid
+        );
+        $success_data['wa_link'] = "https://api.whatsapp.com/send?phone=$wa_num_paid&text=" . urlencode($receipt_msg);
+    }
+}
+
 // Fetch Packages & Areas for Adding Customers
 $packages_all = $db->query("SELECT * FROM packages ORDER BY name ASC")->fetchAll();
 $areas_all = $db->query("SELECT * FROM areas ORDER BY name ASC")->fetchAll();
@@ -161,8 +218,17 @@ if (isset($_GET['action']) && $_GET['action'] === 'create_invoice' && $_SERVER['
     $amt = floatval($_POST['amount']);
     $due = $_POST['due_date'];
     $now = date('Y-m-d H:i:s');
-    $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Lunas', ?)")
-       ->execute([$cid, $amt, $due, $now]);
+    $collector_id = $_SESSION['user_id'];
+
+    // 1. Create Invoice
+    $stmt = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Lunas', ?)");
+    $stmt->execute([$cid, $amt, $due, $now]);
+    $invoice_id = $db->lastInsertId();
+
+    // 2. Create Payment for manual settlement
+    $stmt_pay = $db->prepare("INSERT INTO payments (invoice_id, amount, payment_date, received_by) VALUES (?, ?, ?, ?)");
+    $stmt_pay->execute([$invoice_id, $amt, $now, $collector_id]);
+
     header("Location: index.php?page=collector&msg=invoice_created");
     exit;
 }
@@ -255,12 +321,50 @@ if (isset($_GET['action']) && $_GET['action'] === 'add_customer' && $_SERVER['RE
     exit;
 }
 
+// Handle Add Expense by collector
+if (isset($_GET['action']) && $_GET['action'] === 'add_expense' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $category = $_POST['category'];
+    $amount = floatval($_POST['amount']);
+    $description = $_POST['description'];
+    $date = $_POST['date'] ?: date('Y-m-d');
+    $collector_id = $_SESSION['user_id'];
+    
+    $stmt = $db->prepare("INSERT INTO expenses (category, amount, description, date, created_by) VALUES (?, ?, ?, ?, ?)");
+    $stmt->execute([$category, $amount, $description, $date, $collector_id]);
+    
+    header("Location: index.php?page=collector&msg=expense_added");
+    exit;
+}
+
+// Handle Add Add-on by collector
+if (isset($_GET['action']) && $_GET['action'] === 'add_addon' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $cid = intval($_POST['customer_id']);
+    $item_name = $_POST['description']; // Using 'description' for consistency with modal field name
+    $amount = floatval($_POST['amount']);
+    $now = date('Y-m-d H:i:s');
+    $today = date('Y-m-d');
+    
+    // 1. Create Invoice
+    $stmt = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Belum Lunas', ?)");
+    $stmt->execute([$cid, $amount, $today, $now]);
+    $invoice_id = $db->lastInsertId();
+    
+    // 2. Create Invoice Item
+    $stmt_item = $db->prepare("INSERT INTO invoice_items (invoice_id, description, amount) VALUES (?, ?, ?)");
+    $stmt_item->execute([$invoice_id, $item_name, $amount]);
+    
+    header("Location: index.php?page=collector&msg=addon_added");
+    exit;
+}
+
 $filter_status = $_GET['filter_status'] ?? 'all';
 $status_filter_sql = "";
 if ($filter_status === 'unpaid') {
     $status_filter_sql = " AND EXISTS (SELECT 1 FROM invoices i WHERE i.customer_id = c.id AND i.status = 'Belum Lunas')";
 } elseif ($filter_status === 'paid') {
     $status_filter_sql = " AND EXISTS (SELECT 1 FROM payments p JOIN invoices i ON p.invoice_id = i.id WHERE i.customer_id = c.id AND p.payment_date BETWEEN '$sql_date_from' AND '$sql_date_to')";
+} elseif ($filter_status === 'new') {
+    $status_filter_sql = " AND c.registration_date BETWEEN '$date_from' AND '$date_to'";
 }
 
 // Fetch all customers with pagination
@@ -302,6 +406,46 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
     .hide-mobile { display: none !important; }
     .show-mobile { display: inline !important; }
 }
+
+/* Premium Floating Action Bar */
+.floating-action-bar {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    width: 95%;
+    max-width: 550px;
+    pointer-events: none;
+    animation: slideUpFloating 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.floating-action-bar > div {
+    pointer-events: auto;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1);
+}
+
+@keyframes slideUpFloating {
+    from { transform: translate(-50%, 100px); opacity: 0; }
+    to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+/* Stat Card Click Animation & Uniform Layout */
+.stat-card-interactive {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 155px;
+    padding: 15px;
+}
+.stat-card-interactive:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+}
+.stat-card-interactive:active {
+    transform: translateY(2px) scale(0.98);
+}
 </style>
 
 <?php if(isset($_GET['msg']) && $_GET['msg'] === 'invoice_created'): ?>
@@ -322,9 +466,21 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
 </div>
 <?php endif; ?>
 
+<?php if(isset($_GET['msg']) && $_GET['msg'] === 'addon_added'): ?>
+<div style="padding:12px 20px; background:rgba(37,99,235,0.15); border:1px solid rgba(37,99,235,0.4); border-radius:10px; margin-bottom:15px; color:var(--primary);">
+    <i class="fas fa-plus-circle"></i> Tagihan Add-on berhasil ditambahkan!
+</div>
+<?php endif; ?>
+
 <?php if(isset($_GET['msg']) && $_GET['msg'] === 'customer_added'): ?>
 <div style="padding:12px 20px; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.4); border-radius:10px; margin-bottom:15px; color:var(--success);">
     <i class="fas fa-check-circle"></i> Pelanggan baru berhasil ditambahkan dan ditugaskan kepada Anda!
+</div>
+<?php endif; ?>
+
+<?php if(isset($_GET['msg']) && $_GET['msg'] === 'expense_added'): ?>
+<div style="padding:12px 20px; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.4); border-radius:10px; margin-bottom:15px; color:var(--success);">
+    <i class="fas fa-check-circle"></i> Pengeluaran berhasil dicatat!
 </div>
 <?php endif; ?>
 
@@ -398,7 +554,50 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
 <?php endif; ?>
 
 <?php if($coll_tab !== 'pelanggan'): ?>
-<!-- Header -->
+<!-- Dashboard Header with Month Picker -->
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:15px; padding:0 5px;">
+    <div>
+        <h2 style="margin:0; font-size:20px; font-weight:800; color:var(--text-primary);">Dashboard Penagihan</h2>
+        <p style="margin:0; font-size:12px; color:var(--text-secondary);"><?= $_SESSION['user_name'] ?> | Area: <?= $collector_area ?: 'Semua' ?></p>
+    </div>
+    
+    <div style="display:flex; align-items:center; gap:10px;">
+        <!-- Month Picker -->
+        <form method="GET" style="display:flex; align-items:center; gap:8px;">
+            <input type="hidden" name="page" value="collector">
+            <input type="hidden" name="tab" value="<?= htmlspecialchars($coll_tab) ?>">
+            <div style="background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); border-radius:12px; padding:6px 12px; display:flex; align-items:center;">
+                <i class="fas fa-calendar-alt" style="color:var(--primary); margin-right:10px; font-size:14px;"></i>
+                <input type="month" name="month" value="<?= $selected_month ?>" onchange="this.form.submit()" style="background:none; border:none; color:var(--text-primary); font-size:14px; font-weight:700; outline:none; cursor:pointer;">
+            </div>
+        </form>
+        <!-- Quick Add-on Shortcut -->
+        <button onclick="location.href='index.php?page=collector&tab=pelanggan'" class="btn" style="background:#d97706; color:white; padding:10px 15px; border-radius:12px; font-weight:700; font-size:13px; display:flex; align-items:center; gap:8px; box-shadow: 0 4px 15px rgba(217, 119, 6, 0.2);">
+            <i class="fas fa-plus-circle"></i> <span class="hide-mobile">Add-on</span>
+        </button>
+    </div>
+</div>
+
+<?php if($success_data): ?>
+<div class="glass-panel" style="margin-bottom:20px; border-left:4px solid var(--success); padding:20px; animation: slideDown 0.4s ease-out; background:rgba(16,185,129,0.1);">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
+        <div>
+            <h3 style="margin:0; color:var(--success); font-size:18px;"><i class="fas fa-check-circle"></i> Pembayaran Berhasil!</h3>
+            <p style="margin:5px 0 0; font-size:13px; color:var(--text-secondary);">Tagihan untuk <strong><?= htmlspecialchars($success_data['name']) ?></strong> telah diperbarui.</p>
+        </div>
+        <button onclick="this.parentElement.parentElement.style.display='none'" style="background:none; border:none; color:var(--text-secondary); cursor:pointer;"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <a href="<?= $success_data['wa_link'] ?>" target="_blank" class="btn" style="background:#25D366; color:white; flex:1; min-width:150px; padding:12px; font-weight:700; text-align:center; text-decoration:none; border-radius:10px;">
+            <i class="fab fa-whatsapp"></i> Kirim Nota WA
+        </a>
+        <a href="index.php?page=admin_invoices&action=print&id=<?= intval($_GET['last_id'] ?? 0) ?>&format=thermal" target="_blank" class="btn btn-ghost" style="flex:1; min-width:150px; padding:12px; font-weight:700; border-radius:10px; text-align:center; text-decoration:none; border:1px solid var(--glass-border);">
+            <i class="fas fa-print"></i> Cetak Struk
+        </a>
+    </div>
+</div>
+<style> @keyframes slideDown { from { transform: translateY(-10px); opacity:0; } to { transform: translateY(0); opacity:1; } } </style>
+<?php endif; ?>
 
 <!-- Banners / PENGUMUMAN -->
 <?php if(!empty($banners)): ?>
@@ -430,42 +629,58 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
 <!-- Statistik Cards - Mobile optimized adaptive grid -->
 <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap:12px; margin-bottom:16px;">
     <!-- Total Pelanggan -->
-    <div class="glass-panel" style="padding:15px; text-align:center; border-top:4px solid var(--primary); background:linear-gradient(135deg, rgba(37, 99, 235, 0.1), transparent); cursor:pointer;" onclick="location.href='index.php?page=collector&tab=pelanggan&filter_status=all'">
-        <i class="fas fa-users" style="font-size:20px; color:var(--primary); margin-bottom:8px;"></i>
-        <div style="font-size:22px; font-weight:800; color:var(--stat-value-color);"><?= $total_customers ?></div>
-        <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; font-weight:600;">Pelanggan</div>
-        <div style="font-size:13px; font-weight:800; color:var(--primary); margin-top:5px;">Rp<?= number_format($total_revenue_all, 0, ',', '.') ?></div>
+    <div class="glass-panel stat-card-interactive" style="border-top:4px solid var(--primary); background:linear-gradient(135deg, rgba(37, 99, 235, 0.1), transparent); cursor:pointer;" onclick="location.href='index.php?page=collector&tab=pelanggan&filter_status=all'">
+        <i class="fas fa-users" style="font-size:22px; color:var(--primary); margin-bottom:10px;"></i>
+        <div style="font-size:24px; font-weight:800; color:var(--stat-value-color);"><?= $total_customers ?></div>
+        <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; font-weight:700;">Pelanggan</div>
+        <div style="font-size:13px; font-weight:800; color:var(--primary); margin-top:8px;">Rp<?= number_format($total_revenue_all, 0, ',', '.') ?></div>
     </div>
 
     <!-- Belum Bayar -->
-    <div class="glass-panel" style="padding:15px; text-align:center; border-top:4px solid var(--danger); background:linear-gradient(135deg, rgba(239, 68, 68, 0.1), transparent); cursor:pointer;" onclick="location.href='index.php?page=collector&tab=pelanggan&filter_status=unpaid'">
-        <i class="fas fa-exclamation-circle" style="font-size:20px; color:var(--danger); margin-bottom:8px;"></i>
-        <div style="font-size:22px; font-weight:800; color:var(--stat-value-color);"><?= $unpaid_count ?></div>
-        <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; font-weight:600;">Belum Lunas</div>
-        <div style="font-size:13px; font-weight:800; color:var(--danger); margin-top:5px;">Rp<?= number_format($unpaid_total, 0, ',', '.') ?></div>
+    <div class="glass-panel stat-card-interactive" style="border-top:4px solid var(--danger); background:linear-gradient(135deg, rgba(239, 68, 68, 0.1), transparent); cursor:pointer;" onclick="location.href='index.php?page=collector&tab=tugas'">
+        <i class="fas fa-exclamation-circle" style="font-size:22px; color:var(--danger); margin-bottom:10px;"></i>
+        <div style="font-size:24px; font-weight:800; color:var(--stat-value-color);"><?= $unpaid_count ?></div>
+        <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; font-weight:700;">Belum Lunas</div>
+        <div style="font-size:13px; font-weight:800; color:var(--danger); margin-top:8px;">Rp<?= number_format($unpaid_total, 0, ',', '.') ?></div>
     </div>
 
-    <!-- Lunas Periode Ini -->
-    <div class="glass-panel" style="padding:15px; text-align:center; border-top:4px solid var(--success); background:linear-gradient(135deg, rgba(16, 185, 129, 0.1), transparent); cursor:pointer;" onclick="location.href='index.php?page=collector&tab=pelanggan&filter_status=paid'">
-        <i class="fas fa-check-circle" style="font-size:20px; color:var(--success); margin-bottom:8px;"></i>
-        <div style="font-size:22px; font-weight:800; color:var(--stat-value-color);"><?= count($recent_paid) ?></div>
-        <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; font-weight:600;">Berhasil</div>
-        <div style="font-size:13px; font-weight:800; color:var(--success); margin-top:5px;">Rp<?= number_format($paid_total_range, 0, ',', '.') ?></div>
+    <!-- Berhasil (Lunas Periode Ini) -->
+    <div class="glass-panel stat-card-interactive" style="border-top:4px solid var(--success); background:linear-gradient(135deg, rgba(16, 185, 129, 0.1), transparent); cursor:pointer;" onclick="location.href='index.php?page=collector&tab=lunas&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>'">
+        <i class="fas fa-check-circle" style="font-size:22px; color:var(--success); margin-bottom:10px;"></i>
+        <div style="font-size:24px; font-weight:800; color:var(--stat-value-color);"><?= $paid_count_range ?></div>
+        <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; font-weight:700;">Berhasil</div>
+        <div style="font-size:13px; font-weight:800; color:var(--success); margin-top:8px;">Rp<?= number_format($paid_total_range, 0, ',', '.') ?></div>
     </div>
 
-    <!-- Total Revenue -->
-    <div class="glass-panel" style="padding:15px; text-align:center; border-top:4px solid var(--warning); background:linear-gradient(135deg, rgba(245, 158, 11, 0.1), transparent); cursor:pointer;" onclick="location.href='index.php?page=collector&tab=lunas&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>'">
-        <i class="fas fa-coins" style="font-size:20px; color:var(--warning); margin-bottom:8px;"></i>
-        <div style="font-size:18px; font-weight:800; color:var(--stat-value-color);">Rp<?= number_format($paid_total_range, 0, ',', '.') ?></div>
-        <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; font-weight:600;">Revenue</div>
-        <div style="font-size:10px; color:var(--text-secondary); margin-top:5px; font-weight:700; opacity:0.8;"><?= date('d/m', strtotime($date_from)) ?> - <?= date('d/m', strtotime($date_to)) ?></div>
+    <!-- Total Revenue (Net) -->
+    <div class="glass-panel stat-card-interactive" style="border-top:4px solid var(--warning); background:linear-gradient(135deg, rgba(245, 158, 11, 0.1), transparent); cursor:pointer;" onclick="location.href='index.php?page=collector&tab=lunas&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>'">
+        <i class="fas fa-coins" style="font-size:22px; color:var(--warning); margin-bottom:10px;"></i>
+        <div style="font-size:20px; font-weight:800; color:var(--stat-value-color);">Rp<?= number_format($net_revenue, 0, ',', '.') ?></div>
+        <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; font-weight:700;">Revenue <span style="font-size:9px; color:var(--warning);">(Net)</span></div>
+        <div style="font-size:10px; color:var(--text-secondary); margin-top:8px; font-weight:700; opacity:0.8;"><?= date('M Y', strtotime($date_from)) ?></div>
+    </div>
+
+    <!-- Pelanggan Baru -->
+    <div class="glass-panel stat-card-interactive" style="border-top:4px solid #06b6d4; background:linear-gradient(135deg, rgba(6, 182, 212, 0.1), transparent); cursor:pointer;" onclick="location.href='index.php?page=collector&tab=pelanggan&filter_status=new'">
+        <i class="fas fa-user-plus" style="font-size:22px; color:#06b6d4; margin-bottom:10px;"></i>
+        <div style="font-size:24px; font-weight:800; color:var(--stat-value-color);"><?= $new_customers_range ?></div>
+        <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; font-weight:700;">Pendaftaran</div>
+        <div style="font-size:10px; color:var(--text-secondary); margin-top:8px; font-weight:700; opacity:0; pointer-events:none;">Filler</div>
+    </div>
+
+    <!-- Pengeluaran -->
+    <div class="glass-panel stat-card-interactive" style="border-top:4px solid #f97316; background:linear-gradient(135deg, rgba(249, 115, 22, 0.1), transparent); cursor:pointer;" onclick="document.getElementById('addExpenseModal').style.display='flex'">
+        <i class="fas fa-receipt" style="font-size:22px; color:#f97316; margin-bottom:10px;"></i>
+        <div style="font-size:20px; font-weight:800; color:var(--stat-value-color);">Rp<?= number_format($expenses_range, 0, ',', '.') ?></div>
+        <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; font-weight:700;">Pengeluaran</div>
+        <div style="font-size:10px; color:var(--text-secondary); margin-top:8px; font-weight:700; opacity:0; pointer-events:none;">Filler</div>
     </div>
 </div>
 
 <!-- Progress Bar -->
 <div class="glass-panel" style="padding:14px 20px; margin-bottom:16px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-        <span style="font-size:12px; color:var(--text-secondary);"><i class="fas fa-chart-pie"></i> Progres <?= date('M Y') ?></span>
+        <span style="font-size:12px; color:var(--text-secondary);"><i class="fas fa-chart-line"></i> Progres Penagihan <?= date('M Y', strtotime($date_from)) ?></span>
         <span style="font-size:14px; font-weight:700; color:<?= $percent_paid >= 80 ? 'var(--success)' : ($percent_paid >= 50 ? 'var(--warning)' : 'var(--danger)') ?>;"><?= $percent_paid ?>%</span>
     </div>
     <div style="background:var(--progress-bg); border-radius:10px; height:8px; overflow:hidden;">
@@ -476,14 +691,14 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
 
 <!-- Tab Navigation - Segmented Control Style -->
 <div style="display:flex; background:rgba(255,255,255,0.03); padding:5px; border-radius:14px; margin-bottom:20px; gap:5px;" class="desktop-tabs">
-    <a href="index.php?page=collector&tab=tugas&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>" style="flex:1; text-align:center; text-decoration:none; padding:10px; border-radius:10px; font-size:13px; font-weight:700; transition:all 0.3s; <?= $coll_tab === 'tugas' ? 'background:var(--primary); color:white; box-shadow:0 4px 15px rgba(var(--primary-rgb), 0.2);' : 'color:var(--text-secondary);' ?>">
-        <i class="fas fa-tasks"></i> <span class="hide-mobile">Tugas Penagihan</span><span class="show-mobile">Tugas</span>
+    <a href="index.php?page=collector&tab=tugas&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&month=<?= $selected_month ?>" style="flex:1; text-align:center; text-decoration:none; padding:10px; border-radius:10px; font-size:13px; font-weight:700; transition:all 0.3s; <?= $coll_tab === 'tugas' ? 'background:var(--primary); color:white; box-shadow:0 4px 15px rgba(var(--primary-rgb), 0.2);' : 'color:var(--text-secondary);' ?>">
+        <span class="hide-mobile">Tugas Penagihan</span><span class="show-mobile">Tugas</span>
     </a>
-    <a href="index.php?page=collector&tab=lunas&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>" style="flex:1; text-align:center; text-decoration:none; padding:10px; border-radius:10px; font-size:13px; font-weight:700; transition:all 0.3s; <?= $coll_tab === 'lunas' ? 'background:var(--primary); color:white; box-shadow:0 4px 15px rgba(var(--primary-rgb), 0.2);' : 'color:var(--text-secondary);' ?>">
-        <i class="fas fa-check-double"></i> <span class="hide-mobile">Sudah Lunas</span><span class="show-mobile">Lunas</span>
+    <a href="index.php?page=collector&tab=lunas&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&month=<?= $selected_month ?>" style="flex:1; text-align:center; text-decoration:none; padding:10px; border-radius:10px; font-size:13px; font-weight:700; transition:all 0.3s; <?= $coll_tab === 'lunas' ? 'background:var(--primary); color:white; box-shadow:0 4px 15px rgba(var(--primary-rgb), 0.2);' : 'color:var(--text-secondary);' ?>">
+        <span class="hide-mobile">Sudah Lunas</span><span class="show-mobile">Lunas</span>
     </a>
-    <a href="index.php?page=collector&tab=pelanggan&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>" style="flex:1; text-align:center; text-decoration:none; padding:10px; border-radius:10px; font-size:13px; font-weight:700; transition:all 0.3s; <?= $coll_tab === 'pelanggan' ? 'background:var(--primary); color:white; box-shadow:0 4px 15px rgba(var(--primary-rgb), 0.2);' : 'color:var(--text-secondary);' ?>">
-        <i class="fas fa-users"></i> <span class="hide-mobile">Daftar Pelanggan</span><span class="show-mobile">Pelanggan</span>
+    <a href="index.php?page=collector&tab=pelanggan&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&month=<?= $selected_month ?>" style="flex:1; text-align:center; text-decoration:none; padding:10px; border-radius:10px; font-size:13px; font-weight:700; transition:all 0.3s; <?= $coll_tab === 'pelanggan' ? 'background:var(--primary); color:white; box-shadow:0 4px 15px rgba(var(--primary-rgb), 0.2);' : 'color:var(--text-secondary);' ?>">
+        <span class="hide-mobile">Daftar Pelanggan</span><span class="show-mobile">Pelanggan</span>
     </a>
 </div>
 
@@ -522,7 +737,14 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
         <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px; padding:10px 15px; background:rgba(var(--primary-rgb), 0.08); border-radius:10px; border:1px solid rgba(var(--primary-rgb), 0.15);">
             <div style="font-size:12px; font-weight:700; color:var(--primary); display:flex; align-items:center; gap:6px;">
                 <i class="fas fa-filter"></i> 
-                <span>Menampilkan: <strong><?= $filter_status === 'unpaid' ? 'Belum Lunas' : 'Sudah Lunas (Bulan Ini)' ?></strong></span>
+                <span>Menampilkan: <strong>
+                    <?php 
+                        if ($filter_status === 'unpaid') echo 'Belum Lunas';
+                        elseif ($filter_status === 'paid') echo 'Sudah Lunas';
+                        elseif ($filter_status === 'new') echo 'Pendaftaran Baru';
+                        else echo 'Semua';
+                    ?>
+                </strong></span>
             </div>
             <a href="index.php?page=collector&tab=pelanggan&filter_status=all" style="text-decoration:none; font-size:11px; color:var(--danger); font-weight:800; margin-left:auto; display:flex; align-items:center; gap:4px; padding:4px 8px; background:rgba(239, 68, 68, 0.1); border-radius:6px;">
                 <i class="fas fa-times-circle"></i> RESET
@@ -532,7 +754,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
 
     
     <!-- List Container with Scroll -->
-    <div class="scroll-container" style="height: calc(100vh - 380px); overflow-y: auto; padding-right: 5px; padding-bottom: 100px; margin-top: 10px;">
+    <div class="scroll-container" style="height: calc(100vh - 380px); overflow-y: auto; padding-right: 5px; padding-bottom: 120px; margin-top: 10px;">
         <!-- Mobile-friendly card list -->
         <div class="customer-list-mobile">
         <?php foreach($area_customers as $ac): 
@@ -563,6 +785,9 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                 </button>
                 <button class="btn btn-sm btn-ghost" style="width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; border:1px solid var(--glass-border);" onclick="showUpdateContact(<?= $ac['id'] ?>, '<?= addslashes($ac['name']) ?>', '<?= htmlspecialchars($ac['contact'] ?: '') ?>')" title="Ubah Nama/No">
                     <i class="fas fa-edit" style="font-size:16px;"></i>
+                </button>
+                <button class="btn btn-sm" style="background:#d97706; color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; box-shadow:0 4px 10px rgba(217, 119, 6, 0.2);" onclick="showCustomerDetails(<?= $ac['id'] ?>); setTimeout(() => openAddonModal(), 500);" title="Tambah Add-on">
+                    <i class="fas fa-plus-circle" style="font-size:18px;"></i>
                 </button>
                 <?php if($wa_num): ?>
                 <a href="https://api.whatsapp.com/send?phone=<?= $wa_num ?>" target="_blank" class="btn btn-sm" style="background:#25D366; color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0;" title="WhatsApp">
@@ -620,6 +845,9 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                             <button class="btn btn-sm btn-ghost" style="width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; border:1px solid var(--glass-border); background:rgba(255,255,255,0.05);" onclick="showUpdateContact(<?= $ac['id'] ?>, '<?= addslashes($ac['name']) ?>', '<?= htmlspecialchars($ac['contact'] ?: '') ?>')" title="Ubah Nomor HP">
                                 <i class="fas fa-edit" style="font-size:16px;"></i>
                             </button>
+                            <button class="btn btn-sm" style="background:#d97706; color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; box-shadow:0 4px 10px rgba(217, 119, 6, 0.2);" onclick="showCustomerDetails(<?= $ac['id'] ?>); setTimeout(() => openAddonModal(), 500);" title="Tambah Add-on">
+                                <i class="fas fa-plus-circle" style="font-size:18px;"></i>
+                            </button>
                             <?php if($wa_num): ?>
                                 <a href="https://api.whatsapp.com/send?phone=<?= $wa_num ?>&text=<?= $wa_text ?>" target="_blank" class="btn btn-sm" style="background:#25D366; color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; box-shadow:0 4px 10px rgba(37, 211, 102, 0.2);" title="Kirim Pesan Tagihan">
                                     <i class="fab fa-whatsapp" style="font-size:18px;"></i>
@@ -636,38 +864,183 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
     </div> <!-- end .table-container -->
 </div> <!-- end .glass-panel (Tab: Data Pelanggan) -->
 
-<!-- Estimasi Pendapatan Card (Floating Bottom - Luar Kartu) -->
-<div style="position:fixed; bottom:75px; left:15px; right:15px; z-index:99; pointer-events:none;">
-    <div class="glass-panel" style="padding:15px 20px; border-left:4px solid var(--primary); background:rgba(var(--primary-rgb), 0.95); backdrop-filter:blur(15px); pointer-events:auto; box-shadow:0 -10px 25px rgba(0,0,0,0.2); border-radius:15px; display:flex; justify-content:space-between; align-items:center;">
+<!-- Estimasi Pendapatan Card (Floating Bottom Center) -->
+<div class="floating-action-bar">
+    <div class="glass-panel" style="padding:15px 20px; border-left:4px solid var(--primary); background:rgba(var(--primary-rgb), 0.95); backdrop-filter:blur(15px); display:flex; justify-content:space-between; align-items:center; border-radius:18px;">
         <div style="display:flex; align-items:center; gap:12px;">
-            <div style="width:40px; height:40px; border-radius:10px; background:white; color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:18px; box-shadow:0 4px 10px rgba(0,0,0,0.1);">
+            <div style="width:42px; height:42px; border-radius:12px; background:white; color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:20px; box-shadow:0 4px 10px rgba(0,0,0,0.1); flex-shrink:0;">
                 <i class="fas fa-hand-holding-usd"></i>
             </div>
             <div>
-                <div style="font-size:10px; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:1px; font-weight:700;">Estimasi Pendapatan</div>
-                <div style="font-size:18px; font-weight:800; color:white;">Rp <?= number_format($total_estimasi, 0, ',', '.') ?></div>
+                <div style="font-size:10px; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:1px; font-weight:800;">Estimasi Pendapatan</div>
+                <div style="font-size:18px; font-weight:800; color:white; line-height:1.2;">Rp<?= number_format($total_estimasi, 0, ',', '.') ?></div>
             </div>
         </div>
         <div style="text-align:right;">
-            <div style="font-size:10px; color:rgba(255,255,255,0.7); font-weight:700; text-transform:uppercase;">Total Pelanggan</div>
-            <div style="font-size:18px; font-weight:800; color:white;"><?= number_format($total_cust_filter, 0, ',', '.') ?> <small style="font-size:10px; opacity:0.8;">USER</small></div>
+            <div style="font-size:10px; color:rgba(255,255,255,0.7); font-weight:800; text-transform:uppercase; letter-spacing:1px;">Target</div>
+            <div style="font-size:18px; font-weight:800; color:white; line-height:1.2;"><?= number_format($total_cust_filter, 0, ',', '.') ?> <small style="font-size:10px; opacity:0.8;">USER</small></div>
         </div>
     </div>
 </div>
 <?php elseif($coll_tab === 'tugas'): ?>
-    <!-- Statistics overview is shown globablly above the tabs. No list needed here as requested. -->
-    <div class="glass-panel" style="padding:40px; text-align:center; margin-top:20px;">
-        <div style="font-size:50px; color:var(--primary); opacity:0.2; margin-bottom:15px;"><i class="fas fa-chart-pie"></i></div>
-        <h3 style="font-size:18px; font-weight:700; margin-bottom:10px;">Ringkasan Penagihan</h3>
-        <p style="color:var(--text-secondary); max-width:400px; margin:0 auto; font-size:14px;">Silakan gunakan statistik di atas untuk memantau progres penagihan Anda hari ini. Untuk mengelola data pelanggan, silakan buka menu <strong>Pelanggan</strong>.</p>
+<!-- TAB: Tugas Penagihan -->
+<div class="glass-panel" style="padding:20px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+        <h3 style="font-size:16px; margin:0; color:var(--danger);"><i class="fas fa-tasks"></i> Daftar Tugas Belum Lunas</h3>
+        <div style="font-size:12px; color:var(--text-secondary); font-weight:700;">Total: <?= count($unpaid_invoices) ?> Pelanggan</div>
     </div>
+
+    <!-- Search in Tasks -->
+    <form method="GET" style="margin-bottom:15px; display:flex; gap:10px;">
+        <input type="hidden" name="page" value="collector">
+        <input type="hidden" name="tab" value="tugas">
+        <div style="position:relative; flex:1;">
+            <input type="text" name="search_tugas" class="form-control" placeholder="Cari nama/alamat tugas..." value="<?= htmlspecialchars($search_tugas) ?>" style="padding:10px 40px 10px 15px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); width:100%;">
+            <button type="submit" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--primary); cursor:pointer;">
+                <i class="fas fa-search"></i>
+            </button>
+        </div>
+    </form>
+
+    <div class="scroll-container" style="height: calc(100vh - 430px); overflow-y:auto; padding-right:5px; padding-bottom: 150px;">
+        <!-- Desktop Mode: Table -->
+        <div class="customer-list-desktop glass-panel" style="display:none; padding:0; overflow:hidden; border:1px solid var(--glass-border);">
+            <table class="table" style="width:100%; border-collapse:collapse; color:var(--text-primary);">
+                <thead style="background:rgba(255,255,255,0.03); border-bottom:1px solid var(--glass-border);">
+                    <tr>
+                        <th style="padding:15px; text-align:left; font-size:12px; text-transform:uppercase; letter-spacing:1px;">Pelanggan</th>
+                        <th style="padding:15px; text-align:left; font-size:12px; text-transform:uppercase; letter-spacing:1px;">Area / Alamat</th>
+                        <th style="padding:15px; text-align:center; font-size:12px; text-transform:uppercase; letter-spacing:1px;">Tunggakan</th>
+                        <th style="padding:15px; text-align:right; font-size:12px; text-transform:uppercase; letter-spacing:1px;">Total Tagihan</th>
+                        <th style="padding:15px; text-align:center; font-size:12px; text-transform:uppercase; letter-spacing:1px;">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach($unpaid_invoices as $ui): 
+                        $wa_num_t = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $ui['contact']));
+                        $cust_id_t = $ui['customer_code'] ?: str_pad($ui['cust_id'], 5, "0", STR_PAD_LEFT);
+                    ?>
+                    <tr style="border-bottom:1px solid var(--glass-border); transition:background 0.2s; cursor:pointer;" onclick="showCustomerDetails(<?= $ui['cust_id'] ?>)">
+                        <td style="padding:15px;">
+                            <div style="font-weight:700; font-size:14px;"><?= htmlspecialchars($ui['name']) ?></div>
+                            <div style="font-size:11px; color:var(--primary); font-family:monospace;">ID: <?= $cust_id_t ?></div>
+                        </td>
+                        <td style="padding:15px;">
+                            <div style="font-size:12px; color:var(--text-primary);"><i class="fas fa-map-marker-alt" style="color:var(--text-secondary); width:15px;"></i> <?= htmlspecialchars($ui['cust_area'] ?: '-') ?></div>
+                            <div style="font-size:11px; color:var(--text-secondary); margin-top:2px; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><?= htmlspecialchars($ui['address'] ?: '-') ?></div>
+                        </td>
+                        <td style="padding:15px; text-align:center;">
+                            <span style="background:rgba(239, 68, 68, 0.1); color:var(--danger); padding:4px 10px; border-radius:6px; font-size:11px; font-weight:800; border:1px solid rgba(239, 68, 68, 0.2);">
+                                <i class="fas fa-exclamation-circle"></i> <?= $ui['num_arrears'] ?> BULAN
+                            </span>
+                        </td>
+                        <td style="padding:15px; text-align:right;">
+                            <div style="font-weight:800; color:var(--danger); font-size:15px;">Rp <?= number_format($ui['total_unpaid'], 0, ',', '.') ?></div>
+                            <div style="font-size:10px; color:var(--text-secondary);"><?= htmlspecialchars($ui['package_name']) ?></div>
+                        </td>
+                        <td style="padding:15px; text-align:center;" onclick="event.stopPropagation();">
+                            <div style="display:flex; gap:6px; justify-content:center;">
+                                <button class="btn btn-sm" style="background:#25D366; color:white; font-weight:800; border-radius:8px; padding:6px 12px; font-size:11px; border:none;" onclick="handlePay(<?= $ui['cust_id'] ?>, <?= $ui['num_arrears'] ?>, '<?= addslashes($ui['name']) ?>', <?= ($ui['total_unpaid'] / $ui['num_arrears']) ?>)">
+                                    <i class="fas fa-wallet"></i> BAYAR
+                                </button>
+                                <?php if($wa_num_t): ?>
+                                <a href="https://api.whatsapp.com/send?phone=<?= $wa_num_t ?>" target="_blank" class="btn btn-sm" style="background:#25D366; color:white; width:34px; height:34px; display:flex; align-items:center; justify-content:center; border-radius:8px; padding:0; border:none;" title="WhatsApp">
+                                    <i class="fab fa-whatsapp" style="font-size:16px;"></i>
+                                </a>
+                                <a href="tel:<?= htmlspecialchars($ui['contact']) ?>" class="btn btn-sm btn-ghost" style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; border-radius:8px; padding:0; border:1px solid var(--glass-border);" title="Telepon">
+                                    <i class="fas fa-phone" style="font-size:14px;"></i>
+                                </a>
+                                <?php endif; ?>
+                            </div>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile Mode: Cards -->
+        <div class="customer-list-mobile">
+        <?php foreach($unpaid_invoices as $ui): 
+            $wa_num_t = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $ui['contact']));
+            $cust_id_t = $ui['customer_code'] ?: str_pad($ui['cust_id'], 5, "0", STR_PAD_LEFT);
+        ?>
+        <div class="glass-panel" style="margin-bottom:12px; padding:15px; border-left:4px solid var(--danger); cursor:pointer;" onclick="showCustomerDetails(<?= $ui['cust_id'] ?>)">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <div style="flex:1;">
+                    <div style="font-weight:700; font-size:15px;"><?= htmlspecialchars($ui['name']) ?></div>
+                    <div style="font-size:11px; color:var(--primary); font-family:monospace; margin-top:2px;">ID: <?= $cust_id_t ?></div>
+                    <div style="font-size:11px; color:var(--text-secondary); margin-top:5px;"><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($ui['address'] ?: '-') ?></div>
+                    <div style="font-size:11px; color:var(--danger); font-weight:700; margin-top:5px;"><i class="fas fa-exclamation-circle"></i> Tunggakan: <?= $ui['num_arrears'] ?> Bln</div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:16px; font-weight:800; color:var(--danger);">Rp <?= number_format($ui['total_unpaid'], 0, ',', '.') ?></div>
+                    <div style="font-size:10px; color:var(--text-secondary);"><?= htmlspecialchars($ui['package_name']) ?></div>
+                </div>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:15px;" onclick="event.stopPropagation();">
+                <button class="btn btn-sm" style="background:#25D366; color:white; font-weight:800; border-radius:10px; padding:0 15px; height:42px; display:flex; align-items:center; gap:8px;" onclick="handlePay(<?= $ui['cust_id'] ?>, <?= $ui['num_arrears'] ?>, '<?= addslashes($ui['name']) ?>', <?= ($ui['total_unpaid'] / $ui['num_arrears']) ?>)">
+                    <i class="fas fa-wallet"></i> BAYAR
+                </button>
+                <?php if($wa_num_t): ?>
+                <a href="https://api.whatsapp.com/send?phone=<?= $wa_num_t ?>" target="_blank" class="btn btn-sm" style="background:#25D366; color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0;" title="WhatsApp">
+                    <i class="fab fa-whatsapp" style="font-size:18px;"></i>
+                </a>
+                <a href="tel:<?= htmlspecialchars($ui['contact']) ?>" class="btn btn-sm btn-ghost" style="width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; border:1px solid var(--glass-border);" title="Telepon">
+                    <i class="fas fa-phone" style="font-size:16px;"></i>
+                </a>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php endforeach; ?>
+        <?php if(empty($unpaid_invoices)): ?>
+            <div style="text-align:center; padding:40px; color:var(--text-secondary);">
+                <i class="fas fa-check-circle" style="font-size:50px; opacity:0.1; display:block; margin-bottom:15px;"></i>
+                Semua tagihan sudah tertagih! Kerja bagus.
+            </div>
+        <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- Summary Float for Tasks -->
+    <div class="floating-action-bar">
+        <div class="glass-panel" style="padding:15px 20px; border-left:4px solid var(--danger); background:rgba(239, 68, 68, 0.95); backdrop-filter:blur(15px); display:flex; justify-content:space-between; align-items:center; border-radius:18px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:42px; height:42px; border-radius:12px; background:white; color:var(--danger); display:flex; align-items:center; justify-content:center; font-size:20px; box-shadow:0 4px 10px rgba(0,0,0,0.1); flex-shrink:0;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div>
+                    <div style="font-size:10px; color:rgba(255,255,255,0.8); text-transform:uppercase; font-weight:800; letter-spacing:1px;">Total Tunggakan</div>
+                    <div style="font-size:18px; font-weight:800; color:white; line-height:1.2;">Rp<?= number_format($unpaid_total, 0, ',', '.') ?></div>
+                </div>
+            </div>
+            <div style="text-align:right;">
+                <div style="font-size:10px; color:rgba(255,255,255,0.8); font-weight:800; text-transform:uppercase; letter-spacing:1px;">Terhutang</div>
+                <div style="font-size:18px; font-weight:800; color:white; line-height:1.2;"><?= $unpaid_count ?> <small style="font-size:10px; opacity:0.8;">BILL</small></div>
+            </div>
+        </div>
+    </div>
+</div>
 <?php elseif($coll_tab === 'lunas'): ?>
 <!-- TAB: Sudah Lunas -->
 <div class="glass-panel" style="padding:20px;">
-    <h3 style="font-size:16px; margin-bottom:16px; color:var(--success);">
-        <i class="fas fa-check-double"></i> Pelanggan Sudah Lunas (<?= date('d M', strtotime($date_from)) ?> - <?= date('d M', strtotime($date_to)) ?>)
-    </h3>
-    <div class="scroll-container" style="max-height:600px; overflow-y:auto; padding-right:5px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+        <h3 style="font-size:16px; margin:0; color:var(--success);">
+            <i class="fas fa-check-double"></i> Riwayat Pembayaran Lunas
+        </h3>
+        <!-- Date Filter Form -->
+        <form method="GET" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <input type="hidden" name="page" value="collector">
+            <input type="hidden" name="tab" value="lunas">
+            <div style="display:flex; align-items:center; gap:5px; background:rgba(255,255,255,0.03); padding:4px 10px; border-radius:8px; border:1px solid var(--glass-border);">
+                <input type="date" name="date_from" value="<?= $date_from ?>" style="background:none; border:none; color:var(--text-primary); font-size:12px; outline:none;">
+                <span style="color:var(--text-secondary); font-size:12px;">s/d</span>
+                <input type="date" name="date_to" value="<?= $date_to ?>" style="background:none; border:none; color:var(--text-primary); font-size:12px; outline:none;">
+            </div>
+            <button type="submit" class="btn btn-sm" style="background:var(--primary); color:white; border-radius:8px; padding:6px 12px; font-weight:700;">FILTER</button>
+        </form>
+    </div>
+    <div class="scroll-container" style="height: calc(100vh - 380px); overflow-y:auto; padding-right:5px; padding-bottom: 150px; margin-top:10px;">
         <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px;">
             <?php foreach($recent_paid as $rp): ?>
         <div class="glass-panel" style="padding:16px; border-left: 4px solid var(--success);">
@@ -686,9 +1059,6 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
             <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--glass-border); display:flex; justify-content:space-between; align-items:center;">
                 <div style="display:flex; align-items:center; gap:8px;">
                     <div style="font-size:12px; color:var(--text-secondary);"><i class="fas fa-check-circle" style="color:var(--success);"></i> Bayar Lunas</div>
-                    <a href="index.php?page=admin_invoices&action=unpay&id=<?= $rp['id'] ?>" class="btn btn-xs btn-ghost" style="color:var(--danger); font-size:9px; padding:2px 6px; border:1px solid rgba(239, 68, 68, 0.1);" title="Batalkan Pembayaran" onclick="return confirm('Yakin ingin membatalkan pembayaran ini?')">
-                        <i class="fas fa-undo"></i> Batal
-                    </a>
                 </div>
                 <div style="display:flex; gap:6px;">
                     <?php 
@@ -741,6 +1111,25 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
         <?php endif; ?>
         </div> <!-- end grid -->
     </div> <!-- end scroll-container -->
+    
+    <!-- Summary Float for Lunas -->
+    <div class="floating-action-bar">
+        <div class="glass-panel" style="padding:15px 20px; border-left:4px solid var(--success); background:rgba(16, 185, 129, 0.95); backdrop-filter:blur(15px); display:flex; justify-content:space-between; align-items:center; border-radius:18px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:42px; height:42px; border-radius:12px; background:white; color:var(--success); display:flex; align-items:center; justify-content:center; font-size:20px; box-shadow:0 4px 10px rgba(0,0,0,0.1); flex-shrink:0;">
+                    <i class="fas fa-coins"></i>
+                </div>
+                <div>
+                    <div style="font-size:10px; color:rgba(255,255,255,0.8); text-transform:uppercase; font-weight:800; letter-spacing:1px;">Revenue Terkumpul</div>
+                    <div style="font-size:18px; font-weight:800; color:white; line-height:1.2;">Rp<?= number_format($paid_total_range, 0, ',', '.') ?></div>
+                </div>
+            </div>
+            <div style="text-align:right;">
+                <div style="font-size:10px; color:rgba(255,255,255,0.8); font-weight:800; text-transform:uppercase; letter-spacing:1px;">Lunas</div>
+                <div style="font-size:18px; font-weight:800; color:white; line-height:1.2;"><?= count($recent_paid) ?> <small style="font-size:10px; opacity:0.8;">USER</small></div>
+        </div>
+    </div>
+</div>
 <?php else: ?>
     <!-- Fallback / Error -->
     <div class="glass-panel" style="padding:40px; text-align:center;">
@@ -991,7 +1380,9 @@ function submitPay(custId, months) {
     form.submit();
 }
 
+let lastViewedCustId = 0;
 async function showCustomerDetails(id) {
+    lastViewedCustId = id;
     // 1. Show loading state in modal
     document.getElementById('detCustName').textContent = 'Memuat...';
     document.getElementById('detHistoryList').innerHTML = '<div style="text-align:center; padding:30px; opacity:0.5;"><i class="fas fa-spinner fa-spin"></i> Sedang mengambil data...</div>';
@@ -1034,7 +1425,8 @@ async function showCustomerDetails(id) {
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <div>
                                 <div style="font-size:13px; font-weight:800; color:${statusColor}; text-transform:uppercase;">${item.status}</div>
-                                <div style="font-size:10px; color:var(--text-secondary); margin-top:2px;">Bulan/Jatuh Tempo: ${item.due_date}</div>
+                                <div style="font-size:11px; font-weight:700; margin-top:2px;">${item.description ? item.description : 'Tagihan Bulanan'}</div>
+                                <div style="font-size:10px; color:var(--text-secondary); margin-top:2px;">Jatuh Tempo: ${item.due_date}</div>
                                 ${isPaid ? `<div style="font-size:10px; color:var(--text-secondary); margin-top:2px;"><i class="fas fa-calendar-check"></i> Dibayar: ${payDate}</div>` : ''}
                             </div>
                             <div style="text-align:right;">
@@ -1054,6 +1446,20 @@ async function showCustomerDetails(id) {
         document.getElementById('detCustName').textContent = 'Error';
         document.getElementById('detHistoryList').innerHTML = `<div style="text-align:center; padding:30px; color:var(--danger);">${error.message}</div>`;
     }
+}
+
+function openAddonModal() {
+    // Get currently viewed customer data from detail state
+    const name = document.getElementById('detCustName').textContent;
+    document.getElementById('addonCustName').innerText = name;
+    
+    // We need the ID. The detail modal doesn't store ID in the DOM usually, 
+    // but we can extract it from the ID display or use a global variable.
+    // Looking at showCustomerDetails, it takes 'id' as param.
+    // I will add a hidden input for ID in the detail modal or use the one we have.
+    document.getElementById('addonCustId').value = lastViewedCustId; 
+    
+    document.getElementById('addAddonModal').style.display = 'flex';
 }
 </script>
 
@@ -1119,8 +1525,11 @@ async function showCustomerDetails(id) {
         </div>
         
         <!-- Modal Footer -->
-        <div style="padding:15px 20px; border-top:1px solid var(--glass-border); background:rgba(255,255,255,0.02);">
-             <button onclick="document.getElementById('customerDetailModal').style.display='none'" class="btn btn-primary" style="width:100%; border-radius:10px; padding:12px; font-weight:700;">TUTUP</button>
+        <div style="padding:15px 20px; border-top:1px solid var(--glass-border); background:rgba(255,255,255,0.02); display:flex; gap:10px;">
+             <button onclick="openAddonModal()" class="btn btn-warning" style="flex:1; border-radius:10px; padding:12px; font-weight:700; background:rgba(217,119,6,0.1); color:#d97706; border:1px solid rgba(217,119,6,0.3);">
+                 <i class="fas fa-plus-circle"></i> ADD-ON
+             </button>
+             <button onclick="document.getElementById('customerDetailModal').style.display='none'" class="btn btn-primary" style="flex:2; border-radius:10px; padding:12px; font-weight:700;">TUTUP</button>
         </div>
     </div>
 </div>
@@ -1129,3 +1538,74 @@ async function showCustomerDetails(id) {
     <input type="hidden" name="customer_id" id="globalCustId">
     <input type="hidden" name="num_months" id="globalNumMonths" value="1">
 </form>
+
+<!-- Modal Tambah Pengeluaran -->
+<div id="addExpenseModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:9999; backdrop-filter: blur(8px);">
+    <div class="glass-panel" style="width:100%; max-width:400px; padding:0; margin:20px; border-radius:18px; border:1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 50px rgba(0,0,0,0.3); overflow:hidden;">
+        <!-- Header -->
+        <div style="padding:20px; background:linear-gradient(to right, #f97316, #ea580c); color:white; display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <i class="fas fa-receipt"></i>
+                <h3 style="margin:0; font-size:16px; font-weight:700;">Tambah Pengeluaran</h3>
+            </div>
+            <button onclick="document.getElementById('addExpenseModal').style.display='none'" style="background:none; border:none; color:white; cursor:pointer; font-size:18px;">&times;</button>
+        </div>
+        
+        <form action="index.php?page=collector&action=add_expense" method="POST" style="padding:20px;">
+            <div class="form-group" style="margin-bottom:15px;">
+                <label style="font-size:12px; color:var(--text-secondary); margin-bottom:5px; display:block;">Kategori / Nama Pengeluaran</label>
+                <input type="text" name="category" class="form-control" placeholder="Contoh: Bensin, Makan, dsb" required style="padding:10px; border-radius:8px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;">
+            </div>
+            
+            <div class="form-group" style="margin-bottom:15px;">
+                <label style="font-size:12px; color:var(--text-secondary); margin-bottom:5px; display:block;">Nominal (Rp)</label>
+                <input type="number" name="amount" class="form-control" placeholder="0" required style="padding:12px; border-radius:8px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:16px; font-weight:800; width:100%;">
+            </div>
+            
+            <div class="form-group" style="margin-bottom:15px;">
+                <label style="font-size:12px; color:var(--text-secondary); margin-bottom:5px; display:block;">Tanggal</label>
+                <input type="date" name="date" value="<?= date('Y-m-d') ?>" class="form-control" required style="padding:10px; border-radius:8px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;">
+            </div>
+            
+            <div class="form-group" style="margin-bottom:20px;">
+                <label style="font-size:12px; color:var(--text-secondary); margin-bottom:5px; display:block;">Keterangan / Catatan</label>
+                <textarea name="description" class="form-control" placeholder="Contoh: Bensin motor keliling desa" rows="2" style="padding:10px; border-radius:8px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;"></textarea>
+            </div>
+            
+            <button type="submit" class="btn" style="width:100%; background:#f97316; color:white; padding:12px; border-radius:10px; font-weight:800; font-size:14px; border:none; box-shadow: 0 4px 15px rgba(249, 115, 22, 0.2);">SIMPAN PENGELUARAN</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Tambah Add-on (Tagihan Manual) -->
+<div id="addAddonModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:10000; backdrop-filter: blur(8px);">
+    <div class="glass-panel" style="width:100%; max-width:400px; padding:0; margin:20px; border-radius:18px; border:1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 50px rgba(0,0,0,0.3); overflow:hidden;">
+        <!-- Header -->
+        <div style="padding:20px; background:linear-gradient(to right, #d97706, #b45309); color:white; display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <i class="fas fa-plus-circle"></i>
+                <h3 style="margin:0; font-size:16px; font-weight:700;">Tambah Add-on</h3>
+            </div>
+            <button onclick="document.getElementById('addAddonModal').style.display='none'" style="background:none; border:none; color:white; cursor:pointer; font-size:18px;">&times;</button>
+        </div>
+        
+        <form action="index.php?page=collector&action=add_addon" method="POST" style="padding:20px;">
+            <input type="hidden" name="customer_id" id="addonCustId">
+            <p style="font-size:12px; color:var(--text-secondary); margin-bottom:15px; background:rgba(217,119,6,0.05); padding:10px; border-radius:8px; border:1px solid rgba(217,119,6,0.1);">
+                Menambahkan tagihan baru untuk: <strong id="addonCustName" style="color:var(--text-primary);">...</strong>
+            </p>
+
+            <div class="form-group" style="margin-bottom:15px;">
+                <label style="font-size:12px; color:var(--text-secondary); margin-bottom:5px; display:block;">Nama Item / Layanan</label>
+                <input type="text" name="description" class="form-control" placeholder="Contoh: Router TP-Link, Setting, dsb" required style="padding:10px; border-radius:8px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;">
+            </div>
+            
+            <div class="form-group" style="margin-bottom:20px;">
+                <label style="font-size:12px; color:var(--text-secondary); margin-bottom:5px; display:block;">Nominal (Rp)</label>
+                <input type="number" name="amount" class="form-control" placeholder="0" required style="padding:12px; border-radius:8px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:16px; font-weight:800; width:100%;">
+            </div>
+            
+            <button type="submit" class="btn" style="width:100%; background:#d97706; color:white; padding:12px; border-radius:10px; font-weight:800; font-size:14px; border:none; box-shadow: 0 4px 15px rgba(217, 119, 6, 0.2);">TAMBAHKAN TAGIHAN</button>
+        </form>
+    </div>
+</div>

@@ -5,8 +5,8 @@
  */
 $u_id = $_SESSION['user_id'];
 $u_role = $_SESSION['user_role'] ?? 'admin';
-$scope_where = " AND (created_by = $u_id OR created_by = 0 OR created_by IS NULL) ";
-$c_scope = " AND (c.created_by = $u_id OR c.created_by = 0 OR c.created_by IS NULL) ";
+$scope_where = ($u_role === 'admin') ? " AND (created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL) " : " AND (created_by = $u_id) ";
+$c_scope = ($u_role === 'admin') ? " AND (c.created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR c.created_by = 0 OR c.created_by IS NULL) " : " AND (c.created_by = $u_id) ";
 
 // 1. Total Pelanggan (User) - Count & Est. Revenue (Scoped)
 $res_cust = $db->query("SELECT COUNT(*) as jml, SUM(monthly_fee) as est FROM customers WHERE type='customer' $scope_where")->fetch();
@@ -261,7 +261,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
         <a href="index.php?page=admin_invoices&filter_status=belum" class="btn btn-sm btn-info" style="font-size:11px;">Lihat Semua</a>
     </div>
     
-    <div class="table-container">
+    <div class="table-container" style="max-height:400px; overflow-y:auto; padding-right:5px;">
         <table style="width:100%;">
             <thead>
                 <tr>
@@ -332,7 +332,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
         <span class="badge" style="background:rgba(16, 185, 129, 0.1); color:#10b981; border:1px solid #10b981; font-size:10px; animation: pulse 2s infinite;">• LIVE PULSE</span>
     </div>
     
-    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap:15px;">
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap:15px; max-height:500px; overflow-y:auto; padding-right:5px;">
         <?php
         $latest = $db->query("
             SELECT p.*, c.name as customer_name, u.name as receiver_name

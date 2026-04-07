@@ -38,8 +38,8 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['id'])) {
 // Fetch all packages for dropdowns (Scoped)
 $u_id = $_SESSION['user_id'];
 $u_role = $_SESSION['user_role'] ?? 'admin';
-$scope_where = ($u_role === 'admin') ? " AND (a.created_by = $u_id OR a.created_by = 0 OR a.created_by IS NULL) " : " AND (a.created_by = $u_id) ";
-$pkg_scope = ($u_role === 'admin') ? "WHERE created_by = $u_id OR created_by = 0 OR created_by IS NULL" : "WHERE created_by = $u_id";
+$scope_where = ($u_role === 'admin') ? " AND (created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL) " : " AND (created_by = $u_id) ";
+$pkg_scope = ($u_role === 'admin') ? "WHERE created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL" : "WHERE created_by = $u_id";
 $packages_all = $db->query("SELECT * FROM packages $pkg_scope ORDER BY name ASC")->fetchAll();
 $packages_json = json_encode($packages_all);
 
@@ -146,18 +146,26 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     
     $stmt = $db->prepare("UPDATE customers SET name=?, address=?, contact=?, package_name=?, monthly_fee=?, ip_address=?, type=?, registration_date=?, billing_date=?, area=?, router_id=?, pppoe_name=?, collector_id=?, lat=?, lng=?, odp_id=?, odp_port=? WHERE id=?");
     $stmt->execute([$name, $address, $contact, $package_name, $monthly_fee, $ip_address, $type, $registration_date, $billing_date, $area, $router_id, $pppoe_name, $collector_id, $lat, $lng, $odp_id, $odp_port, $id]);
+
+    // OPTIMIZATION: Sync existing unpaid invoices with the new monthly fee
+    $db->prepare("UPDATE invoices SET amount = ? WHERE customer_id = ? AND status = 'Belum Lunas'")->execute([$monthly_fee, $id]);
     
     // Process additional arrears if any during update
     $arrears_months = intval($_POST['arrears_months'] ?? 0);
     $arrears_amount = floatval($_POST['arrears_amount'] ?? 0);
-    if ($arrears_amount <= 0) $arrears_amount = $monthly_fee;
-    
     if ($arrears_months > 0 && $arrears_amount > 0) {
         $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Belum Lunas', ?)");
+        $check_stmt = $db->prepare("SELECT id FROM invoices WHERE customer_id = ? AND strftime('%Y-%m', due_date) = ?");
         for ($m = $arrears_months; $m >= 1; $m--) {
             $due = date('Y-m-d', strtotime("-{$m} months", strtotime(date('Y') . '-' . date('m') . '-' . str_pad($billing_date, 2, '0', STR_PAD_LEFT))));
-            $created = $due;
-            $stmt_inv->execute([$id, $arrears_amount, $due, $created]);
+            $due_month = date('Y-m', strtotime($due));
+            
+            // Check for existing invoice for this month
+            $check_stmt->execute([$id, $due_month]);
+            if (!$check_stmt->fetchColumn()) {
+                $created = $due;
+                $stmt_inv->execute([$id, $arrears_amount, $due, $created]);
+            }
         }
     }
     
@@ -240,8 +248,7 @@ if ($action === 'export') {
     $u_role = $_SESSION['user_role'];
     $scope_where_exp = " AND (created_by = $u_id) ";
     if ($u_role === 'admin') {
-        $u_id_exp = $_SESSION['user_id'];
-        $scope_where_exp = " AND (created_by = $u_id_exp OR created_by = 0 OR created_by IS NULL) ";
+        $scope_where_exp = " AND (created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL) ";
     }
 
     $customers_export = $db->query("SELECT * FROM customers $where $scope_where_exp ORDER BY name ASC")->fetchAll();
@@ -454,7 +461,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $u_role = $_SESSION['user_role'];
     $scope_where = " AND (created_by = $u_id) ";
     if ($u_role === 'admin') {
-        $scope_where = " AND (created_by = $u_id OR created_by = 0 OR created_by IS NULL) ";
+        $scope_where = " AND (created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL) ";
     }
 
     // Count total rows for this filter
@@ -528,10 +535,12 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         </form>
     </div>
 
-    <!-- Mobile Card View (Hidden on Desktop) -->
-    <div class="customers-mobile-container" style="display:none;">
+    <!-- Scrollable Container for Customers -->
+    <div class="scroll-container" style="max-height:70vh; overflow-y:auto; padding-right:5px; margin-bottom:20px; border-radius:12px;">
+        <!-- Mobile Card View (Hidden on Desktop) -->
+        <div class="customers-mobile-container" style="display:none;">
         <?php
-        $rt_scope = ($u_role === 'admin') ? "WHERE created_by = $u_id OR created_by = 0 OR created_by IS NULL" : "WHERE created_by = $u_id";
+        $rt_scope = ($u_role === 'admin') ? "WHERE (created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL)" : "WHERE created_by = $u_id";
         $routers = [];
         try { $routers = $db->query("SELECT * FROM routers $rt_scope")->fetchAll(); } catch(Exception $e) {}
         $customers = $db->query("SELECT * FROM customers WHERE 1=1 $where_type $where_collector $where_search $scope_where ORDER BY id DESC LIMIT $items_per_page OFFSET $offset")->fetchAll();
@@ -654,6 +663,8 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php endforeach; ?>
             </tbody>
         </table>
+    </div>
+
     </div>
 
     <!-- Pagination Navigation -->

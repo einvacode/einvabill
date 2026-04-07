@@ -8,8 +8,8 @@ $filter_year = $_GET['year'] ?? date('Y');
 $filter_user = $_GET['user_id'] ?? 'all';
 
 // Scoping Logic
-$scope_where = ($u_role === 'admin') ? " AND (c.created_by = $u_id OR c.created_by = 0 OR c.created_by IS NULL) " : " AND (c.created_by = $u_id) ";
-$exp_scope = ($u_role === 'admin') ? " AND (created_by = $u_id OR created_by = 0 OR created_by IS NULL) " : " AND (created_by = $u_id) ";
+$scope_where = ($u_role === 'admin') ? " AND (c.created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR c.created_by = 0 OR c.created_by IS NULL) " : " AND (c.created_by = $u_id) ";
+$exp_scope = ($u_role === 'admin') ? " AND (created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL) " : " AND (created_by = $u_id) ";
 
 // Date range filters
 $date_from = $_GET['date_from'] ?? date('Y-m-01');

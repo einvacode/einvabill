@@ -36,7 +36,8 @@ $query = "
         i.status, 
         p.payment_date, 
         p.amount as paid_amount, 
-        u.name as collector_name
+        u.name as collector_name,
+        (SELECT GROUP_CONCAT(description, ', ') FROM invoice_items WHERE invoice_id = i.id) as description
     FROM invoices i
     LEFT JOIN payments p ON p.invoice_id = i.id
     LEFT JOIN users u ON p.received_by = u.id

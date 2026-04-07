@@ -120,11 +120,15 @@ foreach($odp_opts_raw as $opt) {
         $odp_options_html .= "<option value='{$opt['id']}'>PtP ({$opt['type']}): {$opt['name']}</option>";
     }
 }
+$u_id_map = $_SESSION['user_id'];
+$u_role_map = $_SESSION['user_role'] ?? 'admin';
+$scope_where_map = ($u_role_map === 'admin') ? " AND (created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL) " : " AND (created_by = $u_id_map) ";
+
 $assets = $db->query("SELECT * FROM infrastructure_assets WHERE lat IS NOT NULL AND lat != ''")->fetchAll();
-$customers = $db->query("SELECT * FROM customers WHERE lat IS NOT NULL AND lat != ''")->fetchAll();
+$customers = $db->query("SELECT * FROM customers WHERE lat IS NOT NULL AND lat != '' $scope_where_map")->fetchAll();
 
 // Fetch Registered Customers without Coordinates for the Picker
-$existing_customers = $db->query("SELECT id, name, customer_code FROM customers WHERE (lat IS NULL OR lat = '') ORDER BY name ASC")->fetchAll();
+$existing_customers = $db->query("SELECT id, name, customer_code FROM customers WHERE (lat IS NULL OR lat = '') $scope_where_map ORDER BY name ASC")->fetchAll();
 ?>
 
 <!-- Leaflet CSS & JS -->

@@ -106,6 +106,13 @@ if ($action === 'create_auto' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $due_date = $next_month_period . '-' . $b_day;
     $created_at = date('Y-m-d H:i:s');
     
+    // [NEW] Duplicate Check: Prevent creating another invoice for the same customer and month
+    $existing = $db->query("SELECT id FROM invoices WHERE customer_id = $customer_id AND strftime('%Y-%m', due_date) = " . $db->quote($next_month_period))->fetchColumn();
+    if ($existing) {
+        header("Location: index.php?page=admin_customers&action=details&id=$customer_id&msg=invoice_exists");
+        exit;
+    }
+
     // Ownership Check
     $u_id = $_SESSION['user_id'];
     $u_role = $_SESSION['user_role'];
@@ -137,16 +144,15 @@ if ($action === 'delete') {
         $u_role = $_SESSION['user_role'];
         
         // Ownership Check
-        $check = $db->query("SELECT created_by FROM customers WHERE id = " . intval($invoice['customer_id']))->fetchColumn();
-        $is_owner = false;
-    if ($u_role === 'admin') {
-        if ($check == $u_id || $check == 0 || $check === NULL) $is_owner = true;
-    } elseif ($u_role === 'partner') {
-        if ($check == $u_id) $is_owner = true;
-    } elseif ($u_role === 'collector') {
-        $cid_check = isset($customer_id) ? $customer_id : ($db->query("SELECT customer_id FROM invoices WHERE id = " . intval($id ?? 0))->fetchColumn() ?: 0);
-        if ($db->query("SELECT collector_id FROM customers WHERE id = $cid_check")->fetchColumn() == $u_id) $is_owner = true;
-    }
+        $is_owner = ($u_role === 'admin') ? true : false;
+        if (!$is_owner) {
+            $check = $db->query("SELECT created_by FROM customers WHERE id = " . intval($invoice['customer_id']))->fetchColumn();
+            if ($u_role === 'partner' && $check == $u_id) $is_owner = true;
+            elseif ($u_role === 'collector') {
+                $cid_check = isset($customer_id) ? $customer_id : ($db->query("SELECT customer_id FROM invoices WHERE id = " . intval($id ?? 0))->fetchColumn() ?: 0);
+                if ($db->query("SELECT collector_id FROM customers WHERE id = $cid_check")->fetchColumn() == $u_id) $is_owner = true;
+            }
+        }
         
         if ($is_owner) {
             // Cascade delete manual
@@ -174,15 +180,14 @@ if ($action === 'edit_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $u_role = $_SESSION['user_role'];
     
     // Ownership Check
-    $check = $db->query("SELECT created_by FROM customers WHERE id = (SELECT customer_id FROM invoices WHERE id = $id)")->fetchColumn();
-    $is_owner = false;
-    if ($u_role === 'admin') {
-        if ($check == $u_id || $check == 0 || $check === NULL) $is_owner = true;
-    } elseif ($u_role === 'partner') {
-        if ($check == $u_id) $is_owner = true;
-    } elseif ($u_role === 'collector') {
-        $cid_check = isset($customer_id) ? $customer_id : ($db->query("SELECT customer_id FROM invoices WHERE id = " . intval($id ?? 0))->fetchColumn() ?: 0);
-        if ($db->query("SELECT collector_id FROM customers WHERE id = $cid_check")->fetchColumn() == $u_id) $is_owner = true;
+    $is_owner = ($u_role === 'admin') ? true : false;
+    if (!$is_owner) {
+        $check = $db->query("SELECT created_by FROM customers WHERE id = (SELECT customer_id FROM invoices WHERE id = $id)")->fetchColumn();
+        if ($u_role === 'partner' && $check == $u_id) $is_owner = true;
+        elseif ($u_role === 'collector') {
+            $cid_check = $db->query("SELECT customer_id FROM invoices WHERE id = $id")->fetchColumn() ?: 0;
+            if ($db->query("SELECT collector_id FROM customers WHERE id = $cid_check")->fetchColumn() == $u_id) $is_owner = true;
+        }
     }
     
     if ($is_owner) {
@@ -209,10 +214,9 @@ if ($action === 'mark_paid') {
         $u_id = $_SESSION['user_id'];
         $u_role = $_SESSION['user_role'];
         $cust = $db->query("SELECT created_by, collector_id FROM customers WHERE id = (SELECT customer_id FROM invoices WHERE id = $id)")->fetch();
-        $is_auth = false;
-        if ($u_role === 'admin') {
-            if ($cust['created_by'] == $u_id || $cust['created_by'] == 0 || $cust['created_by'] === NULL) $is_auth = true;
-        } elseif ($u_role === 'partner') {
+        $is_auth = ($u_role === 'admin') ? true : false;
+        if (!$is_auth) {
+            if ($u_role === 'partner' && $cust['created_by'] == $u_id) $is_auth = true;
             if ($cust['created_by'] == $u_id) $is_auth = true;
         } elseif ($u_role === 'collector') {
             if ($cust['collector_id'] == $u_id) $is_auth = true;
@@ -271,11 +275,9 @@ if ($action === 'mark_paid_bulk' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     $ref = $_SERVER['HTTP_REFERER'] ?? 'index.php?page=admin_invoices';
-    if ($_SESSION['user_role'] === 'collector') {
-        $redirect = "index.php?page=collector&msg=paid&last_id=$last_id";
-    } else {
-        $redirect = $ref . (strpos($ref, '?') !== false ? '&' : '?') . "msg=bulk_paid&cust_id=$customer_id&months=$num_months&total=$total_paid_accum";
-    }
+    $base_redirect = ($_SESSION['user_role'] === 'collector') ? "index.php?page=collector" : $ref;
+    
+    $redirect = $base_redirect . (strpos($base_redirect, '?') !== false ? '&' : '?') . "msg=bulk_paid&cust_id=$customer_id&months=$num_months&total=$total_paid_accum&last_id=$last_id";
     header("Location: $redirect");
     exit;
 }
@@ -323,7 +325,7 @@ if ($action === 'create_auto_bulk' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Scope Filter for Admin vs Collectors/Others
     if ($u_role === 'admin') {
-        $scope_sql = ($filter_type === 'partner') ? "" : " AND (created_by = $u_id OR created_by = 0 OR created_by IS NULL)";
+        $scope_sql = "";
     } else {
         $scope_sql = " AND created_by = $u_id";
     }
@@ -336,6 +338,7 @@ if ($action === 'create_auto_bulk' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         AND id NOT IN (
             SELECT customer_id FROM invoices 
             WHERE strftime('%Y-%m', due_date) = " . $db->quote($due_month) . "
+            OR strftime('%Y-%m', created_at) = " . $db->quote($due_month) . "
         )
     ")->fetchAll();
     
@@ -436,12 +439,9 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
     // Partner-specific view mode (Tab selection)
     $view_mode = $_GET['view_mode'] ?? 'customers'; 
 
+    // Scoping Logic for Invoices
     if ($u_role === 'admin') {
-        if ($filter_type === 'partner') {
-            $scope_where = " AND c.type = 'partner'"; 
-        } else {
-            $scope_where = " AND (c.created_by = $u_id OR c.created_by = 0 OR c.created_by IS NULL) AND c.type = 'customer'"; 
-        }
+        $scope_where = " AND (c.created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR c.created_by = 0 OR c.created_by IS NULL) ";
     } elseif ($u_role === 'partner') {
         $partner_cid = $db->query("SELECT customer_id FROM users WHERE id = $u_id")->fetchColumn() ?: 0;
         if ($view_mode === 'isp_bill') {
@@ -585,7 +585,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
         </div>
     </form>
     </div>
-    <div style="padding:0; overflow:hidden; border-radius:15px; border:1px solid var(--glass-border);">
+    <div class="scroll-container" style="padding:0; overflow-y:auto; max-height:70vh; border-radius:15px; border:1px solid var(--glass-border); background:rgba(255,255,255,0.01);">
 
     <!-- INVOICE LIST -->
     <?php
