@@ -76,6 +76,7 @@
                         <a href="index.php?page=admin_packages" class="nav-link <?= $page == 'admin_packages' ? 'active' : '' ?>"><i class="fas fa-box"></i> Paket Internet</a>
                         <a href="index.php?page=admin_router" class="nav-link <?= $page == 'admin_router' ? 'active' : '' ?>"><i class="fas fa-network-wired"></i> Manajemen Router</a>
                         <a href="index.php?page=admin_invoices" class="nav-link <?= $page == 'admin_invoices' ? 'active' : '' ?>"><i class="fas fa-file-invoice-dollar"></i> Riwayat Tagihan</a>
+                        <a href="index.php?page=partner_isp_invoices" class="nav-link <?= $page == 'partner_isp_invoices' ? 'active' : '' ?>"><i class="fas fa-receipt" style="color:#ef4444;"></i> Tagihan Ke ISP</a>
                         <a href="index.php?page=admin_reports" class="nav-link <?= $page == 'admin_reports' ? 'active' : '' ?>"><i class="fas fa-chart-line"></i> Laporan Keuangan</a>
                         <a href="index.php?page=partner_settings" class="nav-link <?= $page == 'partner_settings' ? 'active' : '' ?>"><i class="fas fa-id-card-alt" style="color:#10b981;"></i> Seting Profil</a>
                     <?php endif; ?>
@@ -175,6 +176,9 @@
             </a>
             <a href="index.php?page=admin_customers" class="nav-link <?= $page == 'admin_customers' ? 'active' : '' ?>">
                 <i class="fas fa-users"></i><span>Pelanggan</span>
+            </a>
+            <a href="index.php?page=partner_isp_invoices" class="nav-link <?= $page == 'partner_isp_invoices' ? 'active' : '' ?>">
+                <i class="fas fa-receipt"></i><span>ISP Bill</span>
             </a>
             <a href="index.php?page=logout" style="color:var(--danger);">
                 <i class="fas fa-sign-out-alt"></i><span>Keluar</span>

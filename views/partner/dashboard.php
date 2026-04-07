@@ -12,6 +12,7 @@ $company_wa = $db->query("SELECT company_contact FROM settings WHERE id=1")->fet
 $date_from = $_GET['date_from'] ?? '';
 $date_to = $_GET['date_to'] ?? '';
 $filter_status = $_GET['filter_status'] ?? 'belum';
+$sort_date = $_GET['sort_date'] ?? 'desc';
 
 $params = [$partner_cid];
 $date_where = '';
@@ -47,11 +48,13 @@ if ($partner_cid) {
     $stmt_stats->execute($params);
     $partner_stats = $stmt_stats->fetch();
     
+    $order_sql = ($sort_date === 'asc') ? 'ASC' : 'DESC';
+    
     $stmt_inv = $db->prepare("
         SELECT i.*, c.name FROM invoices i 
         JOIN customers c ON i.customer_id = c.id 
         WHERE c.id = ? $date_where $status_where
-        ORDER BY i.id DESC
+        ORDER BY i.due_date $order_sql, i.id DESC
     ");
     $stmt_inv->execute($params);
     $partner_invoices = $stmt_inv->fetchAll();
@@ -95,6 +98,17 @@ $recent_revenue = $db->query("
     ORDER BY p.payment_date DESC 
     LIMIT 5
 ")->fetchAll();
+
+// --- LOGIC CALCULATIONS FOR SUMMARY BAR ---
+$current_month_str = date('Y-m');
+$total_unpaid_val = $db->query("SELECT COALESCE(SUM(amount - discount), 0) FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE c.created_by = $user_id AND i.status = 'Belum Lunas'")->fetchColumn();
+$total_paid_val = $db->query("SELECT COALESCE(SUM(p.amount), 0) FROM payments p JOIN invoices i ON p.invoice_id = i.id JOIN customers c ON i.customer_id = c.id WHERE c.created_by = $user_id AND p.payment_date LIKE '$current_month_str%'")->fetchColumn();
+
+// Calculate Net Profit (Collection - Bills to ISP)
+$my_bills_to_isp_paid = $db->query("SELECT COALESCE(SUM(amount - discount), 0) FROM invoices WHERE customer_id = $partner_cid AND status = 'Lunas' AND strftime('%Y-%m', due_date) = '$current_month_str'")->fetchColumn();
+$my_net_profit = $total_paid_val - $my_bills_to_isp_paid;
+$total_potential = $total_unpaid_val + $total_paid_val;
+// --- END LOGIC ---
 
 // Global Settings
 $settings = $db->query("SELECT * FROM settings WHERE id = 1")->fetch();
@@ -152,6 +166,65 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
 }
 ?>
 
+<style>
+/* Flexbox Layout for Partner Command Center */
+.tab-flex-container {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 120px);
+    overflow: hidden;
+}
+@media (max-width: 768px) {
+    .tab-flex-container {
+        height: calc(100vh - 160px); /* Adjust for mobile bottom nav */
+    }
+}
+
+.scroll-container {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+/* Custom Scrollbar */
+.scroll-container::-webkit-scrollbar { width: 5px; }
+.scroll-container::-webkit-scrollbar-track { background: transparent; }
+.scroll-container::-webkit-scrollbar-thumb { background: rgba(var(--primary-rgb), 0.2); border-radius: 10px; }
+.scroll-container { scrollbar-width: thin; scrollbar-color: rgba(var(--primary-rgb), 0.2) transparent; }
+
+/* Persistent Summary Bar */
+.static-summary-bar {
+    margin-top: 15px;
+    flex-shrink: 0;
+    width: 100%;
+    animation: fadeInStatic 0.5s ease-out;
+}
+@keyframes fadeInStatic {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Stat Card Hover Fix */
+.stat-card-interactive {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.stat-card-interactive:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+}
+</style>
+
+<div class="tab-flex-container">
+    <!-- STATIC HEADER: Title & Banners -->
+    <div style="flex-shrink:0; margin-bottom:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding:0 5px;">
+            <div>
+                <h2 style="margin:0; font-size:20px; font-weight:800; color:var(--text-primary);">Dashboard Mitra Reseller</h2>
+                <p style="margin:0; font-size:12px; color:var(--text-secondary);"><?= $_SESSION['user_name'] ?> | ID: <?= $partner_cid ?: 'N/A' ?></p>
+            </div>
+            <a href="index.php?page=admin_customers&action=create" class="btn btn-sm btn-primary" style="height:38px; border-radius:10px; font-weight:700;"><i class="fas fa-user-plus"></i> <span class="hide-mobile">Add Cust</span></a>
+        </div>
+    </div>
+
 <?php if($success_data): ?>
 <div class="glass-panel" style="margin-bottom:20px; border-left:4px solid var(--success); padding:20px; animation: slideDown 0.4s ease-out; background:rgba(16,185,129,0.1);">
     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
@@ -172,346 +245,83 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
 </div>
 <?php endif; ?>
 
-<?php if(count($active_banners) > 0): ?>
-<div class="banner-container" style="margin-bottom:20px;">
-    <?php foreach($active_banners as $banner): ?>
-        <div class="glass-panel banner-item" style="padding:20px; border-radius:16px; border-left:4px solid var(--primary); display:flex; gap:20px; align-items:center; margin-bottom:12px; position:relative; overflow:hidden;">
-            <?php if($banner['image_path']): ?>
-                <div class="banner-img" style="flex-shrink:0;">
-                    <img src="<?= $banner['image_path'] ?>" style="width:120px; height:80px; object-fit:cover; border-radius:12px; cursor:zoom-in;" onclick="openImagePreview(this.src)" title="Klik untuk perbesar">
-                </div>
-            <?php endif; ?>
-            <div class="banner-text">
-                <h4 style="margin:0 0 5px 0; color:var(--text-primary); font-size:16px; display:flex; align-items:center; gap:8px;">
-                    <i class="fas fa-bullhorn" style="color:var(--primary); font-size:14px;"></i> <?= htmlspecialchars($banner['title']) ?>
-                </h4>
-                <p style="margin:0; font-size:13px; color:var(--text-secondary); line-height:1.5;"><?= nl2br(htmlspecialchars($banner['content'])) ?></p>
-                <div style="font-size:10px; color:var(--text-secondary); opacity:0.5; margin-top:8px;">
-                    <i class="far fa-clock"></i> Diposting pada <?= date('d M Y', strtotime($banner['created_at'])) ?>
-                </div>
-            </div>
-        </div>
-    <?php endforeach; ?>
-</div>
-<?php endif; ?>
-
-<div class="glass-panel" style="padding: 24px; margin-bottom:20px; border-left:4px solid var(--primary);">
-    <div class="grid-header" style="margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
-        <h3 style="font-size:20px; margin:0;"><i class="fas fa-handshake text-primary"></i> Area Mitra Reseller</h3>
-        <span class="badge badge-success" style="padding:6px 12px; font-weight:700;"><i class="fas fa-check-circle"></i> LAYANAN AKTIF</span>
-    </div>
-    <p style="color:var(--text-secondary); margin-bottom:25px; font-size:14px; opacity:0.8;">Selamat datang di portal kemitraan. Pantau billing dan kelola penagihan pelanggan Anda secara realtime.</p>
-    
-    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:15px;">
-        <?php if($partner_stats): ?>
-        <!-- Terbayar Ke ISP -->
-        <div class="glass-panel" style="padding:20px; text-align:center; border-top:4px solid var(--success); background:linear-gradient(135deg, rgba(16, 185, 129, 0.1), transparent); cursor:pointer;" onclick="location.href='index.php?page=partner&filter_status=lunas'">
-            <i class="fas fa-file-invoice-dollar" style="font-size:24px; color:var(--success); margin-bottom:12px;"></i>
-            <div style="font-size:26px; font-weight:800; color:var(--text-primary);"><?= $partner_stats['lunas'] ?></div>
-            <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; font-weight:700; margin-bottom:8px;">Terbayar Ke ISP</div>
-            <div style="font-size:14px; font-weight:900; color:var(--success);">Rp <?= number_format($partner_stats['total_lunas'], 0, ',', '.') ?></div>
-        </div>
-
-        <!-- Tagihan Menunggu -->
-        <div class="glass-panel" style="padding:20px; text-align:center; border-top:4px solid var(--danger); background:linear-gradient(135deg, rgba(239, 68, 68, 0.1), transparent); cursor:pointer;" onclick="location.href='index.php?page=partner&filter_status=belum'">
-            <i class="fas fa-clock" style="font-size:24px; color:var(--danger); margin-bottom:12px;"></i>
-            <div style="font-size:26px; font-weight:800; color:var(--text-primary);"><?= $partner_stats['belum'] ?></div>
-            <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; font-weight:700; margin-bottom:8px;">Tagihan Menunggu</div>
-            <div style="font-size:14px; font-weight:900; color:var(--danger);">Rp <?= number_format($partner_stats['total_belum'], 0, ',', '.') ?></div>
-        </div>
-        <?php endif; ?>
-
-        <!-- Support Billing & Teknis -->
-        <div class="glass-panel" style="padding:20px; text-align:center; border-top:4px solid var(--warning); background:linear-gradient(135deg, rgba(245, 158, 11, 0.1), transparent); cursor:pointer;" onclick="window.open('https://wa.me/<?= preg_replace('/[^0-9]/', '', $company_wa) ?>', '_blank')">
-            <i class="fab fa-whatsapp" style="font-size:28px; color:#25D366; margin-bottom:12px;"></i>
-            <div style="font-size:18px; font-weight:800; color:var(--text-primary); margin:5px 0;"><?= htmlspecialchars($company_wa ?: 'HUBUNGI ISP') ?></div>
-            <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; font-weight:700; margin-bottom:8px;">Support & Billing</div>
-            <div style="font-size:10px; color:var(--warning); font-weight:700; opacity:0.8;">Bantuan Teknis Realtime</div>
-        </div>
-    </div>
-</div>
-
-<<!-- NEW: My Business Summary (Kang Tagih Style) -->
-<div class="glass-panel" style="padding: 24px; margin-bottom:20px; border-left:4px solid var(--success);">
-    <?php
-    $current_month_str = date('Y-m');
-    $total_unpaid_val = $db->query("SELECT COALESCE(SUM(amount - discount), 0) FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE c.created_by = $user_id AND i.status = 'Belum Lunas'")->fetchColumn();
-    $total_paid_val = $db->query("SELECT COALESCE(SUM(p.amount), 0) FROM payments p JOIN invoices i ON p.invoice_id = i.id JOIN customers c ON i.customer_id = c.id WHERE c.created_by = $user_id AND p.payment_date LIKE '$current_month_str%'")->fetchColumn();
-    
-    // Calculate Net Profit (Collection - Bills to ISP)
-    $my_bills_to_isp_paid = $db->query("SELECT COALESCE(SUM(amount - discount), 0) FROM invoices WHERE customer_id = $partner_cid AND status = 'Lunas' AND strftime('%Y-%m', due_date) = '$current_month_str'")->fetchColumn();
-    $my_net_profit = $total_paid_val - $my_bills_to_isp_paid;
-    
-    $total_potential = $total_unpaid_val + $total_paid_val;
-    $percent_paid = $total_potential > 0 ? round(($total_paid_val / $total_potential) * 100) : 0;
-    ?>
-
-    <!-- Progress Bar (Collector Style) -->
-    <div style="margin-bottom:24px; padding:20px; background:rgba(255,255,255,0.02); border-radius:16px; border:1px solid var(--glass-border);">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <span style="font-size:13px; font-weight:700; color:var(--text-secondary);"><i class="fas fa-chart-line text-success"></i> Progres Penagihan Bulan Ini</span>
-            <span style="font-size:16px; font-weight:900; color:<?= $percent_paid >= 80 ? 'var(--success)' : ($percent_paid >= 50 ? 'var(--warning)' : 'var(--danger)') ?>;"><?= $percent_paid ?>%</span>
-        </div>
-        <div style="background:var(--progress-bg); border-radius:12px; height:10px; overflow:hidden;">
-            <div style="width:<?= $percent_paid ?>%; height:100%; background:linear-gradient(to right, <?= $percent_paid >= 80 ? 'var(--success), #34d399' : ($percent_paid >= 50 ? 'var(--warning), #fbbf24' : 'var(--danger), #f87171') ?>); border-radius:12px; transition:width 1s ease;"></div>
-        </div>
-        <div style="display:flex; justify-content:space-between; margin-top:8px; font-size:11px; color:var(--text-secondary); opacity:0.7;">
-            <span>Terkumpul: Rp <?= number_format($total_paid_val, 0, ',', '.') ?></span>
-            <span>Target: Rp <?= number_format($total_potential, 0, ',', '.') ?></span>
-        </div>
-    </div>
-
-    <div class="grid-header" style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
-        <h3 style="font-size:18px; margin:0;"><i class="fas fa-briefcase text-success"></i> Performa Bisnis Saya</h3>
-        <a href="index.php?page=admin_customers&action=create" class="btn btn-sm btn-primary" style="height:35px; padding:0 15px; font-size:12px;"><i class="fas fa-plus"></i> Pelanggan Baru</a>
-    </div>
-
-    <!-- Stat Cards Grid (Kang Tagih Style) -->
-    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap:12px; margin-bottom:16px;">
-        
-        <!-- Total Pelanggan -->
-        <div class="glass-panel" style="padding:15px; text-align:center; border-top:4px solid var(--primary); background:linear-gradient(135deg, rgba(37, 99, 235, 0.1), transparent); cursor:pointer;" onclick="location.href='index.php?page=partner_collection&tab=pelanggan'">
-            <i class="fas fa-users" style="font-size:20px; color:var(--primary); margin-bottom:8px;"></i>
-            <div style="font-size:22px; font-weight:800; color:var(--text-primary);"><?= $my_cust_count ?></div>
-            <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; font-weight:700;">Pelanggan</div>
-        </div>
-
-        <!-- Belum Lunas -->
-        <div class="glass-panel" style="padding:15px; text-align:center; border-top:4px solid var(--danger); background:linear-gradient(135deg, rgba(239, 68, 68, 0.1), transparent); cursor:pointer;" onclick="location.href='index.php?page=partner_collection&tab=tugas'">
-            <i class="fas fa-exclamation-circle" style="font-size:20px; color:var(--danger); margin-bottom:8px;"></i>
-            <div style="font-size:22px; font-weight:800; color:var(--text-primary);"><?= $count_unpaid ?></div>
-            <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; font-weight:700;">Menunggak</div>
-            <div style="font-size:12px; font-weight:800; color:var(--danger); margin-top:5px;">Rp<?= number_format($total_unpaid_val, 0, ',', '.') ?></div>
-        </div>
-
-        <!-- Penerimaan (Cash) -->
-        <div class="glass-panel" style="padding:15px; text-align:center; border-top:4px solid var(--success); background:linear-gradient(135deg, rgba(16, 185, 129, 0.1), transparent); cursor:pointer;" onclick="location.href='index.php?page=partner_collection&tab=lunas'">
-            <i class="fas fa-hand-holding-usd" style="font-size:20px; color:var(--success); margin-bottom:8px;"></i>
-            <div style="font-size:18px; font-weight:800; color:var(--text-primary);">Rp<?= number_format($total_paid_val / 1000, 0, ',', '.') ?>K</div>
-            <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; font-weight:700;">Penerimaan</div>
-            <div style="font-size:11px; color:var(--success); margin-top:5px; font-weight:700;"><?= date('F') ?></div>
-        </div>
-
-        <!-- Net Revenue (Profit Estimate) -->
-        <div class="glass-panel" style="padding:15px; text-align:center; border-top:4px solid var(--warning); background:linear-gradient(135deg, rgba(245, 158, 11, 0.1), transparent); cursor:pointer;" onclick="location.href='index.php?page=partner_collection&tab=lunas'">
-            <i class="fas fa-coins" style="font-size:20px; color:var(--warning); margin-bottom:8px;"></i>
-            <div style="font-size:18px; font-weight:800; color:var(--text-primary);">Rp<?= number_format($my_net_profit / 1000, 0, ',', '.') ?>K</div>
-            <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; font-weight:700;">Revenue <span style="font-size:8px; color:var(--warning);">(Net)</span></div>
-            <div style="font-size:10px; color:var(--text-secondary); margin-top:5px; font-weight:700; opacity:0.8;">Estimasi Laba</div>
-        </div>
-
-        <!-- Growth (New Registered) -->
-        <div class="glass-panel" style="padding:15px; text-align:center; border-top:4px solid #06b6d4; background:linear-gradient(135deg, rgba(6, 182, 212, 0.1), transparent); cursor:pointer;" onclick="location.href='index.php?page=partner_collection&tab=pelanggan'">
-            <i class="fas fa-user-plus" style="font-size:20px; color:#06b6d4; margin-bottom:8px;"></i>
-            <div style="font-size:22px; font-weight:800; color:var(--text-primary);"><?= $new_this_month ?></div>
-            <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; font-weight:700;">Pertumbuhan</div>
-            <div style="font-size:10px; color:#06b6d4; margin-top:5px; font-weight:700;">Baru Bulan Ini</div>
-        </div>
-
-        <!-- Jatuh Tempo Hari Ini -->
-        <div class="glass-panel" style="padding:15px; text-align:center; border-top:4px solid #f97316; background:linear-gradient(135deg, rgba(249, 115, 22, 0.1), transparent); cursor:pointer;" onclick="location.href='index.php?page=partner_collection&tab=tugas'">
-            <i class="fas fa-calendar-day" style="font-size:20px; color:#f97316; margin-bottom:8px;"></i>
-            <div style="font-size:22px; font-weight:800; color:var(--text-primary);"><?= $due_today ?></div>
-            <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; font-weight:700;">Tagihan Hari Ini</div>
-        </div>
-    </div>
-</div>
-
-<!-- Dashboard Summary: Recent Revenue -->
-<div class="glass-panel" style="padding: 24px; margin-bottom:20px; border-left:4px solid var(--success);">
-    <div class="grid-header" style="margin-bottom:15px;">
-        <h3 style="font-size:18px; margin:0;"><i class="fas fa-history text-success"></i> Pendapatan Terbaru Saya</h3>
-        <a href="index.php?page=partner_collection" class="btn btn-primary btn-sm"><i class="fas fa-motorcycle"></i> Mulai Penagihan</a>
-    </div>
-
-    <div class="table-container" style="max-height:300px; overflow-y:auto; border:1px solid var(--glass-border); border-radius:12px;">
-        <table style="width:100%; font-size:13px;">
-            <thead>
-                <tr style="border-bottom:1px solid var(--glass-border); text-align:left;">
-                    <th style="padding:12px 0;">Pelanggan</th>
-                    <th style="padding:12px 0;">Nominal</th>
-                    <th style="padding:12px 0; text-align:right;">Waktu Bayar</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if(empty($recent_revenue)): ?>
-                    <tr><td colspan="3" style="padding:30px; text-align:center; color:var(--text-secondary);">Belum ada riwayat pembayaran bulan ini.</td></tr>
-                <?php else: ?>
-                    <?php foreach($recent_revenue as $rev): ?>
-                    <tr style="border-bottom:1px solid var(--glass-border);">
-                        <td style="padding:15px 0;">
-                            <div style="font-weight:700; color:var(--text-primary);"><?= htmlspecialchars($rev['customer_name']) ?></div>
-                        </td>
-                        <td style="padding:15px 0; font-weight:800; color:var(--success);">+ Rp <?= number_format($rev['paid_amount'], 0, ',', '.') ?></td>
-                        <td style="text-align:right; color:var(--text-secondary); font-size:12px;">
-                            <i class="fas fa-check-circle text-success"></i> <?= date('d/m H:i', strtotime($rev['payment_date'])) ?>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Filter Rentang Tanggal -->
-<div class="glass-panel" style="padding:24px; margin-bottom:20px;">
-    <h4 style="margin-bottom:15px; font-size:16px; font-weight:800;"><i class="fas fa-search text-primary"></i> Filter Riwayat Tagihan Utama</h4>
-    <form method="GET" class="grid-filters">
-        <input type="hidden" name="page" value="partner">
-        <div class="filter-group">
-            <label>Jatuh Tempo</label>
-            <div class="filter-date-range">
-                <input type="date" name="date_from" class="form-control" value="<?= htmlspecialchars($date_from) ?>" style="font-size:12px; flex:1; min-width:0;">
-                <span style="opacity:0.3;">s/d</span>
-                <input type="date" name="date_to" class="form-control" value="<?= htmlspecialchars($date_to) ?>" style="font-size:12px; flex:1; min-width:0;">
-            </div>
-        </div>
-        <div class="filter-group">
-            <label>Status</label>
-            <select name="filter_status" class="form-control" style="font-size:13px;">
-                <option value="">Semua Status</option>
-                <option value="lunas" <?= $filter_status === 'lunas' ? 'selected' : '' ?>>Lunas</option>
-                <option value="belum" <?= $filter_status === 'belum' ? 'selected' : '' ?>>Belum Lunas</option>
-            </select>
-        </div>
-        <div class="grid-actions">
-            <button type="submit" class="btn btn-primary" style="height:46px; font-weight:700; width:100%;"><i class="fas fa-filter"></i> Apply Filter</button>
-            <?php if($date_from || $date_to || (isset($_GET['filter_status']) && $_GET['filter_status'] !== 'belum')): ?>
-                <a href="index.php?page=partner&filter_status=belum" class="btn btn-ghost" style="height:46px; border:1px solid var(--glass-border); line-height:44px;"><i class="fas fa-undo"></i> Lihat Tunggakan</a>
-            <?php endif; ?>
-            <?php if($filter_status !== 'lunas'): ?>
-                <a href="index.php?page=partner&filter_status=lunas" class="btn btn-ghost" style="height:46px; border:1px solid var(--glass-border); line-height:44px;"><i class="fas fa-history"></i> Lihat Riwayat Lunas</a>
-            <?php endif; ?>
-        </div>
-    </form>
-    
-    <?php if($date_from || $date_to): ?>
-    <div style="display:flex; gap:20px; margin-top:12px; padding-top:12px; border-top:1px solid var(--glass-border); flex-wrap:wrap;">
-        <div style="font-size:13px;">📊 Ditemukan: <strong><?= count($partner_invoices) ?></strong> tagihan</div>
-        <?php if($partner_stats): ?>
-        <div style="font-size:13px; color:var(--success);">✅ Lunas: <strong><?= $partner_stats['lunas'] ?></strong> (Rp <?= number_format($partner_stats['total_lunas'], 0, ',', '.') ?>)</div>
-        <div style="font-size:13px; color:var(--danger);">🔴 Belum: <strong><?= $partner_stats['belum'] ?></strong> (Rp <?= number_format($partner_stats['total_belum'], 0, ',', '.') ?>)</div>
-        <?php endif; ?>
-    </div>
-    <?php endif; ?>
-</div>
-
-<div class="glass-panel" style="padding: 24px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-        <h4 style="margin:0;"><i class="fas fa-file-invoice-dollar text-primary"></i> Kewajiban Pembayaran Saya Ke ISP Induk</h4>
-        <?php if($partner_stats && $partner_stats['belum'] > 0): ?>
-            <span class="badge badge-danger" style="padding:8px 15px; font-weight:800; animation: pulse 2s infinite;">
-                <i class="fas fa-exclamation-triangle"></i> TOTAL TUNGGAKAN: Rp <?= number_format($partner_stats['total_belum'], 0, ',', '.') ?> (<?= $partner_stats['belum'] ?> BULAN)
-            </span>
-        <?php endif; ?>
-    </div>
-
-    <?php if($filter_status === 'belum' && $partner_stats && $partner_stats['belum'] > 1): ?>
-        <div class="glass-panel" style="margin-bottom:15px; border-left:4px solid var(--danger); background:rgba(239, 68, 68, 0.05); padding:15px;">
-            <div style="display:flex; align-items:center; gap:12px;">
-                <i class="fas fa-info-circle text-danger" style="font-size:20px;"></i>
-                <div style="font-size:13px; color:var(--text-primary);">
-                    Anda memiliki <strong><?= $partner_stats['belum'] ?> periode</strong> tagihan yang belum dilunasi. Mohon segera lakukan koordinasi pembayaran ke ISP Induk.
-                </div>
-            </div>
-        </div>
-    <?php endif; ?>
-
-    <div class="table-container desktop-only" style="max-height:400px; overflow-y:auto; border:1px solid var(--glass-border); border-radius:12px;">
-        <table>
-            <thead>
-                <tr>
-                    <th>Invoice</th>
-                    <th>Jatuh Tempo</th>
-                    <th>Nominal</th>
-                    <th>Status</th>
-                    <th>Aksi</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if(!$partner_cid): ?>
-                    <tr><td colspan='5' style='text-align:center; color:var(--danger);'>Akun Anda belum dipasangkan dengan data Mitra manapun oleh Admin.</td></tr>
-                <?php endif; ?>
-                
-                <?php foreach($partner_invoices as $p_inv): ?>
-                <tr style="border-bottom:1px solid var(--glass-border);">
-                    <td style="padding:15px 12px; vertical-align:top;">
-                        <div style="font-family:monospace; color:var(--text-secondary); font-size:12px;">INV-<?= str_pad($p_inv['id'], 5, "0", STR_PAD_LEFT) ?></div>
-                        <div style="font-size:11px; color:var(--primary); margin-top:4px;"><i class="fas fa-user-shield"></i> Oleh: Admin Utama</div>
-                    </td>
-                    <td style="padding:15px 12px; vertical-align:top;">
-                        <div style="font-size:13px; font-weight:600;"><?= date('d M Y', strtotime($p_inv['due_date'])) ?></div>
-                        <div style="font-size:11px; color:var(--text-secondary);"><?= date('H:i', strtotime($p_inv['created_at'])) ?> WIB</div>
-                    </td>
-                    <td style="padding:15px 12px; vertical-align:top;">
-                        <div style="font-weight:bold; color:var(--text-primary); font-size:14px;">Rp <?= number_format($p_inv['amount'], 0, ',', '.') ?></div>
-                        <?php if($p_inv['discount'] > 0): ?>
-                            <div style="font-size:11px; color:var(--danger);">- Rp <?= number_format($p_inv['discount'], 0, ',', '.') ?> (Potongan)</div>
-                        <?php endif; ?>
-                    </td>
-                    <td style="padding:15px 12px; vertical-align:top;">
-                        <?php if($p_inv['status'] == 'Lunas'): ?>
-                            <span class="badge badge-success" style="font-size:10px;"><i class="fas fa-check"></i> Lunas</span>
-                        <?php else: ?>
-                            <span class="badge" style="background:rgba(239,68,68,0.15); color:var(--danger); border:1px solid rgba(239,68,68,0.3); font-size:10px;"><i class="fas fa-clock"></i> Menunggu Bayar</span>
-                        <?php endif; ?>
-                    </td>
-                    <td style="padding:15px 12px; vertical-align:top; text-align:right;">
-                        <a href="index.php?page=admin_invoices&action=print&id=<?= $p_inv['id'] ?>" target="_blank" class="btn btn-sm btn-ghost" style="padding:6px 12px; font-size:11px;"><i class="fas fa-print"></i> Cetak</a>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Mobile View: Card-based list to prevent overflow -->
-    <div class="mobile-invoice-card-container mobile-invoice-card" style="display:none; max-height:500px; overflow-y:auto; padding:5px; border-radius:12px; border:1px solid var(--glass-border);">
-        <?php foreach($partner_invoices as $p_inv): ?>
-            <div class="mobile-invoice-card" style="display:block; padding:18px; margin-bottom:15px;">
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
-                    <div>
-                        <div style="font-family:monospace; color:var(--text-secondary); font-size:11px;">#INV-<?= str_pad($p_inv['id'], 5, "0", STR_PAD_LEFT) ?></div>
-                        <div style="font-weight:700; font-size:13px; margin-top:2px;">Kewajiban Ke ISP Induk</div>
+    <div class="scroll-container">
+        <!-- Banners Section -->
+        <?php if(count($active_banners) > 0): ?>
+        <div class="banner-container" style="margin-bottom:20px;">
+            <?php foreach($active_banners as $banner): ?>
+                <div class="glass-panel banner-item" style="padding:15px; border-radius:16px; border-left:4px solid var(--primary); display:flex; gap:15px; align-items:center; margin-bottom:12px; position:relative; overflow:hidden;">
+                    <?php if($banner['image_path']): ?>
+                        <img src="<?= $banner['image_path'] ?>" style="width:80px; height:60px; object-fit:cover; border-radius:10px; cursor:zoom-in;" onclick="openImagePreview(this.src)">
+                    <?php endif; ?>
+                    <div class="banner-text">
+                        <div style="font-weight:700; color:var(--text-primary); font-size:14px;"><?= htmlspecialchars($banner['title']) ?></div>
+                        <div style="font-size:12px; color:var(--text-secondary); line-height:1.4;"><?= nl2br(htmlspecialchars($banner['content'])) ?></div>
                     </div>
-                    <?php if($p_inv['status'] == 'Lunas'): ?>
-                        <span class="badge badge-success" style="font-size:10px; padding:3px 10px;"><i class="fas fa-check-circle"></i> LUNAS</span>
+                </div>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+
+        <!-- Support Area -->
+        <div class="glass-panel" style="padding: 20px; margin-bottom:20px; border-left:4px solid var(--primary); background:linear-gradient(135deg, rgba(var(--primary-rgb), 0.05), transparent);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h3 style="font-size:16px; margin:0;"><i class="fas fa-headset text-primary"></i> Support ISP Induk</h3>
+                <span class="badge badge-success" style="font-size:10px;">AKTIF</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="font-size:13px; color:var(--text-secondary);">Konsultasi Billing & Teknis:</div>
+                <a href="https://wa.me/<?= preg_replace('/[^0-9]/', '', $company_wa) ?>" target="_blank" style="text-decoration:none; color:#25D366; font-weight:800; font-size:15px;">
+                    <i class="fab fa-whatsapp"></i> <?= htmlspecialchars($company_wa ?: 'HUBUNGI ISP') ?>
+                </a>
+            </div>
+        </div>
+
+        <!-- MINIMALIST SECTION: Bills to ISP Summary -->
+        <div class="glass-panel" style="padding: 24px; margin-bottom:20px; border-left:5px solid var(--danger); background:linear-gradient(to right, rgba(239, 68, 68, 0.05), transparent); cursor:pointer;" onclick="location.href='index.php?page=partner_isp_invoices'">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                <div style="display:flex; gap:15px; align-items:center;">
+                    <div style="width:50px; height:50px; border-radius:15px; background:rgba(239, 68, 68, 0.1); color:var(--danger); display:flex; align-items:center; justify-content:center; font-size:24px;">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                    </div>
+                    <div>
+                        <h3 style="margin:0; font-size:18px; color:var(--text-primary);">Tagihan Kemitraan Saya</h3>
+                        <p style="margin:2px 0 0; font-size:12px; color:var(--text-secondary);">Klik untuk lihat riwayat lengkap tagihan ke pusat.</p>
+                    </div>
+                </div>
+                <div style="text-align:right;">
+                    <?php if($partner_stats && $partner_stats['belum'] > 0): ?>
+                        <div style="font-size:10px; font-weight:800; color:var(--danger); text-transform:uppercase; letter-spacing:1px;">SISA TUNGGAKAN</div>
+                        <div style="font-size:22px; font-weight:900; color:var(--danger);">Rp <?= number_format($partner_stats['total_belum'], 0, ',', '.') ?></div>
                     <?php else: ?>
-                        <span class="badge badge-danger" style="font-size:10px; padding:3px 10px;"><i class="fas fa-clock"></i> BELUM BAYAR</span>
+                        <div style="font-size:10px; font-weight:800; color:var(--success); text-transform:uppercase; letter-spacing:1px;">STATUS</div>
+                        <div style="font-size:16px; font-weight:800; color:var(--success);"><i class="fas fa-check-circle"></i> LUNAS TERBAYAR</div>
                     <?php endif; ?>
                 </div>
+            </div>
+        </div>
 
-                <div style="background:rgba(255,255,255,0.03); border-radius:12px; padding:12px; margin-bottom:15px; display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                    <div>
-                        <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:700;">Jatuh Tempo</div>
-                        <div style="font-size:13px; font-weight:600;"><?= date('d M Y', strtotime($p_inv['due_date'])) ?></div>
-                    </div>
-                    <div style="text-align:right;">
-                        <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:700;">Total Tagihan</div>
-                        <div style="font-size:14px; font-weight:800; color:var(--primary);">Rp <?= number_format($p_inv['amount'], 0, ',', '.') ?></div>
-                    </div>
+    </div> <!-- end .scroll-container -->
+
+    <!-- PERSISTENT BOTTOM SUMMARY BAR (Quick Check) -->
+    <div class="static-summary-bar">
+        <div class="glass-panel" style="padding:15px 20px; border-left:4px solid var(--success); background:linear-gradient(to right, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05)); backdrop-filter:blur(15px); display:flex; justify-content:space-between; align-items:center; border-radius:18px; box-shadow:0 -10px 25px rgba(0,0,0,0.1);">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:42px; height:42px; border-radius:12px; background:var(--success); color:white; display:flex; align-items:center; justify-content:center; font-size:20px; box-shadow:0 4px 10px rgba(16, 185, 129, 0.3); flex-shrink:0;">
+                    <i class="fas fa-coins"></i>
                 </div>
-
-                <div style="display:flex; gap:10px;">
-                    <a href="index.php?page=admin_invoices&action=print&id=<?= $p_inv['id'] ?>" target="_blank" class="btn btn-ghost" style="flex:1; border-radius:10px; font-size:12px;">
-                        <i class="fas fa-print"></i> Cetak Nota
-                    </a>
-                    <div style="flex:1; background:rgba(var(--primary-rgb), 0.1); color:var(--primary); font-size:10px; font-weight:700; border-radius:10px; display:flex; align-items:center; justify-content:center; border:1px solid var(--glass-border); padding:5px; text-align:center;">
-                         Konfirmasi Admin Utama
-                    </div>
+                <div>
+                    <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:800;">Laba Bersih Saya (Est)</div>
+                    <div style="font-size:18px; font-weight:900; color:var(--text-primary); line-height:1.2;">Rp<?= number_format($my_net_profit, 0, ',', '.') ?></div>
                 </div>
             </div>
-        <?php endforeach; ?>
-        
-        <?php if(count($partner_invoices) == 0 && $partner_cid): ?>
-            <div style="text-align:center; color:var(--text-secondary); padding:40px;">
-                <i class="fas fa-inbox" style="font-size:32px; opacity:0.2; display:block; margin-bottom:15px;"></i>
-                Belum ada data tagihan.
+            <div style="text-align:right;">
+                <div style="font-size:10px; color:var(--text-secondary); font-weight:800; text-transform:uppercase;">Target Penagihan</div>
+                <div style="font-size:18px; font-weight:900; color:var(--primary); line-height:1.2;">Rp<?= number_format($total_potential, 0, ',', '.') ?></div>
             </div>
-        <?php endif; ?>
+        </div>
     </div>
-</div>
+</div> <!-- end .tab-flex-container -->
 
 <!-- Hidden Form for Quick Pay -->
 <form id="quickPayForm" action="index.php?page=admin_invoices&action=mark_paid_bulk" method="POST" style="display:none;">

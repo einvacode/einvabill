@@ -71,7 +71,7 @@ if ($page === 'home') {
 $permissions = [
     'admin' => '*', // Full access
     'collector' => ['collector', 'admin_customers', 'admin_invoices', 'router_data', 'admin_areas', 'admin_map'],
-    'partner' => ['partner', 'partner_collection', 'admin_invoices', 'admin_customers', 'admin_packages', 'admin_reports', 'admin_expenses', 'admin_map', 'admin_router', 'partner_settings'] // Added 'admin_router' for sync, 'partner_settings' for branding
+    'partner' => ['partner', 'partner_collection', 'admin_invoices', 'admin_customers', 'admin_packages', 'admin_reports', 'admin_expenses', 'admin_map', 'admin_router', 'partner_settings', 'partner_isp_invoices'] // Added 'admin_router' for sync, 'partner_settings' for branding, 'partner_isp_invoices' for billing
 ];
 
 $user_role = $_SESSION['user_role'] ?? 'guest';
@@ -185,6 +185,9 @@ switch ($page) {
         break;
     case 'partner_collection':
         require __DIR__ . '/views/partner/collection.php';
+        break;
+    case 'partner_isp_invoices':
+        require __DIR__ . '/views/partner/isp_invoices.php';
         break;
     default:
         if ($page !== 'login') {
