@@ -17,9 +17,7 @@ function get_app_url($custom = null) {
 }
 
 // Auto-clean site_url in database to force http:// and prevent browser redirects
-try {
-    $db->exec("UPDATE settings SET site_url = 'http://' || REPLACE(REPLACE(site_url, 'https://', ''), 'http://', '') WHERE id = 1 AND site_url LIKE 'https://%'");
-} catch(Exception $e) {}
+// (Moved below database initialization)
 
 $db_file = __DIR__ . '/../database.sqlite';
 
@@ -42,6 +40,11 @@ if (!file_exists($db_file)) {
 $db = new PDO('sqlite:' . $db_file);
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+
+// Auto-clean site_url in database to force http:// and prevent browser redirects
+try {
+    $db->exec("UPDATE settings SET site_url = 'http://' || REPLACE(REPLACE(site_url, 'https://', ''), 'http://', '') WHERE id = 1 AND site_url LIKE 'https://%'");
+} catch(Exception $e) {}
 
 // Enable WAL Mode for better concurrency and stability on Linux (Proxmox/LXC)
 $db->exec("PRAGMA journal_mode=WAL;");
