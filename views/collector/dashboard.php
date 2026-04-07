@@ -581,9 +581,10 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                             $package_display = $ac['package_name'] ?: '-';
                             $nominal_display = 'Rp ' . number_format($ac['monthly_fee'], 0, ',', '.');
 
+                            $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . $cust_id_display;
                             $reminder_msg_desk = str_replace(
-                                ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{tunggakan}', '{total_harus}'], 
-                                [$ac['name'], '*' . $cust_id_display . '*', $package_display, $inv_month, '*' . $nominal_display . '*', '-', '*' . trim($settings['bank_account']) . '*', '*Rp 0*', '*' . $nominal_display . '*'], 
+                                ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{tunggakan}', '{total_harus}', '{link_tagihan}'], 
+                                [$ac['name'], '*' . $cust_id_display . '*', $package_display, $inv_month, '*' . $nominal_display . '*', '-', '*' . trim($settings['bank_account']) . '*', '*Rp 0*', '*' . $nominal_display . '*', $portal_link], 
                                 $wa_tpl
                             );
                             $wa_text = urlencode($reminder_msg_desk);
@@ -738,9 +739,10 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
             $tunggakan_display = 'Rp ' . number_format($tunggakan_past, 0, ',', '.');
             $total_display = 'Rp ' . number_format($total_all, 0, ',', '.');
             
+            $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . $cust_id_display;
             $msg = str_replace(
-                ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{tunggakan}', '{total_harus}'], 
-                [$inv['name'], '*' . $cust_id_display . '*', $inv['package_name'] ?: '-', $inv_month, '*' . $tagihan_display . '*', '*' . $oldest_due . '*', '*' . trim($settings['bank_account']) . '*', '*' . $tunggakan_display . '*', '*' . $total_display . '*'], 
+                ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{tunggakan}', '{total_harus}', '{link_tagihan}'], 
+                [$inv['name'], '*' . $cust_id_display . '*', $inv['package_name'] ?: '-', $inv_month, '*' . $tagihan_display . '*', '*' . $oldest_due . '*', '*' . trim($settings['bank_account']) . '*', '*' . $tunggakan_display . '*', '*' . $total_display . '*', $portal_link], 
                 $wa_tpl
             );
 
@@ -854,8 +856,9 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                         $mon_name = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
                         $bulan_rp = $mon_name[intval(date('m', strtotime($rp['due_date']))) - 1] . ' ' . date('Y', strtotime($rp['due_date']));
                         
+                        $portal_link_rp = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . ($rp['customer_code'] ?: $rp['customer_id']);
                         $parsed_msg_rp = str_replace(
-                            ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{perusahaan}', '{tunggakan}', '{waktu_bayar}', '{admin}'],
+                            ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{perusahaan}', '{tunggakan}', '{waktu_bayar}', '{admin}', '{link_tagihan}'],
                             [
                                 $rp['name'], 
                                 '*' . ($rp['customer_code'] ?: $rp['customer_id']) . '*', 
@@ -865,7 +868,8 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                                 $settings['company_name'],
                                 '*Rp ' . number_format($rp['total_tunggakan'] ?? 0, 0, ',', '.') . '*',
                                 '*' . date('d/m/Y H:i', strtotime($rp['payment_date'])) . '*',
-                                '*' . ($rp['admin_name'] ?: 'System') . '*'
+                                '*' . ($rp['admin_name'] ?: 'System') . '*',
+                                $portal_link_rp
                             ],
                             $wa_tpl_paid
                             );

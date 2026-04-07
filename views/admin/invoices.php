@@ -703,9 +703,10 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                     }
                     $t_remain_display = $tunggakan_remain > 0 ? 'Rp ' . number_format($tunggakan_remain, 0, ',', '.') : 'LUNAS SELURUHNYA';
 
+                    $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . $cust_id_display;
                     $msg = str_replace(
-                        ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{tunggakan}', '{admin}'], 
-                        [$inv['customer_name'], '*' . $cust_id_display . '*', $package_display, $inv_month, '*' . $nominal_display . '*', '*' . $t_remain_display . '*', '*' . $admin_bayar . '*'], 
+                        ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{tunggakan}', '{admin}', '{link_tagihan}'], 
+                        [$inv['customer_name'], '*' . $cust_id_display . '*', $package_display, $inv_month, '*' . $nominal_display . '*', '*' . $t_remain_display . '*', '*' . $admin_bayar . '*', $portal_link], 
                         $wa_tpl_paid
                     );
                     
@@ -733,9 +734,10 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                     $total_harus = $inv['amount'] + $tunggakan_prev;
                     $total_harus_display = 'Rp ' . number_format($total_harus, 0, ',', '.');
 
+                    $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . $cust_id_display;
                     $msg = str_replace(
-                        ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{tunggakan}', '{total_harus}'], 
-                        [$inv['customer_name'], '*' . $cust_id_display . '*', $package_display, $inv_month, '*' . $nominal_display . '*', '*' . date('d/m/Y', strtotime($inv['due_date'])) . '*', '*' . trim($settings['bank_account']) . '*', '*' . $t_prev_display . '*', '*' . $total_harus_display . '*'], 
+                        ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{tunggakan}', '{total_harus}', '{link_tagihan}'], 
+                        [$inv['customer_name'], '*' . $cust_id_display . '*', $package_display, $inv_month, '*' . $nominal_display . '*', '*' . date('d/m/Y', strtotime($inv['due_date'])) . '*', '*' . trim($settings['bank_account']) . '*', '*' . $t_prev_display . '*', '*' . $total_harus_display . '*', $portal_link], 
                         $wa_tpl
                     );
 
