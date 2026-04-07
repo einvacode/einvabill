@@ -80,7 +80,6 @@ foreach($targets as $t) {
     $total_harus_display = 'Rp ' . number_format($total_debt, 0, ',', '.');
 
     $base_url = !empty($stg['site_url']) ? $stg['site_url'] : get_app_url();
-    $base_url = "http://" . preg_replace("~^https?://~i", "", $base_url);
     $portal_link = $base_url . "/index.php?page=customer_portal&code=" . $cust_id_display;
     $msg = str_replace(
         ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{tunggakan}', '{total_harus}', '{link_tagihan}'], 

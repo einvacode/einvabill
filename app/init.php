@@ -1,20 +1,14 @@
 <?php
 session_start();
-// Force HTTP Redirect (Prevents browser from auto-upgrading to HTTPS)
-if ((isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS'] === 'on' || $_SERVER['HTTPS'] === 1)) || 
-    (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')) {
-    header("Location: http://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
-    exit();
-}
 date_default_timezone_set('Asia/Jakarta');
 
 // Helper to get base URL dynamically
 function get_app_url($custom = null) {
     if (!empty($custom)) {
-        // Strip any protocol and force http://
-        return "http://" . preg_replace("~^https?://~i", "", rtrim($custom, '/'));
+        // Keep the custom URL as provided (http or https)
+        return rtrim($custom, '/');
     }
-    $protocol = 'http://';
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
     $host = $_SERVER['HTTP_HOST'] ?? 'fibernodeinternet.com';
     $script = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
     $dir = str_replace('\\', '/', dirname($script));
@@ -46,11 +40,6 @@ if (!file_exists($db_file)) {
 $db = new PDO('sqlite:' . $db_file);
 $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-
-// Auto-clean site_url in database to force http:// and prevent browser redirects
-try {
-    $db->exec("UPDATE settings SET site_url = 'http://' || REPLACE(REPLACE(site_url, 'https://', ''), 'http://', '') WHERE id = 1 AND site_url LIKE 'https://%'");
-} catch(Exception $e) {}
 
 // Enable WAL Mode for better concurrency and stability on Linux (Proxmox/LXC)
 $db->exec("PRAGMA journal_mode=WAL;");

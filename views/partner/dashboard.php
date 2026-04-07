@@ -99,7 +99,6 @@ $recent_revenue = $db->query("
 // Global Settings
 $settings = $db->query("SELECT * FROM settings WHERE id = 1")->fetch();
 $base_url = !empty($settings['site_url']) ? $settings['site_url'] : get_app_url();
-$base_url = "http://" . preg_replace("~^https?://~i", "", $base_url);
 
 // Partner Branding & Custom Templates
 $u_id = $_SESSION['user_id'];
