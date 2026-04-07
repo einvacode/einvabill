@@ -407,26 +407,36 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
     .show-mobile { display: inline !important; }
 }
 
-/* Premium Floating Action Bar */
-.floating-action-bar {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 9999;
-    width: 95%;
-    max-width: 550px;
-    pointer-events: none;
-    animation: slideUpFloating 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+/* Static Summary Bar - Flexbox approach */
+.static-summary-bar {
+    margin-top: 10px;
+    flex-shrink: 0;
+    width: 100%;
+    animation: fadeInStatic 0.4s ease-out;
 }
-.floating-action-bar > div {
-    pointer-events: auto;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1);
+.static-summary-bar > div {
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1), 0 0 0 1px rgba(255,255,255,0.05);
+}
+@keyframes fadeInStatic {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes slideUpFloating {
-    from { transform: translate(-50%, 100px); opacity: 0; }
-    to { transform: translate(-50%, 0); opacity: 1; }
+/* Flexbox Tab Container */
+.tab-flex-container {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 250px);
+    overflow: hidden;
+}
+@media (max-width: 768px) {
+    .tab-flex-container {
+        height: calc(100vh - 310px); /* Adjust for mobile bottom nav */
+    }
+}
+
+.list-container-responsive {
+    padding-bottom: 5px;
 }
 
 /* Stat Card Click Animation & Uniform Layout */
@@ -754,7 +764,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
 
     
     <!-- List Container with Scroll -->
-    <div class="scroll-container" style="height: calc(100vh - 380px); overflow-y: auto; padding-right: 5px; padding-bottom: 120px; margin-top: 10px;">
+    <div class="scroll-container list-container-responsive" style="height: calc(100vh - 460px); overflow-y: auto; padding-right: 5px; margin-top: 10px;">
         <!-- Mobile-friendly card list -->
         <div class="customer-list-mobile">
         <?php foreach($area_customers as $ac): 
@@ -859,32 +869,31 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                 <?php endforeach; ?>
             </tbody>
         </table>
-    </div>
-    </div> <!-- end .scroll-container -->
     </div> <!-- end .table-container -->
-</div> <!-- end .glass-panel (Tab: Data Pelanggan) -->
+    </div> <!-- end .scroll-container -->
 
-<!-- Estimasi Pendapatan Card (Floating Bottom Center) -->
-<div class="floating-action-bar">
-    <div class="glass-panel" style="padding:15px 20px; border-left:4px solid var(--primary); background:rgba(var(--primary-rgb), 0.95); backdrop-filter:blur(15px); display:flex; justify-content:space-between; align-items:center; border-radius:18px;">
-        <div style="display:flex; align-items:center; gap:12px;">
-            <div style="width:42px; height:42px; border-radius:12px; background:white; color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:20px; box-shadow:0 4px 10px rgba(0,0,0,0.1); flex-shrink:0;">
-                <i class="fas fa-hand-holding-usd"></i>
+    <!-- Estimasi Pendapatan Card (Static Bottom) -->
+    <div class="static-summary-bar">
+        <div class="glass-panel" style="padding:15px 20px; border-left:4px solid var(--primary); background:linear-gradient(to right, rgba(var(--primary-rgb), 0.15), rgba(var(--primary-rgb), 0.05)); backdrop-filter:blur(15px); display:flex; justify-content:space-between; align-items:center; border-radius:18px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:42px; height:42px; border-radius:12px; background:var(--primary); color:white; display:flex; align-items:center; justify-content:center; font-size:20px; box-shadow:0 4px 10px rgba(var(--primary-rgb),0.3); flex-shrink:0;">
+                    <i class="fas fa-hand-holding-usd"></i>
+                </div>
+                <div>
+                    <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; font-weight:800;">Estimasi Pendapatan</div>
+                    <div style="font-size:18px; font-weight:800; color:var(--text-primary); line-height:1.2;">Rp<?= number_format($total_estimasi, 0, ',', '.') ?></div>
+                </div>
             </div>
-            <div>
-                <div style="font-size:10px; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:1px; font-weight:800;">Estimasi Pendapatan</div>
-                <div style="font-size:18px; font-weight:800; color:white; line-height:1.2;">Rp<?= number_format($total_estimasi, 0, ',', '.') ?></div>
+            <div style="text-align:right;">
+                <div style="font-size:10px; color:var(--text-secondary); font-weight:800; text-transform:uppercase; letter-spacing:1px;">Target</div>
+                <div style="font-size:18px; font-weight:800; color:var(--text-primary); line-height:1.2;"><?= number_format($total_cust_filter, 0, ',', '.') ?> <small style="font-size:10px; opacity:0.8;">USER</small></div>
             </div>
-        </div>
-        <div style="text-align:right;">
-            <div style="font-size:10px; color:rgba(255,255,255,0.7); font-weight:800; text-transform:uppercase; letter-spacing:1px;">Target</div>
-            <div style="font-size:18px; font-weight:800; color:white; line-height:1.2;"><?= number_format($total_cust_filter, 0, ',', '.') ?> <small style="font-size:10px; opacity:0.8;">USER</small></div>
         </div>
     </div>
-</div>
+</div> <!-- end .glass-panel (Tab: Data Pelanggan) -->
 <?php elseif($coll_tab === 'tugas'): ?>
 <!-- TAB: Tugas Penagihan -->
-<div class="glass-panel" style="padding:20px;">
+<div class="glass-panel tab-flex-container" style="padding:20px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
         <h3 style="font-size:16px; margin:0; color:var(--danger);"><i class="fas fa-tasks"></i> Daftar Tugas Belum Lunas</h3>
         <div style="font-size:12px; color:var(--text-secondary); font-weight:700;">Total: <?= count($unpaid_invoices) ?> Pelanggan</div>
@@ -902,7 +911,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
         </div>
     </form>
 
-    <div class="scroll-container" style="height: calc(100vh - 430px); overflow-y:auto; padding-right:5px; padding-bottom: 150px;">
+    <div class="scroll-container list-container-responsive" style="flex: 1; overflow-y:auto; padding-right:5px;">
         <!-- Desktop Mode: Table -->
         <div class="customer-list-desktop glass-panel" style="display:none; padding:0; overflow:hidden; border:1px solid var(--glass-border);">
             <table class="table" style="width:100%; border-collapse:collapse; color:var(--text-primary);">
@@ -993,37 +1002,31 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
             </div>
         </div>
         <?php endforeach; ?>
-        <?php if(empty($unpaid_invoices)): ?>
-            <div style="text-align:center; padding:40px; color:var(--text-secondary);">
-                <i class="fas fa-check-circle" style="font-size:50px; opacity:0.1; display:block; margin-bottom:15px;"></i>
-                Semua tagihan sudah tertagih! Kerja bagus.
-            </div>
-        <?php endif; ?>
-        </div>
-    </div>
+        </div> <!-- end .customer-list-mobile -->
+    </div> <!-- end .scroll-container -->
 
-    <!-- Summary Float for Tasks -->
-    <div class="floating-action-bar">
-        <div class="glass-panel" style="padding:15px 20px; border-left:4px solid var(--danger); background:rgba(239, 68, 68, 0.95); backdrop-filter:blur(15px); display:flex; justify-content:space-between; align-items:center; border-radius:18px;">
-            <div style="display:flex; align-items:center; gap:12px;">
-                <div style="width:42px; height:42px; border-radius:12px; background:white; color:var(--danger); display:flex; align-items:center; justify-content:center; font-size:20px; box-shadow:0 4px 10px rgba(0,0,0,0.1); flex-shrink:0;">
+    <!-- Summary Static for Tasks -->
+    <div class="static-summary-bar">
+        <div class="glass-panel" style="padding:12px 18px; border-left:4px solid var(--danger); background:linear-gradient(to right, rgba(239, 68, 68, 0.12), rgba(239, 68, 68, 0.04)); backdrop-filter:blur(15px); display:flex; justify-content:space-between; align-items:center; border-radius:15px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div style="width:38px; height:38px; border-radius:10px; background:var(--danger); color:white; display:flex; align-items:center; justify-content:center; font-size:18px; box-shadow:0 4px 10px rgba(239, 68, 68, 0.2); flex-shrink:0;">
                     <i class="fas fa-exclamation-triangle"></i>
                 </div>
                 <div>
-                    <div style="font-size:10px; color:rgba(255,255,255,0.8); text-transform:uppercase; font-weight:800; letter-spacing:1px;">Total Tunggakan</div>
-                    <div style="font-size:18px; font-weight:800; color:white; line-height:1.2;">Rp<?= number_format($unpaid_total, 0, ',', '.') ?></div>
+                    <div style="font-size:9px; color:var(--text-secondary); text-transform:uppercase; font-weight:800; letter-spacing:1px;">Total Tunggakan</div>
+                    <div style="font-size:16px; font-weight:800; color:var(--text-primary); line-height:1.1;">Rp<?= number_format($unpaid_total, 0, ',', '.') ?></div>
                 </div>
             </div>
             <div style="text-align:right;">
-                <div style="font-size:10px; color:rgba(255,255,255,0.8); font-weight:800; text-transform:uppercase; letter-spacing:1px;">Terhutang</div>
-                <div style="font-size:18px; font-weight:800; color:white; line-height:1.2;"><?= $unpaid_count ?> <small style="font-size:10px; opacity:0.8;">BILL</small></div>
+                <div style="font-size:9px; color:var(--text-secondary); font-weight:800; text-transform:uppercase; letter-spacing:1px;">Terhutang</div>
+                <div style="font-size:16px; font-weight:800; color:var(--text-primary); line-height:1.1;"><?= $unpaid_count ?> <small style="font-size:9px; opacity:0.8;">BILL</small></div>
             </div>
         </div>
     </div>
-</div>
+</div> <!-- end glass-panel (Tab: Tugas) -->
 <?php elseif($coll_tab === 'lunas'): ?>
 <!-- TAB: Sudah Lunas -->
-<div class="glass-panel" style="padding:20px;">
+<div class="glass-panel tab-flex-container" style="padding:20px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
         <h3 style="font-size:16px; margin:0; color:var(--success);">
             <i class="fas fa-check-double"></i> Riwayat Pembayaran Lunas
@@ -1040,7 +1043,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
             <button type="submit" class="btn btn-sm" style="background:var(--primary); color:white; border-radius:8px; padding:6px 12px; font-weight:700;">FILTER</button>
         </form>
     </div>
-    <div class="scroll-container" style="height: calc(100vh - 380px); overflow-y:auto; padding-right:5px; padding-bottom: 150px; margin-top:10px;">
+    <div class="scroll-container list-container-responsive" style="flex: 1; overflow-y:auto; padding-right:5px; margin-top:10px;">
         <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px;">
             <?php foreach($recent_paid as $rp): ?>
         <div class="glass-panel" style="padding:16px; border-left: 4px solid var(--success);">
@@ -1112,24 +1115,25 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
         </div> <!-- end grid -->
     </div> <!-- end scroll-container -->
     
-    <!-- Summary Float for Lunas -->
-    <div class="floating-action-bar">
-        <div class="glass-panel" style="padding:15px 20px; border-left:4px solid var(--success); background:rgba(16, 185, 129, 0.95); backdrop-filter:blur(15px); display:flex; justify-content:space-between; align-items:center; border-radius:18px;">
-            <div style="display:flex; align-items:center; gap:12px;">
-                <div style="width:42px; height:42px; border-radius:12px; background:white; color:var(--success); display:flex; align-items:center; justify-content:center; font-size:20px; box-shadow:0 4px 10px rgba(0,0,0,0.1); flex-shrink:0;">
+    <!-- Summary Static for Lunas -->
+    <div class="static-summary-bar">
+        <div class="glass-panel" style="padding:12px 18px; border-left:4px solid var(--success); background:linear-gradient(to right, rgba(16, 185, 129, 0.12), rgba(16, 185, 129, 0.04)); backdrop-filter:blur(15px); display:flex; justify-content:space-between; align-items:center; border-radius:15px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div style="width:38px; height:38px; border-radius:10px; background:var(--success); color:white; display:flex; align-items:center; justify-content:center; font-size:18px; box-shadow:0 4px 10px rgba(16, 185, 129, 0.2); flex-shrink:0;">
                     <i class="fas fa-coins"></i>
                 </div>
                 <div>
-                    <div style="font-size:10px; color:rgba(255,255,255,0.8); text-transform:uppercase; font-weight:800; letter-spacing:1px;">Revenue Terkumpul</div>
-                    <div style="font-size:18px; font-weight:800; color:white; line-height:1.2;">Rp<?= number_format($paid_total_range, 0, ',', '.') ?></div>
+                    <div style="font-size:9px; color:var(--text-secondary); text-transform:uppercase; font-weight:800; letter-spacing:1px;">Revenue Terkumpul</div>
+                    <div style="font-size:16px; font-weight:800; color:var(--text-primary); line-height:1.1;">Rp<?= number_format($paid_total_range, 0, ',', '.') ?></div>
                 </div>
             </div>
             <div style="text-align:right;">
-                <div style="font-size:10px; color:rgba(255,255,255,0.8); font-weight:800; text-transform:uppercase; letter-spacing:1px;">Lunas</div>
-                <div style="font-size:18px; font-weight:800; color:white; line-height:1.2;"><?= count($recent_paid) ?> <small style="font-size:10px; opacity:0.8;">USER</small></div>
+                <div style="font-size:9px; color:var(--text-secondary); font-weight:800; text-transform:uppercase; letter-spacing:1px;">Lunas</div>
+                <div style="font-size:16px; font-weight:800; color:var(--text-primary); line-height:1.1;"><?= count($recent_paid) ?> <small style="font-size:9px; opacity:0.8;">USER</small></div>
+            </div>
         </div>
     </div>
-</div>
+</div> <!-- end glass-panel (Tab: Lunas) -->
 <?php else: ?>
     <!-- Fallback / Error -->
     <div class="glass-panel" style="padding:40px; text-align:center;">
