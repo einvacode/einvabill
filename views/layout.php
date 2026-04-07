@@ -85,6 +85,8 @@
         </aside>
 
         <main class="main-content">
+            <!-- Topbar (Hidden for Collector as requested) -->
+            <?php if($page !== 'collector'): ?>
             <div class="topbar glass-panel" style="padding:15px 24px;">
                 <div style="font-weight:600; font-size:18px;">
                     <?php
@@ -122,6 +124,7 @@
                     </div>
                 </div>
             </div>
+            <?php endif; ?>
 
             <!-- Page Content -->
             <?= $content ?? '' ?>

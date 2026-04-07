@@ -16,13 +16,20 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = $_POST['name'];
     $fee = $_POST['fee'];
     
-    // Ownership Check
-    $check = $db->query("SELECT created_by FROM packages WHERE id = $id")->fetchColumn();
-    $is_owner = ($u_role === 'admin') ? ($check == $u_id || $check == 0 || $check === NULL) : ($check == $u_id);
-    if ($is_owner) {
+    // Ownership Check & Get Old Data
+    $old_pkg = $db->query("SELECT name, created_by FROM packages WHERE id = $id")->fetch();
+    $is_owner = ($u_role === 'admin') ? ($old_pkg['created_by'] == $u_id || $old_pkg['created_by'] == 0 || $old_pkg['created_by'] === NULL) : ($old_pkg['created_by'] == $u_id);
+    
+    if ($is_owner && $old_pkg) {
+        $old_name = $old_pkg['name'];
+        // Update package
         $db->prepare("UPDATE packages SET name=?, fee=? WHERE id=?")->execute([$name, $fee, $id]);
+        
+        // SYNC CUSTOMERS: Update all customers using this package name
+        $db->prepare("UPDATE customers SET package_name = ?, monthly_fee = ? WHERE package_name = ? AND (created_by = ? OR created_by = 0 OR created_by IS NULL)")
+           ->execute([$name, $fee, $old_name, $u_id]);
     }
-    header("Location: index.php?page=admin_packages");
+    header("Location: index.php?page=admin_packages&msg=updated_sync");
     exit;
 }
 
@@ -38,12 +45,40 @@ if ($action === 'delete') {
     header("Location: index.php?page=admin_packages");
     exit;
 }
+
+if ($action === 'sync_all') {
+    // Ownership Check
+    $packages = $db->query("SELECT name, fee FROM packages WHERE created_by = $u_id OR created_by = 0 OR created_by IS NULL")->fetchAll();
+    $count = 0;
+    foreach($packages as $p) {
+        $stmt = $db->prepare("UPDATE customers SET monthly_fee = ? WHERE package_name = ? AND (created_by = ? OR created_by = 0 OR created_by IS NULL)");
+        $stmt->execute([$p['fee'], $p['name'], $u_id]);
+        $count += $stmt->rowCount();
+    }
+    header("Location: index.php?page=admin_packages&msg=all_synced&count=$count");
+    exit;
+}
 ?>
+
+<?php if (isset($_GET['msg']) && $_GET['msg'] === 'updated_sync'): ?>
+<div class="glass-panel" style="margin-bottom:20px; border-left:4px solid var(--success); padding:15px; background:rgba(16,185,129,0.1); color:var(--success); display:flex; align-items:center; gap:10px;">
+    <i class="fas fa-check-circle"></i> Berhasil! Paket telah diperbarui dan seluruh tagihan pelanggan terkait telah disesuaikan otomatis.
+</div>
+<?php endif; ?>
+
+<?php if (isset($_GET['msg']) && $_GET['msg'] === 'all_synced'): ?>
+<div class="glass-panel" style="margin-bottom:20px; border-left:4px solid var(--info); padding:15px; background:rgba(59,130,246,0.1); color:var(--info); display:flex; align-items:center; gap:10px;">
+    <i class="fas fa-info-circle"></i> Berhasil menyelaraskan harga untuk <strong><?= intval($_GET['count']) ?></strong> pelanggan sesuai paket mereka saat ini.
+</div>
+<?php endif; ?>
 
 <div class="glass-panel" style="padding: 24px;">
     <div style="display:flex; justify-content:space-between; margin-bottom:20px; align-items:center;">
         <h3 style="font-size:20px;"><i class="fas fa-box text-primary"></i> Manajemen Paket Internet</h3>
-        <button onclick="document.getElementById('addPackageModal').style.display='flex'" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Tambah Paket</button>
+        <div style="display:flex; gap:10px;">
+            <a href="index.php?page=admin_packages&action=sync_all" class="btn btn-ghost btn-sm" onclick="return confirm('Sinkronkan SEMUA harga pelanggan dengan harga paket terbaru?')" title="Selaraskan Semua Harga"><i class="fas fa-sync"></i> Sync Semua</a>
+            <button onclick="document.getElementById('addPackageModal').style.display='flex'" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Tambah Paket</button>
+        </div>
     </div>
 
     <div class="table-container">
@@ -116,6 +151,9 @@ if ($action === 'delete') {
             <div class="form-group">
                 <label>Biaya Bulanan (Rp)</label>
                 <input type="number" name="fee" id="editPkgFee" class="form-control" required>
+            </div>
+            <div style="font-size:11px; color:var(--danger); background:rgba(239, 68, 68, 0.1); padding:10px; border-radius:8px; margin-top:15px; border-left:3px solid var(--danger);">
+                <i class="fas fa-exclamation-triangle"></i> <strong>PENTING:</strong> Mengubah paket ini akan otomatis memperbarui biaya bulanan seluruh pelanggan yang terdaftar menggunakan paket ini.
             </div>
             <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
                 <button type="button" class="btn btn-sm btn-ghost" onclick="document.getElementById('editPackageModal').style.display='none'">Batal</button>
