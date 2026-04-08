@@ -101,6 +101,14 @@ async function refreshGateway() {
                 document.getElementById('qrcode').innerHTML = '<div style="color:#64748b; font-size:13px; text-align:center;"><i class="fas fa-spinner fa-spin"></i> Menyiapkan QR Code...<br><span style="font-size:10px;">(Pesan: '+ (qrData.message || 'Harap Tunggu') +')</span></div>';
             }
         }
+
+        // Fetch Logs
+        const logResp = await fetch('/waapi/logs');
+        const logData = await logResp.json();
+        const logContainer = document.getElementById('wa-logs');
+        if (logData.length > 0) {
+            logContainer.innerHTML = logData.map(l => `<div><span style="opacity:0.6;">[${l.timestamp}]</span> ${l.msg}</div>`).join('');
+        }
     } catch (e) {
         document.getElementById('qrcode').innerHTML = '<div style="color:#ef4444; font-size:12px; font-weight:700;"><i class="fas fa-exclamation-triangle"></i> GATEWAY OFFLINE<br><span style="font-weight:400; opacity:0.7;">Harap nyalakan node server.js</span></div>';
     }

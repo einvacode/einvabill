@@ -34,43 +34,51 @@ client.on('ready', () => {
     console.log('WhatsApp Gateway is Ready!');
     isConnected = true;
     qrCodeData = '';
+    lastQR = qr;
+    isReady = false;
+    addLog('QR Code diperbarui, menunggu scan...');
 });
 
 client.on('authenticated', () => {
-    console.log('Authenticated successfully.');
+    addLog('WhatsApp Terautentikasi (Sesi Ditemukan)');
+});
+
+client.on('ready', () => {
+    isReady = true;
+    lastQR = null;
+    addLog('GATEWAY READY: WhatsApp Terhubung!');
 });
 
 client.on('disconnected', (reason) => {
-    console.log('Client was logged out:', reason);
-    isConnected = false;
+    isReady = false;
+    addLog(`WhatsApp Terputus: ${reason}`);
 });
 
 client.initialize();
 
 app.get('/status', (req, res) => {
-    res.json({
-        connected: isConnected,
-        qr_available: qrCodeData !== ''
+    res.json({ 
+        connected: isReady, 
+        qr_available: !!lastQR,
+        message: isReady ? 'Connected' : (lastQR ? 'QR Ready' : 'Initializing')
     });
 });
 
 app.get('/qr', (req, res) => {
-    if (isConnected) {
-        return res.json({ error: false, message: 'Already connected', qr: null });
-    }
-    if (qrCodeData) {
-        res.json({ error: false, qr: qrCodeData });
-    } else {
-        res.json({ error: true, message: 'QR Code not prepared yet. Please wait a moment.' });
-    }
+    res.json({ qr: lastQR });
+});
+
+app.get('/logs', (req, res) => {
+    res.json(logs);
 });
 
 app.post('/send', async (req, res) => {
-    if (!isConnected) {
-        return res.status(400).json({ error: true, message: 'WhatsApp Client is not connected.' });
+    const { phone, message } = req.body;
+    if (!isReady) {
+        addLog(`Gagal mengirim ke ${phone}: Gateway belum siap`);
+        return res.status(400).json({ error: true, message: 'Gateway belum siap' });
     }
 
-    const { phone, message } = req.body;
     if (!phone || !message) {
         return res.status(400).json({ error: true, message: 'Phone and message body are required.' });
     }
