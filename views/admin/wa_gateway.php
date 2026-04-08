@@ -1,7 +1,7 @@
 <?php
-// Protection: Only Admin can access
-if ($_SESSION['user_role'] !== 'admin') {
-    header("Location: index.php");
+// Protection: Any logged-in user can access their own gateway
+if (!isset($_SESSION['user_id'])) {
+    header("Location: index.php?page=login");
     exit;
 }
 ?>
@@ -76,7 +76,7 @@ let currentQR = "";
 
 async function refreshGateway() {
     try {
-        const response = await fetch('/waapi/status');
+        const response = await fetch('/waapi/status?cid=' + WAGatewayCID);
         const data = await response.json();
         
         if (data.connected) {
@@ -89,7 +89,7 @@ async function refreshGateway() {
             document.getElementById('wa-connected-box').style.display = 'none';
             
             // Try fetch QR
-            const qrResp = await fetch('/waapi/qr');
+            const qrResp = await fetch('/waapi/qr?cid=' + WAGatewayCID);
             const qrData = await qrResp.json();
             
             if (qrData.qr && qrData.qr !== currentQR) {
@@ -109,7 +109,7 @@ async function refreshGateway() {
         }
 
         // Fetch Logs
-        const logResp = await fetch('/waapi/logs');
+        const logResp = await fetch('/waapi/logs?cid=' + WAGatewayCID);
         const logData = await logResp.json();
         const logContainer = document.getElementById('wa-logs');
         if (logData.length > 0) {
@@ -131,7 +131,11 @@ async function refreshGateway() {
 async function logoutWA() {
     if (!confirm('Apakah Anda yakin ingin memutuskan koneksi WhatsApp?')) return;
     try {
-        await fetch('/waapi/logout', { method: 'POST' });
+        await fetch('/waapi/logout', { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cid: WAGatewayCID })
+        });
         location.reload();
     } catch (e) {
         alert('Gagal memutuskan koneksi. Gateway mungkin sedang offline.');

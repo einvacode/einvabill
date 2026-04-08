@@ -7,82 +7,104 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Global States
-let lastQR = null;
-let isReady = false;
-let logs = [];
+// Global Client Registry
+const clients = new Map();
 
-// Logger Function
-function addLog(msg) {
-    const timestamp = new Date().toLocaleString('id-ID');
-    logs.push({ timestamp, msg }); // Most recent at BOTTOM
-    if (logs.length > 50) logs.shift(); // Remove oldest
-    console.log(`[${timestamp}] ${msg}`);
+// Helper: Get or Initialize Client
+function getClientInstance(cid) {
+    if (clients.has(cid)) return clients.get(cid);
+
+    const client = new Client({
+        authStrategy: new LocalAuth({ clientId: cid }),
+        puppeteer: {
+            headless: true,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--no-first-run',
+                '--disable-gpu'
+            ]
+        }
+    });
+
+    const instance = {
+        client,
+        isReady: false,
+        lastQR: null,
+        logs: [],
+        addLog: function(msg) {
+            const timestamp = new Date().toLocaleString('id-ID');
+            this.logs.push({ timestamp, msg });
+            if (this.logs.length > 50) this.logs.shift();
+            console.log(`[${cid}][${timestamp}] ${msg}`);
+        }
+    };
+
+    clients.set(cid, instance);
+
+    client.on('qr', (qr) => {
+        instance.lastQR = qr;
+        instance.isReady = false;
+        instance.addLog('QR Code diperbarui, silakan scan...');
+    });
+
+    client.on('authenticated', () => {
+        instance.addLog('WhatsApp Terautentikasi (Sesi Ditemukan)');
+    });
+
+    client.on('ready', () => {
+        instance.isReady = true;
+        instance.lastQR = null;
+        instance.addLog('GATEWAY READY: Berhasil Terhubung!');
+    });
+
+    client.on('disconnected', (reason) => {
+        instance.isReady = false;
+        instance.addLog(`WhatsApp Terputus: ${reason}`);
+        // Optional: delete instances with fatal disconnection to save RAM
+        // clients.delete(cid);
+    });
+
+    instance.addLog('Memulai inisialisasi perangkat...');
+    client.initialize().catch(err => {
+        instance.addLog(`Gagal Inisialisasi: ${err.message}`);
+    });
+
+    return instance;
 }
-
-const client = new Client({
-    authStrategy: new LocalAuth(),
-    puppeteer: {
-        headless: true,
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--disable-gpu'
-        ]
-    }
-});
-
-// WhatsApp Events
-client.on('qr', (qr) => {
-    lastQR = qr;
-    isReady = false;
-    addLog('QR Code diperbarui, silakan scan...');
-});
-
-client.on('authenticated', () => {
-    addLog('WhatsApp Terautentikasi (Sesi Ditemukan)');
-});
-
-client.on('ready', () => {
-    isReady = true;
-    lastQR = null;
-    addLog('GATEWAY READY: WhatsApp Terhubung!');
-});
-
-client.on('disconnected', (reason) => {
-    isReady = false;
-    addLog(`WhatsApp Terputus: ${reason}`);
-    // Delay re-init to avoid loop on network down
-    setTimeout(() => client.initialize(), 5000);
-});
-
-client.initialize();
 
 // API Endpoints
 app.get('/status', (req, res) => {
+    const cid = req.query.cid || 'admin';
+    const instance = getClientInstance(cid);
     res.json({ 
-        connected: isReady, 
-        qr_available: !!lastQR,
-        message: isReady ? 'Connected' : (lastQR ? 'QR Ready' : 'Initializing')
+        connected: instance.isReady, 
+        qr_available: !!instance.lastQR,
+        message: instance.isReady ? 'Connected' : (instance.lastQR ? 'QR Ready' : 'Initializing')
     });
 });
 
 app.get('/qr', (req, res) => {
-    res.json({ qr: lastQR });
+    const cid = req.query.cid || 'admin';
+    const instance = getClientInstance(cid);
+    res.json({ qr: instance.lastQR });
 });
 
 app.get('/logs', (req, res) => {
-    res.json(logs);
+    const cid = req.query.cid || 'admin';
+    const instance = getClientInstance(cid);
+    res.json(instance.logs);
 });
 
 app.post('/send', async (req, res) => {
-    const { phone, message } = req.body;
+    const { cid, phone, message } = req.body;
+    const clientId = cid || 'admin';
+    const instance = getClientInstance(clientId);
     
-    if (!isReady) {
-        addLog(`Gagal mengirim ke ${phone}: Gateway belum siap`);
+    if (!instance.isReady) {
+        instance.addLog(`Gagal mengirim ke ${phone}: Perangkat belum siap`);
         return res.status(400).json({ error: true, message: 'Gateway belum siap' });
     }
 
@@ -91,30 +113,35 @@ app.post('/send', async (req, res) => {
     }
 
     try {
-        // Sanitize & Format
         let formattedPhone = phone.replace(/[^0-9]/g, '');
         if (formattedPhone.startsWith('0')) {
             formattedPhone = '62' + formattedPhone.slice(1);
         }
         const target = formattedPhone + '@c.us';
 
-        await client.sendMessage(target, message);
-        addLog(`Pesan berhasil dikirim ke: ${formattedPhone}`);
+        await instance.client.sendMessage(target, message);
+        instance.addLog(`Pesan berhasil dikirim ke: ${formattedPhone}`);
         res.json({ error: false, message: 'Pesan terkirim' });
     } catch (err) {
-        addLog(`Error mengirim ke ${phone}: ${err.message}`);
+        instance.addLog(`Error mengirim ke ${phone}: ${err.message}`);
         res.status(500).json({ error: true, message: 'Gagal mengirim: ' + err.message });
     }
 });
 
 app.post('/logout', async (req, res) => {
+    const { cid } = req.body;
+    const clientId = cid || 'admin';
+    if (!clients.has(clientId)) return res.json({ success: true });
+
+    const instance = clients.get(clientId);
     try {
-        await client.logout();
-        isReady = false;
-        lastQR = null;
-        addLog('Sesi diputus manual oleh admin');
+        await instance.client.logout();
+        instance.isReady = false;
+        instance.lastQR = null;
+        instance.addLog('Sesi diputus manual oleh pengguna');
         res.json({ error: false, message: 'Logged out' });
-        client.initialize();
+        // Re-init to get a new QR if needed, or just let users re-refresh
+        instance.client.initialize();
     } catch (err) {
         res.status(500).json({ error: true, message: 'Gagal logout: ' + err.message });
     }
@@ -122,5 +149,5 @@ app.post('/logout', async (req, res) => {
 
 const PORT = 3000;
 app.listen(PORT, '0.0.0.0', () => {
-    addLog(`Server Gateway berjalan di http://0.0.0.0:${PORT}`);
+    console.log(`WhatsApp Multi-Instance Gateway running on port ${PORT}`);
 });

@@ -65,11 +65,14 @@
                         <a href="index.php?page=admin_report_assets" class="nav-link <?= $page == 'admin_report_assets' ? 'active' : '' ?>"><i class="fas fa-file-contract"></i> Laporan Aset</a>
                         <a href="index.php?page=admin_banners" class="nav-link <?= $page == 'admin_banners' ? 'active' : '' ?>"><i class="fas fa-scroll" style="color:var(--warning);"></i> Manajemen Banner</a>
                         <a href="index.php?page=admin_landing" class="nav-link <?= $page == 'admin_landing' ? 'active' : '' ?>"><i class="fas fa-globe"></i> Web Profil</a>
-                        <a href="index.php?page=admin_wa_gateway" class="nav-link <?= $page == 'admin_wa_gateway' ? 'active' : '' ?>"><i class="fab fa-whatsapp" style="color:#25D366;"></i> WhatsApp Gateway</a>
+                        <a href="index.php?page=admin_wa_gateway" class="nav-link <?= $page == 'admin_wa_gateway' ? 'active' : '' ?>"><i class="fab fa-whatsapp" style="color:#25D366;"></i> WhatsApp Perangkat</a>
                         <a href="index.php?page=admin_settings" class="nav-link <?= $page == 'admin_settings' ? 'active' : '' ?>"><i class="fas fa-cog"></i> Pengaturan</a>
                         <a href="index.php?page=admin_backup" class="nav-link <?= $page == 'admin_backup' ? 'active' : '' ?>"><i class="fas fa-shield-alt"></i> Backup & Restore</a>
-                    <?php elseif($_SESSION['user_role'] === 'collector'): ?>
-                        <a href="index.php?page=collector" class="nav-link active"><i class="fas fa-motorcycle"></i> Penagih</a>
+                        <a href="index.php?page=collector" class="nav-link <?= $page == 'collector' ? 'active' : '' ?>"><i class="fas fa-motorcycle"></i> Dashboard Penagih</a>
+                        <a href="index.php?page=admin_wa_gateway" class="nav-link <?= $page == 'admin_wa_gateway' ? 'active' : '' ?>"><i class="fab fa-whatsapp" style="color:#25D366;"></i> WhatsApp Perangkat</a>
+                        <a href="index.php?page=admin_customers" class="nav-link <?= $page == 'admin_customers' ? 'active' : '' ?>"><i class="fas fa-users"></i> Daftar Pelanggan</a>
+                        <a href="index.php?page=admin_invoices" class="nav-link <?= $page == 'admin_invoices' ? 'active' : '' ?>"><i class="fas fa-file-invoice-dollar"></i> Data Tagihan</a>
+                        <a href="index.php?page=admin_map" class="nav-link <?= $page == 'admin_map' ? 'active' : '' ?>"><i class="fas fa-map-location-dot"></i> Peta Lokasi</a>
                     <?php elseif($_SESSION['user_role'] === 'partner'): ?>
                         <a href="index.php?page=partner" class="nav-link <?= $page == 'partner' ? 'active' : '' ?>"><i class="fas fa-handshake"></i> Dashboard</a>
                         <a href="index.php?page=partner_collection" class="nav-link <?= $page == 'partner_collection' ? 'active' : '' ?>"><i class="fas fa-motorcycle" style="color:var(--warning);"></i> Penagihan Lapangan</a>
@@ -79,6 +82,7 @@
                         <a href="index.php?page=admin_invoices" class="nav-link <?= $page == 'admin_invoices' ? 'active' : '' ?>"><i class="fas fa-file-invoice-dollar"></i> Riwayat Tagihan</a>
                         <a href="index.php?page=partner_isp_invoices" class="nav-link <?= $page == 'partner_isp_invoices' ? 'active' : '' ?>"><i class="fas fa-receipt" style="color:#ef4444;"></i> Tagihan Ke ISP</a>
                         <a href="index.php?page=admin_reports" class="nav-link <?= $page == 'admin_reports' ? 'active' : '' ?>"><i class="fas fa-chart-line"></i> Laporan Keuangan</a>
+                        <a href="index.php?page=admin_wa_gateway" class="nav-link <?= $page == 'admin_wa_gateway' ? 'active' : '' ?>"><i class="fab fa-whatsapp" style="color:#25D366;"></i> WhatsApp Perangkat</a>
                         <a href="index.php?page=partner_settings" class="nav-link <?= $page == 'partner_settings' ? 'active' : '' ?>"><i class="fas fa-id-card-alt" style="color:#10b981;"></i> Pengaturan Profil</a>
                     <?php endif; ?>
                 </div>
@@ -103,7 +107,7 @@
                         elseif($page == 'admin_banners') echo 'Manajemen Banner Informasi';
                         elseif($page == 'admin_landing') echo 'Pengaturan Web Profil';
                         elseif($page == 'admin_users') echo 'Akses Pengguna';
-                        elseif($page == 'admin_router') echo 'Monitoring Router';
+                        elseif($page == 'admin_wa_gateway') echo 'Manajemen Perangkat WhatsApp';
                         elseif($page == 'admin_settings') echo 'Pengaturan Perusahaan';
                         elseif($page == 'admin_backup') echo 'Backup & Restore Database';
                         elseif($page == 'collector') echo 'Dashboard Penagih';
@@ -373,14 +377,15 @@
         }
     });
 
-    // WhatsApp Gateway Status Polling
+    // Configure Client ID for WhatsApp Gateway
+    const WAGatewayCID = '<?= ($_SESSION["user_role"] === "admin") ? "admin" : "u_" . ($_SESSION["user_id"] ?? "guest") ?>';
+    
     async function checkWAStatus() {
-        const indicators = document.querySelectorAll('.wa-status-indicator');
-        if (indicators.length === 0) return;
-
+        if (!window.location.search.includes('page=admin') && !window.location.search.includes('page=partner') && !window.location.search.includes('page=collector')) return;
+        
         try {
-            // Using relative proxy URL to bypass Mixed Content / HTTPS issues
-            const response = await fetch('/waapi/status');
+            // Using CID to check specific user connection
+            const response = await fetch('/waapi/status?cid=' + WAGatewayCID);
             const data = await response.json();
             const indicators = document.querySelectorAll('.wa-status-indicator');
             indicators.forEach(el => {
@@ -402,11 +407,9 @@
         }
     }
     
-    // Initial check and set interval if on admin pages
-    if (window.location.search.includes('page=admin')) {
-        checkWAStatus();
-        setInterval(checkWAStatus, 30000); // Check every 30s
-    }
+    // Initial check and set interval
+    checkWAStatus();
+    setInterval(checkWAStatus, 30000); // Check every 30s
 
     // Global WhatsApp Gateway Send Function
     async function sendWAGateway(phone, message, fallback, btn) {
@@ -416,11 +419,11 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             
             try {
-                // Using relative proxy URL for security and mobile compatibility
+                // Using CID to route send request to correct device
                 const response = await fetch('/waapi/send', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone, message })
+                    body: JSON.stringify({ cid: WAGatewayCID, phone, message })
                 });
                 const data = await response.json();
                 
