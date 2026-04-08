@@ -420,7 +420,8 @@
     });
 
     // Configure Client ID for WhatsApp Gateway
-    const WAGatewayCID = '<?= ($_SESSION["user_role"] === "admin") ? "admin" : "u_" . ($_SESSION["user_id"] ?? "guest") ?>';
+    // Unified to 'admin' so all staff use the central company gateway for background messaging
+    const WAGatewayCID = 'admin';
     
     async function checkWAStatus() {
         if (!window.location.search.includes('page=admin') && !window.location.search.includes('page=partner') && !window.location.search.includes('page=collector')) return;

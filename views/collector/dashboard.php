@@ -124,10 +124,11 @@ $p_tugas = isset($_GET['p_tugas']) ? max(1, intval($_GET['p_tugas'])) : 1;
 $off_tugas = ($p_tugas - 1) * $items_per_page;
 $total_tugas_pages = ceil($unpaid_customers_count / $items_per_page);
 
-// Fetch unique customers with aggregated arrears
+// Fetch unique customers with aggregated arrears — Added more fields for rich card UI
 $query = "
     SELECT 
-        c.id as cust_id, c.name, c.address, c.contact, c.area as cust_area, c.customer_code, c.package_name, c.type as customer_type,
+        c.id as cust_id, c.name, c.address, c.contact, c.area as cust_area, c.customer_code, 
+        c.package_name, c.type as customer_type, c.monthly_fee, c.billing_date,
         COUNT(i.id) as num_arrears,
         SUM(i.amount - COALESCE(i.discount, 0)) as total_unpaid,
         MIN(i.due_date) as oldest_due_date,
@@ -777,7 +778,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                     <div style="font-weight:700; font-size:15px;"><?= htmlspecialchars($ac['name']) ?></div>
                     <div style="font-size:11px; color:var(--primary); font-family:monospace; margin-bottom:4px;">ID: <?= $cust_id_display ?></div>
                     <div style="font-size:11px; color:var(--text-secondary); margin-bottom:6px;"><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($ac['address'] ?: '-') ?></div>
-                    <div style="font-size:11px; color:var(--text-secondary);"><i class="fas fa-calendar-alt" style="color:var(--warning);"></i> Siklus Tagih: Tanggal <?= $ac['billing_date'] ?></div>
+                    <div style="font-size:11px; color:var(--text-secondary); margin-bottom:6px;"><i class="fas fa-calendar-alt" style="color:var(--warning);"></i> Siklus Tagih: Tanggal <?= $ac['billing_date'] ?></div>
                 </div>
                 <div style="text-align:right;">
                     <div style="font-size:15px; font-weight:800; color:var(--primary);">Rp <?= number_format($ac['monthly_fee'], 0, ',', '.') ?></div>
@@ -1007,22 +1008,32 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
             $wa_num_t = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $ui['contact']));
             $cust_id_t = $ui['customer_code'] ?: str_pad($ui['cust_id'], 5, "0", STR_PAD_LEFT);
         ?>
-        <div class="glass-panel" style="margin-bottom:12px; padding:15px; border-left:4px solid var(--danger); cursor:pointer;" onclick="showCustomerDetails(<?= $ui['cust_id'] ?>)">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                <div style="flex:1;">
+        <div class="glass-panel" style="padding:16px; margin-bottom:12px; border-left:3px solid var(--danger); cursor:pointer; transition:transform 0.2s;" onclick="showCustomerDetails(<?= $ui['cust_id'] ?>)">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                <div>
                     <div style="font-weight:700; font-size:15px;"><?= htmlspecialchars($ui['name']) ?></div>
-                    <div style="font-size:11px; color:var(--primary); font-family:monospace; margin-top:2px;">ID: <?= $cust_id_t ?></div>
-                    <div style="font-size:11px; color:var(--text-secondary); margin-top:5px;"><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($ui['address'] ?: '-') ?></div>
-                    <div style="font-size:11px; color:var(--danger); font-weight:700; margin-top:5px;"><i class="fas fa-exclamation-circle"></i> Tunggakan: <?= $ui['num_arrears'] ?> Bulan</div>
+                    <div style="font-size:11px; color:var(--primary); font-family:monospace; margin-bottom:4px;">ID: <?= $cust_id_t ?></div>
+                    <div style="font-size:11px; color:var(--text-secondary); margin-bottom:6px;"><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($ui['address'] ?: '-') ?></div>
+                    <div style="font-size:11px; color:var(--danger); font-weight:700;"><i class="fas fa-exclamation-circle"></i> Tunggakan: <?= $ui['num_arrears'] ?> Bulan</div>
                 </div>
                 <div style="text-align:right;">
                     <div style="font-size:16px; font-weight:800; color:var(--danger);">Rp <?= number_format($ui['total_unpaid'], 0, ',', '.') ?></div>
                     <div style="font-size:10px; color:var(--text-secondary);"><?= htmlspecialchars($ui['package_name']) ?></div>
                 </div>
             </div>
+            
             <div style="display:flex; gap:10px; margin-top:15px;" onclick="event.stopPropagation();">
                 <button class="btn btn-sm" style="background:#25D366; color:white; font-weight:800; border-radius:10px; padding:0 15px; height:42px; display:flex; align-items:center; gap:8px;" onclick="handlePay(<?= $ui['cust_id'] ?>, <?= $ui['num_arrears'] ?>, '<?= addslashes($ui['name']) ?>', <?= ($ui['total_unpaid'] / $ui['num_arrears']) ?>)">
                     <i class="fas fa-wallet"></i> BAYAR
+                </button>
+                <button class="btn btn-sm" style="background:var(--warning); color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0;" onclick="showCreateInvoice(<?= $ui['cust_id'] ?>, '<?= addslashes($ui['name']) ?>', <?= ($ui['total_unpaid'] / $ui['num_arrears']) ?>)" title="Buat Tagihan Manual">
+                    <i class="fas fa-file-invoice-dollar" style="font-size:16px;"></i>
+                </button>
+                <button class="btn btn-sm btn-ghost" style="width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; border:1px solid var(--glass-border);" onclick="showUpdateContact(<?= $ui['cust_id'] ?>, '<?= addslashes($ui['name']) ?>', '<?= htmlspecialchars($ui['contact'] ?: '') ?>')" title="Ubah Nama/Nomor Telepon">
+                    <i class="fas fa-edit" style="font-size:16px;"></i>
+                </button>
+                <button class="btn btn-sm" style="background:#d97706; color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; box-shadow:0 4px 10px rgba(217, 119, 6, 0.2);" onclick="showCustomerDetails(<?= $ui['cust_id'] ?>); setTimeout(() => openAddonModal(), 500);" title="Tambah Add-on">
+                    <i class="fas fa-plus-circle" style="font-size:18px;"></i>
                 </button>
                 <?php if($wa_num_t): 
                     $mon_label = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
