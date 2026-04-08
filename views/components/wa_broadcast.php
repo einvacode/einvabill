@@ -235,15 +235,22 @@ function executeNextBroadcast() {
     window.open(waUrl, '_blank');
     
     if(isManual) {
-        // MANUAL MODE: Wait for user interaction
+        // MANUAL MODE: Open Web WA tab and wait for user interaction
+        let waUrl = `https://web.whatsapp.com/send?phone=${target.phone}&text=${target.text}`;
+        window.open(waUrl, '_blank');
+        
         isWaitingConfirmation = true;
         document.getElementById('statusLabel').innerText = "VERIFIKASI:";
         document.getElementById('statusLabel').style.color = "#3b82f6";
         document.getElementById('broadcastStatusText').innerHTML = `Menunggu Anda klik SEND di WA Web & konfirmasi di sini: <strong>${target.name}</strong>`;
         document.getElementById('manualActionArea').style.display = 'block';
     } else {
-        // AUTOMATIC MODE: Just a visual delay
-        setTimeout(() => {
+        // AUTOMATIC MODE: Use Automated Gateway
+        document.getElementById('statusLabel').innerText = "MENGIRIM:";
+        document.getElementById('statusLabel').style.color = "#25D366";
+        document.getElementById('broadcastStatusText').innerHTML = `Mengirim pesan otomatis ke: <strong>${target.name}</strong>...`;
+        
+        sendWAGateway(target.phone, decodeURIComponent(target.text), null, null).then(result => {
             document.getElementById(iconId).className = "fas fa-check-circle text-success";
             document.getElementById(`bc_row_${broadcastIndex}`).style.background = "rgba(16, 185, 129, 0.1)";
             
@@ -255,7 +262,7 @@ function executeNextBroadcast() {
                 let cooldownInterval = setInterval(() => {
                     document.getElementById('statusLabel').innerText = "JEDA:";
                     document.getElementById('statusLabel').style.color = "var(--warning)";
-                    document.getElementById('broadcastStatusText').innerHTML = `Berikutnya dlm <strong>${cooldown}s</strong>... (Total: ${broadcastIndex}/${broadcastData.length})`;
+                    document.getElementById('broadcastStatusText').innerHTML = `Berhenti sejekak (Anti-Blokir)... Berikutnya dlm <strong>${cooldown}s</strong> (Progress: ${broadcastIndex}/${broadcastData.length})`;
                     cooldown--;
                     if (cooldown < 0) {
                         clearInterval(cooldownInterval);
@@ -263,7 +270,7 @@ function executeNextBroadcast() {
                     }
                 }, 1000);
             } else executeNextBroadcast();
-        }, 3000); // 3s delay for opening visual before moving to cooldown
+        });
     }
 }
 </script>

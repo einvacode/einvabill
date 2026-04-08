@@ -30,7 +30,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['id'])) {
             <h3 style="margin:0; color:var(--success); font-size:16px;"><i class="fas fa-check-circle"></i> Pembayaran Berhasil!</h3>
             <p style="margin:0; font-size:12px; color:var(--text-secondary);">Pelanggan <strong><?= htmlspecialchars($success_data['name']) ?></strong> telah diupdate.</p>
         </div>
-        <a href="<?= $success_data['wa_link'] ?>" target="_blank" class="btn btn-sm btn-success"><i class="fab fa-whatsapp"></i> Kirim WA</a>
+        <button onclick="sendWAGateway('<?= $wa_num_paid ?>', <?= htmlspecialchars(json_encode($receipt_msg)) ?>, '<?= $success_data['wa_link'] ?>', this)" class="btn btn-sm btn-success"><i class="fab fa-whatsapp"></i> Kirim WA</button>
     </div>
 </div>
 <?php endif; ?>
@@ -657,7 +657,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                         $wa_number = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $c['contact']));
                         $wa_text = "Halo " . urlencode($c['name']) . ", tagihan internet Anda sebesar Rp " . number_format($c['monthly_fee'], 0, ',', '.') . " telah tersedia. Mohon segera melakukan pembayaran.";
                         ?>
-                        <a href="https://api.whatsapp.com/send?phone=<?= $wa_number ?>&text=<?= $wa_text ?>" target="_blank" class="btn btn-sm btn-ghost" style="color:#25D366;" title="Kirim WA"><i class="fab fa-whatsapp"></i></a>
+                        <button onclick="sendWAGateway('<?= $wa_number ?>', <?= htmlspecialchars(json_encode($wa_text)) ?>, 'https://api.whatsapp.com/send?phone=<?= $wa_number ?>&text=<?= $wa_text ?>', this)" class="btn btn-sm btn-ghost" style="color:#25D366;" title="Kirim WA"><i class="fab fa-whatsapp"></i></button>
                     </td>
                 </tr>
                 <?php endforeach; ?>

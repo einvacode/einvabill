@@ -146,7 +146,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
         <button onclick="this.parentElement.parentElement.style.display='none'" style="background:none; border:none; color:var(--text-secondary); cursor:pointer;"><i class="fas fa-times"></i></button>
     </div>
     <div style="display:flex; gap:10px; flex-wrap:wrap;">
-        <a href="<?= $success_data['wa_link'] ?>" target="_blank" class="btn btn-sm btn-success" style="padding:10px 20px;"><i class="fab fa-whatsapp"></i> Kirim Notifikasi WA</a>
+        <button onclick="sendWAGateway('<?= $wa_num_paid ?>', <?= htmlspecialchars(json_encode($receipt_msg)) ?>, '<?= $success_data['wa_link'] ?>', this)" class="btn btn-sm btn-success" style="padding:10px 20px;"><i class="fab fa-whatsapp"></i> Kirim Notifikasi WA</button>
     </div>
 </div>
 <style> @keyframes slideDown { from { transform: translateY(-10px); opacity:0; } to { transform: translateY(0); opacity:1; } } </style>
@@ -349,9 +349,9 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
                             <button onclick="quickPay(<?= $ls['cust_id'] ?>, '<?= addslashes($ls['name']) ?>', <?= $ls['months_owed'] ?>, <?= $ls['total_debt'] ?>)" class="btn btn-xs btn-primary">
                                 <i class="fas fa-money-bill-wave"></i> Bayar
                             </button>
-                            <a href="https://wa.me/<?= preg_replace('/[^0-9]/', '', $ls['contact']) ?>" target="_blank" class="btn btn-xs btn-success">
+                            <button onclick="sendWAGateway('<?= preg_replace('/[^0-9]/', '', $ls['contact']) ?>', 'Halo <?= addslashes($ls['name']) ?>, mohon segera melunasi tunggakan sebesar Rp <?= number_format($ls['total_debt'], 0, ',', '.') ?>. Terima kasih.', 'https://wa.me/<?= preg_replace('/[^0-9]/', '', $ls['contact']) ?>', this)" class="btn btn-xs btn-success">
                                 <i class="fab fa-whatsapp"></i> Tagih
-                            </a>
+                            </button>
                         </div>
                     </td>
                     <td style="padding:12px;">
