@@ -13,11 +13,11 @@ if (!isset($_SESSION['user_id'])) {
                 <i class="fab fa-whatsapp" style="font-size:28px; color:#25D366;"></i>
             </div>
             <div>
-                <h2 style="margin:0; font-size:22px;">WhatsApp Gateway</h2>
+                <h2 style="margin:0; font-size:22px;">WhatsApp <?= ($_SESSION['user_role'] === 'admin' ? 'Gateway' : 'Perangkat') ?></h2>
                 <div class="wa-status-indicator" style="margin-top:4px;">Mengecek Status...</div>
             </div>
         </div>
-        <a href="index.php?page=admin_dashboard" class="btn btn-sm btn-ghost"><i class="fas fa-arrow-left"></i> Kembali</a>
+        <a href="index.php?page=<?= $_SESSION['user_role'] === 'admin' ? 'admin_dashboard' : ($_SESSION['user_role'] === 'partner' ? 'partner' : 'collector') ?>" class="btn btn-sm btn-ghost"><i class="fas fa-arrow-left"></i> Kembali</a>
     </div>
 
     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:25px;">
@@ -30,7 +30,7 @@ if (!isset($_SESSION['user_id'])) {
             </div>
             
             <div id="wa-connection-tip" style="color:var(--text-secondary); font-size:13px; line-height:1.6; max-width:280px; margin:0 auto;">
-                <p><i class="fas fa-camera"></i> Silakan scan QR Code di atas menggunakan menu <strong>Perangkat Tertaut</strong> pada WhatsApp HP Admin.</p>
+                <p><i class="fas fa-camera"></i> Silakan scan QR Code di atas menggunakan menu <strong>Perangkat Tertaut</strong> pada WhatsApp HP Anda.</p>
             </div>
             
             <div id="wa-connected-box" style="display:none; padding:20px;">
