@@ -752,4 +752,38 @@ if ($action === 'print') {
 </div>
 
 <script>
+    // Function to send message via Gateway
+    async function sendWAGateway(phone, message, fallback, btn) {
+        if (btn) {
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            
+            try {
+                // Using relative proxy URL for security and mobile compatibility
+                const response = await fetch('/waapi/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, message })
+                });
+                const data = await response.json();
+                
+                if (data.error) throw new Error(data.message);
+                
+                // Success
+                btn.style.color = '#10b981';
+                btn.innerHTML = '<i class="fas fa-check"></i>';
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    btn.style.color = '#25D366';
+                    btn.disabled = false;
+                }, 2000);
+            } catch (e) {
+                console.error('Gateway failed, using fallback:', e);
+                window.open(fallback, '_blank');
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            }
+        }
+    }
 </script>

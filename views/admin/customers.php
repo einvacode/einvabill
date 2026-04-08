@@ -430,23 +430,12 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $where_type = "";
     if ($filter_type) $where_type = " AND type = " . $db->quote($filter_type);
     
-    // Auto-scope for Collector based on their assigned area
-    $assigned_area = "";
-    if ($_SESSION['user_role'] === 'collector') {
-        $assigned_area = $db->query("SELECT area FROM users WHERE id = " . intval($_SESSION['user_id']))->fetchColumn();
-    }
-    
     $where_collector = "";
-    // If Admin selects a specific collector, filter by that collector's area
     if ($filter_collector) {
         $coll_area = $db->query("SELECT area FROM users WHERE id = " . intval($filter_collector))->fetchColumn();
         if ($coll_area && trim($coll_area) != '') {
             $where_collector = " AND area = " . $db->quote(trim($coll_area));
         }
-    } 
-    // If no specific collector is filtered but the user is a collector, lock to their assigned area
-    elseif (!empty($assigned_area)) {
-        $where_collector = " AND area = " . $db->quote(trim($assigned_area));
     }
 
     $where_search = "";
@@ -470,9 +459,10 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     // Scoping Logic (Multi-tenancy)
     $u_id = $_SESSION['user_id'];
     $u_role = $_SESSION['user_role'];
-    $scope_where = " AND (created_by = $u_id) ";
-    if ($u_role === 'admin' || $u_role === 'collector') {
+    if ($u_role === 'admin') {
         $scope_where = " AND (created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL) ";
+    } elseif ($u_role === 'collector') {
+        $scope_where = " AND (collector_id = $u_id) ";
     }
 
     // Count total rows for this filter

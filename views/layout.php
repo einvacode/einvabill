@@ -89,10 +89,11 @@
                         </div>
 
                     <?php elseif($_SESSION['user_role'] === 'collector'): ?>
-                        <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">TUGAS PENAGIHAN</div>
-                        <a href="index.php?page=collector" class="nav-link <?= $page == 'collector' ? 'active' : '' ?>"><i class="fas fa-motorcycle"></i> Dashboard</a>
-                        <a href="index.php?page=admin_customers" class="nav-link <?= $page == 'admin_customers' ? 'active' : '' ?>"><i class="fas fa-users"></i> Daftar Pelanggan</a>
-                        <a href="index.php?page=admin_invoices" class="nav-link <?= $page == 'admin_invoices' ? 'active' : '' ?>"><i class="fas fa-file-invoice-dollar"></i> Data Tagihan</a>
+                        <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">PENAGIHAN LAPANGAN</div>
+                        <a href="index.php?page=collector&tab=summary" class="nav-link <?= $page == 'collector' && ($coll_tab ?? 'summary') == 'summary' ? 'active' : '' ?>"><i class="fas fa-home"></i> Dashboard</a>
+                        <a href="index.php?page=collector&tab=tugas" class="nav-link <?= $page == 'collector' && ($coll_tab ?? '') == 'tugas' ? 'active' : '' ?>"><i class="fas fa-clock" style="color:#ef4444;"></i> Belum Lunas</a>
+                        <a href="index.php?page=collector&tab=lunas" class="nav-link <?= $page == 'collector' && ($coll_tab ?? '') == 'lunas' ? 'active' : '' ?>"><i class="fas fa-check-circle" style="color:#10b981;"></i> Lunas Bayar</a>
+                        <a href="index.php?page=collector&tab=pelanggan" class="nav-link <?= $page == 'collector' && ($coll_tab ?? '') == 'pelanggan' ? 'active' : '' ?>"><i class="fas fa-users"></i> Daftar Pelanggan</a>
                         
                         <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">UTILITY</div>
                         <a href="index.php?page=admin_wa_gateway" class="nav-link <?= $page == 'admin_wa_gateway' ? 'active' : '' ?>"><i class="fab fa-whatsapp" style="color:#25D366;"></i> WhatsApp Perangkat</a>
@@ -202,24 +203,30 @@
                 <i class="fas fa-ellipsis-h"></i><span>Lainnya</span>
             </a>
         <?php elseif($_SESSION['user_role'] === 'collector'): ?>
-            <a href="index.php?page=collector&tab=dashboard" class="<?= $page == 'collector' && ($_GET['tab'] ?? 'dashboard') == 'dashboard' ? 'active' : '' ?>">
-                <i class="fas fa-home"></i><span>Beranda</span>
+            <a href="index.php?page=collector&tab=tugas" class="<?= $page == 'collector' && ($coll_tab ?? '') == 'tugas' ? 'active' : '' ?>">
+                <i class="fas fa-clock" style="color:#ef4444;"></i><span>Tugas</span>
             </a>
-            <a href="index.php?page=collector&tab=tugas" class="<?= $page == 'collector' && ($_GET['tab'] ?? '') == 'tugas' ? 'active' : '' ?>">
-                <i class="fas fa-tasks"></i><span>Tagihan</span>
+            <a href="index.php?page=collector&tab=lunas" class="<?= $page == 'collector' && ($coll_tab ?? '') == 'lunas' ? 'active' : '' ?>">
+                <i class="fas fa-check-circle" style="color:#10b981;"></i><span>Selesai</span>
             </a>
-            <a href="index.php?page=collector&tab=pelanggan" class="<?= $page == 'collector' && ($_GET['tab'] ?? '') == 'pelanggan' ? 'active' : '' ?>">
-                <i class="fas fa-users"></i><span>Pelanggan</span>
+            <a href="index.php?page=collector&tab=summary" class="<?= $page == 'collector' && ($coll_tab ?? 'summary') == 'summary' ? 'active' : '' ?>">
+                <i class="fas fa-home"></i><span>Home</span>
             </a>
             <a href="index.php?page=logout" style="color:var(--danger);">
                 <i class="fas fa-sign-out-alt"></i><span>Keluar</span>
             </a>
         <?php elseif($_SESSION['user_role'] === 'partner'): ?>
-            <a href="index.php?page=partner&tab=dashboard" class="<?= $page == 'partner' && ($_GET['tab'] ?? 'dashboard') == 'dashboard' ? 'active' : '' ?>">
-                <i class="fas fa-home"></i><span>Beranda</span>
+            <a href="index.php?page=partner" class="nav-link <?= $page == 'partner' ? 'active' : '' ?>">
+                <i class="fas fa-home"></i><span>Home</span>
             </a>
-            <a href="index.php?page=partner&tab=billing" class="<?= $page == 'partner' && ($_GET['tab'] ?? '') == 'billing' ? 'active' : '' ?>">
-                <i class="fas fa-file-invoice-dollar"></i><span>Tagihan</span>
+            <a href="index.php?page=partner_collection" class="nav-link <?= $page == 'partner_collection' ? 'active' : '' ?>">
+                <i class="fas fa-motorcycle"></i><span>Penagihan</span>
+            </a>
+            <a href="index.php?page=admin_customers" class="nav-link <?= $page == 'admin_customers' ? 'active' : '' ?>">
+                <i class="fas fa-users"></i><span>Pelanggan</span>
+            </a>
+            <a href="index.php?page=partner_isp_invoices" class="nav-link <?= $page == 'partner_isp_invoices' ? 'active' : '' ?>">
+                <i class="fas fa-receipt"></i><span>Tagihan ISP</span>
             </a>
             <a href="index.php?page=logout" style="color:var(--danger);">
                 <i class="fas fa-sign-out-alt"></i><span>Keluar</span>
@@ -417,15 +424,14 @@
     });
 
     // Configure Client ID for WhatsApp Gateway
-    // Reverted to dynamic: Each user (Admin, Collector, Partner) uses their own WA session
-    const WAGatewayCID = '<?= $_SESSION['user_id'] ?>';
+    const WAGatewayCID = '<?= ($_SESSION["user_role"] === "admin") ? "admin" : "u_" . ($_SESSION["user_id"] ?? "guest") ?>';
     
     async function checkWAStatus() {
         if (!window.location.search.includes('page=admin') && !window.location.search.includes('page=partner') && !window.location.search.includes('page=collector')) return;
         
         try {
-            // Using CID to check specific user connection via PHP Proxy
-            const response = await fetch('waapi.php?path=status&cid=' + WAGatewayCID);
+            // Using CID to check specific user connection
+            const response = await fetch('/waapi/status?cid=' + WAGatewayCID);
             const data = await response.json();
             const indicators = document.querySelectorAll('.wa-status-indicator');
             indicators.forEach(el => {
@@ -439,7 +445,7 @@
             const indicators = document.querySelectorAll('.wa-status-indicator');
             indicators.forEach(el => {
                 if (window.location.protocol === 'https:') {
-                    el.innerHTML = '<span class="badge" style="background:rgba(217,119,6,0.1); color:#d97706; border:1px solid rgba(217,119,6,0.3); font-size:10px;"><i class="fas fa-shield-alt"></i> WA HTTPS PROXY</span>';
+                    el.innerHTML = '<div style="color:#f59e0b; font-size:12px; font-weight:700;"><i class="fas fa-shield-alt"></i> BLOCKED BY HTTPS<br><span style="font-weight:400; opacity:0.8; font-size:10px;">Gunakan <b>HTTP (Tanpa S)</b> atau klik Gembok -> "Allow Insecure Content" di browser.</span></div>';
                 } else {
                     el.innerHTML = '<span class="badge" style="background:rgba(148,163,184,0.1); color:#94a3b8; border:1px solid rgba(148,163,184,0.3); font-size:10px;"><i class="fas fa-power-off"></i> WA OFFLINE</span>';
                 }
@@ -467,8 +473,8 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             
             try {
-                // Using CID to route send request to correct device via PHP Proxy
-                const response = await fetch('waapi.php?path=send', {
+                // Using CID to route send request to correct device
+                const response = await fetch('/waapi/send', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ cid: WAGatewayCID, phone, message })
