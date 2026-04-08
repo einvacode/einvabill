@@ -1,5 +1,15 @@
 <?php
-session_start();
+// Secure & Mobile-Compatible Session Settings
+ini_set('session.cookie_httponly', 1);
+ini_set('session.use_only_cookies', 1);
+ini_set('session.cookie_samesite', 'Lax'); 
+
+// Set session name to avoid conflicts
+session_name('EINVABILL_SESS');
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 date_default_timezone_set('Asia/Jakarta');
 
 // Helper to get base URL dynamically

@@ -6,6 +6,7 @@ $page = $_GET['page'] ?? 'home';
 // Handle Logout
 if ($page === 'logout') {
     session_destroy();
+    session_write_close();
     header("Location: index.php?page=login");
     exit;
 }
@@ -20,22 +21,14 @@ if ($page === 'login_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $user = $stmt->fetch();
     
     if ($user && password_verify($password, $user['password'])) {
-        $req_role = $_POST['requested_role'] ?? '';
+        // Automatically set session and redirect to the CORRECT page based on real role
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['user_role'] = $user['role'];
+        $_SESSION['user_name'] = $user['name'];
         
-        // Enforce Role Restriction: Partner must use Partner Portal, Staff must use Staff Portal
-        if ($req_role === 'partner' && $user['role'] !== 'partner') {
-            $error = "Akses Ditolak! Akun Anda bukan Akun Partner.";
-            $page = 'login';
-        } elseif ($req_role === 'staff' && !in_array($user['role'], ['admin', 'collector'])) {
-            $error = "Akses Ditolak! Silakan gunakan Portal Partner.";
-            $page = 'login';
-        } else {
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['user_role'] = $user['role'];
-            $_SESSION['user_name'] = $user['name'];
-            header("Location: index.php");
-            exit;
-        }
+        session_write_close();
+        header("Location: index.php");
+        exit;
     } else {
         $error = "Username atau password salah!";
         $page = 'login';
@@ -45,6 +38,7 @@ if ($page === 'login_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 // Authentication Check
 $public_pages = ['login', 'landing', 'customer_portal'];
 if (!isset($_SESSION['user_id']) && !in_array($page, $public_pages)) {
+    session_write_close();
     header("Location: index.php?page=landing");
     exit;
 }
@@ -52,6 +46,7 @@ if (!isset($_SESSION['user_id']) && !in_array($page, $public_pages)) {
 // License Enforcement Check
 $license_exempt_pages = ['login', 'logout', 'admin_license', 'admin_license_post', 'landing', 'customer_portal'];
 if (LICENSE_ST === 'EXPIRED' && !in_array($page, $license_exempt_pages)) {
+    session_write_close();
     header("Location: index.php?page=admin_license");
     exit;
 }

@@ -403,6 +403,53 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   font-size: 18px;
 }
 
+/* Sidebar Dropdown Styles */
+.nav-dropdown {
+  margin-bottom: 8px;
+}
+
+.dropdown-toggle {
+  display: flex !important;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.dropdown-toggle i:last-child {
+  margin-right: 0;
+  font-size: 12px;
+  transition: transform 0.3s ease;
+}
+
+.nav-dropdown.open .dropdown-toggle i:last-child {
+  transform: rotate(180deg);
+}
+
+.dropdown-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: rgba(var(--primary-rgb), 0.03);
+  border-radius: 8px;
+  margin: 4px 0 8px 10px;
+  border-left: 2px solid var(--glass-border);
+}
+
+.nav-dropdown.open .dropdown-content {
+  max-height: 500px;
+}
+
+.dropdown-link {
+  padding: 10px 16px !important;
+  font-size: 13px !important;
+  margin-bottom: 2px !important;
+}
+
+.dropdown-link i {
+  font-size: 14px !important;
+  opacity: 0.7;
+}
+
 .main-content {
   flex: 1;
   padding: 15px 25px;

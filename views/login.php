@@ -28,10 +28,16 @@
         /* Mobile Specific fixes */
         @media (max-width: 480px) {
             .login-box {
-                padding: 40px 20px;
+                padding: 30px 20px 60px 20px; /* Extra bottom padding for floating button */
                 background: transparent;
                 border: none;
                 box-shadow: none;
+            }
+            .theme-toggle {
+                bottom: 15px !important;
+                right: 15px !important;
+                width: 40px !important;
+                height: 40px !important;
             }
         }
     </style>
