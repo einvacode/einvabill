@@ -387,11 +387,7 @@
                 if (data.connected) {
                     el.innerHTML = '<span class="badge badge-success" style="background:rgba(16,185,129,0.1); color:#10b981; border:1px solid rgba(16,185,129,0.3); font-size:10px;"><i class="fas fa-link"></i> WA CONNECTED</span>';
                 } else {
-                    if (window.location.protocol === 'https:') {
-                        el.innerHTML = '<span class="status-badge" style="background:#f59e0b; color:#fff; border:none; padding:2px 8px; border-radius:10px; font-size:10px;"><i class="fas fa-shield-alt"></i> HTTPS Blocked</span>';
-                    } else {
-                        el.innerHTML = '<span class="status-badge" style="background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.2); padding:2px 8px; border-radius:10px; font-size:10px;"><i class="fas fa-times"></i> Gateway Offline</span>';
-                    }
+                    el.innerHTML = '<span class="status-badge" style="background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.2); padding:2px 8px; border-radius:10px; font-size:10px;"><i class="fas fa-times"></i> WA Disconnected</span>';
                 }
             });
         } catch (e) {
