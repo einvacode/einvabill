@@ -298,8 +298,10 @@ if ($action === 'import_file' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset(
         $delimiter = (strpos($firstLine, ';') !== false) ? ';' : ',';
         rewind($handle);
 
-        $stmt = $db->prepare("INSERT INTO customers (name, address, contact, package_name, monthly_fee, ip_address, type, registration_date, billing_date, area) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt = $db->prepare("INSERT INTO customers (name, address, contact, package_name, monthly_fee, ip_address, type, registration_date, billing_date, area, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt_chk = $db->prepare("SELECT COUNT(*) FROM customers WHERE customer_code = ?");
+        $count = 0;
+        $u_id_import = $_SESSION['user_id'];
 
         while (($row = fgetcsv($handle, 1000, $delimiter)) !== FALSE) {
             if (empty($row) || count($row) < 5) continue;
@@ -330,8 +332,9 @@ if ($action === 'import_file' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset(
             $stmt->execute([
                 trim($row[1]), trim($row[2]), trim($row[3]), $pkg_name, $pkg_fee,
                 trim($row[6] ?? ''), strtolower(trim($row[0])) == 'partner' ? 'partner' : 'customer', 
-                trim($row[7] ?? date('Y-m-d')), (int)trim($row[8] ?? 1), $cust_area
+                trim($row[7] ?? date('Y-m-d')), (int)trim($row[8] ?? 1), $cust_area, $u_id_import
             ]);
+            $count++;
             
             $imp_id = $db->lastInsertId();
             do {
@@ -341,7 +344,7 @@ if ($action === 'import_file' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset(
             $db->prepare("UPDATE customers SET customer_code = ? WHERE id = ?")->execute([$imp_code, $imp_id]);
         }
         fclose($handle);
-        header("Location: index.php?page=admin_customers&msg=import_success");
+        header("Location: index.php?page=admin_customers&msg=import_success&count=" . $count);
         exit;
     }
 }
@@ -349,7 +352,9 @@ if ($action === 'import_file' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset(
 if ($action === 'import_paste' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = $_POST['paste_data'];
     $lines = explode("\n", trim($data));
-    $stmt = $db->prepare("INSERT INTO customers (name, address, contact, package_name, monthly_fee, ip_address, type, registration_date, billing_date, area) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $u_id_import = $_SESSION['user_id'];
+    $stmt = $db->prepare("INSERT INTO customers (name, address, contact, package_name, monthly_fee, ip_address, type, registration_date, billing_date, area, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $count = 0;
     
     foreach ($lines as $line) {
         if (trim($line) === '') continue;
@@ -384,8 +389,9 @@ if ($action === 'import_paste' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $stmt->execute([
                 trim($row[1]), trim($row[2]), trim($row[3]), $pkg_name, $pkg_fee,
-                trim($row[6]), strtolower(trim($row[0])) == 'partner' ? 'partner' : 'customer', trim($row[7]), (int)trim($row[8]), $cust_area
+                trim($row[6]), strtolower(trim($row[0])) == 'partner' ? 'partner' : 'customer', trim($row[7]), (int)trim($row[8]), $cust_area, $u_id_import
             ]);
+            $count++;
             
             $imp_id = $db->lastInsertId();
             $stmt_chk = $db->prepare("SELECT COUNT(*) FROM customers WHERE customer_code = ?");
@@ -396,7 +402,7 @@ if ($action === 'import_paste' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $db->prepare("UPDATE customers SET customer_code = ? WHERE id = ?")->execute([$imp_code, $imp_id]);
         }
     }
-    header("Location: index.php?page=admin_customers");
+    header("Location: index.php?page=admin_customers&msg=import_success&count=" . $count);
     exit;
 }
 
@@ -482,10 +488,8 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             <i class="fas fa-check-circle" style="color:var(--success); font-size:20px;"></i>
             <div style="font-weight:600; color:var(--success);">
                 <?php
-                if($_GET['msg'] == 'bulk_deleted') echo "Berhasil menghapus pelanggan terpilih secara massal.";
-                if($_GET['msg'] == 'bulk_moved') echo "Berhasil memindahkan penugasan pelanggan ke penagih baru.";
-                if($_GET['msg'] == 'deleted') echo "Berhasil menghapus pelanggan.";
                 if($_GET['msg'] == 'added') echo "Berhasil menambah pelanggan.";
+                if($_GET['msg'] == 'import_success') echo "Berhasil mengimpor " . intval($_GET['count'] ?? 0) . " data pelanggan ke akun Anda.";
                 ?>
             </div>
         </div>
