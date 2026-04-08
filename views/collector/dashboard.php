@@ -210,13 +210,14 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
             [
                 $success_data['name'], 
                 ($success_data['customer_code'] ?: $success_data['id']), 
-                'Rp ' . number_format($success_data['monthly_fee'], 0, ',', '.'),
                 ($success_data['package_name'] ?: '-'),
-                $months_paid . ' Bulan',
+                $months_paid . ' Bulan', 
+                'Rp ' . number_format($success_data['monthly_fee'], 0, ',', '.'),
                 $tunggakan_display,
                 date('d/m/Y H:i') . ' WIB',
                 $_SESSION['user_name'],
                 $portal_link,
+                trim($my_bank_info),
                 $total_display,
                 $status_wa,
                 $tunggakan_display,
@@ -995,7 +996,18 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                     <button class="btn" style="background:var(--success); color:white; flex:1; height:42px; border-radius:12px; font-weight:800; font-size:13px; border:none; box-shadow:0 10px 20px rgba(16, 185, 129, 0.2);" onclick="handlePay(<?= $ac['id'] ?>, <?= $ac['unpaid_count'] ?>, '<?= addslashes($ac['name']) ?>', <?= $ac['monthly_fee'] ?>)">
                         <i class="fas fa-money-bill-wave"></i> BAYAR
                     </button>
-                    <button class="btn" style="background:rgba(16, 185, 129, 0.1); color:var(--success); width:42px; height:42px; border-radius:12px; border:none;" onclick="sendWAGateway('<?= $wa_num ?>', 'Tagihan', '', this)" title="WA Reminder">
+                    <?php 
+                        $mon_label = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                        $curr_month = $mon_label[intval(date('m')) - 1] . ' ' . date('Y');
+                        $portal_link_rem = $base_url . "/index.php?page=customer_portal&code=" . $cust_id_display;
+                        $rem_msg = str_replace(
+                            ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{link_tagihan}'], 
+                            [$ac['name'], '*' . $cust_id_display . '*', $ac['package_name'], $curr_month, '*Rp ' . number_format($ac['monthly_fee'], 0, ',', '.') . '*', '*' . $ac['billing_date'] . ' ' . $curr_month . '*', '*' . trim($settings['bank_account']) . '*', $portal_link_rem], 
+                            $wa_tpl
+                        );
+                        $rem_wa_link = "https://api.whatsapp.com/send?phone=$wa_num&text=" . urlencode($rem_msg);
+                    ?>
+                    <button class="btn" style="background:rgba(16, 185, 129, 0.1); color:var(--success); width:42px; height:42px; border-radius:12px; border:none;" onclick="sendWAGateway('<?= $wa_num ?>', <?= htmlspecialchars(json_encode($rem_msg)) ?>, '<?= $rem_wa_link ?>', this)" title="WA Reminder">
                         <i class="fab fa-whatsapp" style="font-size:18px;"></i>
                     </button>
                 <?php else: ?>

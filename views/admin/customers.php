@@ -1382,10 +1382,31 @@ document.addEventListener("DOMContentLoaded", () => {
                                     <td style="text-align:right;">
                                         <div style="display:flex; justify-content:flex-end; gap:6px;">
                                             <?php 
+                                                // Fetch template settings (if not already fetched)
+                                                if (!isset($wa_tpl)) {
+                                                    $u_id_me = $_SESSION['user_id'];
+                                                    $me_user = $db->query("SELECT wa_template, wa_template_paid FROM users WHERE id = $u_id_me")->fetch();
+                                                    $sets_me = $db->query("SELECT wa_template, wa_template_paid, site_url, bank_account FROM settings WHERE id=1")->fetch();
+                                                    $wa_tpl = !empty($me_user['wa_template']) ? $me_user['wa_template'] : ($sets_me['wa_template'] ?? "Halo {nama}, tagihan {tagihan} ({bulan}) jatuh tempo pada {jatuh_tempo}.");
+                                                    $base_url_me = !empty($sets_me['site_url']) ? $sets_me['site_url'] : get_app_url();
+                                                    $bank_acc_me = $sets_me['bank_account'] ?? '';
+                                                }
+
                                                 $wa_raw = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $c['contact']));
-                                                $wa_link = "https://api.whatsapp.com/send?phone=$wa_raw&text=" . urlencode("Halo Bapak/Ibu " . $c['name'] . ", mengingatkan untuk tagihan internet periode " . date('F Y', strtotime($ui['due_date'])) . " sebesar Rp " . number_format($ui['amount'], 0, ',', '.') . " sudah jatuh tempo. Mohon kesediaannya untuk melakukan pembayaran. Terima kasih.");
+                                                $mon_label = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                                                $inv_month = $mon_label[intval(date('m', strtotime($ui['due_date']))) - 1] . ' ' . date('Y', strtotime($ui['due_date']));
+                                                $cust_id_display = $c['customer_code'] ?: str_pad($c['id'], 5, "0", STR_PAD_LEFT);
+                                                $portal_link = $base_url_me . "/index.php?page=customer_portal&code=" . $cust_id_display;
+                                                
+                                                // Variable Replacement
+                                                $wa_msg = str_replace(
+                                                    ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{link_tagihan}'], 
+                                                    [$c['name'], '*' . $cust_id_display . '*', $c['package_name'], $inv_month, '*Rp ' . number_format($ui['amount'] - ($ui['discount'] ?? 0), 0, ',', '.') . '*', '*' . date('d/m/Y', strtotime($ui['due_date'])) . '*', '*' . trim($bank_acc_me) . '*', $portal_link], 
+                                                    $wa_tpl
+                                                );
+                                                $wa_fallback = "https://api.whatsapp.com/send?phone=$wa_raw&text=" . urlencode($wa_msg);
                                             ?>
-                                            <a href="<?= $wa_link ?>" target="_blank" class="btn btn-xs btn-ghost" style="color:#25D366;" title="Kirim Pengingat WA"><i class="fab fa-whatsapp"></i></a>
+                                            <button onclick="sendWAGateway('<?= $wa_raw ?>', <?= htmlspecialchars(json_encode($wa_msg)) ?>, '<?= $wa_fallback ?>', this)" class="btn btn-xs btn-ghost" style="color:#25D366;" title="Kirim Pengingat WA"><i class="fab fa-whatsapp"></i></button>
                                             <a href="index.php?page=admin_invoices&action=mark_paid&id=<?= $ui['id'] ?>&ref=customer_details&cust_id=<?= $id ?>" class="btn btn-xs btn-success" onclick="return confirm('Tandai tagihan ini Lunas?')"><i class="fas fa-check"></i> Bayar</a>
                                             <button onclick="showEditInvoice(<?= $ui['id'] ?>, <?= $ui['amount'] ?>, <?= $ui['discount'] ?? 0 ?>, '<?= $ui['due_date'] ?>')" class="btn btn-xs btn-warning" title="Edit"><i class="fas fa-edit"></i></button>
                                             <a href="index.php?page=admin_invoices&action=delete&id=<?= $ui['id'] ?>&ref=customer_details&cust_id=<?= $id ?>" class="btn btn-xs btn-ghost" style="color:var(--danger);" onclick="return confirm('Hapus tagihan ini?')"><i class="fas fa-trash"></i></a>

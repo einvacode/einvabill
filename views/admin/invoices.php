@@ -1,12 +1,21 @@
 <?php
 $action = $_GET['action'] ?? 'list';
+$u_id = $_SESSION['user_id'];
+$u_role = $_SESSION['user_role'] ?? 'guest';
 
-// Success Modal for Admin Invoices
+// Fetch current user templates and global settings
+$me = $db->query("SELECT wa_template, wa_template_paid FROM users WHERE id = $u_id")->fetch();
+$settings = $db->query("SELECT company_name, wa_template, wa_template_paid, site_url, bank_account FROM settings WHERE id=1")->fetch();
+
+$base_url = !empty($settings['site_url']) ? $settings['site_url'] : get_app_url();
+$wa_tpl = !empty($me['wa_template']) ? $me['wa_template'] : ($settings['wa_template'] ?? "Halo {nama}, tagihan internet Anda {tagihan} ({bulan}) jatuh tempo pada {jatuh_tempo}. Hubungi admin untuk info pembayaran.");
+$wa_tpl_paid = !empty($me['wa_template_paid']) ? $me['wa_template_paid'] : ($settings['wa_template_paid'] ?? "Halo {nama}, terima kasih. Pembayaran {total_bayar} ({bulan}) telah diterima dan status {status_pembayaran}. Sisa Tunggakan: {sisa_tunggakan}. Cek nota: {link_tagihan}");
+
+// Success Modal for Admin Invoices (After marking paid)
 $success_data = null;
 if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'])) {
     $sid = intval($_GET['cust_id']);
     $success_data = $db->query("SELECT id, name, contact, customer_code, package_name, monthly_fee FROM customers WHERE id = $sid")->fetch();
-    $settings = $db->query("SELECT company_name, wa_template_paid, site_url FROM settings WHERE id=1")->fetch();
     if ($success_data) {
         $wa_num_paid = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $success_data['contact']));
         $months_paid = intval($_GET['months'] ?? 1);
@@ -14,9 +23,9 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
         $total_display = 'Rp ' . number_format($total_paid, 0, ',', '.');
         $tunggakan_val = $db->query("SELECT COALESCE(SUM(amount - discount), 0) FROM invoices WHERE customer_id = $sid AND status = 'Belum Lunas'")->fetchColumn() ?: 0;
         $tunggakan_display = 'Rp ' . number_format($tunggakan_val, 0, ',', '.');
-        $status_wa = ($tunggakan_val > 0) ? "LUNAS SEBAGIAN (Masih ada sisa tunggakan)" : "LUNAS SEPENUHNYA";
+        $status_wa = ($tunggakan_val > 0) ? "LUNAS SEBAGIAN" : "LUNAS SEPENUHNYA";
         
-        $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . ($success_data['customer_code'] ?: $success_data['id']);
+        $portal_link = $base_url . "/index.php?page=customer_portal&code=" . ($success_data['customer_code'] ?: $success_data['id']);
         $receipt_msg = str_replace(
             ['{nama}', '{id_cust}', '{tagihan}', '{paket}', '{bulan}', '{tunggakan}', '{waktu_bayar}', '{admin}', '{perusahaan}', '{link_tagihan}', '{status_pembayaran}', '{sisa_tunggakan}', '{total_bayar}'], 
             [
@@ -34,7 +43,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
                 $tunggakan_display,
                 $total_display
             ], 
-            $settings['wa_template_paid'] ?: "Halo {nama}, pembayaran {total_bayar} ({bulan}) ({status_pembayaran}). Sisa Tunggakan: {sisa_tunggakan}. Cek nota: {link_tagihan}"
+            $wa_tpl_paid
         );
         $success_data['wa_text'] = $receipt_msg;
         $success_data['wa_link'] = "https://api.whatsapp.com/send?phone=$wa_num_paid&text=" . urlencode($receipt_msg);
@@ -590,11 +599,6 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
 
     <!-- INVOICE LIST -->
     <?php
-        $settings = $db->query("SELECT wa_template, wa_template_paid, bank_account, site_url FROM settings WHERE id=1")->fetch();
-        $base_url = !empty($settings['site_url']) ? $settings['site_url'] : get_app_url();
-        $wa_tpl = $settings['wa_template'] ?: "Halo {nama}, tagihan internet Anda sebesar {tagihan} jatuh tempo pada {jatuh_tempo}. Transfer ke {rekening}";
-        $wa_tpl_paid = $settings['wa_template_paid'] ?: "Halo {nama}, terima kasih. Pembayaran {tagihan} sudah lunas.";
-        
         // Paginasi
         $items_per_page = 50;
         $current_page = isset($_GET['p']) ? max(1, intval($_GET['p'])) : 1;
@@ -882,8 +886,27 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
 
                         $portal_link = $base_url . "/index.php?page=customer_portal&code=" . $cust_id_display;
                         $msg = str_replace(
-                            ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{tunggakan}', '{admin}', '{link_tagihan}'], 
-                            [$inv['customer_name'], '*' . $cust_id_display . '*', $package_display, $inv_month, '*' . $nominal_display . '*', '*' . $t_remain_display . '*', '*' . $admin_bayar . '*', $portal_link], 
+                            [
+                                '{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', 
+                                '{tunggakan}', '{waktu_bayar}', '{admin}', '{link_tagihan}', '{rekening}', 
+                                '{nominal}', '{status_pembayaran}', '{sisa_tunggakan}', '{total_bayar}'
+                            ], 
+                            [
+                                $inv['customer_name'], 
+                                '*' . $cust_id_display . '*', 
+                                $package_display, 
+                                $inv_month, 
+                                '*' . $nominal_display . '*', 
+                                '*' . $t_remain_display . '*', 
+                                '*' . $realtime_bayar . '*',
+                                '*' . $admin_bayar . '*', 
+                                $portal_link,
+                                '*' . trim($settings['bank_account'] ?? '') . '*',
+                                '*' . $nominal_display . '*',
+                                '*LUNAS*',
+                                '*' . $t_remain_display . '*',
+                                '*' . $nominal_display . '*'
+                            ], 
                             $wa_tpl_paid
                         );
                         

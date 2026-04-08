@@ -178,9 +178,9 @@ $base_url = !empty($settings['site_url']) ? $settings['site_url'] : get_app_url(
 $banners = $db->query("SELECT * FROM banners WHERE is_active = 1 AND target_role IN ('all', 'partner') ORDER BY created_at DESC")->fetchAll();
 
 // WA Templates
-$p_stg = $db->query("SELECT wa_template_paid, brand_bank, brand_rekening FROM users WHERE id = $user_id")->fetch();
+$p_stg = $db->query("SELECT wa_template, wa_template_paid, brand_bank, brand_rekening FROM users WHERE id = $user_id")->fetch();
 $wa_tpl_paid = (!empty($p_stg['wa_template_paid'])) ? $p_stg['wa_template_paid'] : ($settings['wa_template_paid'] ?: "Halo {nama}, terima kasih. Pembayaran {tagihan} sebesar {nominal} sudah LUNAS.");
-$wa_tpl_unpaid = $settings['wa_template'] ?? "Halo {nama}, tagihan internet Anda sebesar {tagihan} jatuh tempo pada {jatuh_tempo}.";
+$wa_tpl_unpaid = (!empty($p_stg['wa_template'])) ? $p_stg['wa_template'] : ($settings['wa_template'] ?? "Halo {nama}, tagihan internet Anda sebesar {tagihan} jatuh tempo pada {jatuh_tempo}.");
 $rekening_receipt = (!empty($p_stg['brand_bank'])) ? $p_stg['brand_bank'] . " " . $p_stg['brand_rekening'] : $settings['bank_account'];
 
 // Success Modal Data
@@ -313,9 +313,9 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
 
     <!-- Action Buttons Group -->
     <div style="padding:15px 20px; display:flex; gap:12px; flex-direction:column;">
-        <a href="<?= $success_data['wa_link'] ?>" target="_blank" style="display:flex; align-items:center; justify-content:center; gap:10px; background:#25D366; color:white; text-decoration:none; padding:14px; border-radius:15px; font-weight:800; font-size:14px; box-shadow:0 10px 20px rgba(37, 211, 102, 0.2); transition:all 0.3s; width:100%;">
+        <button onclick="sendWAGateway('<?= $wa_num_paid ?>', <?= htmlspecialchars(json_encode($receipt_msg)) ?>, '<?= $success_data['wa_link'] ?>', this)" style="display:flex; align-items:center; justify-content:center; gap:10px; background:#25D366; color:white; border:none; padding:14px; border-radius:15px; font-weight:800; font-size:14px; box-shadow:0 10px 20px rgba(37, 211, 102, 0.2); transition:all 0.3s; width:100%; cursor:pointer;">
             <i class="fab fa-whatsapp" style="font-size:18px;"></i> KIRIM NOTA KE WHATSAPP
-        </a>
+        </button>
         <a href="index.php?page=admin_invoices&action=print&id=<?= intval($_GET['last_id'] ?? 0) ?>&format=thermal" target="_blank" style="display:flex; align-items:center; justify-content:center; gap:10px; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:var(--text-primary); text-decoration:none; padding:12px; border-radius:15px; font-weight:700; font-size:13px; transition:all 0.3s;">
             <i class="fas fa-print"></i> CETAK STRUK PEMBAYARAN
         </a>
@@ -431,9 +431,20 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
                     <button class="btn" style="background:var(--success); color:white; flex:1; height:42px; border-radius:12px; font-weight:800; font-size:13px; border:none; box-shadow:0 10px 20px rgba(16, 185, 129, 0.2);" onclick="handlePay(<?= $ui['cust_id'] ?>, <?= $ui['num_arrears'] ?>, '<?= addslashes($ui['name']) ?>', <?= $ui['monthly_fee'] ?>)">
                         <i class="fas fa-wallet"></i> BAYAR SEKARANG
                     </button>
-                    <a href="https://api.whatsapp.com/send?phone=<?= $wa_num ?>" target="_blank" class="btn" style="background:rgba(37, 211, 102, 0.1); color:#25D366; width:42px; height:42px; border-radius:12px; border:none; display:flex; align-items:center; justify-content:center; text-decoration:none;">
+                    <?php 
+                        $mon_label = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                        $curr_month = $mon_label[intval(date('m')) - 1] . ' ' . date('Y');
+                        $portal_link_rem = $base_url . "/index.php?page=customer_portal&code=" . ($ui['customer_code'] ?: $ui['cust_id']);
+                        $rem_msg = str_replace(
+                            ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{link_tagihan}'], 
+                            [$ui['name'], '*' . ($ui['customer_code'] ?: $ui['cust_id']) . '*', $ui['package_name'], $curr_month, '*Rp ' . number_format($ui['total_unpaid'], 0, ',', '.') . '*', '*' . date('d/m/Y', strtotime($ui['oldest_due_date'])) . '*', '*' . trim($settings['bank_account']) . '*', $portal_link_rem], 
+                            $wa_tpl
+                        );
+                        $rem_wa_link = "https://api.whatsapp.com/send?phone=$wa_num&text=" . urlencode($rem_msg);
+                    ?>
+                    <button onclick="sendWAGateway('<?= $wa_num ?>', <?= htmlspecialchars(json_encode($rem_msg)) ?>, '<?= $rem_wa_link ?>', this)" class="btn" style="background:rgba(37, 211, 102, 0.1); color:#25D366; width:42px; height:42px; border-radius:12px; border:none; display:flex; align-items:center; justify-content:center; cursor:pointer;">
                         <i class="fab fa-whatsapp" style="font-size:18px;"></i>
-                    </a>
+                    </button>
                 </div>
             </div>
             <?php endforeach; ?>
@@ -509,14 +520,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
                     <a href="index.php?page=admin_invoices&action=print&id=<?= $rp['id'] ?>&format=thermal" target="_blank" style="display:flex; align-items:center; justify-content:center; gap:8px; background:rgba(var(--primary-rgb), 0.1); border:1px solid rgba(var(--primary-rgb), 0.2); color:var(--primary); text-decoration:none; padding:10px; border-radius:12px; font-weight:800; font-size:12px; transition:all 0.2s;">
                         <i class="fas fa-print"></i> CETAK KWITANSI
                     </a>
-                    <button onclick="sendReminder(this)" 
-                        data-phone="<?= $wa_num ?>" 
-                        data-name="<?= htmlspecialchars($ac['name']) ?>"
-                        data-tagihan="Rp<?= number_format($ac['total_unpaid'], 0, ',', '.') ?>"
-                        data-paket="<?= htmlspecialchars($ac['package_name']) ?>"
-                        data-due="<?= $ac['oldest_due_date'] ?>"
-                        data-tunggakan="Rp<?= number_format($ac['total_unpaid'], 0, ',', '.') ?>"
-                        data-link="<?= $base_url ?>/index.php?page=customer_portal&code=<?= $ac['customer_code'] ?: $ac['cust_id'] ?>"
+                    <button onclick="sendWAGateway('<?= $wa_num ?>', 'Terima kasih atas pembayarannya.', 'https://api.whatsapp.com/send?phone=<?= $wa_num ?>&text=Terima+kasih+atas+pembayarannya.', this)" 
                         style="display:flex; align-items:center; justify-content:center; background:rgba(37, 211, 102, 0.1); border:1px solid rgba(37, 211, 102, 0.2); color:#25D366; text-decoration:none; border-radius:12px; height:42px; width:42px; cursor:pointer; transition:all 0.2s;">
                         <i class="fab fa-whatsapp" style="font-size:18px;"></i>
                     </button>
