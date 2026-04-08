@@ -364,16 +364,29 @@ function detectImportMapping($row) {
     foreach ($row as $idx => $val) {
         $val = strtolower(trim($val));
         if (empty($val)) continue;
-        if (strpos($val, 'tipe') !== false || strpos($val, 'type') !== false) { $map['type'] = $idx; $found = true; }
-        if (strpos($val, 'nama') !== false || strpos($val, 'name') !== false || strpos($val, 'pelanggan') !== false) { $map['name'] = $idx; $found = true; }
-        if (strpos($val, 'alamat') !== false || strpos($val, 'address') !== false) { $map['address'] = $idx; $found = true; }
-        if (strpos($val, 'kontak') !== false || strpos($val, 'wa') !== false || strpos($val, 'whatsapp') !== false || strpos($val, 'phone') !== false || strpos($val, 'hp') !== false) { $map['contact'] = $idx; $found = true; }
-        if (strpos($val, 'paket') !== false || strpos($val, 'package') !== false) { $map['package'] = $idx; $found = true; }
-        if (strpos($val, 'biaya') !== false || strpos($val, 'fee') !== false || strpos($val, 'harga') !== false || strpos($val, 'tarif') !== false) { $map['fee'] = $idx; $found = true; }
-        if (strpos($val, 'ip') !== false) { $map['ip'] = $idx; $found = true; }
-        if (strpos($val, 'registrasi') !== false || strpos($val, 'daftar') !== false) { $map['reg_date'] = $idx; $found = true; }
-        if (strpos($val, 'tagihan') !== false || strpos($val, 'billing') !== false || strpos($val, 'tempo') !== false) { $map['bill_date'] = $idx; $found = true; }
-        if (strpos($val, 'area') !== false || strpos($val, 'wilayah') !== false || strpos($val, 'lokasi') !== false) { $map['area'] = $idx; $found = true; }
+        
+        // Priority Detection (Specific keywords first to avoid overlap)
+        if (strpos($val, 'paket') !== false || strpos($val, 'package') !== false) { 
+            $map['package'] = $idx; $found = true; 
+        } elseif (strpos($val, 'tipe') !== false || strpos($val, 'type') !== false) { 
+            $map['type'] = $idx; $found = true; 
+        } elseif (strpos($val, 'ip') !== false) { 
+            $map['ip'] = $idx; $found = true; 
+        } elseif (strpos($val, 'biaya') !== false || strpos($val, 'fee') !== false || strpos($val, 'harga') !== false || strpos($val, 'tarif') !== false) { 
+            $map['fee'] = $idx; $found = true; 
+        } elseif (strpos($val, 'registrasi') !== false || strpos($val, 'daftar') !== false) { 
+            $map['reg_date'] = $idx; $found = true; 
+        } elseif (strpos($val, 'tagihan') !== false || strpos($val, 'billing') !== false || strpos($val, 'tempo') !== false) { 
+            $map['bill_date'] = $idx; $found = true; 
+        } elseif (strpos($val, 'area') !== false || strpos($val, 'wilayah') !== false || strpos($val, 'lokasi') !== false) { 
+            $map['area'] = $idx; $found = true; 
+        } elseif (strpos($val, 'nama') !== false || strpos($val, 'name') !== false || strpos($val, 'pelanggan') !== false) { 
+            $map['name'] = $idx; $found = true; 
+        } elseif (strpos($val, 'alamat') !== false || strpos($val, 'address') !== false) { 
+            $map['address'] = $idx; $found = true; 
+        } elseif (strpos($val, 'kontak') !== false || strpos($val, 'wa') !== false || strpos($val, 'whatsapp') !== false || strpos($val, 'phone') !== false || strpos($val, 'hp') !== false) { 
+            $map['contact'] = $idx; $found = true; 
+        }
     }
     return $found ? $map : null;
 }
