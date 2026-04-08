@@ -46,8 +46,8 @@ if ($action === 'delete') {
     exit;
 }
 
-// Fetch partners for drodown
-$partners = $db->query("SELECT id, name FROM customers WHERE type='partner'")->fetchAll();
+// Fetch customers (Rumahan) for linking to Mitra/Collector accounts
+$customers_list = $db->query("SELECT id, name FROM customers WHERE type='customer' ORDER BY name ASC")->fetchAll();
 
 // Fetch all areas for dropdown
 $areas_all = $db->query("SELECT * FROM areas ORDER BY name ASC")->fetchAll();
@@ -90,11 +90,13 @@ $areas_all = $db->query("SELECT * FROM areas ORDER BY name ASC")->fetchAll();
                     </td>
                     <td>
                         <?php if($u['role']=='collector'): ?>
-                            <i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($u['area'] && trim($u['area']) != '' ? $u['area'] : 'Semua Area') ?>
-                        <?php elseif($u['role']=='partner'): ?>
-                            <i class="fas fa-link"></i> <?= htmlspecialchars($u['partner_name'] ?? 'Belum terhubung') ?>
+                            <div style="font-size:11px; margin-bottom:4px;"><i class="fas fa-map-marker-alt"></i> Area: <?= htmlspecialchars($u['area'] && trim($u['area']) != '' ? $u['area'] : 'Semua Area') ?></div>
+                        <?php endif; ?>
+                        
+                        <?php if($u['role']=='partner' || $u['role']=='collector'): ?>
+                            <div style="font-size:11px; color:var(--primary); font-weight:600;"><i class="fas fa-link"></i> Link: <?= htmlspecialchars($u['partner_name'] ?? 'Belum terhubung') ?></div>
                         <?php else: ?>
-                            -
+                            <div style="font-size:11px; color:var(--text-secondary);">-</div>
                         <?php endif; ?>
                     </td>
                     <td>
@@ -162,15 +164,15 @@ $areas_all = $db->query("SELECT * FROM areas ORDER BY name ASC")->fetchAll();
             <small style="color:var(--text-secondary); display:block; margin-top:5px;">Hanya penagih dengan area yang sama dengan data pelanggan yang dapat menagih pelanggan tersebut. Pilih "Semua Area" jika ingin ia bisa menagih di MANA SAJA.</small>
         </div>
         
-        <div id="field_partner" class="form-group" style="display:none; border:1px dashed var(--border-color); padding: 15px; border-radius:8px;">
-            <label style="color:var(--success-color);"><i class="fas fa-link"></i> Koneksikan ke Data Mitra</label>
+        <div id="field_customer_link" class="form-group" style="display:none; border:1px dashed var(--glass-border); padding: 15px; border-radius:8px;">
+            <label style="color:var(--primary);"><i class="fas fa-link"></i> Tautkan ke Data Pelanggan</label>
             <select name="customer_id" class="form-control" style="background:rgba(15,23,42,0.8);">
-                <option value="">-- Pilih Data Hak Akses Mitra --</option>
-                <?php foreach($partners as $p): ?>
-                    <option value="<?= $p['id'] ?>" <?= ($u['customer_id'] ?? '') == $p['id'] ? 'selected' : '' ?>><?= htmlspecialchars($p['name']) ?></option>
+                <option value="">-- Pilih Data Pelanggan Rumahan --</option>
+                <?php foreach($customers_list as $cl): ?>
+                    <option value="<?= $cl['id'] ?>" <?= ($u['customer_id'] ?? '') == $cl['id'] ? 'selected' : '' ?>><?= htmlspecialchars($cl['name']) ?></option>
                 <?php endforeach; ?>
             </select>
-            <small style="color:var(--text-secondary); display:block; margin-top:5px;">Akun Mitra ini HANYA dapat login untuk mengecek status tagihannya sendiri yang ditautkan di atas.</small>
+            <small style="color:var(--text-secondary); display:block; margin-top:5px;">Tautkan akun ini ke satu profil pelanggan rumahan untuk monitoring tagihan mandiri.</small>
         </div>
 
         <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
@@ -184,7 +186,7 @@ $areas_all = $db->query("SELECT * FROM areas ORDER BY name ASC")->fetchAll();
 function toggleRoleFields() {
     var role = document.getElementById('roleSelect').value;
     document.getElementById('field_area').style.display = (role === 'collector') ? 'block' : 'none';
-    document.getElementById('field_partner').style.display = (role === 'partner') ? 'block' : 'none';
+    document.getElementById('field_customer_link').style.display = (role === 'partner' || role === 'collector') ? 'block' : 'none';
 }
 window.onload = toggleRoleFields;
 </script>

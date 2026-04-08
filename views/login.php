@@ -71,7 +71,7 @@
                     <i class="fas fa-lock" style="position:absolute; left:16px; top:15px; color:var(--text-secondary);"></i>
                     <input type="password" name="password" class="form-control" required placeholder="Kata Sandi" style="padding-left: 45px;">
                 </div>
-                <button type="submit" class="btn btn-primary" style="margin-top:20px; padding: 14px; font-size:18px;">Masuk Aplikasi</button>
+                <button type="submit" class="btn btn-primary btn-block" style="margin-top:20px; padding: 14px; font-size:18px;">Masuk Aplikasi</button>
             </form>
             
             <div style="text-align:center; margin-top:20px; font-size:13px; color:var(--text-secondary);">

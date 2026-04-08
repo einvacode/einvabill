@@ -135,7 +135,6 @@ foreach($targets as $t) {
     
     <?php if(count($broadcast_data) == 0): ?>
         <div style="padding:15px; background:rgba(37, 211, 102, 0.05); color:var(--success); border-radius:12px; text-align:center; border: 1px dashed rgba(37, 211, 102, 0.3);">
-            <i class="fas fa-check-double" style="font-size:24px; margin-bottom:8px; display:block;"></i>
             Tidak ada tagihan mendesak. Semua terpantau aman!
         </div>
     <?php else: ?>

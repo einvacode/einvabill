@@ -189,7 +189,7 @@
     <!-- Mobile "More" Menu Overlay (Admin only) -->
     <?php if($_SESSION['user_role'] === 'admin'): ?>
     <div id="mobileMenuOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1001; align-items:flex-end; justify-content:center;" onclick="closeMobileMenu()">
-        <div style="width:100%; max-width:500px; padding:16px; padding-bottom:80px;" onclick="event.stopPropagation()">
+        <div style="width:100%; max-width:500px; padding:16px; padding-bottom:80px; max-height: 100vh; overflow-y: auto; -webkit-overflow-scrolling: touch;" onclick="event.stopPropagation()">
             <div class="glass-panel" style="padding:16px; border-radius:20px;">
                 <div style="font-size:14px; font-weight:600; color:var(--text-secondary); margin-bottom:12px; padding:0 8px;">Menu Lainnya</div>
                 <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;">

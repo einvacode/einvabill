@@ -2,6 +2,7 @@
 
 /* ===== DARK THEME (Sophisticated Deep Teal) ===== */
 :root, [data-theme="dark"] {
+  color-scheme: dark;
   --bg-color: #021a1d;
   --bg-gradient-1: hsla(184, 100%, 4%, 1);
   --bg-gradient-2: hsla(184, 72%, 15%, 0.4);
@@ -42,6 +43,7 @@
 
 /* ===== LIGHT THEME ===== */
 [data-theme="light"] {
+  color-scheme: light;
   --bg-color: #e6fafd;
   --bg-gradient-1: hsla(184, 40%, 94%, 1);
   --bg-gradient-2: hsla(184, 72%, 85%, 0.4);
@@ -178,6 +180,31 @@ body {
   box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.2);
 }
 
+select.form-control {
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 40px;
+}
+
+select.form-control option {
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  padding: 10px;
+}
+
+[data-theme="light"] select.form-control option {
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
+[data-theme="dark"] select.form-control option {
+  background-color: #021a1d;
+  color: #f1f5f9;
+}
+
 /* Force better styling for date inputs */
 input[type="date"].form-control {
   min-height: 44px;
@@ -216,8 +243,17 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .btn-primary {
   background: var(--primary);
   color: #fff;
-  width: 100%;
   box-shadow: 0 4px 14px rgba(var(--primary-rgb), 0.4);
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.btn-xs {
+  padding: 4px 8px;
+  font-size: 11px;
+  border-radius: 4px;
 }
 
 .btn-primary:hover {
@@ -261,18 +297,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 .btn-danger:hover i {
   color: #fff;
-}
-
-.btn-primary {
-  background: var(--primary);
-  color: #fff;
-  box-shadow: 0 4px 15px rgba(var(--primary-rgb), 0.3);
-}
-
-.btn-primary:hover {
-  background: var(--primary-hover);
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 8px 25px rgba(var(--primary-rgb), 0.4);
 }
 
 .btn-primary:active {
@@ -822,6 +846,8 @@ tbody tr:hover {
     top: 0;
     left: 0;
     height: 100vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     transform: translateX(-100%);
     box-shadow: 20px 0 50px rgba(0,0,0,0.5);
   }

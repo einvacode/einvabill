@@ -8,6 +8,38 @@ $u_role = $_SESSION['user_role'] ?? 'admin';
 $scope_where = ($u_role === 'admin') ? " AND (created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL) " : " AND (created_by = $u_id) ";
 $c_scope = ($u_role === 'admin') ? " AND (c.created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR c.created_by = 0 OR c.created_by IS NULL) " : " AND (c.created_by = $u_id) ";
 
+// --- AJAX REFRESH ENDPOINT ---
+if (isset($_GET['ajax']) && $_GET['ajax'] === 'stats') {
+    header('Content-Type: application/json');
+    $res_cust = $db->query("SELECT COUNT(*) as jml, SUM(monthly_fee) as est FROM customers WHERE type='customer' $scope_where")->fetch();
+    $res_part = $db->query("SELECT COUNT(*) as jml, SUM(monthly_fee) as est FROM customers WHERE type='partner' $scope_where")->fetch();
+    $new_cust = $db->query("SELECT COUNT(*) FROM customers WHERE strftime('%Y-%m', registration_date) = strftime('%Y-%m', 'now') $scope_where")->fetchColumn();
+    $unpaid_c = $db->query("SELECT COUNT(DISTINCT i.customer_id) as jml, SUM(i.amount - i.discount) as total FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.status='Belum Lunas' AND c.type='customer' $c_scope")->fetch();
+    $unpaid_p = $db->query("SELECT COUNT(DISTINCT i.customer_id) as jml, SUM(i.amount - i.discount) as total FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.status='Belum Lunas' AND c.type='partner' $c_scope")->fetch();
+    $rec_c = $db->query("SELECT SUM(p.amount) FROM payments p JOIN invoices i ON p.invoice_id = i.id JOIN customers c ON i.customer_id = c.id WHERE c.type='customer' $c_scope")->fetchColumn() ?: 0;
+    $rec_p = $db->query("SELECT SUM(p.amount) FROM payments p JOIN invoices i ON p.invoice_id = i.id JOIN customers c ON i.customer_id = c.id WHERE c.type='partner' $c_scope")->fetchColumn() ?: 0;
+    $cash_c = $db->query("SELECT SUM(p.amount) FROM payments p JOIN invoices i ON p.invoice_id = i.id JOIN customers c ON i.customer_id = c.id WHERE c.type='customer' AND strftime('%Y-%m', p.payment_date) = strftime('%Y-%m', 'now') $c_scope")->fetchColumn() ?: 0;
+    $cash_p = $db->query("SELECT SUM(p.amount) FROM payments p JOIN invoices i ON p.invoice_id = i.id JOIN customers c ON i.customer_id = c.id WHERE c.type='partner' AND strftime('%Y-%m', p.payment_date) = strftime('%Y-%m', 'now') $c_scope")->fetchColumn() ?: 0;
+
+    echo json_encode([
+        'retail_count' => number_format($res_cust['jml'], 0),
+        'retail_est'   => 'Rp' . number_format($res_cust['est'] ?: 0, 0, ',', '.'),
+        'mitra_count'  => number_format($res_part['jml'], 0),
+        'mitra_est'    => 'Rp' . number_format($res_part['est'] ?: 0, 0, ',', '.'),
+        'baru_count'   => number_format($new_cust, 0),
+        'piutang_r'    => 'Rp' . number_format($unpaid_c['total'] ?: 0, 0, ',', '.'),
+        'piutang_r_c'  => number_format($unpaid_c['jml']),
+        'piutang_m'    => 'Rp' . number_format($unpaid_p['total'] ?: 0, 0, ',', '.'),
+        'piutang_m_c'  => number_format($unpaid_p['jml']),
+        'koleksi_r'    => 'Rp' . number_format($rec_c, 0, ',', '.'),
+        'koleksi_m'    => 'Rp' . number_format($rec_p, 0, ',', '.'),
+        'cash_r'       => 'Rp' . number_format($cash_c, 0, ',', '.'),
+        'cash_m'       => 'Rp' . number_format($cash_p, 0, ',', '.')
+    ]);
+    exit;
+}
+// --- END AJAX ---
+
 // 1. Total Pelanggan (User) - Count & Est. Revenue (Scoped)
 $res_cust = $db->query("SELECT COUNT(*) as jml, SUM(monthly_fee) as est FROM customers WHERE type='customer' $scope_where")->fetch();
 $total_customers = $res_cust['jml'];
@@ -49,14 +81,13 @@ $total_received_part = $db->query("SELECT SUM(p.amount)
     JOIN customers c ON i.customer_id = c.id
     WHERE c.type='partner' $c_scope")->fetchColumn() ?: 0;
 
-// 6. Arus Kas Bulanan - Split Retail vs Partner
+// 6. Arus Kas Bulanan (Semua Pembayaran yg masuk di bulan ini, tanpa melihat tgl jatuh tempo invoice)
 $cash_monthly_cust = $db->query("
     SELECT SUM(p.amount) 
     FROM payments p 
     JOIN invoices i ON p.invoice_id = i.id 
     JOIN customers c ON i.customer_id = c.id
-    WHERE c.type='customer' AND strftime('%Y-%m', i.due_date) = strftime('%Y-%m', 'now')
-      AND strftime('%Y-%m', p.payment_date) = strftime('%Y-%m', 'now')
+    WHERE c.type='customer' AND strftime('%Y-%m', p.payment_date) = strftime('%Y-%m', 'now')
       $c_scope
 ")->fetchColumn() ?: 0;
 
@@ -65,8 +96,7 @@ $cash_monthly_part = $db->query("
     FROM payments p 
     JOIN invoices i ON p.invoice_id = i.id 
     JOIN customers c ON i.customer_id = c.id
-    WHERE c.type='partner' AND strftime('%Y-%m', i.due_date) = strftime('%Y-%m', 'now')
-      AND strftime('%Y-%m', p.payment_date) = strftime('%Y-%m', 'now')
+    WHERE c.type='partner' AND strftime('%Y-%m', p.payment_date) = strftime('%Y-%m', 'now')
       $c_scope
 ")->fetchColumn() ?: 0;
 $settings = $db->query("SELECT company_name, wa_template_paid, site_url FROM settings WHERE id = 1")->fetch();
@@ -135,115 +165,123 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
 </div>
 
 <!-- Main Statistics Grid -->
-<div class="stats-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;">
+<div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 25px;">
     <style>
-        @media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(2, 1fr) !important; } }
-        @media (max-width: 640px) { .stats-grid { grid-template-columns: 1fr !important; } }
+        .stats-grid > .glass-panel { border-top: 4px solid var(--primary); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .stats-grid > .glass-panel:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(0,0,0,0.25); border-color: #ffffff; }
+        @media (max-width: 640px) { 
+            .stats-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
+            .stats-grid > div { padding: 10px !important; gap: 8px !important; }
+            .stats-grid > div:last-child { grid-column: span 2; }
+            .stats-grid i { font-size: 14px !important; }
+            .stats-grid .glass-panel > div:first-child { width:32px !important; height:32px !important; }
+        }
     </style>
     
     <!-- 1. Pelanggan -->
-    <div class="glass-panel" style="border-top: 4px solid #3b82f6; display:flex; align-items:center; gap:12px; padding:12px 15px;">
+    <div class="glass-panel" style="border-color: #3b82f6; display:flex; align-items:center; gap:12px; padding:15px; background:linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(59, 130, 246, 0.01) 100%);">
         <div style="background:rgba(59, 130, 246, 0.1); color:#3b82f6; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
             <i class="fas fa-users"></i>
         </div>
         <div style="flex:1; overflow:hidden;">
             <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Retail</div>
-            <div style="font-size:18px; font-weight:800; line-height:1.2;"><?= number_format($total_customers, 0) ?></div>
-            <div style="font-size:10px; color:#3b82f6; font-weight:700; margin-top:2px;">Est: Rp<?= number_format($est_revenue_cust, 0, ',', '.') ?></div>
+            <div id="stat-retail-count" style="font-size:20px; font-weight:800; line-height:1.2;"><?= number_format($total_customers, 0) ?></div>
+            <div id="stat-retail-est" style="font-size:10px; color:#3b82f6; font-weight:700; margin-top:2px;">Est: Rp<?= number_format($est_revenue_cust, 0, ',', '.') ?></div>
         </div>
     </div>
 
     <!-- 2. Mitra -->
-    <div class="glass-panel" style="border-top: 4px solid #a855f7; display:flex; align-items:center; gap:12px; padding:12px 15px;">
+    <div class="glass-panel" style="border-color: #a855f7; display:flex; align-items:center; gap:12px; padding:15px; background:linear-gradient(135deg, rgba(168, 85, 247, 0.05) 0%, rgba(168, 85, 247, 0.01) 100%);">
         <div style="background:rgba(168, 85, 247, 0.1); color:#a855f7; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
             <i class="fas fa-handshake"></i>
         </div>
         <div style="flex:1; overflow:hidden;">
-            <div style="font-size:18px; font-weight:800; line-height:1.2;"><?= number_format($total_partners, 0) ?></div>
-            <div style="font-size:10px; color:#a855f7; font-weight:700; margin-top:2px;">Est: Rp<?= number_format($est_revenue_part, 0, ',', '.') ?></div>
+            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Mitra</div>
+            <div id="stat-mitra-count" style="font-size:20px; font-weight:800; line-height:1.2;"><?= number_format($total_partners, 0) ?></div>
+            <div id="stat-mitra-est" style="font-size:10px; color:#a855f7; font-weight:700; margin-top:2px;">Est: Rp<?= number_format($est_revenue_part, 0, ',', '.') ?></div>
         </div>
     </div>
 
     <!-- 3. Pelanggan Baru -->
-    <div class="glass-panel" style="border-top: 4px solid #06b6d4; display:flex; align-items:center; gap:12px; padding:12px 15px;">
+    <div class="glass-panel" style="border-color: #06b6d4; display:flex; align-items:center; gap:12px; padding:15px;">
         <div style="background:rgba(6, 182, 212, 0.1); color:#06b6d4; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
             <i class="fas fa-user-plus"></i>
         </div>
         <div style="flex:1; overflow:hidden;">
             <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Baru</div>
-            <div style="font-size:18px; font-weight:800; line-height:1.2;"><?= number_format($new_customers_month, 0) ?></div>
+            <div id="stat-baru-count" style="font-size:20px; font-weight:800; line-height:1.2;"><?= number_format($new_customers_month, 0) ?></div>
             <div style="font-size:10px; opacity:0.6; margin-top:2px;">Growth</div>
         </div>
     </div>
 
     <!-- 4. Piutang Retail -->
-    <div class="glass-panel" style="border-top: 4px solid #ef4444; display:flex; align-items:center; gap:12px; padding:12px 15px;">
+    <div class="glass-panel" style="border-color: #ef4444; display:flex; align-items:center; gap:12px; padding:15px;">
         <div style="background:rgba(239, 68, 68, 0.1); color:#ef4444; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
             <i class="fas fa-exclamation-triangle"></i>
         </div>
         <div style="flex:1; overflow:hidden;">
             <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Piutang Retail</div>
-            <div style="font-size:16px; font-weight:800; color:#ef4444; line-height:1.2;">Rp<?= number_format($total_unpaid_cust, 0, ',', '.') ?></div>
-            <div style="font-size:10px; color:#ef4444; font-weight:700; margin-top:2px;"><?= number_format($count_unpaid_cust) ?></div>
+            <div id="stat-piutang-r" style="font-size:16px; font-weight:800; color:#ef4444; line-height:1.2;">Rp<?= number_format($total_unpaid_cust, 0, ',', '.') ?></div>
+            <div id="stat-piutang-r-count" style="font-size:10px; color:#ef4444; font-weight:700; margin-top:2px;"><?= number_format($count_unpaid_cust) ?></div>
         </div>
     </div>
 
     <!-- 5. Piutang Mitra -->
-    <div class="glass-panel" style="border-top: 4px solid #f43f5e; display:flex; align-items:center; gap:12px; padding:12px 15px;">
+    <div class="glass-panel" style="border-color: #f43f5e; display:flex; align-items:center; gap:12px; padding:15px;">
         <div style="background:rgba(244, 63, 94, 0.1); color:#f43f5e; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
             <i class="fas fa-hand-holding-dollar"></i>
         </div>
         <div style="flex:1; overflow:hidden;">
             <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Piutang Mitra</div>
-            <div style="font-size:16px; font-weight:800; color:#f43f5e; line-height:1.2;">Rp<?= number_format($total_unpaid_part, 0, ',', '.') ?></div>
-            <div style="font-size:10px; color:#f43f5e; font-weight:700; margin-top:2px;"><?= number_format($count_unpaid_part) ?></div>
+            <div id="stat-piutang-m" style="font-size:16px; font-weight:800; color:#f43f5e; line-height:1.2;">Rp<?= number_format($total_unpaid_part, 0, ',', '.') ?></div>
+            <div id="stat-piutang-m-count" style="font-size:10px; color:#f43f5e; font-weight:700; margin-top:2px;"><?= number_format($count_unpaid_part) ?></div>
         </div>
     </div>
 
     <!-- 6. Koleksi Retail -->
-    <div class="glass-panel" style="border-top: 4px solid #10b981; display:flex; align-items:center; gap:12px; padding:12px 15px;">
+    <div class="glass-panel" style="border-color: #10b981; display:flex; align-items:center; gap:12px; padding:15px;">
         <div style="background:rgba(16, 185, 129, 0.1); color:#10b981; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
             <i class="fas fa-coins"></i>
         </div>
         <div style="flex:1; overflow:hidden;">
             <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Koleksi Retail</div>
-            <div style="font-size:16px; font-weight:800; color:#10b981; line-height:1.2;">Rp<?= number_format($total_received_cust, 0, ',', '.') ?></div>
+            <div id="stat-koleksi-r" style="font-size:16px; font-weight:800; color:#10b981; line-height:1.2;">Rp<?= number_format($total_received_cust, 0, ',', '.') ?></div>
             <div style="font-size:10px; opacity:0.6; margin-top:2px;">Lunas</div>
         </div>
     </div>
 
     <!-- 7. Koleksi Mitra -->
-    <div class="glass-panel" style="border-top: 4px solid #059669; display:flex; align-items:center; gap:12px; padding:12px 15px;">
+    <div class="glass-panel" style="border-color: #059669; display:flex; align-items:center; gap:12px; padding:15px;">
         <div style="background:rgba(5, 150, 105, 0.1); color:#059669; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
             <i class="fas fa-vault"></i>
         </div>
         <div style="flex:1; overflow:hidden;">
             <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Koleksi Mitra</div>
-            <div style="font-size:16px; font-weight:800; color:#059669; line-height:1.2;">Rp<?= number_format($total_received_part, 0, ',', '.') ?></div>
+            <div id="stat-koleksi-m" style="font-size:16px; font-weight:800; color:#059669; line-height:1.2;">Rp<?= number_format($total_received_part, 0, ',', '.') ?></div>
             <div style="font-size:10px; opacity:0.6; margin-top:2px;">Lunas</div>
         </div>
     </div>
 
     <!-- 8. Kas Retail (Bulan Ini) -->
-    <div class="glass-panel" style="border-top: 4px solid #f59e0b; display:flex; align-items:center; gap:12px; padding:12px 15px;">
+    <div class="glass-panel" style="border-color: #f59e0b; display:flex; align-items:center; gap:12px; padding:15px;">
         <div style="background:rgba(245, 158, 11, 0.1); color:#f59e0b; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
             <i class="fas fa-money-check-alt"></i>
         </div>
         <div style="flex:1; overflow:hidden;">
             <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Kas Retail</div>
-            <div style="font-size:16px; font-weight:800; color:#f59e0b; line-height:1.2;">Rp<?= number_format($cash_monthly_cust, 0, ',', '.') ?></div>
+            <div id="stat-cash-r" style="font-size:16px; font-weight:800; color:#f59e0b; line-height:1.2;">Rp<?= number_format($cash_monthly_cust, 0, ',', '.') ?></div>
             <div style="font-size:10px; opacity:0.6; margin-top:2px;">Bulan Ini</div>
         </div>
     </div>
 
     <!-- 9. Kas Mitra (Bulan Ini) -->
-    <div class="glass-panel" style="border-top: 4px solid #d97706; display:flex; align-items:center; gap:12px; padding:12px 15px;">
+    <div class="glass-panel" style="border-color: #d97706; display:flex; align-items:center; gap:12px; padding:15px;">
         <div style="background:rgba(217, 119, 6, 0.1); color:#d97706; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
             <i class="fas fa-briefcase"></i>
         </div>
         <div style="flex:1; overflow:hidden;">
             <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Kas Mitra</div>
-            <div style="font-size:16px; font-weight:800; color:#d97706; line-height:1.2;">Rp<?= number_format($cash_monthly_part, 0, ',', '.') ?></div>
+            <div id="stat-cash-m" style="font-size:16px; font-weight:800; color:#d97706; line-height:1.2;">Rp<?= number_format($cash_monthly_part, 0, ',', '.') ?></div>
             <div style="font-size:10px; opacity:0.6; margin-top:2px;">Bulan Ini</div>
         </div>
     </div>
@@ -265,10 +303,9 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
         <table style="width:100%;">
             <thead>
                 <tr>
-                    <th style="padding:12px; font-size:11px;">PELANGGAN</th>
+                    <th style="padding:12px; font-size:11px;">PELANGGAN & AKSI</th>
                     <th style="padding:12px; font-size:11px;">PERIODE</th>
-                    <th style="padding:12px; font-size:11px;">TOTAL HUTANG</th>
-                    <th style="padding:12px; font-size:11px; text-align:right;">AKSI</th>
+                    <th style="padding:12px; font-size:11px; text-align:right;">TOTAL HUTANG</th>
                 </tr>
             </thead>
             <tbody>
@@ -291,7 +328,15 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
                 <tr style="border-bottom:1px solid var(--glass-border);">
                     <td style="padding:12px;">
                         <div style="font-weight:700; font-size:14px; color:var(--text-primary);"><?= htmlspecialchars($ls['name']) ?></div>
-                        <div style="font-size:11px; color:var(--text-secondary);"><?= htmlspecialchars($ls['contact']) ?></div>
+                        <div style="font-size:11px; color:var(--text-secondary); margin-bottom:8px;"><?= htmlspecialchars($ls['contact']) ?></div>
+                        <div class="btn-group">
+                            <button onclick="quickPay(<?= $ls['cust_id'] ?>, '<?= addslashes($ls['name']) ?>', <?= $ls['months_owed'] ?>, <?= $ls['total_debt'] ?>)" class="btn btn-xs btn-primary">
+                                <i class="fas fa-money-bill-wave"></i> Bayar
+                            </button>
+                            <a href="https://wa.me/<?= preg_replace('/[^0-9]/', '', $ls['contact']) ?>" target="_blank" class="btn btn-xs btn-success">
+                                <i class="fab fa-whatsapp"></i> Tagih
+                            </a>
+                        </div>
                     </td>
                     <td style="padding:12px;">
                         <span class="badge" style="background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.3); font-size:11px;">
@@ -301,21 +346,12 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
                     <td style="padding:12px;">
                         <div style="font-weight:800; color:#ef4444; font-size:14px;">Rp <?= number_format($ls['total_debt'], 0, ',', '.') ?></div>
                     </td>
-                    <td style="padding:12px; text-align:right;">
-                        <div style="display:flex; justify-content:flex-end; gap:6px;">
-                            <button onclick="quickPay(<?= $ls['cust_id'] ?>, '<?= addslashes($ls['name']) ?>', <?= $ls['months_owed'] ?>, <?= $ls['total_debt'] ?>)" class="btn btn-sm btn-primary" style="padding:5px 10px; font-size:11px;">
-                                <i class="fas fa-money-bill-wave"></i> Bayar
-                            </button>
-                            <a href="https://wa.me/<?= preg_replace('/[^0-9]/', '', $ls['contact']) ?>" target="_blank" class="btn btn-sm btn-success" style="padding:5px 10px; font-size:11px;">
-                                <i class="fab fa-whatsapp"></i> Tagih
-                            </a>
-                        </div>
-                    </td>
+
                 </tr>
                 <?php endforeach; ?>
                 <?php if(empty($late_summary)): ?>
                 <tr>
-                    <td colspan="4" style="text-align:center; padding:30px; color:var(--text-secondary);">🎉 Tidak ada tunggakan saat ini.</td>
+                    <td colspan="3" style="text-align:center; padding:30px; color:var(--text-secondary);">🎉 Tidak ada tunggakan saat ini.</td>
                 </tr>
                 <?php endif; ?>
             </tbody>
@@ -391,4 +427,48 @@ function quickPay(custId, name, months, total) {
         document.getElementById('quickPayForm').submit();
     }
 }
+
+// Function to update stats via AJAX
+async function updateDashboardStats() {
+    try {
+        const response = await fetch('index.php?page=admin_dashboard&ajax=stats');
+        if (!response.ok) return;
+        const data = await response.json();
+        
+        const updateEl = (id, val) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (el.innerText !== val) {
+                el.innerText = val;
+                el.style.color = 'var(--primary)';
+                el.style.transform = 'scale(1.1)';
+                el.style.transition = 'all 0.3s ease';
+                setTimeout(() => {
+                    el.style.color = '';
+                    el.style.transform = 'scale(1)';
+                }, 1000);
+            }
+        };
+
+        updateEl('stat-retail-count', data.retail_count);
+        updateEl('stat-retail-est', 'Est: ' + data.retail_est);
+        updateEl('stat-mitra-count', data.mitra_count);
+        updateEl('stat-mitra-est', 'Est: ' + data.mitra_est);
+        updateEl('stat-baru-count', data.baru_count);
+        updateEl('stat-piutang-r', data.piutang_r);
+        updateEl('stat-piutang-r-count', data.piutang_r_c);
+        updateEl('stat-piutang-m', data.piutang_m);
+        updateEl('stat-piutang-m-count', data.piutang_m_c);
+        updateEl('stat-koleksi-r', data.koleksi_r);
+        updateEl('stat-koleksi-m', data.koleksi_m);
+        updateEl('stat-cash-r', data.cash_r);
+        updateEl('stat-cash-m', data.cash_m);
+
+    } catch (error) {
+        console.error('Failed to update stats:', error);
+    }
+}
+
+// Start polling every 45 seconds
+setInterval(updateDashboardStats, 45000);
 </script>
