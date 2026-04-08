@@ -12,6 +12,10 @@
             const saved = localStorage.getItem('billing_theme') || 'dark';
             document.documentElement.setAttribute('data-theme', saved);
         })();
+
+        // Global WhatsApp API Constants (Available to all sub-views)
+        window.WAGatewayCID = '<?= ($_SESSION["user_role"] === "admin") ? "admin" : "u_" . ($_SESSION["user_id"] ?? "guest") ?>';
+        window.WAApiProxy = 'wa_proxy.php?path=';
     </script>
 </head>
 <body>
@@ -326,10 +330,7 @@
         }
     };
 
-    /** WA GATEWAY */
-    const WAGatewayCID = '<?= ($_SESSION["user_role"] === "admin") ? "admin" : "u_" . ($_SESSION["user_id"] ?? "guest") ?>';
-    const WAApiProxy = 'wa_proxy.php?path=';
-
+    /** WA GATEWAY STATUS POLLING */
     async function checkWAStatus() {
         if (!['admin', 'partner', 'collector'].some(p => window.location.search.includes('page=' + p))) return;
         try {
