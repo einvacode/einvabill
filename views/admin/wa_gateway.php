@@ -83,7 +83,7 @@ async function refreshGateway() {
             document.getElementById('wa-connected-box').style.display = 'none';
             
             // Try fetch QR
-            const qrResp = await fetch(`${gatewayUrl}/qr`);
+            const qrResp = await fetch('/waapi/qr');
             const qrData = await qrResp.json();
             
             if (qrData.qr && qrData.qr !== currentQR) {
@@ -109,8 +109,7 @@ async function refreshGateway() {
 async function logoutWA() {
     if (!confirm('Apakah Anda yakin ingin memutuskan koneksi WhatsApp?')) return;
     try {
-        const gatewayUrl = `http://${window.location.hostname}:3000`;
-        await fetch(`${gatewayUrl}/logout`, { method: 'POST' });
+        await fetch('/waapi/logout', { method: 'POST' });
         location.reload();
     } catch (e) {
         alert('Gagal memutuskan koneksi. Gateway mungkin sedang offline.');
