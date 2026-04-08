@@ -1122,52 +1122,41 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
         });
     }
 
-    // Function to send message via Gateway
+    // Function to send message via Gateway (Standardized to use Global WAApiProxy)
     async function sendWAGateway(phone, message, fallback, btn) {
-        if (btn) {
-            const originalHtml = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        if (!btn) {
+            // Background sends (e.g. from startMassWaWeb)
+            try {
+                const r = await fetch(WAApiProxy + 'send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cid: WAGatewayCID, phone, message })
+                });
+                return await r.json();
+            } catch (e) { return { error: true, message: e.toString() }; }
+        }
+
+        const old = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        
+        try {
+            const r = await fetch(WAApiProxy + 'send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cid: WAGatewayCID, phone, message })
+            });
+            const data = await r.json();
+            if (data.error) throw new Error(data.message);
             
-            try {
-                // Using relative proxy URL for security and mobile compatibility
-                const response = await fetch('/waapi/send', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone, message })
-                });
-                const data = await response.json();
-                
-                if (data.error) throw new Error(data.message);
-                
-                // Success
-                btn.classList.add('btn-success');
-                btn.innerHTML = '<i class="fas fa-check"></i>';
-                setTimeout(() => {
-                    btn.innerHTML = originalHtml;
-                    btn.disabled = false;
-                }, 2000);
-            } catch (e) {
-                console.error('Gateway failed:', e);
-                if (window.location.protocol === 'https:') {
-                    alert('GAGAL: Browser memblokir pengiriman otomatis karena HTTPS.\n\nKlik ikon Gembok di URL bar -> Site Settings -> Cari "Insecure Content" -> Ubah ke "Allow".\n\nLalu Refresh halaman.');
-                }
-                window.open(fallback, '_blank');
-                btn.innerHTML = originalHtml;
-                btn.disabled = false;
-            }
-        } else {
-            // No button element, direct send
-            try {
-                const response = await fetch('/waapi/send', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone, message })
-                });
-                return await response.json();
-            } catch (e) {
-                return { error: true, message: e.toString() };
-            }
+            btn.classList.add('btn-success');
+            btn.innerHTML = '<i class="fas fa-check"></i>';
+            setTimeout(() => { btn.innerHTML = old; btn.disabled = false; btn.classList.remove('btn-success'); }, 2000);
+        } catch (e) {
+            console.error('Gateway failed:', e);
+            if (fallback) window.open(fallback, '_blank');
+            else alert('Gagal mengirim: ' + e.message);
+            btn.innerHTML = old; btn.disabled = false;
         }
     }
 

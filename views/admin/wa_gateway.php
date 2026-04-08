@@ -73,69 +73,81 @@ if (!isset($_SESSION['user_id'])) {
 let qrcodeObj = null;
 let currentQR = "";
 
+/** 
+ * REFRESH GATEWAY STATUS
+ * Standardized to use the WAApiProxy (wa_proxy.php)
+ */
 async function refreshGateway() {
+    const qrcodeEl = document.getElementById('qrcode');
+    const logsEl = document.getElementById('wa-logs');
+    const tipEl = document.getElementById('wa-connection-tip');
+    const qrCont = document.getElementById('qr-container');
+    const connBox = document.getElementById('wa-connected-box');
+
     try {
-        const response = await fetch(WAApiBaseUrl + 'status&cid=' + WAGatewayCID);
+        // 1. Fetch Status
+        const response = await fetch(WAApiProxy + 'status&cid=' + WAGatewayCID);
         const data = await response.json();
         
+        if (data.error) {
+            qrcodeEl.innerHTML = `<div style="color:#ef4444; font-size:12px; font-weight:700;"><i class="fas fa-exclamation-triangle"></i> GATEWAY OFFLINE<br><span style="font-weight:400; opacity:0.7;">${data.debug?.curl_error || 'Node.js server not responding'}</span></div>`;
+            return;
+        }
+
         if (data.connected) {
-            document.getElementById('qr-container').style.display = 'none';
-            document.getElementById('wa-connection-tip').style.display = 'none';
-            document.getElementById('wa-connected-box').style.display = 'block';
+            qrCont.style.display = 'none';
+            tipEl.style.display = 'none';
+            connBox.style.display = 'block';
         } else {
-            document.getElementById('qr-container').style.display = 'inline-block';
-            document.getElementById('wa-connection-tip').style.display = 'block';
-            document.getElementById('wa-connected-box').style.display = 'none';
+            qrCont.style.display = 'inline-block';
+            tipEl.style.display = 'block';
+            connBox.style.display = 'none';
             
-            // Try fetch QR
-            const qrResp = await fetch(WAApiBaseUrl + 'qr&cid=' + WAGatewayCID);
+            // 2. Fetch QR if disconnected
+            const qrResp = await fetch(WAApiProxy + 'qr&cid=' + WAGatewayCID);
             const qrData = await qrResp.json();
             
             if (qrData.qr && qrData.qr !== currentQR) {
                 currentQR = qrData.qr;
-                document.getElementById('qrcode').innerHTML = "";
-                qrcodeObj = new QRCode(document.getElementById('qrcode'), {
-                    text: currentQR,
-                    width: 200,
-                    height: 200,
-                    colorDark : "#000000",
-                    colorLight : "#ffffff",
+                qrcodeEl.innerHTML = "";
+                qrcodeObj = new QRCode(qrcodeEl, {
+                    text: currentQR, width: 200, height: 200,
+                    colorDark : "#000000", colorLight : "#ffffff",
                     correctLevel : QRCode.CorrectLevel.H
                 });
-            } else if (!qrData.qr) {
-                document.getElementById('qrcode').innerHTML = '<div style="color:#64748b; font-size:13px; text-align:center;"><i class="fas fa-spinner fa-spin"></i> Menyiapkan QR Code...<br><span style="font-size:10px;">(Pesan: '+ (qrData.message || 'Harap Tunggu') +')</span></div>';
+            } else if (!qrData.qr && !currentQR) {
+                qrcodeEl.innerHTML = `<div style="color:#64748b; font-size:13px; text-align:center;"><i class="fas fa-spinner fa-spin"></i> Menyiapkan QR Code...<br><span style="font-size:10px;">(Pesan: ${data.message || 'Mempersiapkan sesi'})</span></div>`;
             }
         }
 
-        // Fetch Logs
-        const logResp = await fetch(WAApiBaseUrl + 'logs&cid=' + WAGatewayCID);
+        // 3. Fetch Logs
+        const logResp = await fetch(WAApiProxy + 'logs&cid=' + WAGatewayCID);
         const logData = await logResp.json();
-        const logContainer = document.getElementById('wa-logs');
-        if (logData.length > 0) {
-            const isAtBottom = logContainer.scrollHeight - logContainer.clientHeight <= logContainer.scrollTop + 20;
-            logContainer.innerHTML = logData.map(l => `<div><span style="opacity:0.6;">[${l.timestamp}]</span> ${l.msg}</div>`).join('');
-            if (isAtBottom) logContainer.scrollTop = logContainer.scrollHeight;
+        if (logData && logData.length > 0) {
+            const isAtBottom = logsEl.scrollHeight - logsEl.clientHeight <= logsEl.scrollTop + 20;
+            logsEl.innerHTML = logData.map(l => `<div><span style="opacity:0.6;">[${l.timestamp}]</span> ${l.msg}</div>`).join('');
+            if (isAtBottom) logsEl.scrollTop = logsEl.scrollHeight;
         }
     } catch (e) {
-        document.getElementById('qrcode').innerHTML = '<div style="color:#ef4444; font-size:12px; font-weight:700;"><i class="fas fa-exclamation-triangle"></i> GATEWAY OFFLINE<br><span style="font-weight:400; opacity:0.7;">Harap nyalakan node server.js</span></div>';
+        qrcodeEl.innerHTML = '<div style="color:#ef4444; font-size:12px; font-weight:700;"><i class="fas fa-exclamation-triangle"></i> PROXY ERROR<br><span style="font-weight:400; opacity:0.7;">Gagal menghubungi wa_proxy.php</span></div>';
     }
 }
 
 async function logoutWA() {
     if (!confirm('Apakah Anda yakin ingin memutuskan koneksi WhatsApp?')) return;
     try {
-        await fetch(WAApiBaseUrl + 'logout', { 
+        await fetch(WAApiProxy + 'logout', { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ cid: WAGatewayCID })
         });
         location.reload();
     } catch (e) {
-        alert('Gagal memutuskan koneksi. Gateway mungkin sedang offline.');
+        alert('Gagal memutuskan koneksi. Proxy mungkin sedang offline.');
     }
 }
 
-// Start Polling
+// Start Polling every 5 seconds
 setInterval(refreshGateway, 5000);
 refreshGateway();
 </script>
