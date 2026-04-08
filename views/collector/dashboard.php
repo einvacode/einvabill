@@ -913,16 +913,25 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
         </div>
     </div>
 </div> <!-- end .glass-panel (Tab: Data Pelanggan) -->
-<?php elseif($coll_tab === 'tugas'): ?>
-<!-- TAB: Tugas Penagihan -->
-<div class="glass-panel tab-flex-container" style="padding:20px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-        <h3 style="font-size:16px; margin:0; color:var(--danger);"><i class="fas fa-tasks"></i> Daftar Tugas Belum Lunas</h3>
-        <div style="font-size:12px; color:var(--text-secondary); font-weight:700;">Total: <?= count($unpaid_invoices) ?> Pelanggan</div>
+<?php elseif($coll_tab === 'tugas'): ?><!-- TAB: Tugas Penagihan -->
+<div class="tab-flex-container task-list-wrapper" style="padding:0;">
+    <div class="glass-panel hide-mobile" style="padding:20px; margin-bottom:15px; border-radius:15px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="font-size:16px; margin:0; color:var(--danger);"><i class="fas fa-tasks"></i> Daftar Tugas Belum Lunas</h3>
+            <div style="font-size:12px; color:var(--text-secondary); font-weight:700;">Total: <?= count($unpaid_invoices) ?> Pelanggan</div>
+        </div>
+    </div>
+    
+    <!-- Mobile Header (Compact) -->
+    <div class="show-mobile" style="padding: 15px 15px 5px; display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="font-size:15px; margin:0; font-weight:800; color:var(--danger);">DAFTAR PENAGIHAN</h3>
+            <span class="badge" style="background:rgba(239, 68, 68, 0.1); color:var(--danger); font-size:10px;"><?= count($unpaid_invoices) ?> USER</span>
+        </div>
     </div>
 
     <!-- Search in Tasks -->
-    <form method="GET" style="margin-bottom:15px; display:flex; gap:10px;">
+    <form method="GET" style="margin-bottom:15px; display:flex; gap:10px; padding: 0 15px;">
         <input type="hidden" name="page" value="collector">
         <input type="hidden" name="tab" value="tugas">
         <div style="position:relative; flex:1;">
@@ -933,7 +942,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
         </div>
     </form>
 
-    <div class="scroll-container list-container-responsive" style="flex: 1; overflow-y:auto; padding-right:5px;">
+    <div class="scroll-container list-container-responsive" style="flex: 1; overflow-y:auto; padding: 0 15px 20px;">
         <!-- Desktop Mode: Table -->
         <div class="customer-list-desktop glass-panel" style="display:none; padding:0; overflow:hidden; border:1px solid var(--glass-border);">
             <table class="table" style="width:100%; border-collapse:collapse; color:var(--text-primary);">
@@ -1002,39 +1011,34 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
             </table>
         </div>
 
-        <!-- Mobile Mode: Cards -->
-        <div class="customer-list-mobile">
+        <!-- Mobile Mode: Cards --        <div class="customer-list-mobile">
         <?php foreach($unpaid_invoices as $ui): 
             $wa_num_t = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $ui['contact']));
             $cust_id_t = $ui['customer_code'] ?: str_pad($ui['cust_id'], 5, "0", STR_PAD_LEFT);
         ?>
-        <div class="glass-panel" style="padding:16px; margin-bottom:12px; border-left:3px solid var(--danger); cursor:pointer; transition:transform 0.2s;" onclick="showCustomerDetails(<?= $ui['cust_id'] ?>)">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
-                <div>
-                    <div style="font-weight:700; font-size:15px;"><?= htmlspecialchars($ui['name']) ?></div>
-                    <div style="font-size:11px; color:var(--primary); font-family:monospace; margin-bottom:4px;">ID: <?= $cust_id_t ?></div>
-                    <div style="font-size:11px; color:var(--text-secondary); margin-bottom:6px;"><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($ui['address'] ?: '-') ?></div>
-                    <div style="font-size:11px; color:var(--danger); font-weight:700;"><i class="fas fa-exclamation-circle"></i> Tunggakan: <?= $ui['num_arrears'] ?> Bulan</div>
+        <!-- SIMPLE FLAT LIST ITEM -->
+        <div style="padding:15px 0; border-bottom:1px solid var(--glass-border); cursor:pointer;" onclick="showCustomerDetails(<?= $ui['cust_id'] ?>)">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <div style="flex:1;">
+                    <div style="font-weight:800; font-size:15px; color:var(--text-primary); margin-bottom:2px;"><?= htmlspecialchars($ui['name']) ?></div>
+                    <div style="font-size:11px; color:var(--text-secondary); display:flex; align-items:center; gap:5px;">
+                        <i class="fas fa-map-marker-alt" style="font-size:10px;"></i> <?= htmlspecialchars($ui['cust_area'] ?: 'No Area') ?>
+                        <span style="opacity:0.3;">|</span>
+                        <span style="color:var(--danger); font-weight:700;"><?= $ui['num_arrears'] ?> Bulan</span>
+                    </div>
                 </div>
                 <div style="text-align:right;">
-                    <div style="font-size:16px; font-weight:800; color:var(--danger);">Rp <?= number_format($ui['total_unpaid'], 0, ',', '.') ?></div>
-                    <div style="font-size:10px; color:var(--text-secondary);"><?= htmlspecialchars($ui['package_name']) ?></div>
+                    <div style="font-size:17px; font-weight:900; color:var(--danger); line-height:1;">Rp<?= number_format($ui['total_unpaid'], 0, ',', '.') ?></div>
+                    <div style="font-size:10px; color:var(--text-secondary); margin-top:2px;">Siklus: Tgl <?= date('d', strtotime($ui['oldest_due_date'])) ?></div>
                 </div>
             </div>
             
-            <div style="display:flex; gap:10px; margin-top:15px;" onclick="event.stopPropagation();">
-                <button class="btn btn-sm" style="background:#25D366; color:white; font-weight:800; border-radius:10px; padding:0 15px; height:42px; display:flex; align-items:center; gap:8px;" onclick="handlePay(<?= $ui['cust_id'] ?>, <?= $ui['num_arrears'] ?>, '<?= addslashes($ui['name']) ?>', <?= ($ui['total_unpaid'] / $ui['num_arrears']) ?>); event.stopPropagation();">
-                    <i class="fas fa-wallet"></i> BAYAR
+            <!-- Quick Actions (Compact) -->
+            <div style="display:flex; gap:8px; margin-top:12px;" onclick="event.stopPropagation();">
+                <button class="btn btn-sm" style="background:#25D366; color:white; font-weight:800; border-radius:8px; padding:0 12px; height:38px; display:flex; align-items:center; gap:6px; flex:1; justify-content:center; border:none;" onclick="handlePay(<?= $ui['cust_id'] ?>, <?= $ui['num_arrears'] ?>, '<?= addslashes($ui['name']) ?>', <?= ($ui['total_unpaid'] / $ui['num_arrears']) ?>); event.stopPropagation();">
+                    <i class="fas fa-wallet" style="font-size:14px;"></i> BAYAR
                 </button>
-                <button class="btn btn-sm" style="background:var(--warning); color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0;" onclick="showCreateInvoice(<?= $ui['cust_id'] ?>, '<?= addslashes($ui['name']) ?>', <?= ($ui['total_unpaid'] / $ui['num_arrears']) ?>); event.stopPropagation();" title="Buat Tagihan Manual">
-                    <i class="fas fa-file-invoice-dollar" style="font-size:16px;"></i>
-                </button>
-                <button class="btn btn-sm btn-ghost" style="width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; border:1px solid var(--glass-border);" onclick="showUpdateContact(<?= $ui['cust_id'] ?>, '<?= addslashes($ui['name']) ?>', '<?= htmlspecialchars($ui['contact'] ?: '') ?>'); event.stopPropagation();" title="Ubah Nama/Nomor Telepon">
-                    <i class="fas fa-edit" style="font-size:16px;"></i>
-                </button>
-                <button class="btn btn-sm" style="background:#d97706; color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; box-shadow:0 4px 10px rgba(217, 119, 6, 0.2);" onclick="showCustomerDetails(<?= $ui['cust_id'] ?>); setTimeout(() => openAddonModal(), 500); event.stopPropagation();" title="Tambah Add-on">
-                    <i class="fas fa-plus-circle" style="font-size:18px;"></i>
-                </button>
+                
                 <?php if($wa_num_t): 
                     $mon_label = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
                     $curr_month = $mon_label[intval(date('m')) - 1] . ' ' . date('Y');
@@ -1047,13 +1051,19 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                     );
                     $rem_wa_link_t = "https://api.whatsapp.com/send?phone=$wa_num_t&text=" . urlencode($rem_msg_t);
                 ?>
-                <button onclick="sendWAGateway('<?= $wa_num_t ?>', <?= htmlspecialchars(json_encode($rem_msg_t)) ?>, '<?= $rem_wa_link_t ?>', this); event.stopPropagation();" class="btn btn-sm" style="background:#25D366; color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; border:none; cursor:pointer;" title="WhatsApp Reminder">
+                <button onclick="sendWAGateway('<?= $wa_num_t ?>', <?= htmlspecialchars(json_encode($rem_msg_t)) ?>, '<?= $rem_wa_link_t ?>', this); event.stopPropagation();" class="btn btn-sm" style="background:rgba(37, 211, 102, 0.1); color:#25D366; width:38px; height:38px; display:flex; align-items:center; justify-content:center; border-radius:8px; padding:0; border:1px solid rgba(37, 211, 102, 0.3); cursor:pointer;" title="WhatsApp Reminder">
                     <i class="fab fa-whatsapp" style="font-size:18px;"></i>
                 </button>
-                <a href="tel:<?= htmlspecialchars($ui['contact']) ?>" class="btn btn-sm btn-ghost" style="width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; border:1px solid var(--glass-border);" title="Telepon" onclick="event.stopPropagation();">
-                    <i class="fas fa-phone" style="font-size:16px;"></i>
-                </a>
                 <?php endif; ?>
+
+                <a href="tel:<?= htmlspecialchars($ui['contact']) ?>" class="btn btn-sm" style="background:rgba(255,255,255,0.05); color:var(--text-primary); width:38px; height:38px; display:flex; align-items:center; justify-content:center; border-radius:8px; padding:0; border:1px solid var(--glass-border);" title="Telepon" onclick="event.stopPropagation();">
+                    <i class="fas fa-phone" style="font-size:14px;"></i>
+                </a>
+
+                <!-- More Button for secondary actions to keep main list clean -->
+                <button class="btn btn-sm" style="background:rgba(255,255,255,0.05); color:var(--text-secondary); width:38px; height:38px; display:flex; align-items:center; justify-content:center; border-radius:8px; padding:0; border:1px solid var(--glass-border);" onclick="showCustomerDetails(<?= $ui['cust_id'] ?>); event.stopPropagation();" title="Lainnya">
+                    <i class="fas fa-ellipsis-v" style="font-size:14px;"></i>
+                </button>
             </div>
         </div>
         <?php endforeach; ?>
