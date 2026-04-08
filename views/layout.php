@@ -202,27 +202,24 @@
                 <i class="fas fa-ellipsis-h"></i><span>Lainnya</span>
             </a>
         <?php elseif($_SESSION['user_role'] === 'collector'): ?>
-            <a href="index.php?page=collector&tab=tugas" class="<?= $page == 'collector' && ($coll_tab ?? 'tugas') == 'tugas' ? 'active' : '' ?>">
+            <a href="index.php?page=collector&tab=dashboard" class="<?= $page == 'collector' && ($_GET['tab'] ?? 'dashboard') == 'dashboard' ? 'active' : '' ?>">
+                <i class="fas fa-home"></i><span>Beranda</span>
+            </a>
+            <a href="index.php?page=collector&tab=tugas" class="<?= $page == 'collector' && ($_GET['tab'] ?? '') == 'tugas' ? 'active' : '' ?>">
                 <i class="fas fa-tasks"></i><span>Tagihan</span>
             </a>
-            <a href="index.php?page=collector&tab=pelanggan" class="<?= $page == 'collector' && ($coll_tab ?? '') == 'pelanggan' ? 'active' : '' ?>">
+            <a href="index.php?page=collector&tab=pelanggan" class="<?= $page == 'collector' && ($_GET['tab'] ?? '') == 'pelanggan' ? 'active' : '' ?>">
                 <i class="fas fa-users"></i><span>Pelanggan</span>
             </a>
             <a href="index.php?page=logout" style="color:var(--danger);">
                 <i class="fas fa-sign-out-alt"></i><span>Keluar</span>
             </a>
         <?php elseif($_SESSION['user_role'] === 'partner'): ?>
-            <a href="index.php?page=partner" class="nav-link <?= $page == 'partner' ? 'active' : '' ?>">
-                <i class="fas fa-home"></i><span>Home</span>
+            <a href="index.php?page=partner&tab=dashboard" class="<?= $page == 'partner' && ($_GET['tab'] ?? 'dashboard') == 'dashboard' ? 'active' : '' ?>">
+                <i class="fas fa-home"></i><span>Beranda</span>
             </a>
-            <a href="index.php?page=partner_collection" class="nav-link <?= $page == 'partner_collection' ? 'active' : '' ?>">
-                <i class="fas fa-motorcycle"></i><span>Penagihan</span>
-            </a>
-            <a href="index.php?page=admin_customers" class="nav-link <?= $page == 'admin_customers' ? 'active' : '' ?>">
-                <i class="fas fa-users"></i><span>Pelanggan</span>
-            </a>
-            <a href="index.php?page=partner_isp_invoices" class="nav-link <?= $page == 'partner_isp_invoices' ? 'active' : '' ?>">
-                <i class="fas fa-receipt"></i><span>Tagihan ISP</span>
+            <a href="index.php?page=partner&tab=billing" class="<?= $page == 'partner' && ($_GET['tab'] ?? '') == 'billing' ? 'active' : '' ?>">
+                <i class="fas fa-file-invoice-dollar"></i><span>Tagihan</span>
             </a>
             <a href="index.php?page=logout" style="color:var(--danger);">
                 <i class="fas fa-sign-out-alt"></i><span>Keluar</span>

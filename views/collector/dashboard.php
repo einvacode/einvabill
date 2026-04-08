@@ -157,7 +157,7 @@ $recent_paid = $db->query("
     LIMIT 100
 ")->fetchAll();
 
-$coll_tab = $_GET['tab'] ?? 'tugas';
+$coll_tab = $_GET['tab'] ?? 'dashboard';
 $settings = $db->query("SELECT company_name, wa_template, wa_template_paid, site_url, bank_account FROM settings WHERE id=1")->fetch();
 $base_url = !empty($settings['site_url']) ? $settings['site_url'] : get_app_url();
 $wa_tpl = $settings['wa_template'] ?? "Halo {nama}, tagihan internet Anda sebesar {tagihan} jatuh tempo pada {jatuh_tempo}. Transfer ke {rekening}";
@@ -385,7 +385,7 @@ $total_cust_filter = $db->query("SELECT COUNT(*) FROM customers c WHERE 1=1 $are
 
 $total_revenue_all = $db->query("SELECT COALESCE(SUM(c.monthly_fee), 0) FROM customers c WHERE 1=1 $area_filter")->fetchColumn();
 
-$coll_tab = $_GET['tab'] ?? 'tugas';
+$coll_tab = $_GET['tab'] ?? 'dashboard';
 ?>
 
 <style>
@@ -564,7 +564,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
 </style>
 <?php endif; ?>
 
-<?php if($coll_tab !== 'pelanggan'): ?>
+<?php if($coll_tab === 'dashboard'): ?>
 <!-- Dashboard Header with Month Picker -->
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:15px; padding:0 5px;">
     <div>
@@ -1011,7 +1011,8 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
             </table>
         </div>
 
-        <!-- Mobile Mode: Cards --        <div class="customer-list-mobile">
+        <!-- Mobile Mode: Cards -->
+        <div class="customer-list-mobile">
         <?php foreach($unpaid_invoices as $ui): 
             $wa_num_t = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $ui['contact']));
             $cust_id_t = $ui['customer_code'] ?: str_pad($ui['cust_id'], 5, "0", STR_PAD_LEFT);
@@ -1089,6 +1090,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
         </div>
     </div>
 </div> <!-- end glass-panel (Tab: Tugas) -->
+</div> <!-- end .task-list-wrapper -->
 <?php elseif($coll_tab === 'lunas'): ?>
 <!-- TAB: Sudah Lunas -->
 <div class="glass-panel tab-flex-container" style="padding:20px;">
