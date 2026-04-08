@@ -290,6 +290,8 @@ if ($action === 'export') {
 
 if ($action === 'import_file' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
     $file = $_FILES['csv_file']['tmp_name'];
+    $collector_id = intval($_POST['collector_id'] ?? 0);
+    
     if (!empty($file) && is_uploaded_file($file)) {
         $handle = fopen($file, "r");
         
@@ -323,6 +325,7 @@ if ($action === 'import_file' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset(
         fclose($handle);
         $_SESSION['pending_import'] = $pending;
         $_SESSION['pending_mapping'] = $mapping;
+        $_SESSION['pending_collector_id'] = $collector_id;
         header("Location: index.php?page=admin_customers&action=import_preview");
         exit;
     }
@@ -330,6 +333,7 @@ if ($action === 'import_file' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset(
 
 if ($action === 'import_paste' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = $_POST['paste_data'];
+    $collector_id = intval($_POST['collector_id'] ?? 0);
     $lines = explode("\n", trim($data));
     $pending = [];
     $mapping = null;
@@ -353,6 +357,7 @@ if ($action === 'import_paste' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $_SESSION['pending_import'] = $pending;
     $_SESSION['pending_mapping'] = $mapping;
+    $_SESSION['pending_collector_id'] = $collector_id;
     header("Location: index.php?page=admin_customers&action=import_preview");
     exit;
 }
@@ -394,12 +399,28 @@ function detectImportMapping($row) {
 if ($action === 'import_confirm' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $pending = $_SESSION['pending_import'] ?? [];
     $map = $_SESSION['pending_mapping'] ?? ['type' => 0, 'name' => 1, 'address' => 2, 'contact' => 3, 'package' => 4, 'fee' => 5, 'ip' => 6, 'reg_date' => 7, 'bill_date' => 8, 'area' => 9];
+    $collector_id = $_SESSION['pending_collector_id'] ?? 0;
     if (empty($pending)) { header("Location: index.php?page=admin_customers"); exit; }
 
-    $stmt = $db->prepare("INSERT INTO customers (name, address, contact, package_name, monthly_fee, ip_address, type, registration_date, billing_date, area, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt = $db->prepare("INSERT INTO customers (name, address, contact, package_name, monthly_fee, ip_address, type, registration_date, billing_date, area, created_by, collector_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $stmt_chk = $db->prepare("SELECT COUNT(*) FROM customers WHERE customer_code = ?");
     $count = 0;
     $u_id_import = $_SESSION['user_id'];
+
+    // Pre-fetch collectors for Smart Assignment lookup
+    $collector_lookup = [];
+    try {
+        $all_colls = $db->query("SELECT id, name, area FROM users WHERE role = 'collector'")->fetchAll();
+        foreach ($all_colls as $ac) {
+            $collector_lookup[strtolower(trim($ac['name']))] = $ac['id'];
+            if (!empty($ac['area'])) {
+                $areas_split = explode(',', $ac['area']); 
+                foreach($areas_split as $as) {
+                    $collector_lookup[strtolower(trim($as))] = $ac['id'];
+                }
+            }
+        }
+    } catch(Exception $e) {}
 
     foreach ($pending as $row) {
         $name = trim($row[$map['name']] ?? '');
@@ -427,10 +448,19 @@ if ($action === 'import_confirm' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        // SMART ASSIGNMENT: If no collector selected, try matching by area
+        $row_collector_id = $collector_id;
+        if ($row_collector_id == 0 && !empty($cust_area)) {
+            $area_key = strtolower(trim($cust_area));
+            if (isset($collector_lookup[$area_key])) {
+                $row_collector_id = $collector_lookup[$area_key];
+            }
+        }
+
         $stmt->execute([
             $name, trim($row[$map['address']] ?? ''), trim($row[$map['contact']] ?? ''), $pkg_name, $pkg_fee,
             trim($row[$map['ip']] ?? ''), strtolower(trim($row[$map['type']] ?? '')) == 'partner' ? 'partner' : 'customer', 
-            trim($row[$map['reg_date']] ?? date('Y-m-d')), (int)trim($row[$map['bill_date']] ?? 1), $cust_area, $u_id_import
+            trim($row[$map['reg_date']] ?? date('Y-m-d')), (int)trim($row[$map['bill_date']] ?? 1), $cust_area, $u_id_import, $row_collector_id
         ]);
         $count++;
         
@@ -444,12 +474,14 @@ if ($action === 'import_confirm' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     
     unset($_SESSION['pending_import']);
     unset($_SESSION['pending_mapping']);
+    unset($_SESSION['pending_collector_id']);
     header("Location: index.php?page=admin_customers&msg=import_success&count=" . $count);
     exit;
 }
 
 if ($action === 'import_cancel') {
     unset($_SESSION['pending_import']);
+    unset($_SESSION['pending_collector_id']);
     header("Location: index.php?page=admin_customers&action=import_view");
     exit;
 }
@@ -1367,7 +1399,33 @@ document.addEventListener("DOMContentLoaded", () => {
     </div>
 
     <style>
-        .import-tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 1px solid var(--glass-border); }
+        .collector-assign-box {
+            background: rgba(var(--primary-rgb), 0.03);
+            border: 1px solid var(--glass-border);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .collector-assign-box label { margin: 0; font-weight: 700; font-size: 13px; white-space: nowrap; }
+        .collector-assign-box select { flex: 1; max-width: 300px; }
+    </style>
+
+    <div class="collector-assign-box">
+        <i class="fas fa-user-tie text-primary" style="font-size: 20px;"></i>
+        <label>Tugaskan Data Impor ke Penagih (Opsional):</label>
+        <?php $colls_import = $db->query("SELECT id, name FROM users WHERE role = 'collector' ORDER BY name ASC")->fetchAll(); ?>
+        <select id="common_collector_id" class="form-control" onchange="syncCollector(this.value)">
+            <option value="0">-- Biarkan Tanpa Penagih --</option>
+            <?php foreach($colls_import as $cl): ?>
+                <option value="<?= $cl['id'] ?>"><?= htmlspecialchars($cl['name']) ?></option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+
+    <div class="import-tabs">
         .tab-btn { padding: 10px 20px; cursor: pointer; border-radius: 8px 8px 0 0; background: none; border: none; font-weight: 600; color: var(--text-secondary); }
         .tab-btn.active { background: var(--nav-active-bg); color: var(--primary); border-bottom: 2px solid var(--primary); }
         .tab-content { display: none; }
@@ -1382,6 +1440,7 @@ document.addEventListener("DOMContentLoaded", () => {
     <!-- Mode 1: File Upload -->
     <div id="tab-file" class="tab-content active">
         <form action="index.php?page=admin_customers&action=import_file" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="collector_id" class="sync-collector" value="0">
             <div style="border: 2px dashed var(--glass-border); padding: 40px; border-radius: 15px; text-align: center; background: rgba(255,255,255,0.02); transition: 0.3s;" id="drop-zone" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--glass-border)'">
                 <i class="fas fa-cloud-upload-alt" style="font-size: 48px; color: var(--primary); opacity: 0.5; margin-bottom: 15px;"></i>
                 <h4 style="margin:0 0 10px 0;">Pilih File CSV</h4>
@@ -1400,6 +1459,7 @@ document.addEventListener("DOMContentLoaded", () => {
     <!-- Mode 2: Paste Data -->
     <div id="tab-paste" class="tab-content">
         <form action="index.php?page=admin_customers&action=import_paste" method="POST">
+            <input type="hidden" name="collector_id" class="sync-collector" value="0">
             <div class="form-group">
                 <label>Salin & Tempel Data (Tab-Separated):</label>
                 <textarea name="paste_data" class="form-control" rows="10" placeholder="customer [Tab] Budi [Tab] Alamat..." required style="font-family:monospace; font-size:12px;"></textarea>
@@ -1428,6 +1488,10 @@ document.addEventListener("DOMContentLoaded", () => {
             nameEl.style.display = 'block';
             document.getElementById('drop-zone').style.background = 'rgba(var(--primary-rgb), 0.05)';
         }
+    }
+
+    function syncCollector(val) {
+        document.querySelectorAll('.sync-collector').forEach(el => el.value = val);
     }
 </script>
 
