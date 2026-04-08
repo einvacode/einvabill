@@ -70,8 +70,7 @@ let currentQR = "";
 
 async function refreshGateway() {
     try {
-        const gatewayUrl = `http://${window.location.hostname}:3000`;
-        const response = await fetch(`${gatewayUrl}/status`);
+        const response = await fetch('/waapi/status');
         const data = await response.json();
         
         if (data.connected) {

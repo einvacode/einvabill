@@ -375,9 +375,12 @@
 
     // WhatsApp Gateway Status Polling
     async function checkWAStatus() {
+        const indicators = document.querySelectorAll('.wa-status-indicator');
+        if (indicators.length === 0) return;
+
         try {
-            const gatewayUrl = `http://${window.location.hostname}:3000/status`;
-            const response = await fetch(gatewayUrl);
+            // Using relative proxy URL to bypass Mixed Content / HTTPS issues
+            const response = await fetch('/waapi/status');
             const data = await response.json();
             const indicators = document.querySelectorAll('.wa-status-indicator');
             indicators.forEach(el => {

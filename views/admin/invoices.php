@@ -1124,14 +1124,14 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
 
     // Function to send message via Gateway
     async function sendWAGateway(phone, message, fallback, btn) {
-        const gatewayUrl = `http://${window.location.hostname}:3000/send`;
         if (btn) {
             const originalHtml = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             
             try {
-                const response = await fetch(gatewayUrl, {
+                // Using relative proxy URL for security and mobile compatibility
+                const response = await fetch('/waapi/send', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ phone, message })
@@ -1148,7 +1148,10 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                     btn.disabled = false;
                 }, 2000);
             } catch (e) {
-                console.error('Gateway failed, using fallback:', e);
+                console.error('Gateway failed:', e);
+                if (window.location.protocol === 'https:') {
+                    alert('GAGAL: Browser memblokir pengiriman otomatis karena HTTPS.\n\nKlik ikon Gembok di URL bar -> Site Settings -> Cari "Insecure Content" -> Ubah ke "Allow".\n\nLalu Refresh halaman.');
+                }
                 window.open(fallback, '_blank');
                 btn.innerHTML = originalHtml;
                 btn.disabled = false;
@@ -1156,7 +1159,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
         } else {
             // No button element, direct send
             try {
-                const response = await fetch(gatewayUrl, {
+                const response = await fetch('/waapi/send', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ phone, message })
@@ -1230,6 +1233,14 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
     }
 
     function showEditInvoice(id, amount, discount, date) {
+        if (window.location.protocol === 'https:') {
+            document.getElementById('qrcode').innerHTML = '<div style="background:rgba(245,158,11,0.1); padding:15px; border-radius:10px; border:1px solid #f59e0b; color:#f59e0b; font-size:11px; text-align:left;">' +
+                '<h6 style="margin:0 0 5px; color:#f59e0b;"><i class="fas fa-shield-alt"></i> BLOKIR HTTPS</h6>' +
+                'Izin diperlukan:<br>1. Klik ikon <b>Gembok</b> di URL bar<br>2. Pilih <b>Site Settings</b><br>3. Cari <b>Insecure Content</b><br>4. Ubah ke <b>Allow</b><br>5. Refresh (F5)' +
+                '</div>';
+        } else {
+            document.getElementById('qrcode').innerHTML = '<div style="color:#ef4444; font-size:12px; font-weight:700;"><i class="fas fa-exclamation-triangle"></i> GATEWAY OFFLINE<br><span style="font-weight:400; opacity:0.7;">Harap nyalakan node server.js</span></div>';
+        }
         document.getElementById('editInvId').value = id;
         document.getElementById('editInvAmount').value = amount;
         document.getElementById('editInvDiscount').value = discount;

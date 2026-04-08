@@ -754,14 +754,14 @@ if ($action === 'print') {
 <script>
     // Function to send message via Gateway
     async function sendWAGateway(phone, message, fallback, btn) {
-        const gatewayUrl = `http://${window.location.hostname}:3000/send`;
         if (btn) {
             const originalHtml = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             
             try {
-                const response = await fetch(gatewayUrl, {
+                // Using relative proxy URL for security and mobile compatibility
+                const response = await fetch('/waapi/send', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ phone, message })
