@@ -288,6 +288,64 @@ if ($action === 'export') {
     exit;
 }
 
+if ($action === 'import_file' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
+    $file = $_FILES['csv_file']['tmp_name'];
+    if (!empty($file) && is_uploaded_file($file)) {
+        $handle = fopen($file, "r");
+        
+        // Detect delimiter
+        $firstLine = fgets($handle);
+        $delimiter = (strpos($firstLine, ';') !== false) ? ';' : ',';
+        rewind($handle);
+
+        $stmt = $db->prepare("INSERT INTO customers (name, address, contact, package_name, monthly_fee, ip_address, type, registration_date, billing_date, area) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt_chk = $db->prepare("SELECT COUNT(*) FROM customers WHERE customer_code = ?");
+
+        while (($row = fgetcsv($handle, 1000, $delimiter)) !== FALSE) {
+            if (empty($row) || count($row) < 5) continue;
+            if (trim($row[1]) == '' || strtolower(trim($row[1])) == 'nama pelanggan') continue;
+
+            $pkg_name = trim($row[4]);
+            $pkg_fee = (float)preg_replace('/[^0-9]/', '', $row[5] ?? 0);
+
+            // Smart Sync: Package
+            if (!empty($pkg_name)) {
+                $pkg_exist = $db->prepare("SELECT id FROM packages WHERE name = ?");
+                $pkg_exist->execute([$pkg_name]);
+                if (!$pkg_exist->fetch()) {
+                    $db->prepare("INSERT INTO packages (name, fee) VALUES (?, ?)")->execute([$pkg_name, $pkg_fee]);
+                }
+            }
+
+            // Smart Sync: Area
+            $cust_area = isset($row[9]) ? trim($row[9]) : '';
+            if (!empty($cust_area)) {
+                $area_exist = $db->prepare("SELECT id FROM areas WHERE name = ?");
+                $area_exist->execute([$cust_area]);
+                if (!$area_exist->fetch()) {
+                    $db->prepare("INSERT INTO areas (name) VALUES (?)")->execute([$cust_area]);
+                }
+            }
+
+            $stmt->execute([
+                trim($row[1]), trim($row[2]), trim($row[3]), $pkg_name, $pkg_fee,
+                trim($row[6] ?? ''), strtolower(trim($row[0])) == 'partner' ? 'partner' : 'customer', 
+                trim($row[7] ?? date('Y-m-d')), (int)trim($row[8] ?? 1), $cust_area
+            ]);
+            
+            $imp_id = $db->lastInsertId();
+            do {
+                $imp_code = 'CUST-' . str_pad(mt_rand(100000, 999999), 6, '0', STR_PAD_LEFT);
+                $stmt_chk->execute([$imp_code]);
+            } while ($stmt_chk->fetchColumn() > 0);
+            $db->prepare("UPDATE customers SET customer_code = ? WHERE id = ?")->execute([$imp_code, $imp_id]);
+        }
+        fclose($handle);
+        header("Location: index.php?page=admin_customers&msg=import_success");
+        exit;
+    }
+}
+
 if ($action === 'import_paste' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = $_POST['paste_data'];
     $lines = explode("\n", trim($data));
@@ -1246,25 +1304,80 @@ document.addEventListener("DOMContentLoaded", () => {
 
 <?php elseif ($action === 'import_view'): ?>
 <div class="glass-panel" style="padding: 24px; max-width:800px; margin:0 auto;">
-    <h3 style="font-size:20px; margin-bottom:20px;"><i class="fas fa-file-import text-success"></i> Import Data Excel / CSV</h3>
-    <div style="background:var(--hover-bg); padding:15px; border-radius:12px; margin-bottom:20px; font-size:13px; line-height:1.6;">
-        <strong>Format Kolom (Urutan Penting):</strong><br>
-        <div style="font-size:11px; opacity:0.7; margin-bottom:10px;">
-            Tipe | Nama | Alamat | WhatsApp | Paket | Biaya | IP | Tanggal Registrasi | Tanggal Tagihan | Area
-        </div>
-        <a href="index.php?page=admin_customers&action=download_template" class="btn btn-sm btn-ghost" style="color:var(--success);"><i class="fas fa-download"></i> Contoh CSV</a>
+    <h3 style="font-size:20px; margin-bottom:20px;"><i class="fas fa-file-import text-success"></i> Import Data Pelanggan</h3>
+    
+    <div style="background:var(--hover-bg); padding:15px; border-radius:12px; margin-bottom:25px; font-size:13px; line-height:1.6; border-left:4px solid var(--success);">
+        <strong>Persyaratan Format:</strong><br>
+        1. Gunakan file format <strong>.csv</strong> atau Paste dari Excel/Sheets.<br>
+        2. Sistem akan otomatis mensinkronisasi Nama Paket & Area baru.<br>
+        3. ID Pelanggan akan dibuatkan otomatis secara unik oleh sistem.<br>
+        <a href="index.php?page=admin_customers&action=download_template" class="btn btn-sm btn-ghost" style="color:var(--success); margin-top:10px;"><i class="fas fa-download"></i> Download Template CSV</a>
     </div>
-    <form action="index.php?page=admin_customers&action=import_paste" method="POST">
-        <div class="form-group">
-            <label>Paste Data Anda (dari Excel/Sheets):</label>
-            <textarea name="paste_data" class="form-control" rows="12" placeholder="customer [Tab] Budi [Tab] Alamat..." required style="font-family:monospace;"></textarea>
-        </div>
-        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
-            <a href="index.php?page=admin_customers" class="btn btn-ghost">Batal</a>
-            <button type="submit" class="btn btn-primary">Mulai Import</button>
-        </div>
-    </form>
+
+    <style>
+        .import-tabs { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 1px solid var(--glass-border); }
+        .tab-btn { padding: 10px 20px; cursor: pointer; border-radius: 8px 8px 0 0; background: none; border: none; font-weight: 600; color: var(--text-secondary); }
+        .tab-btn.active { background: var(--nav-active-bg); color: var(--primary); border-bottom: 2px solid var(--primary); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+
+    <div class="import-tabs">
+        <button class="tab-btn active" onclick="switchTab('file')"><i class="fas fa-file-csv"></i> Upload File CSV</button>
+        <button class="tab-btn" onclick="switchTab('paste')"><i class="fas fa-paste"></i> Paste Data Excel</button>
+    </div>
+
+    <!-- Mode 1: File Upload -->
+    <div id="tab-file" class="tab-content active">
+        <form action="index.php?page=admin_customers&action=import_file" method="POST" enctype="multipart/form-data">
+            <div style="border: 2px dashed var(--glass-border); padding: 40px; border-radius: 15px; text-align: center; background: rgba(255,255,255,0.02); transition: 0.3s;" id="drop-zone" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--glass-border)'">
+                <i class="fas fa-cloud-upload-alt" style="font-size: 48px; color: var(--primary); opacity: 0.5; margin-bottom: 15px;"></i>
+                <h4 style="margin:0 0 10px 0;">Pilih File CSV</h4>
+                <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 20px;">Upload file format .csv sesuai template untuk hasil maksimal.</p>
+                <input type="file" name="csv_file" id="csv_input" accept=".csv" required style="display: none;" onchange="updateFileName(this)">
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('csv_input').click()">Pilih File</button>
+                <div id="file-name" style="margin-top: 15px; font-weight: 600; font-size: 13px; color: var(--success); display: none;"></div>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:25px;">
+                <a href="index.php?page=admin_customers" class="btn btn-ghost">Batal</a>
+                <button type="submit" class="btn btn-primary" style="background:var(--success); border-color:var(--success); color:white;">Upload & Proses</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Mode 2: Paste Data -->
+    <div id="tab-paste" class="tab-content">
+        <form action="index.php?page=admin_customers&action=import_paste" method="POST">
+            <div class="form-group">
+                <label>Salin & Tempel Data (Tab-Separated):</label>
+                <textarea name="paste_data" class="form-control" rows="10" placeholder="customer [Tab] Budi [Tab] Alamat..." required style="font-family:monospace; font-size:12px;"></textarea>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                <a href="index.php?page=admin_customers" class="btn btn-ghost">Batal</a>
+                <button type="submit" class="btn btn-primary">Mulai Import</button>
+            </div>
+        </form>
+    </div>
 </div>
+
+<script>
+    function switchTab(type) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        
+        event.currentTarget.classList.add('active');
+        document.getElementById('tab-' + type).classList.add('active');
+    }
+
+    function updateFileName(input) {
+        let nameEl = document.getElementById('file-name');
+        if(input.files && input.files[0]) {
+            nameEl.innerText = "Terpilih: " + input.files[0].name;
+            nameEl.style.display = 'block';
+            document.getElementById('drop-zone').style.background = 'rgba(var(--primary-rgb), 0.05)';
+        }
+    }
+</script>
 
 <?php elseif ($action === 'details'): 
     $id = intval($_GET['id']);
