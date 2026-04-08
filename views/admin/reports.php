@@ -439,9 +439,9 @@ if ($action === 'print') {
                             );
                             $wa_link = "https://api.whatsapp.com/send?phone=$wa_num&text=" . urlencode($receipt_msg);
                         ?>
-                            <a href="<?= $wa_link ?>" target="_blank" class="btn btn-xs btn-ghost" style="color:#25D366; padding:0 5px; margin-left:5px;" title="Kirim Ulang Nota">
+                            <button onclick="sendWAGateway('<?= $wa_num ?>', <?= htmlspecialchars(json_encode($receipt_msg)) ?>, '<?= $wa_link ?>', this)" class="btn btn-xs btn-ghost" style="color:#25D366; padding:0 5px; margin-left:5px;" title="Kirim Ulang Nota">
                                 <i class="fab fa-whatsapp"></i>
-                            </a>
+                            </button>
                             <a href="index.php?page=admin_invoices&action=print&id=<?= $row['invoice_id'] ?>" target="_blank" class="btn btn-xs btn-ghost" style="color:var(--primary); padding:0 5px; margin-left:5px;" title="Cetak Kuitansi">
                                 <i class="fas fa-print"></i>
                             </a>
@@ -665,7 +665,7 @@ if ($action === 'print') {
                         );
                         $wa_link = "https://api.whatsapp.com/send?phone=$wa_num&text=" . urlencode($receipt_msg);
                     ?>
-                        <a href="<?= $wa_link ?>" target="_blank" style="margin-left:5px; color:#25D366;"><i class="fab fa-whatsapp"></i></a>
+                        <button onclick="sendWAGateway('<?= $wa_num ?>', <?= htmlspecialchars(json_encode($receipt_msg)) ?>, '<?= $wa_link ?>', this)" style="margin-left:5px; color:#25D366; background:none; border:none; padding:0; cursor:pointer;"><i class="fab fa-whatsapp" style="font-size:14px;"></i></button>
                         <a href="index.php?page=admin_invoices&action=print&id=<?= $row['invoice_id'] ?>" target="_blank" style="margin-left:8px; color:var(--primary);"><i class="fas fa-print"></i></a>
                     <?php endif; ?>
                 </div>
@@ -728,9 +728,9 @@ if ($action === 'print') {
                             );
                             $wa_link = "https://api.whatsapp.com/send?phone=$wa_num&text=" . urlencode($receipt_msg);
                         ?>
-                            <a href="<?= $wa_link ?>" target="_blank" class="btn btn-xs btn-ghost" style="color:#25D366; margin-left:8px;" title="Kirim Ulang Nota">
+                            <button onclick="sendWAGateway('<?= $wa_num ?>', <?= htmlspecialchars(json_encode($receipt_msg)) ?>, '<?= $wa_link ?>', this)" class="btn btn-xs btn-ghost" style="color:#25D366; margin-left:8px;" title="Kirim Ulang Nota">
                                 <i class="fab fa-whatsapp"></i>
-                            </a>
+                            </button>
                             <a href="index.php?page=admin_invoices&action=print&id=<?= $row['invoice_id'] ?>" target="_blank" class="btn btn-xs btn-ghost" style="color:var(--primary); margin-left:8px;" title="Cetak Kuitansi">
                                 <i class="fas fa-print"></i>
                             </a>
@@ -750,3 +750,40 @@ if ($action === 'print') {
         </table>
     </div>
 </div>
+
+<script>
+    // Function to send message via Gateway
+    async function sendWAGateway(phone, message, fallback, btn) {
+        const gatewayUrl = `http://${window.location.hostname}:3000/send`;
+        if (btn) {
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            
+            try {
+                const response = await fetch(gatewayUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, message })
+                });
+                const data = await response.json();
+                
+                if (data.error) throw new Error(data.message);
+                
+                // Success
+                btn.style.color = '#10b981';
+                btn.innerHTML = '<i class="fas fa-check"></i>';
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    btn.style.color = '#25D366';
+                    btn.disabled = false;
+                }, 2000);
+            } catch (e) {
+                console.error('Gateway failed, using fallback:', e);
+                window.open(fallback, '_blank');
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            }
+        }
+    }
+</script>

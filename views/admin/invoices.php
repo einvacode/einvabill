@@ -36,6 +36,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
             ], 
             $settings['wa_template_paid'] ?: "Halo {nama}, pembayaran {total_bayar} ({bulan}) ({status_pembayaran}). Sisa Tunggakan: {sisa_tunggakan}. Cek nota: {link_tagihan}"
         );
+        $success_data['wa_text'] = $receipt_msg;
         $success_data['wa_link'] = "https://api.whatsapp.com/send?phone=$wa_num_paid&text=" . urlencode($receipt_msg);
     }
 }
@@ -48,7 +49,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
             <h3 style="margin:0; color:var(--success); font-size:16px;"><i class="fas fa-check-circle"></i> Berhasil!</h3>
             <p style="margin:0; font-size:12px; color:var(--text-secondary);">Invoice <strong><?= htmlspecialchars($success_data['name']) ?></strong> lunas.</p>
         </div>
-        <a href="<?= $success_data['wa_link'] ?>" target="_blank" class="btn btn-sm btn-success"><i class="fab fa-whatsapp"></i> WA Kuitansi</a>
+        <button onclick="sendWAGateway('<?= $wa_num_paid ?>', <?= htmlspecialchars(json_encode($success_data['wa_text'])) ?>, '<?= $success_data['wa_link'] ?>', this)" class="btn btn-sm btn-success"><i class="fab fa-whatsapp"></i> WA Kuitansi</button>
     </div>
 </div>
 <?php endif; ?>
@@ -825,9 +826,9 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                 </a>
                 
                 <?php if($inv['status'] != 'Lunas' && $wa_number): ?>
-                    <a href="https://api.whatsapp.com/send?phone=<?= $wa_number ?>&text=<?= $wa_text ?>" target="_blank" class="btn btn-ghost" style="width:44px; height:40px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; color:#25D366;">
+                    <button onclick="sendWAGateway('<?= $wa_number ?>', <?= htmlspecialchars(json_encode($msg)) ?>, 'https://api.whatsapp.com/send?phone=<?= $wa_number ?>&text=<?= $wa_text ?>', this)" class="btn btn-ghost" style="width:44px; height:40px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; color:#25D366;">
                         <i class="fab fa-whatsapp" style="font-size:18px;"></i>
-                    </a>
+                    </button>
                 <?php endif; ?>
                 
                 <?php if($can_manage_item): ?>
@@ -1006,7 +1007,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                             
                              
                             <?php if($inv['status'] != 'Lunas' && $wa_number): ?>
-                                <a href="https://api.whatsapp.com/send?phone=<?= $wa_number ?>&text=<?= $wa_text ?>" target="_blank" class="btn btn-sm btn-ghost" title="Kirim WA" style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; padding:0; background:rgba(37, 211, 102, 0.05); color:#25D366;"><i class="fab fa-whatsapp" style="font-size:15px;"></i></a>
+                                <button onclick="sendWAGateway('<?= $wa_number ?>', <?= htmlspecialchars(json_encode($msg)) ?>, 'https://api.whatsapp.com/send?phone=<?= $wa_number ?>&text=<?= $wa_text ?>', this)" class="btn btn-sm btn-ghost" title="Kirim WA" style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; padding:0; background:rgba(37, 211, 102, 0.05); color:#25D366;"><i class="fab fa-whatsapp" style="font-size:15px;"></i></button>
                             <?php endif; ?>
 
                             <a href="index.php?page=admin_invoices&action=print&id=<?= $inv['id'] ?>" target="_blank" class="btn btn-sm btn-ghost" title="Print Nota" style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; padding:0; background:rgba(255,255,255,0.05);"><i class="fas fa-print" style="font-size:13px;"></i></a>
@@ -1121,6 +1122,52 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
         });
     }
 
+    // Function to send message via Gateway
+    async function sendWAGateway(phone, message, fallback, btn) {
+        const gatewayUrl = `http://${window.location.hostname}:3000/send`;
+        if (btn) {
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            
+            try {
+                const response = await fetch(gatewayUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, message })
+                });
+                const data = await response.json();
+                
+                if (data.error) throw new Error(data.message);
+                
+                // Success
+                btn.classList.add('btn-success');
+                btn.innerHTML = '<i class="fas fa-check"></i>';
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    btn.disabled = false;
+                }, 2000);
+            } catch (e) {
+                console.error('Gateway failed, using fallback:', e);
+                window.open(fallback, '_blank');
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            }
+        } else {
+            // No button element, direct send
+            try {
+                const response = await fetch(gatewayUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, message })
+                });
+                return await response.json();
+            } catch (e) {
+                return { error: true, message: e.toString() };
+            }
+        }
+    }
+
     async function startMassWaWeb() {
         let checkboxes = document.querySelectorAll('.cb-invoice:checked');
         if(checkboxes.length === 0) {
@@ -1128,17 +1175,10 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
             return;
         }
 
-        let testPop = window.open('about:blank', '_blank');
-        if(!testPop || testPop.closed) {
-            alert('Mohon IZINKAN POP-UP pada browser Anda!');
-            return;
-        }
-        testPop.close();
-
-        if(!confirm('Kirim pesan ke ' + checkboxes.length + ' pelanggan?')) return;
+        if(!confirm('Kirim pesan otomatis ke ' + checkboxes.length + ' pelanggan?\n(Delay 10 detik per pesan)')) return;
 
         let btn = document.getElementById('btnMassWa');
-        let progText = document.getElementById('waProgressText');
+        let progText = document.getElementById('waProgressTextFloating');
         
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
@@ -1149,24 +1189,31 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
             let msg = cb.getAttribute('data-msg');
             let name = cb.getAttribute('data-name');
             
-            progText.innerHTML = `Membuka tab: ${name} (${i+1}/${checkboxes.length})...`;
+            progText.innerHTML = `Mengirim: <strong>${name}</strong> (${i+1}/${checkboxes.length})...`;
             
-            let waUrl = `https://web.whatsapp.com/send?phone=${phone}&text=${msg}`;
-            window.open(waUrl, '_blank');
-            cb.closest('.glass-panel')?.style.setProperty('border-color', '#25D366');
-            cb.closest('tr')?.style.setProperty('background', 'rgba(37, 211, 102, 0.1)');
+            const result = await sendWAGateway(phone, msg, null, null);
+            
+            if (result && !result.error) {
+                cb.closest('.glass-panel')?.style.setProperty('border-color', '#25D366');
+                cb.closest('tr')?.style.setProperty('background', 'rgba(37, 211, 102, 0.1)');
+                cb.checked = false;
+            } else {
+                progText.innerHTML = `<span style="color:#ef4444;">Gagal mengirim ke ${name}. Mengalihkan ke manual...</span>`;
+                window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(msg)}`, '_blank');
+            }
             
             if (i < checkboxes.length - 1) {
                 for(let c = 10; c > 0; c--) {
-                    progText.innerHTML = `Tab berikutnya dalam: <strong>${c} detik</strong>.`;
+                    progText.innerHTML = `Jeda keamanan: <strong>${c} detik</strong> sebelum kirim berikutnya...`;
                     await new Promise(r => setTimeout(r, 1000));
                 }
             }
         }
 
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-paper-plane"></i> 2. Kirim Terpilih';
-        progText.innerHTML = '<span style="color:#25D366;">Selesai! Scan tab yang terbuka dan klik kirim.</span>';
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> KIRIM SEKARANG';
+        progText.innerHTML = '<span style="color:#ffffff; font-weight:800;">Selesai! Seluruh pesan berhasil diproses.</span>';
+        updateWaSelectedCount();
     }
 
     function showBulkInvoiceModal() {

@@ -139,6 +139,9 @@ switch ($page) {
     case 'admin_users':
         require __DIR__ . '/views/admin/users.php';
         break;
+    case 'admin_wa_gateway':
+        require __DIR__ . '/views/admin/wa_gateway.php';
+        break;
     case 'admin_settings':
         require __DIR__ . '/views/admin/settings.php';
         break;

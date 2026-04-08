@@ -25,3 +25,9 @@ npm-debug.log*
 # OS Files
 .DS_Store
 Thumbs.db
+
+# WhatsApp Gateway
+wa-gateway/node_modules/
+wa-gateway/.wwebjs_auth/
+setup_linux.sh
+start_wa_gateway.bat

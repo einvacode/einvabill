@@ -65,6 +65,7 @@
                         <a href="index.php?page=admin_report_assets" class="nav-link <?= $page == 'admin_report_assets' ? 'active' : '' ?>"><i class="fas fa-file-contract"></i> Laporan Aset</a>
                         <a href="index.php?page=admin_banners" class="nav-link <?= $page == 'admin_banners' ? 'active' : '' ?>"><i class="fas fa-scroll" style="color:var(--warning);"></i> Manajemen Banner</a>
                         <a href="index.php?page=admin_landing" class="nav-link <?= $page == 'admin_landing' ? 'active' : '' ?>"><i class="fas fa-globe"></i> Web Profil</a>
+                        <a href="index.php?page=admin_wa_gateway" class="nav-link <?= $page == 'admin_wa_gateway' ? 'active' : '' ?>"><i class="fab fa-whatsapp" style="color:#25D366;"></i> WhatsApp Gateway</a>
                         <a href="index.php?page=admin_settings" class="nav-link <?= $page == 'admin_settings' ? 'active' : '' ?>"><i class="fas fa-cog"></i> Pengaturan</a>
                         <a href="index.php?page=admin_backup" class="nav-link <?= $page == 'admin_backup' ? 'active' : '' ?>"><i class="fas fa-shield-alt"></i> Backup & Restore</a>
                     <?php elseif($_SESSION['user_role'] === 'collector'): ?>
@@ -371,6 +372,34 @@
             window.history.replaceState({}, '', newUrl);
         }
     });
+
+    // WhatsApp Gateway Status Polling
+    async function checkWAStatus() {
+        try {
+            const gatewayUrl = `http://${window.location.hostname}:3000/status`;
+            const response = await fetch(gatewayUrl);
+            const data = await response.json();
+            const indicators = document.querySelectorAll('.wa-status-indicator');
+            indicators.forEach(el => {
+                if (data.connected) {
+                    el.innerHTML = '<span class="badge badge-success" style="background:rgba(16,185,129,0.1); color:#10b981; border:1px solid rgba(16,185,129,0.3); font-size:10px;"><i class="fas fa-link"></i> WA CONNECTED</span>';
+                } else {
+                    el.innerHTML = '<span class="badge badge-danger" style="background:rgba(239,68,68,0.1); color:#ef4444; border:1px solid rgba(239,68,68,0.3); font-size:10px;"><i class="fas fa-unlink"></i> WA DISCONNECTED</span>';
+                }
+            });
+        } catch (e) {
+            const indicators = document.querySelectorAll('.wa-status-indicator');
+            indicators.forEach(el => {
+                el.innerHTML = '<span class="badge" style="background:rgba(148,163,184,0.1); color:#94a3b8; border:1px solid rgba(148,163,184,0.3); font-size:10px;"><i class="fas fa-power-off"></i> WA OFFLINE</span>';
+            });
+        }
+    }
+    
+    // Initial check and set interval if on admin pages
+    if (window.location.search.includes('page=admin')) {
+        checkWAStatus();
+        setInterval(checkWAStatus, 30000); // Check every 30s
+    }
     </script>
 </body>
 </html>

@@ -93,6 +93,19 @@ app.post('/send', async (req, res) => {
     }
 });
 
+app.post('/logout', async (req, res) => {
+    try {
+        await client.logout();
+        isConnected = false;
+        qrCodeData = '';
+        res.json({ error: false, message: 'Logged out successfully.' });
+        // Re-initialize to get a new QR
+        client.initialize();
+    } catch (err) {
+        res.status(500).json({ error: true, message: 'Failed to logout: ' + err.toString() });
+    }
+});
+
 const PORT = 3000;
 app.listen(PORT, () => {
     console.log(`WhatsApp API Gateway is running on http://localhost:${PORT}`);
