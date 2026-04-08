@@ -137,7 +137,7 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $u_id = $_SESSION['user_id'];
     $u_role = $_SESSION['user_role'];
     $check = $db->query("SELECT created_by FROM customers WHERE id = $id")->fetchColumn();
-    $is_owner = ($u_role === 'admin' || $u_role === 'collector') ? ($check == $u_id || $check == 0 || $check === NULL) : ($check == $u_id);
+    $is_owner = ($u_role === 'admin') ? true : (($u_role === 'collector') ? ($check == $u_id || $check == 0 || $check === NULL) : ($check == $u_id));
     
     if (!$is_owner) {
         header("Location: index.php?page=admin_customers&msg=forbidden");
@@ -180,7 +180,7 @@ if ($action === 'delete') {
     $u_id = $_SESSION['user_id'];
     $u_role = $_SESSION['user_role'];
     $check = $db->query("SELECT created_by FROM customers WHERE id = $id")->fetchColumn();
-    $is_owner = ($u_role === 'admin') ? ($check == $u_id || $check == 0 || $check === NULL) : ($check == $u_id);
+    $is_owner = ($u_role === 'admin') ? true : ($check == $u_id);
     
     if (!$is_owner) {
         header("Location: index.php?page=admin_customers&msg=forbidden");
@@ -504,6 +504,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
 
+            <?php if ($u_role === 'admin'): ?>
             <div class="filter-group">
                 <label><i class="fas fa-user-tag"></i> Tipe</label>
                 <select name="filter_type" class="form-control" style="font-size:13px; height:40px;">
@@ -512,6 +513,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     <option value="partner" <?= $filter_type == 'partner' ? 'selected' : '' ?>>Mitra / B2B</option>
                 </select>
             </div>
+            <?php endif; ?>
 
             <?php if ($u_role === 'admin'): ?>
             <div class="filter-group">
@@ -556,11 +558,13 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div style="font-weight:700; font-size:16px;"><?= htmlspecialchars($c['name']) ?></div>
                     <div style="font-size:11px; color:var(--primary); font-family:monospace;"><?= htmlspecialchars($c['customer_code'] ?? '') ?></div>
                 </div>
-                <?php if($c['type']=='partner'): ?>
-                    <span class="badge badge-warning">Mitra</span>
-                <?php else: ?>
-                    <span class="badge badge-success">SLA</span>
-                <?php endif; ?>
+                    <?php if($u_role === 'admin'): ?>
+                        <?php if($c['type']=='partner'): ?>
+                            <span class="badge badge-warning">Mitra</span>
+                        <?php else: ?>
+                            <span class="badge badge-success">SLA</span>
+                        <?php endif; ?>
+                    <?php endif; ?>
             </div>
             
             <div style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;">
@@ -599,7 +603,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 <tr>
                     <th style="width:40px; text-align:center;"><input type="checkbox" id="check-all-cust" style="transform:scale(1.2); cursor:pointer;"></th>
                     <th>Nama</th>
-                    <th>Tipe <?= ($u_role === 'admin' ? '/ Area' : '') ?></th>
+                    <?php if ($u_role === 'admin'): ?><th>Tipe / Area</th><?php endif; ?>
                     <th>Paket / Kontak</th>
                     <th>Biaya Bulanan</th>
                     <th>IP / Koneksi</th>
@@ -618,16 +622,16 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div style="font-weight:600;"><?= htmlspecialchars($c['name']) ?></div>
                         <div style="font-size:11px; color:var(--primary); font-family:monospace;"><?= htmlspecialchars($c['customer_code'] ?? '') ?></div>
                     </td>
+                    <?php if ($u_role === 'admin'): ?>
                     <td>
                         <?php if($c['type']=='partner'): ?>
                             <span class="badge badge-warning">Mitra</span>
                         <?php else: ?>
                             <span class="badge badge-success">Pelanggan</span>
                         <?php endif; ?>
-                        <?php if($u_role === 'admin'): ?>
                         <div style="font-size:12px; margin-top:5px; color:var(--text-secondary);"><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($c['area'] ?: '-') ?></div>
-                        <?php endif; ?>
                     </td>
+                    <?php endif; ?>
                     <td>
                         <div style="font-weight:600;"><?= htmlspecialchars($c['package_name']) ?></div>
                         <div style="font-size:12px; color:var(--text-secondary);"><i class="fas fa-phone"></i> <?= htmlspecialchars($c['contact']) ?></div>
@@ -912,7 +916,7 @@ document.addEventListener("DOMContentLoaded", function() {
         if ($c) {
             $u_id = $_SESSION['user_id'];
             $u_role = $_SESSION['user_role'];
-            $is_owner = ($u_role === 'admin') ? ($c['created_by'] == $u_id || $c['created_by'] == 0 || $c['created_by'] === NULL) : ($c['created_by'] == $u_id);
+            $is_owner = ($u_role === 'admin') ? true : (($c['created_by'] == $u_id || $c['created_by'] == 0 || $c['created_by'] === NULL) && $_SESSION['user_role'] === 'collector' ? true : ($c['created_by'] == $u_id));
             if (!$is_owner) {
                 echo "<div class='glass-panel p-5 text-center'><h3>Akses Ditolak</h3><p>Anda tidak berwenang mengedit data ini.</p><a href='index.php?page=admin_customers' class='btn btn-primary'>Kembali</a></div>";
                 return;
@@ -1259,7 +1263,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Ownership Check
     $u_id = $_SESSION['user_id'];
     $u_role = $_SESSION['user_role'];
-    $is_owner = ($u_role === 'admin') ? ($c['created_by'] == $u_id || $c['created_by'] == 0 || $c['created_by'] === NULL) : ($c['created_by'] == $u_id);
+    $is_owner = ($u_role === 'admin') ? true : (($c['created_by'] == $u_id || $c['created_by'] == 0 || $c['created_by'] === NULL) && $_SESSION['user_role'] === 'collector' ? true : ($c['created_by'] == $u_id));
     if (!$is_owner) {
         echo "<div class='glass-panel p-5 text-center'><h3>Akses Ditolak</h3><p>Anda tidak berwenang melihat data ini.</p><a href='index.php?page=admin_customers' class='btn btn-primary'>Kembali</a></div>";
         return;
@@ -1544,6 +1548,13 @@ document.querySelector('.item-amount').addEventListener('input', updateItemizedT
 <style>
 @media (max-width: 900px) {
     .details-grid-container { grid-template-columns: 1fr !important; }
+}
+
+/* Mobile responsive toggle for customer list */
+@media (max-width: 768px) {
+    .customers-desktop-table { display: none !important; }
+    .customers-mobile-container { display: block !important; }
+    .hide-mobile { display: none !important; }
 }
 </style>
 

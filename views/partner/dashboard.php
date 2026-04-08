@@ -14,6 +14,50 @@ $date_to = $_GET['date_to'] ?? '';
 $filter_status = $_GET['filter_status'] ?? 'belum';
 $sort_date = $_GET['sort_date'] ?? 'desc';
 
+// Fetch current user brand/settings
+$me = $db->query("SELECT * FROM users WHERE id = $user_id")->fetch();
+$settings = $db->query("SELECT company_name, wa_template, wa_template_paid, site_url, bank_account FROM settings WHERE id = 1")->fetch();
+
+$base_url = !empty($settings['site_url']) ? $settings['site_url'] : get_app_url();
+
+// Template Resolution: Individual -> Core fallback -> Hardcoded
+$wa_tpl = !empty($me['wa_template']) ? $me['wa_template'] : ($settings['wa_template'] ?? "Halo {nama}, tagihan internet Anda sebesar {tagihan} jatuh tempo pada {jatuh_tempo}. Transfer ke {rekening}");
+$wa_tpl_paid = !empty($me['wa_template_paid']) ? $me['wa_template_paid'] : ($settings['wa_template_paid'] ?: "Halo {nama}, terima kasih. Pembayaran {tagihan} sudah lunas.");
+$my_bank_info = !empty($me['brand_bank']) ? ($me['brand_bank'] . " " . $me['brand_rekening']) : ($settings['bank_account'] ?? 'Hubungi CS');
+
+// Handle Add Customer by partner (MOVE TO TOP for fresh stats)
+if (isset($_GET['action']) && $_GET['action'] === 'add_customer' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $name = $_POST['name'];
+    $address = $_POST['address'];
+    $contact = $_POST['contact'];
+    $package_name = $_POST['package_name'];
+    $monthly_fee = $_POST['monthly_fee'];
+    $type = 'customer'; 
+    $registration_date = $_POST['registration_date'] ?: date('Y-m-d');
+    $billing_date = intval($_POST['billing_date'] ?: 1);
+    $area = $_POST['area'] ?? '';
+    
+    // Auto-generate unique random customer code
+    $stmt_check = $db->prepare("SELECT COUNT(*) FROM customers WHERE customer_code = ?");
+    do {
+        $customer_code = 'CUST-' . str_pad(mt_rand(100000, 999999), 6, '0', STR_PAD_LEFT);
+        $stmt_check->execute([$customer_code]);
+    } while ($stmt_check->fetchColumn() > 0);
+    
+    $stmt = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, package_name, monthly_fee, type, registration_date, billing_date, area, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$customer_code, $name, $address, $contact, $package_name, $monthly_fee, $type, $registration_date, $billing_date, $area, $user_id]);
+    $new_id = $db->lastInsertId();
+
+    // Initial Invoice for current month
+    if ($monthly_fee > 0) {
+        $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Belum Lunas', ?)");
+        $stmt_inv->execute([$new_id, $monthly_fee, $registration_date, date('Y-m-d H:i:s')]);
+    }
+    
+    header("Location: index.php?page=partner&msg=added&t=" . time());
+    exit;
+}
+
 $params = [$partner_cid];
 $date_where = '';
 if ($date_from && $date_to) {
@@ -164,6 +208,11 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
         $success_data['wa_link'] = "https://api.whatsapp.com/send?phone=$wa_num_paid&text=" . urlencode($receipt_msg);
     }
 }
+
+
+// Fetch Packages & Areas (Scoped for Partner)
+$packages_all = $db->query("SELECT * FROM packages WHERE created_by = $user_id OR created_by = 0 OR created_by IS NULL ORDER BY name ASC")->fetchAll();
+$areas_all = $db->query("SELECT * FROM areas ORDER BY name ASC")->fetchAll();
 ?>
 
 <style>
@@ -218,12 +267,13 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
     <div style="flex-shrink:0; margin-bottom:10px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding:0 5px;">
             <div>
-                <h2 style="margin:0; font-size:20px; font-weight:800; color:var(--text-primary);">Dashboard Mitra Reseller</h2>
+                <h2 style="margin:0; font-size:20px; font-weight:800; color:var(--text-primary);">Dashboard Mitra</h2>
                 <p style="margin:0; font-size:12px; color:var(--text-secondary);"><?= $_SESSION['user_name'] ?> | ID: <?= $partner_cid ?: 'N/A' ?></p>
             </div>
-            <a href="index.php?page=admin_customers&action=create" class="btn btn-sm btn-primary" style="height:38px; border-radius:10px; font-weight:700;"><i class="fas fa-user-plus"></i> <span class="hide-mobile">Add Cust</span></a>
+            <button onclick="showAddCustomerModal()" class="btn btn-sm btn-primary" style="height:38px; border-radius:10px; font-weight:700;"><i class="fas fa-user-plus"></i> <span class="hide-mobile">Tambah Pelanggan</span></button>
         </div>
     </div>
+
 
 <?php if($success_data): ?>
 <div class="glass-panel" style="margin-bottom:20px; border-left:4px solid var(--success); padding:20px; animation: slideDown 0.4s ease-out; background:rgba(16,185,129,0.1);">
@@ -245,79 +295,63 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
 </div>
 <?php endif; ?>
 
-    <div class="scroll-container">
-        <!-- Banners Section -->
-        <?php if(count($active_banners) > 0): ?>
-        <div class="banner-container" style="margin-bottom:20px;">
-            <?php foreach($active_banners as $banner): ?>
-                <div class="glass-panel banner-item" style="padding:15px; border-radius:16px; border-left:4px solid var(--primary); display:flex; gap:15px; align-items:center; margin-bottom:12px; position:relative; overflow:hidden;">
-                    <?php if($banner['image_path']): ?>
-                        <img src="<?= $banner['image_path'] ?>" style="width:80px; height:60px; object-fit:cover; border-radius:10px; cursor:zoom-in;" onclick="openImagePreview(this.src)">
-                    <?php endif; ?>
-                    <div class="banner-text">
-                        <div style="font-weight:700; color:var(--text-primary); font-size:14px;"><?= htmlspecialchars($banner['title']) ?></div>
-                        <div style="font-size:12px; color:var(--text-secondary); line-height:1.4;"><?= nl2br(htmlspecialchars($banner['content'])) ?></div>
-                    </div>
+<?php if (isset($_GET['msg'])): ?>
+    <div style="padding: 15px 20px; background: rgba(16, 185, 129, 0.1); border-left: 4px solid var(--success); margin-bottom: 20px; border-radius: 12px; display: flex; align-items: center; gap: 12px; animation: slideDown 0.4s ease-out;">
+        <i class="fas fa-check-circle" style="color: var(--success); font-size: 18px;"></i>
+        <div style="font-weight: 700; color: var(--success); font-size: 14px;">
+            <?php 
+                if($_GET['msg'] == 'added') echo 'Pelanggan baru berhasil didaftarkan!';
+            ?>
+        </div>
+    </div>
+<?php endif; ?>
+
+            <!-- REVENUE OVERVIEW -->
+            <div class="glass-panel" style="padding: 20px; margin-bottom:20px; border-bottom:4px solid var(--success); background:linear-gradient(135deg, rgba(16, 185, 129, 0.05), transparent);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <h3 style="font-size:15px; font-weight:800; margin:0;"><i class="fas fa-wallet text-success"></i> Pendapatan Saya (Bulan Ini)</h3>
+                    <span style="font-size:11px; font-weight:700; color:var(--text-secondary);"><?= date('F Y') ?></span>
                 </div>
-            <?php endforeach; ?>
-        </div>
-        <?php endif; ?>
-
-        <!-- Support Area -->
-        <div class="glass-panel" style="padding: 20px; margin-bottom:20px; border-left:4px solid var(--primary); background:linear-gradient(135deg, rgba(var(--primary-rgb), 0.05), transparent);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <h3 style="font-size:16px; margin:0;"><i class="fas fa-headset text-primary"></i> Support ISP Induk</h3>
-                <span class="badge badge-success" style="font-size:10px;">AKTIF</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <div style="font-size:13px; color:var(--text-secondary);">Konsultasi Billing & Teknis:</div>
-                <a href="https://wa.me/<?= preg_replace('/[^0-9]/', '', $company_wa) ?>" target="_blank" style="text-decoration:none; color:#25D366; font-weight:800; font-size:15px;">
-                    <i class="fab fa-whatsapp"></i> <?= htmlspecialchars($company_wa ?: 'HUBUNGI ISP') ?>
-                </a>
-            </div>
-        </div>
-
-        <!-- MINIMALIST SECTION: Bills to ISP Summary -->
-        <div class="glass-panel" style="padding: 24px; margin-bottom:20px; border-left:5px solid var(--danger); background:linear-gradient(to right, rgba(239, 68, 68, 0.05), transparent); cursor:pointer;" onclick="location.href='index.php?page=partner_isp_invoices'">
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                <div style="display:flex; gap:15px; align-items:center;">
-                    <div style="width:50px; height:50px; border-radius:15px; background:rgba(239, 68, 68, 0.1); color:var(--danger); display:flex; align-items:center; justify-content:center; font-size:24px;">
-                        <i class="fas fa-file-invoice-dollar"></i>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                    <div>
+                        <div style="font-size:10px; color:var(--text-secondary); font-weight:800; text-transform:uppercase;">Diterima</div>
+                        <div style="font-size:18px; font-weight:900; color:var(--success);">Rp<?= number_format($total_paid_val, 0, ',', '.') ?></div>
                     </div>
                     <div>
-                        <h3 style="margin:0; font-size:18px; color:var(--text-primary);">Tagihan Kemitraan Saya</h3>
-                        <p style="margin:2px 0 0; font-size:12px; color:var(--text-secondary);">Klik untuk lihat riwayat lengkap tagihan ke pusat.</p>
+                        <div style="font-size:10px; color:var(--text-secondary); font-weight:800; text-transform:uppercase;">Estimasi Bersih</div>
+                        <div style="font-size:18px; font-weight:900; color:var(--primary);">Rp<?= number_format($my_net_profit, 0, ',', '.') ?></div>
                     </div>
                 </div>
-                <div style="text-align:right;">
-                    <?php if($partner_stats && $partner_stats['belum'] > 0): ?>
-                        <div style="font-size:10px; font-weight:800; color:var(--danger); text-transform:uppercase; letter-spacing:1px;">SISA TUNGGAKAN</div>
-                        <div style="font-size:22px; font-weight:900; color:var(--danger);">Rp <?= number_format($partner_stats['total_belum'], 0, ',', '.') ?></div>
-                    <?php else: ?>
-                        <div style="font-size:10px; font-weight:800; color:var(--success); text-transform:uppercase; letter-spacing:1px;">STATUS</div>
-                        <div style="font-size:16px; font-weight:800; color:var(--success);"><i class="fas fa-check-circle"></i> LUNAS TERBAYAR</div>
-                    <?php endif; ?>
+            </div>
+
+            <!-- QUICK STATS -->
+            <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:12px; margin-bottom:25px;">
+                <div class="glass-panel" style="padding:15px; border-radius:16px;">
+                    <div style="font-size:10px; font-weight:800; color:var(--text-secondary); text-transform:uppercase;">Total Pelanggan</div>
+                    <div style="font-size:20px; font-weight:900;"><?= number_format($my_cust_count) ?></div>
+                </div>
+                <div class="glass-panel" style="padding:15px; border-radius:16px;">
+                    <div style="font-size:10px; font-weight:800; color:var(--text-secondary); text-transform:uppercase;">Jatuh Tempo Hari Ini</div>
+                    <div style="font-size:20px; font-weight:900;"><?= $due_today ?></div>
                 </div>
             </div>
-        </div>
-
     </div> <!-- end .scroll-container -->
 
     <!-- PERSISTENT BOTTOM SUMMARY BAR (Quick Check) -->
     <div class="static-summary-bar">
         <div class="glass-panel" style="padding:15px 20px; border-left:4px solid var(--success); background:linear-gradient(to right, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05)); backdrop-filter:blur(15px); display:flex; justify-content:space-between; align-items:center; border-radius:18px; box-shadow:0 -10px 25px rgba(0,0,0,0.1);">
             <div style="display:flex; align-items:center; gap:12px;">
-                <div style="width:42px; height:42px; border-radius:12px; background:var(--success); color:white; display:flex; align-items:center; justify-content:center; font-size:20px; box-shadow:0 4px 10px rgba(16, 185, 129, 0.3); flex-shrink:0;">
+                <div style="width:40px; height:40px; border-radius:12px; background:var(--success); color:white; display:flex; align-items:center; justify-content:center; font-size:20px; box-shadow:0 4px 10px rgba(16, 185, 129, 0.3); flex-shrink:0;">
                     <i class="fas fa-coins"></i>
                 </div>
                 <div>
-                    <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:800;">Laba Bersih Saya (Est)</div>
+                    <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:800;">Laba Bersih SAYA</div>
                     <div style="font-size:18px; font-weight:900; color:var(--text-primary); line-height:1.2;">Rp<?= number_format($my_net_profit, 0, ',', '.') ?></div>
                 </div>
             </div>
             <div style="text-align:right;">
-                <div style="font-size:10px; color:var(--text-secondary); font-weight:800; text-transform:uppercase;">Target Penagihan</div>
-                <div style="font-size:18px; font-weight:900; color:var(--primary); line-height:1.2;">Rp<?= number_format($total_potential, 0, ',', '.') ?></div>
+                <div style="font-size:10px; color:var(--text-secondary); font-weight:800; text-transform:uppercase;">Tunggakan Aktif</div>
+                <div style="font-size:18px; font-weight:900; color:var(--danger); line-height:1.2;">Rp<?= number_format($total_unpaid_val, 0, ',', '.') ?></div>
             </div>
         </div>
     </div>
@@ -338,4 +372,106 @@ function quickPay(custId, name, months, total) {
         document.getElementById('quickPayForm').submit();
     }
 }
+
+function showAddCustomerModal() {
+    document.getElementById('addCustomerModal').style.display = 'flex';
+}
+
+function syncAddPrice(select) {
+    const fee = select.options[select.selectedIndex].getAttribute('data-fee');
+    if(fee) {
+        document.getElementById('add_monthly_fee').value = fee;
+    }
+}
 </script>
+
+<!-- Modal Tambah Pelanggan Baru -->
+<div id="addCustomerModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:9999; backdrop-filter: blur(10px); padding:15px;">
+    <div class="glass-panel" style="width:100%; max-width:550px; padding:0; border-radius:24px; border:1px solid rgba(255,255,255,0.1); box-shadow: 0 25px 50px rgba(0,0,0,0.4); overflow:hidden;">
+        <!-- Header -->
+        <div style="padding:24px; background:linear-gradient(to right, var(--primary), #1e293b); color:white; display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:45px; height:45px; border-radius:14px; background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; font-size:20px;">
+                    <i class="fas fa-user-plus"></i>
+                </div>
+                <div>
+                    <h3 style="margin:0; font-size:18px; font-weight:800;">Pelanggan Baru</h3>
+                    <p style="margin:2px 0 0; font-size:12px; opacity:0.8;">Pendaftaran mitra di lapangan</p>
+                </div>
+            </div>
+            <button onclick="document.getElementById('addCustomerModal').style.display='none'" style="background:none; border:none; color:white; cursor:pointer; font-size:24px; padding:10px; opacity:0.7;">&times;</button>
+        </div>
+        
+        <form action="index.php?page=partner&action=add_customer" method="POST" style="padding:24px; max-height:70vh; overflow-y:auto;" onsubmit="return confirm('Daftarkan pelanggan baru ini?')">
+            <!-- Section 1: Data Diri -->
+            <div style="margin-bottom:24px;">
+                <div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--primary); margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-id-card"></i> Identitas Pelanggan
+                </div>
+                <div class="form-group" style="margin-bottom:15px;">
+                    <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Nama Lengkap / Instansi</label>
+                    <input type="text" name="name" class="form-control" placeholder="Masukan nama pelanggan" required style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;">
+                </div>
+                <div class="form-group">
+                    <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">No. WhatsApp (Aktif)</label>
+                    <input type="text" name="contact" class="form-control" placeholder="08xxxx" required style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;">
+                </div>
+            </div>
+
+            <!-- Section 2: Layanan -->
+            <div style="margin-bottom:24px;">
+                <div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--primary); margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-wifi"></i> Paket & Lokasi
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:18px;">
+                    <div class="form-group">
+                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Paket Internet</label>
+                        <select name="package_name" class="form-control" onchange="syncAddPrice(this)" required style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;">
+                            <option value="">-- Pilih Paket --</option>
+                            <?php foreach($packages_all as $pkg): ?>
+                                <option value="<?= htmlspecialchars($pkg['name']) ?>" data-fee="<?= $pkg['fee'] ?>"><?= htmlspecialchars($pkg['name']) ?> (Rp<?= number_format($pkg['fee'],0,',','.') ?>)</option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Biaya Bulanan (Rp)</label>
+                        <input type="number" name="monthly_fee" id="add_monthly_fee" class="form-control" required style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%; font-weight:700;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Area Pemasangan</label>
+                        <select name="area" class="form-control" style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;">
+                            <option value="">-- Tanpa Area --</option>
+                            <?php foreach($areas_all as $area): ?>
+                                <option value="<?= htmlspecialchars($area['name']) ?>"><?= htmlspecialchars($area['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Tanggal Tagih</label>
+                        <select name="billing_date" class="form-control" style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;">
+                            <?php for($d=1;$d<=28;$d++): ?>
+                                <option value="<?= $d ?>">Tanggal <?= $d ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Tanggal Registrasi</label>
+                        <input type="date" name="registration_date" value="<?= date('Y-m-d') ?>" class="form-control" required style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;">
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Alamat Lengkap</label>
+                        <textarea name="address" class="form-control" rows="3" placeholder="Jl. Contoh Nomor 1..." style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer: Actions -->
+            <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:10px; padding-top:24px; border-top:1px solid var(--glass-border);">
+                <button type="button" class="btn btn-ghost" onclick="document.getElementById('addCustomerModal').style.display='none'" style="padding:12px 24px; border-radius:12px; font-weight:600; font-size:14px;">Batal</button>
+                <button type="submit" class="btn btn-primary" style="padding:12px 30px; border-radius:12px; font-weight:800; font-size:14px; box-shadow: 0 4px 15px rgba(var(--primary-rgb), 0.3);">
+                    <i class="fas fa-save" style="margin-right:8px;"></i> Simpan Pelanggan
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

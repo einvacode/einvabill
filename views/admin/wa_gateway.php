@@ -68,7 +68,6 @@ if (!isset($_SESSION['user_id'])) {
     </div>
 </div>
 
-<!-- Load QRCode.js from CDN -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 let qrcodeObj = null;
@@ -76,7 +75,7 @@ let currentQR = "";
 
 async function refreshGateway() {
     try {
-        const response = await fetch('/waapi/status?cid=' + WAGatewayCID);
+        const response = await fetch(WAApiBaseUrl + 'status&cid=' + WAGatewayCID);
         const data = await response.json();
         
         if (data.connected) {
@@ -89,7 +88,7 @@ async function refreshGateway() {
             document.getElementById('wa-connected-box').style.display = 'none';
             
             // Try fetch QR
-            const qrResp = await fetch('/waapi/qr?cid=' + WAGatewayCID);
+            const qrResp = await fetch(WAApiBaseUrl + 'qr&cid=' + WAGatewayCID);
             const qrData = await qrResp.json();
             
             if (qrData.qr && qrData.qr !== currentQR) {
@@ -109,19 +108,13 @@ async function refreshGateway() {
         }
 
         // Fetch Logs
-        const logResp = await fetch('/waapi/logs?cid=' + WAGatewayCID);
+        const logResp = await fetch(WAApiBaseUrl + 'logs&cid=' + WAGatewayCID);
         const logData = await logResp.json();
         const logContainer = document.getElementById('wa-logs');
         if (logData.length > 0) {
-            // Check if user was already at the bottom before adding new content
             const isAtBottom = logContainer.scrollHeight - logContainer.clientHeight <= logContainer.scrollTop + 20;
-            
             logContainer.innerHTML = logData.map(l => `<div><span style="opacity:0.6;">[${l.timestamp}]</span> ${l.msg}</div>`).join('');
-            
-            // Auto-scroll to bottom only if user was already at bottom or container just initialized
-            if (isAtBottom) {
-                logContainer.scrollTop = logContainer.scrollHeight;
-            }
+            if (isAtBottom) logContainer.scrollTop = logContainer.scrollHeight;
         }
     } catch (e) {
         document.getElementById('qrcode').innerHTML = '<div style="color:#ef4444; font-size:12px; font-weight:700;"><i class="fas fa-exclamation-triangle"></i> GATEWAY OFFLINE<br><span style="font-weight:400; opacity:0.7;">Harap nyalakan node server.js</span></div>';
@@ -131,7 +124,7 @@ async function refreshGateway() {
 async function logoutWA() {
     if (!confirm('Apakah Anda yakin ingin memutuskan koneksi WhatsApp?')) return;
     try {
-        await fetch('/waapi/logout', { 
+        await fetch(WAApiBaseUrl + 'logout', { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ cid: WAGatewayCID })

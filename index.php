@@ -65,7 +65,7 @@ if ($page === 'home') {
 // Access Control (RBAC)
 $permissions = [
     'admin' => '*', // Full access
-    'collector' => ['collector', 'admin_customers', 'admin_invoices', 'router_data', 'admin_areas', 'admin_map', 'admin_wa_gateway'],
+    'collector' => ['collector', 'admin_customers', 'admin_invoices', 'router_data', 'admin_areas', 'admin_map', 'admin_wa_gateway', 'collector_settings'],
     'partner' => ['partner', 'partner_collection', 'admin_invoices', 'admin_customers', 'admin_packages', 'admin_reports', 'admin_expenses', 'admin_map', 'admin_router', 'partner_settings', 'partner_isp_invoices', 'admin_wa_gateway'] // Added 'admin_router' for sync, 'partner_settings' for branding, 'partner_isp_invoices' for billing
 ];
 
@@ -174,6 +174,9 @@ switch ($page) {
         exit;
     case 'collector':
         require __DIR__ . '/views/collector/dashboard.php';
+        break;
+    case 'collector_settings':
+        require __DIR__ . '/views/collector/settings.php';
         break;
     case 'partner_settings':
         require __DIR__ . '/views/partner/settings.php';
