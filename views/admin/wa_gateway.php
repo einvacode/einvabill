@@ -17,13 +17,7 @@ if ($_SESSION['user_role'] !== 'admin') {
                 <div class="wa-status-indicator" style="margin-top:4px;">Mengecek Status...</div>
             </div>
         </div>
-        <div style="display:flex; align-items:center; gap:10px;">
-            <div style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.05); padding:5px 12px; border-radius:8px; border:1px solid var(--glass-border);">
-                <i class="fas fa-network-wired" style="font-size:12px; opacity:0.6;"></i>
-                <input type="text" id="gateway-host-override" placeholder="IP Gateway (cth: 10.90.1.55)" style="background:none; border:none; color:#fff; font-size:12px; width:160px; outline:none;" onchange="saveGatewayHost()">
-            </div>
-            <a href="index.php?page=admin_dashboard" class="btn btn-sm btn-ghost"><i class="fas fa-arrow-left"></i> Kembali</a>
-        </div>
+        <a href="index.php?page=admin_dashboard" class="btn btn-sm btn-ghost"><i class="fas fa-arrow-left"></i> Kembali</a>
     </div>
 
     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:25px;">
@@ -71,21 +65,12 @@ if ($_SESSION['user_role'] !== 'admin') {
 <!-- Load QRCode.js from CDN -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
-// Load previously saved host
-document.getElementById('gateway-host-override').value = localStorage.getItem('wa_gateway_host') || "";
-
-function saveGatewayHost() {
-    const host = document.getElementById('gateway-host-override').value.trim();
-    localStorage.setItem('wa_gateway_host', host);
-    location.reload();
-}
+let qrcodeObj = null;
+let currentQR = "";
 
 async function refreshGateway() {
     try {
-        const savedHost = localStorage.getItem('wa_gateway_host');
-        const currentHost = savedHost || window.location.hostname;
-        const gatewayUrl = `http://${currentHost}:3000`;
-        
+        const gatewayUrl = `http://${window.location.hostname}:3000`;
         const response = await fetch(`${gatewayUrl}/status`);
         const data = await response.json();
         
@@ -93,12 +78,10 @@ async function refreshGateway() {
             document.getElementById('qr-container').style.display = 'none';
             document.getElementById('wa-connection-tip').style.display = 'none';
             document.getElementById('wa-connected-box').style.display = 'block';
-            document.querySelector('.wa-status-indicator').innerHTML = '<span style="color:#10b981;"><i class="fas fa-check-circle"></i> Connected</span>';
         } else {
             document.getElementById('qr-container').style.display = 'inline-block';
             document.getElementById('wa-connection-tip').style.display = 'block';
             document.getElementById('wa-connected-box').style.display = 'none';
-            document.querySelector('.wa-status-indicator').innerHTML = '<span style="color:#f59e0b;"><i class="fas fa-qrcode"></i> Silakan Scan</span>';
             
             // Try fetch QR
             const qrResp = await fetch(`${gatewayUrl}/qr`);
@@ -120,16 +103,7 @@ async function refreshGateway() {
             }
         }
     } catch (e) {
-        const savedHost = localStorage.getItem('wa_gateway_host');
-        const currentHost = savedHost || window.location.hostname;
-        
-        if (window.location.protocol === 'https:') {
-            document.getElementById('qrcode').innerHTML = '<div style="color:#f59e0b; font-size:12px; font-weight:700;"><i class="fas fa-shield-alt"></i> BLOCKED BY HTTPS<br><span style="font-weight:400; opacity:0.8; font-size:10px;">Gunakan <b>HTTP (Tanpa S)</b> atau klik Gembok -> "Allow Insecure Content" di browser.</span></div>';
-        } else {
-            document.getElementById('qrcode').innerHTML = '<div style="color:#ef4444; font-size:12px; font-weight:700;"><i class="fas fa-exclamation-triangle"></i> GATEWAY OFFLINE<br><span style="font-weight:400; opacity:0.7; font-size:10px;">Gagal menghubungi http://'+currentHost+':3000<br>Pastikan port 3000 terbuka di server.</span></div>';
-        }
-        document.querySelector('.wa-status-indicator').innerHTML = '<span style="color:#ef4444;"><i class="fas fa-times-circle"></i> Offline</span>';
-        console.error('WA Gateway Error:', e);
+        document.getElementById('qrcode').innerHTML = '<div style="color:#ef4444; font-size:12px; font-weight:700;"><i class="fas fa-exclamation-triangle"></i> GATEWAY OFFLINE<br><span style="font-weight:400; opacity:0.7;">Harap nyalakan node server.js</span></div>';
     }
 }
 
