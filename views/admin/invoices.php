@@ -494,7 +494,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                     elseif ($filter_type === 'partner') echo 'Kemitraan & B2B';
                     else echo 'Layanan Retail / Rumahan';
                 ?> • 
-                <span style="color:var(--primary);"><?= date('F Y') ?></span>
+                <span style="color:var(--primary);"><?= date('m/Y') ?></span>
             </div>
         </div>
         <div class="grid-actions">
@@ -549,7 +549,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
             <label><i class="fas fa-calendar-alt"></i> Periode Jatuh Tempo</label>
             <div style="display:flex; align-items:center; gap:8px;">
                 <input type="date" name="date_from" class="form-control" value="<?= htmlspecialchars($date_from) ?>" style="padding:8px 10px; font-size:12px;">
-                <span style="color:var(--text-secondary); font-size:12px; opacity:0.5;">s/d</span>
+                <span style="color:var(--text-secondary); font-size:12px; opacity:0.5;">sampai dengan</span>
                 <input type="date" name="date_to" class="form-control" value="<?= htmlspecialchars($date_to) ?>" style="padding:8px 10px; font-size:12px;">
             </div>
         </div>
@@ -602,7 +602,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
         // NEW: Check if we should group by customer (only for Unpaid view)
         $is_grouped = ($filter_status === 'belum');
 
-        // Hitung total row untuk filter ini
+        // Hitung total baris untuk filter ini
         if ($is_grouped) {
             $count_q = "SELECT COUNT(DISTINCT c.id) FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE 1=1 $date_where $status_where $collector_where $scope_where $type_where";
         } else {
@@ -948,7 +948,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                         </div>
                     </td>
                     <td style="vertical-align: middle; font-size:13px; color:var(--text-secondary);">
-                        <div style="font-weight:600; color:var(--text-primary);"><?= date('d M Y', strtotime($inv['due_date'])) ?></div>
+                        <div style="font-weight:600; color:var(--text-primary);"><?= date('d/m/Y', strtotime($inv['due_date'])) ?></div>
                         <div style="font-size:10px; opacity:0.6;"><?= $is_grouped ? 'Awal Periode' : 'Jatuh Tempo' ?></div>
                     </td>
                     <td style="vertical-align: middle;">

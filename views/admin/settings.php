@@ -83,7 +83,7 @@ $settings = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
 
     <div class="settings-tabs" style="display:flex; gap:10px; margin-bottom:25px; border-bottom:1px solid var(--glass-border); overflow-x:auto; padding-bottom:5px;">
         <button type="button" class="settings-tab active btn btn-sm btn-ghost" onclick="switchTab(this, 'profil')" style="border-radius:10px; white-space:nowrap; padding:10px 20px;"><i class="fas fa-building"></i> Profil</button>
-        <button type="button" class="settings-tab btn btn-sm btn-ghost" onclick="switchTab(this, 'whatsapp')" style="border-radius:10px; white-space:nowrap; padding:10px 20px;"><i class="fab fa-whatsapp"></i> WA Template</button>
+        <button type="button" class="settings-tab btn btn-sm btn-ghost" onclick="switchTab(this, 'whatsapp')" style="border-radius:10px; white-space:nowrap; padding:10px 20px;"><i class="fab fa-whatsapp"></i> Template WhatsApp</button>
         <button type="button" class="settings-tab btn btn-sm btn-ghost" onclick="switchTab(this, 'router')" style="border-radius:10px; white-space:nowrap; padding:10px 20px;"><i class="fas fa-server"></i> API Router</button>
         <button type="button" class="settings-tab btn btn-sm btn-ghost" onclick="switchTab(this, 'system')" style="border-radius:10px; white-space:nowrap; padding:10px 20px;"><i class="fas fa-microchip"></i> System</button>
     </div>

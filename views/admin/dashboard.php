@@ -5,100 +5,111 @@
  */
 $u_id = $_SESSION['user_id'];
 $u_role = $_SESSION['user_role'] ?? 'admin';
-$scope_where = ($u_role === 'admin') ? " AND (created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL) " : " AND (created_by = $u_id) ";
-$c_scope = ($u_role === 'admin') ? " AND (c.created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR c.created_by = 0 OR c.created_by IS NULL) " : " AND (c.created_by = $u_id) ";
+// --- SCOPE OPTIMIZATION ---
+// Pre-calculate scoped user IDs to avoid repeated subqueries in SQLite
+$partner_user_ids = $db->query("SELECT id FROM users WHERE role = 'partner'")->fetchAll(PDO::FETCH_COLUMN);
+$partner_list_str = !empty($partner_user_ids) ? implode(',', $partner_user_ids) : '0';
+
+$scope_where = ($u_role === 'admin') ? " AND (created_by NOT IN ($partner_list_str) OR created_by = 0 OR created_by IS NULL) " : " AND (created_by = $u_id) ";
+$c_scope = ($u_role === 'admin') ? " AND (c.created_by NOT IN ($partner_list_str) OR c.created_by = 0 OR c.created_by IS NULL) " : " AND (c.created_by = $u_id) ";
+
+// --- CONSOLIDATED STATS ENGINE ---
+function get_dashboard_stats($db, $scope_where, $c_scope) {
+    // Combine 9 queries into 3 main optimized aggregates
+    
+    // 1. Customer & Revenue Stats
+    $cust_stats = $db->query("
+        SELECT 
+            SUM(CASE WHEN type='customer' THEN 1 ELSE 0 END) as retail_count,
+            SUM(CASE WHEN type='customer' THEN monthly_fee ELSE 0 END) as retail_est,
+            SUM(CASE WHEN type='partner' THEN 1 ELSE 0 END) as mitra_count,
+            SUM(CASE WHEN type='partner' THEN monthly_fee ELSE 0 END) as mitra_est,
+            SUM(CASE WHEN strftime('%Y-%m', registration_date) = strftime('%Y-%m', 'now') THEN 1 ELSE 0 END) as baru_count
+        FROM customers 
+        WHERE 1=1 $scope_where
+    ")->fetch();
+
+    // 2. Unpaid (Piutang) Stats
+    $unpaid_stats = $db->query("
+        SELECT 
+            SUM(CASE WHEN c.type='customer' THEN (i.amount - i.discount) ELSE 0 END) as piutang_r,
+            COUNT(DISTINCT CASE WHEN c.type='customer' THEN i.customer_id ELSE NULL END) as piutang_r_c,
+            SUM(CASE WHEN c.type='partner' THEN (i.amount - i.discount) ELSE 0 END) as piutang_m,
+            COUNT(DISTINCT CASE WHEN c.type='partner' THEN i.customer_id ELSE NULL END) as piutang_m_c
+        FROM invoices i 
+        JOIN customers c ON i.customer_id = c.id 
+        WHERE i.status='Belum Lunas' $c_scope
+    ")->fetch();
+
+    // 3. Collection (Koleksi) & Cash Flow Stats
+    $cash_stats = $db->query("
+        SELECT 
+            SUM(CASE WHEN c.type='customer' THEN p.amount ELSE 0 END) as koleksi_r,
+            SUM(CASE WHEN c.type='partner' THEN p.amount ELSE 0 END) as koleksi_m,
+            SUM(CASE WHEN c.type='customer' AND strftime('%Y-%m', p.payment_date) = strftime('%Y-%m', 'now') THEN p.amount ELSE 0 END) as cash_r,
+            SUM(CASE WHEN c.type='partner' AND strftime('%Y-%m', p.payment_date) = strftime('%Y-%m', 'now') THEN p.amount ELSE 0 END) as cash_m
+        FROM payments p 
+        JOIN invoices i ON p.invoice_id = i.id 
+        JOIN customers c ON i.customer_id = c.id 
+        WHERE 1=1 $c_scope
+    ")->fetch();
+
+    return array_merge($cust_stats, $unpaid_stats, $cash_stats);
+}
 
 // --- AJAX REFRESH ENDPOINT ---
 if (isset($_GET['ajax']) && $_GET['ajax'] === 'stats') {
     header('Content-Type: application/json');
-    $res_cust = $db->query("SELECT COUNT(*) as jml, SUM(monthly_fee) as est FROM customers WHERE type='customer' $scope_where")->fetch();
-    $res_part = $db->query("SELECT COUNT(*) as jml, SUM(monthly_fee) as est FROM customers WHERE type='partner' $scope_where")->fetch();
-    $new_cust = $db->query("SELECT COUNT(*) FROM customers WHERE strftime('%Y-%m', registration_date) = strftime('%Y-%m', 'now') $scope_where")->fetchColumn();
-    $unpaid_c = $db->query("SELECT COUNT(DISTINCT i.customer_id) as jml, SUM(i.amount - i.discount) as total FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.status='Belum Lunas' AND c.type='customer' $c_scope")->fetch();
-    $unpaid_p = $db->query("SELECT COUNT(DISTINCT i.customer_id) as jml, SUM(i.amount - i.discount) as total FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.status='Belum Lunas' AND c.type='partner' $c_scope")->fetch();
-    $rec_c = $db->query("SELECT SUM(p.amount) FROM payments p JOIN invoices i ON p.invoice_id = i.id JOIN customers c ON i.customer_id = c.id WHERE c.type='customer' $c_scope")->fetchColumn() ?: 0;
-    $rec_p = $db->query("SELECT SUM(p.amount) FROM payments p JOIN invoices i ON p.invoice_id = i.id JOIN customers c ON i.customer_id = c.id WHERE c.type='partner' $c_scope")->fetchColumn() ?: 0;
-    $cash_c = $db->query("SELECT SUM(p.amount) FROM payments p JOIN invoices i ON p.invoice_id = i.id JOIN customers c ON i.customer_id = c.id WHERE c.type='customer' AND strftime('%Y-%m', p.payment_date) = strftime('%Y-%m', 'now') $c_scope")->fetchColumn() ?: 0;
-    $cash_p = $db->query("SELECT SUM(p.amount) FROM payments p JOIN invoices i ON p.invoice_id = i.id JOIN customers c ON i.customer_id = c.id WHERE c.type='partner' AND strftime('%Y-%m', p.payment_date) = strftime('%Y-%m', 'now') $c_scope")->fetchColumn() ?: 0;
-
+    $s = get_dashboard_stats($db, $scope_where, $c_scope);
     echo json_encode([
-        'retail_count' => number_format($res_cust['jml'], 0),
-        'retail_est'   => 'Rp' . number_format($res_cust['est'] ?: 0, 0, ',', '.'),
-        'mitra_count'  => number_format($res_part['jml'], 0),
-        'mitra_est'    => 'Rp' . number_format($res_part['est'] ?: 0, 0, ',', '.'),
-        'baru_count'   => number_format($new_cust, 0),
-        'piutang_r'    => 'Rp' . number_format($unpaid_c['total'] ?: 0, 0, ',', '.'),
-        'piutang_r_c'  => number_format($unpaid_c['jml']),
-        'piutang_m'    => 'Rp' . number_format($unpaid_p['total'] ?: 0, 0, ',', '.'),
-        'piutang_m_c'  => number_format($unpaid_p['jml']),
-        'koleksi_r'    => 'Rp' . number_format($rec_c, 0, ',', '.'),
-        'koleksi_m'    => 'Rp' . number_format($rec_p, 0, ',', '.'),
-        'cash_r'       => 'Rp' . number_format($cash_c, 0, ',', '.'),
-        'cash_m'       => 'Rp' . number_format($cash_p, 0, ',', '.')
+        'retail_count' => number_format($s['retail_count'] ?: 0, 0),
+        'retail_est'   => 'Rp' . number_format($s['retail_est'] ?: 0, 0, ',', '.'),
+        'mitra_count'  => number_format($s['mitra_count'] ?: 0, 0),
+        'mitra_est'    => 'Rp' . number_format($s['mitra_est'] ?: 0, 0, ',', '.'),
+        'baru_count'   => number_format($s['baru_count'] ?: 0, 0),
+        'piutang_r'    => 'Rp' . number_format($s['piutang_r'] ?: 0, 0, ',', '.'),
+        'piutang_r_c'  => number_format($s['piutang_r_c'] ?: 0),
+        'piutang_m'    => 'Rp' . number_format($s['piutang_m'] ?: 0, 0, ',', '.'),
+        'piutang_m_c'  => number_format($s['piutang_m_c'] ?: 0),
+        'koleksi_r'    => 'Rp' . number_format($s['koleksi_r'] ?: 0, 0, ',', '.'),
+        'koleksi_m'    => 'Rp' . number_format($s['koleksi_m'] ?: 0, 0, ',', '.'),
+        'cash_r'       => 'Rp' . number_format($s['cash_r'] ?: 0, 0, ',', '.'),
+        'cash_m'       => 'Rp' . number_format($s['cash_m'] ?: 0, 0, ',', '.')
     ]);
     exit;
 }
+
+// Initial Page Load Stats
+$s = get_dashboard_stats($db, $scope_where, $c_scope);
+
 // --- END AJAX ---
 
 // 1. Total Pelanggan (User) - Count & Est. Revenue (Scoped)
-$res_cust = $db->query("SELECT COUNT(*) as jml, SUM(monthly_fee) as est FROM customers WHERE type='customer' $scope_where")->fetch();
-$total_customers = $res_cust['jml'];
-$est_revenue_cust = $res_cust['est'] ?: 0;
+$total_customers = $s['retail_count'];
+$est_revenue_cust = $s['retail_est'] ?: 0;
 
 // 2. Total Mitra (B2B) - Count & Est. Revenue (Scoped)
-$res_part = $db->query("SELECT COUNT(*) as jml, SUM(monthly_fee) as est FROM customers WHERE type='partner' $scope_where")->fetch();
-$total_partners = $res_part['jml'];
-$est_revenue_part = $res_part['est'] ?: 0;
+$total_partners = $s['mitra_count'];
+$est_revenue_part = $s['mitra_est'] ?: 0;
 
 // 3. Pelanggan Baru Bulan Ini (Scoped)
-$new_customers_month = $db->query("SELECT COUNT(*) FROM customers WHERE strftime('%Y-%m', registration_date) = strftime('%Y-%m', 'now') $scope_where")->fetchColumn();
+$new_customers_month = $s['baru_count'];
 
 // 4. Belum Bayar (Piutang) - Split Retail vs Partner
-$res_unpaid_cust = $db->query("SELECT COUNT(DISTINCT i.customer_id) as jml, SUM(i.amount - i.discount) as total 
-    FROM invoices i 
-    JOIN customers c ON i.customer_id = c.id 
-    WHERE i.status='Belum Lunas' AND c.type='customer' $c_scope")->fetch();
-$count_unpaid_cust = $res_unpaid_cust['jml'];
-$total_unpaid_cust = $res_unpaid_cust['total'] ?: 0;
+$count_unpaid_cust = $s['piutang_r_c'];
+$total_unpaid_cust = $s['piutang_r'] ?: 0;
 
-$res_unpaid_part = $db->query("SELECT COUNT(DISTINCT i.customer_id) as jml, SUM(i.amount - i.discount) as total 
-    FROM invoices i 
-    JOIN customers c ON i.customer_id = c.id 
-    WHERE i.status='Belum Lunas' AND c.type='partner' $c_scope")->fetch();
-$count_unpaid_part = $res_unpaid_part['jml'];
-$total_unpaid_part = $res_unpaid_part['total'] ?: 0;
+$count_unpaid_part = $s['piutang_m_c'];
+$total_unpaid_part = $s['piutang_m'] ?: 0;
 
 // 5. Total Pendapatan Terkumpul - Split Retail vs Partner
-$total_received_cust = $db->query("SELECT SUM(p.amount) 
-    FROM payments p 
-    JOIN invoices i ON p.invoice_id = i.id 
-    JOIN customers c ON i.customer_id = c.id
-    WHERE c.type='customer' $c_scope")->fetchColumn() ?: 0;
+$total_received_cust = $s['koleksi_r'] ?: 0;
+$total_received_part = $s['koleksi_m'] ?: 0;
 
-$total_received_part = $db->query("SELECT SUM(p.amount) 
-    FROM payments p 
-    JOIN invoices i ON p.invoice_id = i.id 
-    JOIN customers c ON i.customer_id = c.id
-    WHERE c.type='partner' $c_scope")->fetchColumn() ?: 0;
+// 6. Arus Kas Bulanan 
+$cash_monthly_cust = $s['cash_r'] ?: 0;
+$cash_monthly_part = $s['cash_m'] ?: 0;
 
-// 6. Arus Kas Bulanan (Semua Pembayaran yg masuk di bulan ini, tanpa melihat tgl jatuh tempo invoice)
-$cash_monthly_cust = $db->query("
-    SELECT SUM(p.amount) 
-    FROM payments p 
-    JOIN invoices i ON p.invoice_id = i.id 
-    JOIN customers c ON i.customer_id = c.id
-    WHERE c.type='customer' AND strftime('%Y-%m', p.payment_date) = strftime('%Y-%m', 'now')
-      $c_scope
-")->fetchColumn() ?: 0;
-
-$cash_monthly_part = $db->query("
-    SELECT SUM(p.amount) 
-    FROM payments p 
-    JOIN invoices i ON p.invoice_id = i.id 
-    JOIN customers c ON i.customer_id = c.id
-    WHERE c.type='partner' AND strftime('%Y-%m', p.payment_date) = strftime('%Y-%m', 'now')
-      $c_scope
-")->fetchColumn() ?: 0;
 $settings = $db->query("SELECT company_name, wa_template_paid, site_url FROM settings WHERE id = 1")->fetch();
 $base_url = !empty($settings['site_url']) ? $settings['site_url'] : get_app_url();
 
@@ -186,7 +197,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
         <div style="flex:1; overflow:hidden;">
             <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Retail</div>
             <div id="stat-retail-count" style="font-size:20px; font-weight:800; line-height:1.2;"><?= number_format($total_customers, 0) ?></div>
-            <div id="stat-retail-est" style="font-size:10px; color:#3b82f6; font-weight:700; margin-top:2px;">Est: Rp<?= number_format($est_revenue_cust, 0, ',', '.') ?></div>
+            <div id="stat-retail-est" style="font-size:10px; color:#3b82f6; font-weight:700; margin-top:2px;">Estimasi: Rp<?= number_format($est_revenue_cust, 0, ',', '.') ?></div>
         </div>
     </div>
 
@@ -198,7 +209,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
         <div style="flex:1; overflow:hidden;">
             <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Mitra</div>
             <div id="stat-mitra-count" style="font-size:20px; font-weight:800; line-height:1.2;"><?= number_format($total_partners, 0) ?></div>
-            <div id="stat-mitra-est" style="font-size:10px; color:#a855f7; font-weight:700; margin-top:2px;">Est: Rp<?= number_format($est_revenue_part, 0, ',', '.') ?></div>
+            <div id="stat-mitra-est" style="font-size:10px; color:#a855f7; font-weight:700; margin-top:2px;">Estimasi: Rp<?= number_format($est_revenue_part, 0, ',', '.') ?></div>
         </div>
     </div>
 
@@ -385,7 +396,6 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
         ?>
         <div style="display:flex; align-items:center; gap:15px; padding:15px; background:rgba(255,255,255,0.03); border-radius:15px; border:1px solid var(--glass-border); border-left:4px solid #10b981;">
             <div style="width:45px; height:45px; border-radius:12px; background:rgba(16,185,129,0.1); color:#10b981; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                <i class="fas fa-check-double"></i>
             </div>
             <div style="flex:1;">
                 <div style="font-weight:700; font-size:14px; color:var(--text-primary);"><?= htmlspecialchars($l['customer_name']) ?></div>
@@ -451,9 +461,9 @@ async function updateDashboardStats() {
         };
 
         updateEl('stat-retail-count', data.retail_count);
-        updateEl('stat-retail-est', 'Est: ' + data.retail_est);
+        updateEl('stat-retail-est', 'Estimasi: ' + data.retail_est);
         updateEl('stat-mitra-count', data.mitra_count);
-        updateEl('stat-mitra-est', 'Est: ' + data.mitra_est);
+        updateEl('stat-mitra-est', 'Estimasi: ' + data.mitra_est);
         updateEl('stat-baru-count', data.baru_count);
         updateEl('stat-piutang-r', data.piutang_r);
         updateEl('stat-piutang-r-count', data.piutang_r_c);

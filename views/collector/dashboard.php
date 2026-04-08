@@ -507,8 +507,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
     $wa_num = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $inv_data['contact'] ?? ''));
     
     // Parse Full Tagihan Lunas Template
-    $mon_name = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-    $bulan_inv = $mon_name[intval(date('m', strtotime($inv_data['due_date']))) - 1] . ' ' . date('Y', strtotime($inv_data['due_date']));
+    $bulan_inv = date('m/Y', strtotime($inv_data['due_date']));
     
         $status_wa = ($inv_data['total_tunggakan'] > 0) ? "LUNAS SEBAGIAN (Masih ada sisa tunggakan)" : "LUNAS SEPENUHNYA";
         $tunggakan_display = 'Rp ' . number_format($inv_data['total_tunggakan'], 0, ',', '.');
@@ -663,11 +662,11 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
     </div>
 
     <!-- Total Revenue (Net) -->
-    <div class="glass-panel stat-card-interactive" style="border-top:4px solid var(--warning); background:linear-gradient(135deg, rgba(245, 158, 11, 0.1), transparent); cursor:pointer;" onclick="location.href='index.php?page=collector&tab=lunas&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>'">
+    <div class="glass-panel stat-card-interactive" style="border-top:4px solid var(--warning); background:linear-gradient(135deg, rgba(245, 158, 11, 0.1), transparent); cursor:pointer;" onclick="location.href='index.php?page=collector&tab=lunas&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&month=<?= $selected_month ?>'">
         <i class="fas fa-coins" style="font-size:22px; color:var(--warning); margin-bottom:10px;"></i>
         <div style="font-size:20px; font-weight:800; color:var(--stat-value-color);">Rp<?= number_format($net_revenue, 0, ',', '.') ?></div>
-        <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; font-weight:700;">Revenue <span style="font-size:9px; color:var(--warning);">(Net)</span></div>
-        <div style="font-size:10px; color:var(--text-secondary); margin-top:8px; font-weight:700; opacity:0.8;"><?= date('M Y', strtotime($date_from)) ?></div>
+        <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; font-weight:700;">Pendapatan Bersih</div>
+        <div style="font-size:10px; color:var(--text-secondary); margin-top:8px; font-weight:700; opacity:0.8;"><?= date('m/Y', strtotime($date_from)) ?></div>
     </div>
 
     <!-- Pelanggan Baru -->
@@ -690,7 +689,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
 <!-- Progress Bar -->
 <div class="glass-panel" style="padding:14px 20px; margin-bottom:16px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-        <span style="font-size:12px; color:var(--text-secondary);"><i class="fas fa-chart-line"></i> Progres Penagihan <?= date('M Y', strtotime($date_from)) ?></span>
+        <span style="font-size:12px; color:var(--text-secondary);"><i class="fas fa-chart-line"></i> Progres Penagihan <?= date('m/Y', strtotime($date_from)) ?></span>
         <span style="font-size:14px; font-weight:700; color:<?= $percent_paid >= 80 ? 'var(--success)' : ($percent_paid >= 50 ? 'var(--warning)' : 'var(--danger)') ?>;"><?= $percent_paid ?>%</span>
     </div>
     <div style="background:var(--progress-bg); border-radius:10px; height:8px; overflow:hidden;">
@@ -727,9 +726,9 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
             <input type="hidden" name="date_to" value="<?= $date_to ?>">
             
             <select name="filter_billing_date" class="form-control" onchange="this.form.submit()" style="width:110px; height:40px; font-size:11px; border-radius:8px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); padding:0 8px;">
-                <option value="">Tgl Tagih</option>
+                <option value="">Tanggal Tagihan</option>
                 <?php for($d=1;$d<=28;$d++): ?>
-                    <option value="<?= $d ?>" <?= $filter_billing_date == $d ? 'selected' : '' ?>>Tgl <?= $d ?></option>
+                    <option value="<?= $d ?>" <?= $filter_billing_date == $d ? 'selected' : '' ?>>Tanggal <?= $d ?></option>
                 <?php endfor; ?>
             </select>
 
@@ -793,7 +792,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                 <button class="btn btn-sm" style="background:var(--warning); color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0;" onclick="showCreateInvoice(<?= $ac['id'] ?>, '<?= addslashes($ac['name']) ?>', <?= $ac['monthly_fee'] ?>)" title="Buat Tagihan Manual">
                     <i class="fas fa-file-invoice-dollar" style="font-size:16px;"></i>
                 </button>
-                <button class="btn btn-sm btn-ghost" style="width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; border:1px solid var(--glass-border);" onclick="showUpdateContact(<?= $ac['id'] ?>, '<?= addslashes($ac['name']) ?>', '<?= htmlspecialchars($ac['contact'] ?: '') ?>')" title="Ubah Nama/No">
+                <button class="btn btn-sm btn-ghost" style="width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; border:1px solid var(--glass-border);" onclick="showUpdateContact(<?= $ac['id'] ?>, '<?= addslashes($ac['name']) ?>', '<?= htmlspecialchars($ac['contact'] ?: '') ?>')" title="Ubah Nama/Nomor Telepon">
                     <i class="fas fa-edit" style="font-size:16px;"></i>
                 </button>
                 <button class="btn btn-sm" style="background:#d97706; color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; box-shadow:0 4px 10px rgba(217, 119, 6, 0.2);" onclick="showCustomerDetails(<?= $ac['id'] ?>); setTimeout(() => openAddonModal(), 500);" title="Tambah Add-on">
@@ -852,7 +851,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                             <button class="btn btn-sm" style="background:var(--warning); color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; box-shadow:0 4px 10px rgba(245, 158, 11, 0.2);" onclick="showCreateInvoice(<?= $ac['id'] ?>, '<?= addslashes($ac['name']) ?>', <?= $ac['monthly_fee'] ?>)" title="Buat Tagihan Manual">
                                 <i class="fas fa-file-invoice-dollar" style="font-size:16px;"></i>
                             </button>
-                            <button class="btn btn-sm btn-ghost" style="width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; border:1px solid var(--glass-border); background:rgba(255,255,255,0.05);" onclick="showUpdateContact(<?= $ac['id'] ?>, '<?= addslashes($ac['name']) ?>', '<?= htmlspecialchars($ac['contact'] ?: '') ?>')" title="Ubah Nomor HP">
+                            <button class="btn btn-sm btn-ghost" style="width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; border:1px solid var(--glass-border); background:rgba(255,255,255,0.05);" onclick="showUpdateContact(<?= $ac['id'] ?>, '<?= addslashes($ac['name']) ?>', '<?= htmlspecialchars($ac['contact'] ?: '') ?>')" title="Ubah Nomor Telepon">
                                 <i class="fas fa-edit" style="font-size:16px;"></i>
                             </button>
                             <button class="btn btn-sm" style="background:#d97706; color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; box-shadow:0 4px 10px rgba(217, 119, 6, 0.2);" onclick="showCustomerDetails(<?= $ac['id'] ?>); setTimeout(() => openAddonModal(), 500);" title="Tambah Add-on">
@@ -886,7 +885,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
             </div>
             <div style="text-align:right;">
                 <div style="font-size:10px; color:var(--text-secondary); font-weight:800; text-transform:uppercase; letter-spacing:1px;">Target</div>
-                <div style="font-size:18px; font-weight:800; color:var(--text-primary); line-height:1.2;"><?= number_format($total_cust_filter, 0, ',', '.') ?> <small style="font-size:10px; opacity:0.8;">USER</small></div>
+                <div style="font-size:18px; font-weight:800; color:var(--text-primary); line-height:1.2;"><?= number_format($total_cust_filter, 0, ',', '.') ?> <small style="font-size:10px; opacity:0.8;">PELANGGAN</small></div>
             </div>
         </div>
     </div>
@@ -980,7 +979,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                     <div style="font-weight:700; font-size:15px;"><?= htmlspecialchars($ui['name']) ?></div>
                     <div style="font-size:11px; color:var(--primary); font-family:monospace; margin-top:2px;">ID: <?= $cust_id_t ?></div>
                     <div style="font-size:11px; color:var(--text-secondary); margin-top:5px;"><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($ui['address'] ?: '-') ?></div>
-                    <div style="font-size:11px; color:var(--danger); font-weight:700; margin-top:5px;"><i class="fas fa-exclamation-circle"></i> Tunggakan: <?= $ui['num_arrears'] ?> Bln</div>
+                    <div style="font-size:11px; color:var(--danger); font-weight:700; margin-top:5px;"><i class="fas fa-exclamation-circle"></i> Tunggakan: <?= $ui['num_arrears'] ?> Bulan</div>
                 </div>
                 <div style="text-align:right;">
                     <div style="font-size:16px; font-weight:800; color:var(--danger);">Rp <?= number_format($ui['total_unpaid'], 0, ',', '.') ?></div>
@@ -1019,7 +1018,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
             </div>
             <div style="text-align:right;">
                 <div style="font-size:9px; color:var(--text-secondary); font-weight:800; text-transform:uppercase; letter-spacing:1px;">Terhutang</div>
-                <div style="font-size:16px; font-weight:800; color:var(--text-primary); line-height:1.1;"><?= $unpaid_count ?> <small style="font-size:9px; opacity:0.8;">BILL</small></div>
+                <div style="font-size:16px; font-weight:800; color:var(--text-primary); line-height:1.1;"><?= $unpaid_count ?> <small style="font-size:9px; opacity:0.8;">TAGIHAN</small></div>
             </div>
         </div>
     </div>
@@ -1029,7 +1028,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
 <div class="glass-panel tab-flex-container" style="padding:20px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
         <h3 style="font-size:16px; margin:0; color:var(--success);">
-            <i class="fas fa-check-double"></i> Riwayat Pembayaran Lunas
+            Riwayat Pembayaran Lunas
         </h3>
         <!-- Date Filter Form -->
         <form method="GET" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
@@ -1037,7 +1036,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
             <input type="hidden" name="tab" value="lunas">
             <div style="display:flex; align-items:center; gap:5px; background:rgba(255,255,255,0.03); padding:4px 10px; border-radius:8px; border:1px solid var(--glass-border);">
                 <input type="date" name="date_from" value="<?= $date_from ?>" style="background:none; border:none; color:var(--text-primary); font-size:12px; outline:none;">
-                <span style="color:var(--text-secondary); font-size:12px;">s/d</span>
+                <span style="color:var(--text-secondary); font-size:12px;">sampai dengan</span>
                 <input type="date" name="date_to" value="<?= $date_to ?>" style="background:none; border:none; color:var(--text-primary); font-size:12px; outline:none;">
             </div>
             <button type="submit" class="btn btn-sm" style="background:var(--primary); color:white; border-radius:8px; padding:6px 12px; font-weight:700;">FILTER</button>
@@ -1070,8 +1069,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                         $receipt_link = "index.php?page=admin_invoices&action=print&id=" . $rp['id'] . "&format=thermal";
                     ?>
                     <?php if($wa_num_rp): 
-                        $mon_name = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-                        $bulan_rp = $mon_name[intval(date('m', strtotime($rp['due_date']))) - 1] . ' ' . date('Y', strtotime($rp['due_date']));
+                        $bulan_rp = date('m/Y', strtotime($rp['due_date']));
                         
                         $portal_link_rp = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . ($rp['customer_code'] ?: $rp['customer_id']);
                         $parsed_msg_rp = str_replace(
@@ -1123,13 +1121,13 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                     <i class="fas fa-coins"></i>
                 </div>
                 <div>
-                    <div style="font-size:9px; color:var(--text-secondary); text-transform:uppercase; font-weight:800; letter-spacing:1px;">Revenue Terkumpul</div>
+                    <div style="font-size:9px; color:var(--text-secondary); text-transform:uppercase; font-weight:800; letter-spacing:1px;">Pendapatan Terkumpul</div>
                     <div style="font-size:16px; font-weight:800; color:var(--text-primary); line-height:1.1;">Rp<?= number_format($paid_total_range, 0, ',', '.') ?></div>
                 </div>
             </div>
             <div style="text-align:right;">
                 <div style="font-size:9px; color:var(--text-secondary); font-weight:800; text-transform:uppercase; letter-spacing:1px;">Lunas</div>
-                <div style="font-size:16px; font-weight:800; color:var(--text-primary); line-height:1.1;"><?= count($recent_paid) ?> <small style="font-size:9px; opacity:0.8;">USER</small></div>
+                <div style="font-size:16px; font-weight:800; color:var(--text-primary); line-height:1.1;"><?= count($recent_paid) ?> <small style="font-size:9px; opacity:0.8;">PELANGGAN</small></div>
             </div>
         </div>
     </div>
@@ -1166,15 +1164,15 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
     </div>
 </div>
 
-<!-- Modal Ubah Nomor HP -->
+<!-- Modal Ubah Nomor Telepon -->
 <div id="updateContactModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:9999;">
     <div class="glass-panel" style="width:100%; max-width:400px; padding:24px; margin:20px;">
-        <h3 style="margin-bottom:20px;"><i class="fas fa-edit"></i> Ubah Nomor HP</h3>
+        <h3 style="margin-bottom:20px;"><i class="fas fa-edit"></i> Ubah Nomor Telepon</h3>
         <div style="font-size:14px; color:var(--text-secondary); margin-bottom:15px;">Pelanggan: <strong id="modalContactCustName"></strong></div>
         <form action="index.php?page=collector&action=update_contact" method="POST">
             <input type="hidden" name="customer_id" id="modalContactCustId">
             <div class="form-group">
-                <label>Nomor HP Baru</label>
+                <label>Nomor Telepon Baru</label>
                 <input type="text" name="contact" id="modalContactValue" class="form-control" placeholder="Contoh: 08123456789" required>
             </div>
             <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
@@ -1213,15 +1211,11 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                         <input type="text" name="name" class="form-control" required placeholder="Sesuai KTP" style="padding:12px 16px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px;">
                     </div>
                     <div class="form-group">
-                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">WhatsApp / HP</label>
+                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">WhatsApp / Telepon</label>
                         <input type="text" name="contact" class="form-control" placeholder="0812..." required style="padding:12px 16px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px;">
                     </div>
                     <div class="form-group">
-                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Tipe Pelanggan</label>
-                        <select name="type" class="form-control" required style="padding:12px 16px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px;">
-                            <option value="customer">Rumahan (Standard)</option>
-                            <option value="partner">Mitra (B2B)</option>
-                        </select>
+                        <input type="hidden" name="type" value="customer">
                     </div>
                 </div>
             </div>
@@ -1272,7 +1266,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                     </div>
                     <div class="form-group" style="grid-column: span 2;">
                         <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Alamat Lengkap</label>
-                        <textarea name="address" class="form-control" rows="3" placeholder="Jl. Contoh No. 1, Desa/Dusun, RT/RW..." style="padding:12px 16px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;"></textarea>
+                        <textarea name="address" class="form-control" rows="3" placeholder="Jl. Contoh Nomor 1, Desa/Dusun, RT/RW..." style="padding:12px 16px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;"></textarea>
                     </div>
                 </div>
             </div>
@@ -1300,7 +1294,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                 <div style="flex:1;">
                     <input type="number" id="bulkMonthInput" class="form-control" value="1" min="1" oninput="updateBulkTotalDisplay()" onchange="updateBulkTotalDisplay()" style="padding:12px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); width:100%; font-weight:800; font-size:18px; text-align:center;">
                 </div>
-                <div style="font-weight:600; color:var(--text-secondary);">Dari <span id="bulkTotalMonthsTitle"></span> Bln</div>
+                <div style="font-weight:600; color:var(--text-secondary);">Dari <span id="bulkTotalMonthsTitle"></span> Bulan</div>
             </div>
         </div>
 
@@ -1494,14 +1488,14 @@ function openAddonModal() {
                 </div>
                 <div class="glass-panel" style="padding:12px; background:rgba(var(--primary-rgb), 0.05); border:1px solid var(--glass-border);">
                     <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:700; margin-bottom:4px;">Siklus Tagih</div>
-                    <div id="detCustBilling" style="font-weight:700; font-size:13px;">Tgl ...</div>
+                    <div id="detCustBilling" style="font-weight:700; font-size:13px;">Tanggal ...</div>
                 </div>
                 <div class="glass-panel" style="padding:12px; background:rgba(var(--primary-rgb), 0.05); border:1px solid var(--glass-border);">
-                    <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:700; margin-bottom:4px;">No HP / WA</div>
+                    <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:700; margin-bottom:4px;">Nomor Telepon / WhatsApp</div>
                     <div id="detCustPhone" style="font-weight:700; font-size:13px;">...</div>
                 </div>
                 <div class="glass-panel" style="padding:12px; background:rgba(var(--primary-rgb), 0.05); border:1px solid var(--glass-border);">
-                    <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:700; margin-bottom:4px;">Tgl Registrasi</div>
+                    <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:700; margin-bottom:4px;">Tanggal Registrasi</div>
                     <div id="detCustRegDate" style="font-weight:700; font-size:13px;">...</div>
                 </div>
                 <div class="glass-panel" style="padding:12px; background:rgba(var(--primary-rgb), 0.05); border:1px solid var(--glass-border); grid-column: span 2;">

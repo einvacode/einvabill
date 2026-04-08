@@ -218,7 +218,7 @@ function executeNextBroadcast() {
         document.getElementById('statusLabel').innerText = "SELESAI:";
         document.getElementById('statusLabel').style.color = "var(--success)";
         document.getElementById('broadcastStatusText').innerText = "Antrean selesai! Pastikan Anda sudah klik SEND di setiap tab WhatsApp.";
-        document.getElementById('btnStartBroadcast').innerHTML = '<i class="fas fa-check-double"></i> Selesai';
+        document.getElementById('btnStartBroadcast').innerHTML = 'Selesai';
         isBroadcasting = false;
         document.getElementById('broadcastProgressBar').style.width = '100%';
         return;

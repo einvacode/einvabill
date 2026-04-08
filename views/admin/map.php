@@ -241,7 +241,7 @@ $existing_customers = $db->query("SELECT id, name, customer_code FROM customers 
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>No. WhatsApp</label>
+                            <label>Nomor WhatsApp</label>
                             <input type="text" name="contact" class="form-control" placeholder="08xxx">
                         </div>
                     </div>
@@ -260,7 +260,7 @@ $existing_customers = $db->query("SELECT id, name, customer_code FROM customers 
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Tgl Tagih (1-28)</label>
+                            <label>Tanggal Tagihan (1-28)</label>
                             <input type="number" name="billing_date" class="form-control" min="1" max="28" value="1">
                         </div>
                     </div>

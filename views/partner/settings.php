@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <i class="fas fa-id-card-alt" style="font-size: 24px;"></i>
         </div>
         <div>
-            <h2 style="margin: 0; font-size: 20px; font-weight: 800;">Seting Profil Bisnis Mitra</h2>
+            <h2 style="margin: 0; font-size: 20px; font-weight: 800;">Pengaturan Profil Bisnis Mitra</h2>
             <p style="margin: 5px 0 0; font-size: 13px; color: var(--text-secondary);">Sesuaikan identitas bisnis Anda yang akan muncul pada nota pelanggan.</p>
         </div>
     </div>
@@ -92,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                 
                 <div class="form-group">
-                    <label style="font-weight: 700; font-size: 13px; margin-bottom: 8px; display: block;">No. HP Bisnis (WA)</label>
+                    <label style="font-weight: 700; font-size: 13px; margin-bottom: 8px; display: block;">Nomor Telepon Bisnis (WhatsApp)</label>
                     <input type="text" name="brand_contact" class="form-control" value="<?= htmlspecialchars($user['brand_contact'] ?? '') ?>" placeholder="08xxxxxx">
                 </div>
 
@@ -107,7 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <input type="text" name="brand_bank" class="form-control" value="<?= htmlspecialchars($user['brand_bank'] ?? '') ?>" placeholder="BRI / BCA / Mandiri">
                     </div>
                     <div class="form-group">
-                        <label style="font-weight: 700; font-size: 13px; margin-bottom: 8px; display: block;">No. Rekening</label>
+                        <label style="font-weight: 700; font-size: 13px; margin-bottom: 8px; display: block;">Nomor Rekening</label>
                         <input type="text" name="brand_rekening" class="form-control" value="<?= htmlspecialchars($user['brand_rekening'] ?? '') ?>" placeholder="Nomor Rekening">
                     </div>
                 </div>
@@ -149,7 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div style="background: rgba(37, 211, 102, 0.1); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #25D366;">
                     <i class="fab fa-whatsapp" style="font-size: 20px;"></i>
                 </div>
-                <h3 style="margin: 0; font-size: 16px; font-weight: 700;">Pengaturan Pesan WhatsApp (Otonom)</h3>
+                <h3 style="margin: 0; font-size: 16px; font-weight: 700;">Pengaturan Pesan WhatsApp (Otomatis)</h3>
             </div>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px;">

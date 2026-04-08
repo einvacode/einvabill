@@ -143,7 +143,7 @@ $partner_invoices = $stmt_inv->fetchAll();
                             <div style="font-size:14px; font-weight:800; color:var(--text-primary);">#<?= str_pad($p_inv['id'], 5, "0", STR_PAD_LEFT) ?></div>
                         </td>
                         <td style="padding:15px;">
-                            <div style="font-size:13px; font-weight:600; color:var(--text-secondary);"><?= date('d F Y', strtotime($p_inv['due_date'])) ?></div>
+                            <div style="font-size:13px; font-weight:600; color:var(--text-secondary);"><?= date('d/m/Y', strtotime($p_inv['due_date'])) ?></div>
                         </td>
                         <td style="padding:15px;">
                             <div style="font-size:15px; font-weight:900; color:<?= $p_inv['status'] == 'Lunas' ? 'var(--success)' : 'var(--text-primary)' ?>">Rp<?= number_format($p_inv['amount'], 0, ',', '.') ?></div>
@@ -173,8 +173,8 @@ $partner_invoices = $stmt_inv->fetchAll();
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px; padding-bottom:15px; border-bottom:1px solid var(--glass-border);">
                     <div>
-                        <div style="font-size:10px; font-weight:800; color:var(--text-secondary); text-transform:uppercase;">Tgl Jatuh Tempo</div>
-                        <div style="font-size:13px; font-weight:700; color:var(--text-primary);"><?= date('d M Y', strtotime($p_inv['due_date'])) ?></div>
+                        <div style="font-size:10px; font-weight:800; color:var(--text-secondary); text-transform:uppercase;">Tanggal Jatuh Tempo</div>
+                        <div style="font-size:13px; font-weight:700; color:var(--text-primary);"><?= date('d/m/Y', strtotime($p_inv['due_date'])) ?></div>
                     </div>
                     <div style="text-align:right;">
                         <div style="font-size:10px; font-weight:800; color:var(--text-secondary); text-transform:uppercase;">Total Tagihan</div>

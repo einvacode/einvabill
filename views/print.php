@@ -30,11 +30,7 @@ if ($invoice['status'] === 'Lunas') {
 $tunggakan = $db->query("SELECT SUM(amount - discount) FROM invoices WHERE customer_id = " . intval($invoice['customer_id']) . " AND status = 'Belum Lunas' AND id != " . intval($invoice['id']))->fetchColumn() ?: 0;
 $tunggakan_bulan = $db->query("SELECT COUNT(*) FROM invoices WHERE customer_id = " . intval($invoice['customer_id']) . " AND status = 'Belum Lunas' AND id != " . intval($invoice['id']))->fetchColumn() ?: 0;
 
-$bulan_bayar = "Tagihan Bulan " . date('F Y', strtotime($invoice['due_date']));
-
-// Terjemahan bulan
-$bulan_indo = ['January'=>'Januari', 'February'=>'Februari', 'March'=>'Maret', 'April'=>'April', 'May'=>'Mei', 'June'=>'Juni', 'July'=>'Juli', 'August'=>'Agustus', 'September'=>'September', 'October'=>'Oktober', 'November'=>'November', 'December'=>'Desember'];
-$bulan_bayar = str_replace(array_keys($bulan_indo), array_values($bulan_indo), $bulan_bayar);
+$bulan_bayar = "Tagihan Bulan " . date('m/Y', strtotime($invoice['due_date']));
 
 // Fetch items for itemized billing
 $invoice_items = $db->query("SELECT * FROM invoice_items WHERE invoice_id = " . intval($invoice['id']))->fetchAll();
@@ -189,7 +185,7 @@ if (($invoice['status'] ?? '') === 'Lunas') {
             
             <?php if($invoice['status'] === 'Lunas' && $payment_info): ?>
             <div class="mb-2" style="font-size:12px; margin-top:5px;">
-                Tgl Dibayar: <?= date('d/m/Y', strtotime($payment_info['payment_date'])) ?><br>
+                Tanggal Dibayar: <?= date('d/m/Y', strtotime($payment_info['payment_date'])) ?><br>
                 Jam Lunas: <?= date('H:i:s', strtotime($payment_info['payment_date'])) ?> WIB<br>
                 Ket: <?= htmlspecialchars($bulan_bayar) ?>
             </div>
@@ -252,8 +248,8 @@ if (($invoice['status'] ?? '') === 'Lunas') {
                 <div style="text-align:right;">
                     <div class="invoice-title">INVOICE</div>
                     <div style="font-size:14px; font-weight:bold; margin-top:5px;">#INV-<?= str_pad($invoice['id'], 5, "0", STR_PAD_LEFT) ?></div>
-                    <div style="color:#64748b; font-size:11px; margin-top:2px;">Terbit: <?= date('d M Y', strtotime($invoice['created_at'])) ?></div>
-                    <div style="color:#ef4444; font-weight:bold; font-size:11px; margin-top:2px;">Jatuh Tempo: <?= date('d M Y', strtotime($invoice['due_date'])) ?></div>
+                    <div style="color:#64748b; font-size:11px; margin-top:2px;">Terbit: <?= date('d/m/Y', strtotime($invoice['created_at'])) ?></div>
+                    <div style="color:#ef4444; font-weight:bold; font-size:11px; margin-top:2px;">Jatuh Tempo: <?= date('d/m/Y', strtotime($invoice['due_date'])) ?></div>
                 </div>
             </div>
 
@@ -268,7 +264,7 @@ if (($invoice['status'] ?? '') === 'Lunas') {
                 <div style="text-align:right;">
                     <?php if($invoice['status'] === 'Lunas' && $payment_info): ?>
                         <div style="color:#64748b; margin-bottom:3px; font-size:11px; font-weight:bold;">Informasi Pelunasan:</div>
-                        <div style="font-size:13px;">Lunas: <?= date('d M, H:i', strtotime($payment_info['payment_date'])) ?> WIB</div>
+                        <div style="font-size:13px;">Lunas: <?= date('d/m/Y H:i', strtotime($payment_info['payment_date'])) ?> WIB</div>
                         <div style="font-size:13px; font-weight:bold; color:#3b82f6;"><?= htmlspecialchars($bulan_bayar) ?></div>
                     <?php endif; ?>
                 </div>

@@ -330,7 +330,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
             </div>
             <div>
                 <h4 style="margin:0; font-size:15px; font-weight:800;">Penagihan Mitra</h4>
-                <div style="font-size:10px; color:var(--text-secondary);"><?= date('l, d M Y') ?></div>
+                <div style="font-size:10px; color:var(--text-secondary);"><?= date('l, d/m/Y') ?></div>
             </div>
         </div>
 
@@ -340,7 +340,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
                 <?php
                 for ($i = 0; $i < 6; $i++) {
                     $m = date('Y-m', strtotime("-$i month"));
-                    $label = date('F Y', strtotime("-$i month"));
+                    $label = date('m/Y', strtotime("-$i month"));
                     echo "<option value=\"$m\" " . ($selected_month === $m ? 'selected' : '') . ">$label</option>";
                 }
                 ?>
@@ -374,8 +374,8 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
     <div class="glass-panel" style="padding:15px; text-align:center; border-top:4px solid var(--warning); background:linear-gradient(135deg, rgba(245, 158, 11, 0.1), transparent); cursor:pointer;" onclick="location.href='index.php?page=partner_collection&tab=lunas&month=<?= $selected_month ?>'">
         <i class="fas fa-coins" style="font-size:20px; color:var(--warning); margin-bottom:8px;"></i>
         <div style="font-size:15px; font-weight:800; color:var(--text-primary);">Rp<?= number_format($net_revenue, 0, ',', '.') ?></div>
-        <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; font-weight:700;">Net Revenue</div>
-        <div style="font-size:10px; font-weight:700; color:var(--warning); margin-top:5px;">Est. Profit</div>
+        <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; font-weight:700;">Pendapatan Bersih</div>
+        <div style="font-size:10px; font-weight:700; color:var(--warning); margin-top:5px;">Estimasi Laba</div>
     </div>
 </div>
 
@@ -404,9 +404,9 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
                 <input type="hidden" name="page" value="partner_collection">
                 <input type="hidden" name="tab" value="tugas">
                 <select name="filter_billing_date" onchange="this.form.submit()" style="padding:4px 10px; border-radius:8px; background:rgba(var(--primary-rgb), 0.1); border:1px solid var(--primary); color:var(--primary); font-size:11px; font-weight:800; cursor:pointer;">
-                    <option value="all" <?= $filter_billing_date === 'all' ? 'selected' : '' ?>>SEMUA TGL</option>
+                    <option value="all" <?= $filter_billing_date === 'all' ? 'selected' : '' ?>>SEMUA TANGGAL</option>
                     <?php for($i=1; $i<=31; $i++): ?>
-                        <option value="<?= $i ?>" <?= $filter_billing_date == $i ? 'selected' : '' ?>>Tgl <?= $i ?><?= $i == date('j') ? ' (Hari Ini)' : '' ?></option>
+                        <option value="<?= $i ?>" <?= $filter_billing_date == $i ? 'selected' : '' ?>>Tanggal <?= $i ?><?= $i == date('j') ? ' (Hari Ini)' : '' ?></option>
                     <?php endfor; ?>
                 </select>
             </form>
@@ -435,7 +435,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
                     <div>
                         <div style="font-weight:800; font-size:16px; color:var(--text-primary);"><?= htmlspecialchars($ui['name']) ?></div>
-                        <div style="font-size:11px; color:var(--text-secondary); margin-top:4px;"><i class="fas fa-calendar-alt text-primary"></i> Tagih Tgl: <strong><?= $ui['billing_date'] ?? '-' ?></strong> | <i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($ui['address'] ?: '-') ?></div>
+                        <div style="font-size:11px; color:var(--text-secondary); margin-top:4px;"><i class="fas fa-calendar-alt text-primary"></i> Tagih Tanggal: <strong><?= $ui['billing_date'] ?? '-' ?></strong> | <i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($ui['address'] ?: '-') ?></div>
                     </div>
                     <span class="badge <?= $is_overdue ? 'badge-danger' : 'badge-warning' ?>" style="font-size:10px; font-weight:800;"><?= $ui['num_arrears'] ?> BULAN</span>
                 </div>
@@ -476,7 +476,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
             </div>
             <div style="text-align:right;">
                 <div style="font-size:9px; color:rgba(255,255,255,0.8); font-weight:800; text-transform:uppercase;">Volume</div>
-                <div style="font-size:16px; font-weight:800; color:white; line-height:1.1;"><?= $unpaid_count ?> <small style="font-size:9px; opacity:0.8;">BILL</small></div>
+                <div style="font-size:16px; font-weight:800; color:white; line-height:1.1;"><?= $unpaid_count ?> <small style="font-size:9px; opacity:0.8;">TAGIHAN</small></div>
             </div>
         </div>
     </div>
@@ -487,7 +487,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
 <div class="glass-panel tab-flex-container" style="padding:20px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
         <h3 style="font-size:16px; margin:0; color:var(--success);">
-            <i class="fas fa-check-double"></i> Riwayat Lunas
+            Riwayat Lunas
         </h3>
         <!-- Date Filter -->
         <form method="GET" style="display:flex; align-items:center; gap:8px;">
@@ -539,7 +539,6 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
         <div class="glass-panel" style="padding:12px 18px; border-left:4px solid var(--success); background:linear-gradient(to right, rgba(16, 185, 129, 0.12), rgba(16, 185, 129, 0.04)); backdrop-filter:blur(15px); display:flex; justify-content:space-between; align-items:center; border-radius:15px;">
             <div style="display:flex; align-items:center; gap:10px;">
                 <div style="width:38px; height:38px; border-radius:10px; background:var(--success); color:white; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
-                    <i class="fas fa-check-double"></i>
                 </div>
                 <div>
                     <div style="font-size:9px; color:rgba(255,255,255,0.8); text-transform:uppercase; font-weight:800;">Total Terkumpul</div>
@@ -547,8 +546,8 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
                 </div>
             </div>
             <div style="text-align:right;">
-                <div style="font-size:9px; color:rgba(255,255,255,0.8); font-weight:800; text-transform:uppercase;">Invoice</div>
-                <div style="font-size:16px; font-weight:800; color:white; line-height:1.1;"><?= $paid_count_range ?> <small style="font-size:9px; opacity:0.8;">BILL</small></div>
+                <div style="font-size:9px; color:rgba(255,255,255,0.8); font-weight:800; text-transform:uppercase;">Tagihan</div>
+                <div style="font-size:16px; font-weight:800; color:white; line-height:1.1;"><?= $paid_count_range ?> <small style="font-size:9px; opacity:0.8;">TAGIHAN</small></div>
             </div>
         </div>
     </div>
@@ -571,7 +570,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
             <div class="glass-panel" style="padding:15px; border-left:3px solid var(--primary); display:flex; justify-content:space-between; align-items:center;">
                 <div>
                     <div style="font-weight:700;"><?= htmlspecialchars($ac['name']) ?></div>
-                    <div style="font-size:11px; color:var(--text-secondary); margin-top:2px;"><?= htmlspecialchars($ac['package_name']) ?> • Tgl <?= $ac['billing_date'] ?></div>
+                    <div style="font-size:11px; color:var(--text-secondary); margin-top:2px;"><?= htmlspecialchars($ac['package_name']) ?> • Tanggal <?= $ac['billing_date'] ?></div>
                 </div>
                 <div style="display:flex; gap:6px;">
                     <button onclick="showCustomerDetails(<?= $ac['id'] ?>)" class="btn btn-sm btn-ghost" style="width:34px; height:34px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:8px;"><i class="fas fa-eye"></i></button>
@@ -619,7 +618,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
                 <div style="flex:1;">
                     <input type="number" id="bulkMonthInput" class="form-control" value="1" min="1" oninput="updateBulkTotalDisplay()" style="padding:12px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); width:100%; font-weight:800; font-size:18px; text-align:center;">
                 </div>
-                <div style="font-weight:600; color:var(--text-secondary);">Dari <span id="bulkTotalMonthsTitle"></span> Bln</div>
+                <div style="font-weight:600; color:var(--text-secondary);">Dari <span id="bulkTotalMonthsTitle"></span> Bulan</div>
             </div>
         </div>
 
@@ -695,15 +694,15 @@ function confirmBulkPay() {
                     <div id="detCustPkg" style="font-weight:700; font-size:13px;">...</div>
                 </div>
                 <div class="glass-panel" style="padding:12px; background:rgba(var(--primary-rgb), 0.05); border:1px solid var(--glass-border);">
-                    <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:700;">Siklus Tagih</div>
-                    <div id="detCustBilling" style="font-weight:700; font-size:13px;">Tgl ...</div>
+                    <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:700;">Siklus Tagihan</div>
+                    <div id="detCustBilling" style="font-weight:700; font-size:13px;">Tanggal ...</div>
                 </div>
                 <div class="glass-panel" style="padding:12px; background:rgba(var(--primary-rgb), 0.05); border:1px solid var(--glass-border);">
-                    <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:700;">No HP / WA</div>
+                    <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:700;">Nomor Telepon / WhatsApp</div>
                     <div id="detCustPhone" style="font-weight:700; font-size:13px;">...</div>
                 </div>
                 <div class="glass-panel" style="padding:12px; background:rgba(var(--primary-rgb), 0.05); border:1px solid var(--glass-border);">
-                    <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:700;">Tgl Registrasi</div>
+                    <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:700;">Tanggal Registrasi</div>
                     <div id="detCustRegDate" style="font-weight:700; font-size:13px;">...</div>
                 </div>
             </div>
@@ -727,7 +726,7 @@ async function showCustomerDetails(id) {
         document.getElementById('detCustName').textContent = data.customer.name;
         document.getElementById('detCustId').textContent = 'ID: ' + (data.customer.customer_code || data.customer.id);
         document.getElementById('detCustPkg').textContent = data.customer.package_name;
-        document.getElementById('detCustBilling').textContent = 'Tgl ' + data.customer.billing_date;
+        document.getElementById('detCustBilling').textContent = 'Tanggal ' + data.customer.billing_date;
         document.getElementById('detCustPhone').textContent = data.customer.contact;
         document.getElementById('detCustRegDate').textContent = data.customer.registration_date;
         

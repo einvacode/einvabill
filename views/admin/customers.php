@@ -335,8 +335,8 @@ if ($action === 'download_template') {
     header('Content-Type: text/csv');
     header('Content-Disposition: attachment; filename="template_pelanggan.csv"');
     $output = fopen('php://output', 'w');
-    fputcsv($output, ['Tipe (customer/partner)', 'Nama Pelanggan', 'Alamat', 'Kontak/WA', 'Nama Paket', 'Biaya Bulanan (Angka)', 'IP Address', 'Tgl Registrasi (YYYY-MM-DD)', 'Tgl Tagihan (1-28)', 'Area']);
-    fputcsv($output, ['customer', 'Budi Santoso', 'Jl. Merdeka No 1', '081234567890', '10 Mbps', '150000', '192.168.1.10', date('Y-m-d'), '15', 'Blok A']);
+    fputcsv($output, ['Tipe (customer/partner)', 'Nama Pelanggan', 'Alamat', 'Kontak WhatsApp', 'Nama Paket', 'Biaya Bulanan (Angka)', 'IP Address', 'Tanggal Registrasi (YYYY-MM-DD)', 'Tanggal Tagihan (1-28)', 'Area']);
+    fputcsv($output, ['customer', 'Budi Santoso', 'Jl. Merdeka Nomor 1', '081234567890', '10 Mbps', '150000', '192.168.1.10', date('Y-m-d'), '15', 'Blok A']);
     fclose($output);
     exit;
 }
@@ -582,7 +582,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php if(!empty($c['pppoe_name'])): ?>
                         <button class="btn btn-xs btn-ghost" onclick="viewTR069('<?= htmlspecialchars($c['pppoe_name']) ?>')" title="TR-069"><i class="fas fa-satellite-dish"></i></button>
                     <?php endif; ?>
-                    <a href="index.php?page=admin_customers&action=details&id=<?= $c['id'] ?>" class="btn btn-xs btn-ghost" style="color:var(--primary);" title="Detail"><i class="fas fa-eye"></i></a>
+                    <a href="index.php?page=admin_customers&action=details&id=<?= $c['id'] ?>" class="btn btn-xs btn-ghost" style="color:var(--primary);" title="Detail Lengkap"><i class="fas fa-eye"></i></a>
                     <a href="index.php?page=admin_customers&action=edit&id=<?= $c['id'] ?>" class="btn btn-xs btn-ghost" style="color:var(--warning);" title="Edit"><i class="fas fa-edit"></i></a>
                     <a href="index.php?page=admin_customers&action=delete&id=<?= $c['id'] ?>" class="btn btn-xs btn-danger" onclick="return confirm('Hapus?')" title="Hapus"><i class="fas fa-trash"></i></a>
                 </div>
@@ -1092,11 +1092,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
         <div class="flex" style="gap:15px;">
             <div class="form-group" style="flex:1;">
-                <label>Tgl Registrasi</label>
+                <label>Tanggal Registrasi</label>
                 <input type="date" name="registration_date" class="form-control" value="<?= htmlspecialchars($c['registration_date']) ?>" required>
             </div>
             <div class="form-group" style="flex:1;">
-                <label>Tgl Tagihan (1-28)</label>
+                <label>Tanggal Tagihan (1-28)</label>
                 <input type="number" name="billing_date" class="form-control" min="1" max="28" value="<?= htmlspecialchars($c['billing_date']) ?>" placeholder="1 s/d 28" required>
             </div>
         </div>
@@ -1233,9 +1233,9 @@ document.addEventListener("DOMContentLoaded", () => {
     <h3 style="font-size:20px; margin-bottom:20px;"><i class="fas fa-file-import text-success"></i> Import Data Excel / CSV</h3>
     <div style="background:var(--hover-bg); padding:15px; border-radius:12px; margin-bottom:20px; font-size:13px; line-height:1.6;">
         <strong>Format Kolom (Urutan Penting):</strong><br>
-        <code style="display:block; margin:10px 0; background:var(--bg-color); padding:10px; border-radius:8px; overflow-x:auto;">
-            Tipe | Nama | Alamat | WA | Paket | Biaya | IP | Tgl Reg | Tgl Tagih | Area
-        </code>
+        <div style="font-size:11px; opacity:0.7; margin-bottom:10px;">
+            Tipe | Nama | Alamat | WhatsApp | Paket | Biaya | IP | Tanggal Registrasi | Tanggal Tagihan | Area
+        </div>
         <a href="index.php?page=admin_customers&action=download_template" class="btn btn-sm btn-ghost" style="color:var(--success);"><i class="fas fa-download"></i> Contoh CSV</a>
     </div>
     <form action="index.php?page=admin_customers&action=import_paste" method="POST">
@@ -1399,7 +1399,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         <tr>
                             <th>Bulan Tagihan</th>
                             <th>Nominal</th>
-                            <th>Tgl Bayar</th>
+                            <th>Tanggal Bayar</th>
                             <th>Diterima Oleh</th>
                         </tr>
                     </thead>

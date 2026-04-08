@@ -100,15 +100,31 @@ $total_expense_month = $db->query("SELECT SUM(amount) FROM expenses $scope_where
             </thead>
             <tbody>
                 <?php
-                $expenses = $db->query("SELECT * FROM expenses $scope_where ORDER BY date DESC, id DESC LIMIT 100")->fetchAll();
+                $expenses = $db->query("
+                    SELECT e.*, u.name as creator_name, u.role as creator_role 
+                    FROM expenses e
+                    LEFT JOIN users u ON e.created_by = u.id
+                    $scope_where 
+                    ORDER BY e.date DESC, e.id DESC 
+                    LIMIT 100
+                ")->fetchAll();
+                
                 foreach($expenses as $e):
                     $catColor = '#3b82f6';
                     if($e['category'] == 'Operasional') $catColor = '#10b981';
                     if($e['category'] == 'Belanja Barang') $catColor = '#f59e0b';
                     if($e['category'] == 'Insentif') $catColor = '#8b5cf6';
+                    
+                    $roleLabel = ($e['creator_role'] === 'admin') ? 'Admin' : 'Petugas';
+                    $roleColor = ($e['creator_role'] === 'admin') ? 'var(--primary)' : 'var(--text-secondary)';
                 ?>
                 <tr>
-                    <td style="font-size:13px;"><?= date('d/m/Y', strtotime($e['date'])) ?></td>
+                    <td style="font-size:13px;">
+                        <?= date('d/m/Y', strtotime($e['date'])) ?>
+                        <div style="font-size:9px; color:<?= $roleColor ?>; font-weight:700; text-transform:uppercase; margin-top:4px;">
+                            By: <?= htmlspecialchars($e['creator_name'] ?: 'System') ?>
+                        </div>
+                    </td>
                     <td>
                         <span class="badge" style="background:<?= $catColor ?>22; color:<?= $catColor ?>; border:1px solid <?= $catColor ?>44;">
                             <?= htmlspecialchars($e['category']) ?>
@@ -117,6 +133,7 @@ $total_expense_month = $db->query("SELECT SUM(amount) FROM expenses $scope_where
                     <td style="font-size:13px; color:var(--text-secondary);"><?= htmlspecialchars($e['description'] ?: '-') ?></td>
                     <td style="font-weight:700; color:#f43f5e;">Rp <?= number_format($e['amount'], 0, ',', '.') ?></td>
                     <td>
+
                         <div style="display:flex; gap:8px;">
                             <button onclick="editExpense(<?= htmlspecialchars(json_encode($e)) ?>)" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></button>
                             <a href="index.php?page=admin_expenses&action=delete&id=<?= $e['id'] ?>" onclick="return confirm('Hapus catatan ini?')" class="btn btn-sm btn-danger" title="Hapus"><i class="fas fa-trash"></i></a>

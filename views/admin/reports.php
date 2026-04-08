@@ -14,7 +14,7 @@ $exp_scope = ($u_role === 'admin') ? " AND (created_by NOT IN (SELECT id FROM us
 // Date range filters
 $date_from = $_GET['date_from'] ?? date('Y-m-01');
 $date_to = $_GET['date_to'] ?? date('Y-m-d');
-$period_display = date('d F Y', strtotime($date_from)) . ' - ' . date('d F Y', strtotime($date_to));
+$period_display = date('d/m/Y', strtotime($date_from)) . ' - ' . date('d/m/Y', strtotime($date_to));
 
 $sql_date_from = $date_from . ' 00:00:00';
 $sql_date_to = $date_to . ' 23:59:59';
@@ -113,6 +113,10 @@ $sql_table_p = "
         c.name as customer_name,
         c.type as customer_type,
         c.area,
+        c.contact,
+        c.customer_code,
+        c.package_name,
+        c.monthly_fee,
         i.id as invoice_id,
         i.due_date,
         p.amount as amount,
@@ -138,6 +142,10 @@ $sql_table = $sql_table_p . "
         c.name as customer_name,
         c.type as customer_type,
         c.area,
+        c.contact,
+        c.customer_code,
+        c.package_name,
+        c.monthly_fee,
         i.id as invoice_id,
         i.due_date,
         (i.amount - i.discount) as amount,
@@ -165,9 +173,9 @@ if ($action === 'export') {
     fputs($output, $bom =(chr(0xEF) . chr(0xBB) . chr(0xBF)));
     
     if ($u_role === 'admin') {
-        fputcsv($output, ['Tipe Transaksi', 'Tanggal Aktivitas', 'Nama Pelanggan / Mitra', 'Area', 'No. Invoice', 'Tgl Jatuh Tempo', 'Nominal (Rp)', 'Status Pembayaran']);
+        fputcsv($output, ['Tipe Transaksi', 'Tanggal Aktivitas', 'Nama Pelanggan / Mitra', 'Area', 'Nomor Invoice', 'Tanggal Jatuh Tempo', 'Nominal (Rp)', 'Status Pembayaran']);
     } else {
-        fputcsv($output, ['Tipe Transaksi', 'Tanggal Aktivitas', 'Nama Pelanggan / Mitra', 'No. Invoice', 'Tgl Jatuh Tempo', 'Nominal (Rp)', 'Status Pembayaran']);
+        fputcsv($output, ['Tipe Transaksi', 'Tanggal Aktivitas', 'Nama Pelanggan / Mitra', 'Nomor Invoice', 'Tanggal Jatuh Tempo', 'Nominal (Rp)', 'Status Pembayaran']);
     }
     
     foreach ($report_data as $row) {
@@ -187,7 +195,7 @@ if ($action === 'export') {
                 $row['activity_type'],
                 $row['activity_date'],
                 $row['customer_name'] . ($row['customer_type'] == 'partner' ? ' (Mitra)' : ''),
-                'INV-' . str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT),
+                'Invoice-' . str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT),
                 $row['due_date'],
                 $row['amount'],
                 $row['status']
@@ -203,11 +211,18 @@ if ($action === 'print') {
     $total_income = $lunas_tepat + $tunggakan_dibayar;
     
     // Expenses for the printed period
-    $q_expenses_print = $db->prepare("SELECT * FROM expenses WHERE date BETWEEN ? AND ? ORDER BY date ASC");
+    $q_expenses_print = $db->prepare("
+        SELECT e.*, u.name as creator_name, u.role as creator_role 
+        FROM expenses e
+        LEFT JOIN users u ON e.created_by = u.id
+        WHERE e.date BETWEEN ? AND ? 
+        ORDER BY e.date ASC
+    ");
     $q_expenses_print->execute([$date_from, $date_to]);
     $expenses_list = $q_expenses_print->fetchAll();
     $total_expenses_print = 0;
     foreach($expenses_list as $e) $total_expenses_print += $e['amount'];
+
     
     // Logo processing logic
     $logo_src = '';
@@ -319,7 +334,7 @@ if ($action === 'print') {
                     <?php endif; ?>
                     <div class="company-info">
                         <h1><?= htmlspecialchars($company['company_name']) ?></h1>
-                        <p><?= htmlspecialchars($company['company_address']) ?><br>Telp: <?= htmlspecialchars($company['company_contact']) ?></p>
+                        <p><?= htmlspecialchars($company['company_address']) ?><br>Telepon: <?= htmlspecialchars($company['company_contact']) ?></p>
                     </div>
                 </div>
                 <div class="header-right">
@@ -341,7 +356,7 @@ if ($action === 'print') {
                     <div style="margin-top:10px; border-top:1px solid #e2e8f0; padding-top:10px;">
                         <div style="display:flex; justify-content:space-between; font-size:13px; color:#475569;">
                             <span>Lunas Tepat Waktu:</span>
-                            <span>Rp <?= number_format($lunas_tepat, 0, ',', '.') ?></span>
+                            <span style="color:var(--primary);"><?= date('m/Y') ?></span>
                         </div>
                         <div style="display:flex; justify-content:space-between; font-size:13px; color:#475569; margin-top:4px;">
                             <span>Pelunasan Tunggakan:</span>
@@ -394,7 +409,7 @@ if ($action === 'print') {
                     <th width="100">TANGGAL</th>
                     <th>AKTIVITAS</th>
                     <th>PELANGGAN / MITRA</th>
-                    <th width="120">NO. INVOICE</th>
+                    <th width="120">NOMOR INVOICE</th>
                     <th width="140" style="text-align:right;">NOMINAL</th>
                     <th width="100">STATUS</th>
                 </tr>
@@ -402,14 +417,36 @@ if ($action === 'print') {
             <tbody>
                 <?php foreach($report_data as $row): ?>
                 <tr>
-                    <td style="color:#64748b; font-weight:500;"><?= date('d/m/y', strtotime($row['activity_date'])) ?></td>
+                    <td style="color:#64748b; font-weight:500;"><?= date('d/m/Y', strtotime($row['activity_date'])) ?></td>
                     <td class="<?= $row['status'] == 'Lunas' ? 'type-in' : 'type-out' ?>"><?= strtoupper($row['activity_type']) ?></td>
                     <td>
                         <div style="font-weight:700;"><?= htmlspecialchars($row['customer_name']) . ($row['customer_type'] == 'partner' ? ' (Mitra)' : '') ?></div>
                     </td>
-                    <td style="font-family:'Courier New', Courier, monospace; font-weight:700;">INV-<?= str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT) ?></td>
+                    <td style="font-family:'Courier New', Courier, monospace; font-weight:700;">Invoice-<?= str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT) ?></td>
                     <td style="font-weight:800; text-align:right; font-size:14px;">Rp <?= number_format($row['amount'], 0, ',', '.') ?></td>
-                    <td style="font-weight:700; <?= $row['status']=='Lunas'?'color:#10b981;':'color:#ef4444;' ?>"><?= strtoupper($row['status']) ?></td>
+                    <td style="font-weight:700; <?= $row['status']=='Lunas'?'color:#10b981;':'color:#ef4444;' ?>">
+                        <?= strtoupper($row['status']) ?>
+                        <?php if($row['status'] == 'Lunas'): 
+                            $settings = $db->query("SELECT wa_template_paid, company_name, site_url FROM settings WHERE id=1")->fetch();
+                            $wa_num = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $row['contact']));
+                            $cust_id_display = $row['customer_code'] ?: str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT);
+                            $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . $cust_id_display;
+                            
+                            $receipt_msg = str_replace(
+                                ['{nama}', '{total_bayar}', '{bulan}', '{link_tagihan}', '{perusahaan}'], 
+                                [$row['customer_name'], 'Rp ' . number_format($row['amount'], 0, ',', '.'), date('m/Y', strtotime($row['due_date'])), $portal_link, $settings['company_name']], 
+                                $settings['wa_template_paid'] ?: "Halo {nama}, pembayaran {total_bayar} sudah lunas. Cek nota: {link_tagihan}"
+                            );
+                            $wa_link = "https://api.whatsapp.com/send?phone=$wa_num&text=" . urlencode($receipt_msg);
+                        ?>
+                            <a href="<?= $wa_link ?>" target="_blank" class="btn btn-xs btn-ghost" style="color:#25D366; padding:0 5px; margin-left:5px;" title="Kirim Ulang Nota">
+                                <i class="fab fa-whatsapp"></i>
+                            </a>
+                            <a href="index.php?page=admin_invoices&action=print&id=<?= $row['invoice_id'] ?>" target="_blank" class="btn btn-xs btn-ghost" style="color:var(--primary); padding:0 5px; margin-left:5px;" title="Cetak Kuitansi">
+                                <i class="fas fa-print"></i>
+                            </a>
+                        <?php endif; ?>
+                    </td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -427,6 +464,7 @@ if ($action === 'print') {
             <thead>
                 <tr>
                     <th width="100">TANGGAL</th>
+                    <th>USER</th>
                     <th>KATEGORI</th>
                     <th>KETERANGAN</th>
                     <th width="140" style="text-align:right;">NOMINAL</th>
@@ -435,7 +473,8 @@ if ($action === 'print') {
             <tbody>
                 <?php foreach($expenses_list as $e): ?>
                 <tr>
-                    <td style="color:#64748b; font-weight:500;"><?= date('d/m/y', strtotime($e['date'])) ?></td>
+                    <td style="color:#64748b; font-weight:500;"><?= date('d/m/Y', strtotime($e['date'])) ?></td>
+                    <td style="font-weight:600; font-size:11px;"><?= htmlspecialchars($e['creator_name'] ?: 'System') ?></td>
                     <td style="font-weight:700; color:#ef4444;"><?= strtoupper($e['category']) ?></td>
                     <td><?= htmlspecialchars($e['description'] ?: '-') ?></td>
                     <td style="font-weight:800; text-align:right; font-size:14px; color:#ef4444;">Rp <?= number_format($e['amount'], 0, ',', '.') ?></td>
@@ -443,6 +482,7 @@ if ($action === 'print') {
                 <?php endforeach; ?>
             </tbody>
         </table>
+
         <?php endif; ?>
 
         <!-- Signature Section at the Very End -->
@@ -600,7 +640,7 @@ if ($action === 'print') {
                 </div>
                 <div style="text-align:right;">
                     <div style="font-size:14px; font-weight:800; color:var(--stat-value-color);">Rp <?= number_format($row['amount'], 0, ',', '.') ?></div>
-                    <div style="font-size:10px; color:var(--text-secondary);"><?= date('d M Y', strtotime($row['activity_date'])) ?></div>
+                    <div style="font-size:10px; color:var(--text-secondary);"><?= date('d/m/Y', strtotime($row['activity_date'])) ?></div>
                 </div>
             </div>
             
@@ -613,6 +653,21 @@ if ($action === 'print') {
                     <span class="badge <?= $row['status'] == 'Lunas' ? 'badge-success' : 'badge-danger' ?>" style="font-size:9px; padding:1px 6px;">
                         <?= strtoupper($row['status']) ?>
                     </span>
+                    <?php if($row['status'] == 'Lunas'): 
+                        $settings = $db->query("SELECT wa_template_paid, company_name, site_url FROM settings WHERE id=1")->fetch();
+                        $wa_num = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $row['contact']));
+                        $cust_id_display = $row['customer_code'] ?: str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT);
+                        $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . $cust_id_display;
+                        $receipt_msg = str_replace(
+                            ['{nama}', '{total_bayar}', '{bulan}', '{link_tagihan}', '{perusahaan}'], 
+                            [$row['customer_name'], 'Rp ' . number_format($row['amount'], 0, ',', '.'), date('m/Y', strtotime($row['due_date'])), $portal_link, $settings['company_name']], 
+                            $settings['wa_template_paid'] ?: "Halo {nama}, pembayaran {total_bayar} sudah lunas. Cek nota: {link_tagihan}"
+                        );
+                        $wa_link = "https://api.whatsapp.com/send?phone=$wa_num&text=" . urlencode($receipt_msg);
+                    ?>
+                        <a href="<?= $wa_link ?>" target="_blank" style="margin-left:5px; color:#25D366;"><i class="fab fa-whatsapp"></i></a>
+                        <a href="index.php?page=admin_invoices&action=print&id=<?= $row['invoice_id'] ?>" target="_blank" style="margin-left:8px; color:var(--primary);"><i class="fas fa-print"></i></a>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -626,7 +681,7 @@ if ($action === 'print') {
                 <tr>
                     <th style="padding:15px;">Waktu / Transaksi</th>
                     <th>Nama Pelanggan / Mitra</th>
-                    <th>No. Invoice</th>
+                    <th>Nomor Invoice</th>
                     <th style="text-align:right;">Nominal</th>
                     <th style="text-align:center;">Status</th>
                 </tr>
@@ -636,7 +691,7 @@ if ($action === 'print') {
                 <tr>
                     <td style="padding:15px;">
                         <div style="font-weight:700; color: <?= $row['activity_type'] == 'Pembayaran Masuk' ? 'var(--success)' : 'var(--warning)' ?>;"><?= $row['activity_type'] ?></div>
-                        <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;"><?= date('d M Y', strtotime($row['activity_date'])) ?></div>
+                        <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;"><?= date('d/m/Y', strtotime($row['activity_date'])) ?></div>
                         <?php if($row['activity_type'] == 'Pembayaran Masuk' && date('Y-m', strtotime($row['due_date'])) < date('Y-m', strtotime($row['activity_date']))): ?>
                             <div style="margin-top:6px;"><span class="badge" style="background:rgba(245,158,11,0.1); color:var(--warning); border:1px solid rgba(245,158,11,0.2); font-size:9px; padding:2px 5px;">PELUNASAN TUNGGAKAN</span></div>
                         <?php endif; ?>
@@ -651,8 +706,8 @@ if ($action === 'print') {
                         </div>
                     </td>
                     <td>
-                        <div style="font-family:monospace; font-weight:600; opacity:0.8;">INV-<?= str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT) ?></div>
-                        <div style="font-size:11px; color:var(--text-secondary); margin-top:2px;">Jatuh Tempo: <?= date('d M', strtotime($row['due_date'])) ?></div>
+                        <div style="font-family:monospace; font-weight:600; opacity:0.8;">Invoice-<?= str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT) ?></div>
+                        <div style="font-size:11px; color:var(--text-secondary); margin-top:2px;">Jatuh Tempo: <?= date('d/m/Y', strtotime($row['due_date'])) ?></div>
                     </td>
                     <td style="font-weight:800; font-size:16px; text-align:right; color:var(--stat-value-color);">
                         Rp <?= number_format($row['amount'], 0, ',', '.') ?>
@@ -661,6 +716,30 @@ if ($action === 'print') {
                         <span class="badge <?= $row['status'] == 'Lunas' ? 'badge-success' : 'badge-danger' ?>" style="padding:5px 12px; border-radius:50px;">
                             <?= strtoupper($row['status']) ?>
                         </span>
+                        <?php if($row['status'] == 'Lunas'): 
+                            $settings = $db->query("SELECT wa_template_paid, company_name, site_url FROM settings WHERE id=1")->fetch();
+                            $wa_num = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $row['contact']));
+                            $cust_id_display = $row['customer_code'] ?: str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT);
+                            $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . $cust_id_display;
+                            $receipt_msg = str_replace(
+                                ['{nama}', '{total_bayar}', '{bulan}', '{link_tagihan}', '{perusahaan}'], 
+                                [$row['customer_name'], 'Rp ' . number_format($row['amount'], 0, ',', '.'), date('m/Y', strtotime($row['due_date'])), $portal_link, $settings['company_name']], 
+                                $settings['wa_template_paid'] ?: "Halo {nama}, pembayaran {total_bayar} sudah lunas. Cek nota: {link_tagihan}"
+                            );
+                            $wa_link = "https://api.whatsapp.com/send?phone=$wa_num&text=" . urlencode($receipt_msg);
+                        ?>
+                            <a href="<?= $wa_link ?>" target="_blank" class="btn btn-xs btn-ghost" style="color:#25D366; margin-left:8px;" title="Kirim Ulang Nota">
+                                <i class="fab fa-whatsapp"></i>
+                            </a>
+                            <a href="index.php?page=admin_invoices&action=print&id=<?= $row['invoice_id'] ?>" target="_blank" class="btn btn-xs btn-ghost" style="color:var(--primary); margin-left:8px;" title="Cetak Kuitansi">
+                                <i class="fas fa-print"></i>
+                            </a>
+                        <?php endif; ?>
+                        <?php if($row['status'] == 'Belum Lunas'): ?>
+                            <a href="index.php?page=admin_invoices&action=print&id=<?= $row['invoice_id'] ?>" target="_blank" class="btn btn-xs btn-ghost" style="color:var(--text-secondary); margin-left:8px;" title="Cetak Tagihan">
+                                <i class="fas fa-print"></i>
+                            </a>
+                        <?php endif; ?>
                     </td>
                 </tr>
                 <?php endforeach; ?>

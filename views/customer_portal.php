@@ -149,7 +149,7 @@ $active_banners = $db->query("SELECT * FROM banners WHERE is_active = 1 AND targ
                     <div><i class="fas fa-box" style="width:20px;"></i> <?= htmlspecialchars($customer['package_name']) ?></div>
                     <div><i class="fas fa-money-bill" style="width:20px;"></i> Rp <?= number_format($customer['monthly_fee'], 0, ',', '.') ?>/bulan</div>
                     <div><i class="fas fa-map-marker-alt" style="width:20px;"></i> <?= htmlspecialchars($customer['address'] ?: '-') ?></div>
-                    <div><i class="fas fa-calendar" style="width:20px;"></i> Tagih tgl <?= $customer['billing_date'] ?> setiap bulan</div>
+                    <div><i class="fas fa-calendar" style="width:20px;"></i> Tagih tanggal <?= $customer['billing_date'] ?> setiap bulan</div>
                 </div>
             </div>
             
@@ -197,7 +197,7 @@ $active_banners = $db->query("SELECT * FROM banners WHERE is_active = 1 AND targ
                 <div class="invoice-card">
                     <div>
                         <div style="font-weight:600; font-size:14px;">INV-<?= str_pad($inv['id'], 5, '0', STR_PAD_LEFT) ?></div>
-                        <div style="font-size:12px; color:var(--text-secondary);">Jatuh tempo: <?= date('d M Y', strtotime($inv['due_date'])) ?></div>
+                        <div style="font-size:12px; color:var(--text-secondary);">Jatuh tempo: <?= date('d/m/Y', strtotime($inv['due_date'])) ?></div>
                     </div>
                     <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
                         <div style="font-weight:700;">Rp <?= number_format($inv['amount'], 0, ',', '.') ?></div>
