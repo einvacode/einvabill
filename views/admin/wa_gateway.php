@@ -54,7 +54,13 @@ if ($_SESSION['user_role'] !== 'admin') {
 
             <div class="glass-panel" style="padding:20px; background:rgba(0,0,0,0.2);">
                 <h5 style="margin:0 0 12px; font-weight:800; font-size:14px; text-transform:uppercase; letter-spacing:1px;"><i class="fas fa-list-ul"></i> Aktivitas Terakhir</h5>
-                <div id="wa-logs" style="font-family:monospace; font-size:11px; color:#10b981; max-height:150px; overflow-y:auto; line-height:1.6;">
+                <style>
+                    #wa-logs::-webkit-scrollbar { width: 4px; }
+                    #wa-logs::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+                    #wa-logs::-webkit-scrollbar-thumb { background: rgba(16, 185, 129, 0.3); border-radius: 10px; }
+                    #wa-logs::-webkit-scrollbar-thumb:hover { background: rgba(16, 185, 129, 0.5); }
+                </style>
+                <div id="wa-logs" style="font-family:monospace; font-size:11px; color:#10b981; max-height:200px; overflow-y:auto; line-height:1.6; padding-right:5px;">
                     <div style="opacity:0.6;">> Menunggu aktivitas gateway...</div>
                 </div>
             </div>
@@ -107,7 +113,15 @@ async function refreshGateway() {
         const logData = await logResp.json();
         const logContainer = document.getElementById('wa-logs');
         if (logData.length > 0) {
+            // Check if user was already at the bottom before adding new content
+            const isAtBottom = logContainer.scrollHeight - logContainer.clientHeight <= logContainer.scrollTop + 20;
+            
             logContainer.innerHTML = logData.map(l => `<div><span style="opacity:0.6;">[${l.timestamp}]</span> ${l.msg}</div>`).join('');
+            
+            // Auto-scroll to bottom only if user was already at bottom or container just initialized
+            if (isAtBottom) {
+                logContainer.scrollTop = logContainer.scrollHeight;
+            }
         }
     } catch (e) {
         document.getElementById('qrcode').innerHTML = '<div style="color:#ef4444; font-size:12px; font-weight:700;"><i class="fas fa-exclamation-triangle"></i> GATEWAY OFFLINE<br><span style="font-weight:400; opacity:0.7;">Harap nyalakan node server.js</span></div>';

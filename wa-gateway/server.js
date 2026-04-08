@@ -15,8 +15,8 @@ let logs = [];
 // Logger Function
 function addLog(msg) {
     const timestamp = new Date().toLocaleString('id-ID');
-    logs.unshift({ timestamp, msg });
-    if (logs.length > 50) logs.pop();
+    logs.push({ timestamp, msg }); // Most recent at BOTTOM
+    if (logs.length > 50) logs.shift(); // Remove oldest
     console.log(`[${timestamp}] ${msg}`);
 }
 
