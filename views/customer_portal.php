@@ -166,20 +166,23 @@ $active_banners = $db->query("SELECT * FROM banners WHERE is_active = 1 AND targ
                 $total_inv = count($invoices);
                 $lunas = array_filter($invoices, fn($i) => $i['status'] === 'Lunas');
                 $belum = array_filter($invoices, fn($i) => $i['status'] === 'Belum Lunas');
+                
+                $total_all_amt = array_sum(array_map(fn($i) => floatval($i['amount'] - ($i['discount'] ?? 0)), $invoices));
+                $total_lunas_amt = array_sum(array_map(fn($i) => floatval($i['amount'] - ($i['discount'] ?? 0)), $lunas));
                 $total_belum = array_sum(array_map(fn($i) => floatval($i['amount'] - ($i['discount'] ?? 0)), $belum));
             ?>
             <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:20px;">
                 <div class="glass-panel" style="padding:16px; text-align:center;">
-                    <div style="font-size:24px; font-weight:800; color:var(--stat-value-color);"><?= $total_inv ?></div>
-                    <div style="font-size:12px; color:var(--text-secondary);">Total Tagihan</div>
+                    <div style="font-size:16px; font-weight:800; color:var(--stat-value-color);">Rp <?= number_format($total_all_amt, 0, ',', '.') ?></div>
+                    <div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">Total Tagihan (<?= $total_inv ?>)</div>
                 </div>
                 <div class="glass-panel" style="padding:16px; text-align:center;">
-                    <div style="font-size:24px; font-weight:800; color:var(--success);"><?= count($lunas) ?></div>
-                    <div style="font-size:12px; color:var(--text-secondary);">Lunas</div>
+                    <div style="font-size:16px; font-weight:800; color:var(--success);">Rp <?= number_format($total_lunas_amt, 0, ',', '.') ?></div>
+                    <div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">Lunas (<?= count($lunas) ?>)</div>
                 </div>
                 <div class="glass-panel" style="padding:16px; text-align:center;">
-                    <div style="font-size:24px; font-weight:800; color:var(--danger);"><?= count($belum) ?></div>
-                    <div style="font-size:12px; color:var(--text-secondary);">Belum Lunas</div>
+                    <div style="font-size:16px; font-weight:800; color:var(--danger);">Rp <?= number_format($total_belum, 0, ',', '.') ?></div>
+                    <div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">Belum Lunas (<?= count($belum) ?>)</div>
                 </div>
             </div>
 
