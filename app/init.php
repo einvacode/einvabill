@@ -1,30 +1,20 @@
 <?php
-ob_start(); // Prevent "Headers already sent" errors
-error_reporting(E_ALL & ~E_NOTICE); // Hide minor notices but show errors
-ini_set('display_errors', 0); // Change to 1 only for debugging blank pages
+ob_start();
+error_reporting(E_ALL & ~E_NOTICE);
+ini_set('display_errors', 0);
 
-// --- SECURE & STABLE SESSION MANAGEMENT ---
-$session_path = __DIR__ . '/sessions';
-if (!is_dir($session_path)) {
-    @mkdir($session_path, 0777, true);
-}
-
-// Ensure the folder is writable, if not, fallback to default to avoid crash
-if (is_writable($session_path)) {
-    ini_set('session.save_path', $session_path);
-}
-
+// --- UNIVERSAL STABLE SESSION ---
+// Use system default path to avoid permission errors on Proxmox
 ini_set('session.gc_maxlifetime', 86400); 
 ini_set('session.cookie_lifetime', 86400);
 ini_set('session.cookie_httponly', 1);
-ini_set('session.use_only_cookies', 1);
 
-// Auto-detect secure cookie (HTTPS only if available)
+// Auto-detect protocol for cookie security
 $is_secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443);
 ini_set('session.cookie_secure', $is_secure ? 1 : 0);
-ini_set('session.cookie_samesite', 'Lax');
 
-session_name('EINVABILL_STABLE_SESS');
+// Standard session name
+session_name('EINVABILL_AUTH');
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
