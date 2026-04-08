@@ -103,7 +103,13 @@ async function refreshGateway() {
             }
         }
     } catch (e) {
-        document.getElementById('qrcode').innerHTML = '<div style="color:#ef4444; font-size:12px; font-weight:700;"><i class="fas fa-exclamation-triangle"></i> GATEWAY OFFLINE<br><span style="font-weight:400; opacity:0.7;">Harap nyalakan node server.js</span></div>';
+        if (window.location.protocol === 'https:') {
+            document.getElementById('qrcode').innerHTML = '<div style="color:#f59e0b; font-size:12px; font-weight:700;"><i class="fas fa-shield-alt"></i> BLOCKED BY HTTPS<br><span style="font-weight:400; opacity:0.8; font-size:10px;">Gunakan <b>HTTP (Tanpa S)</b> atau klik Gembok -> "Allow Insecure Content" di browser.</span></div>';
+        } else {
+            const currentHost = window.location.hostname;
+            document.getElementById('qrcode').innerHTML = '<div style="color:#ef4444; font-size:12px; font-weight:700;"><i class="fas fa-exclamation-triangle"></i> GATEWAY OFFLINE<br><span style="font-weight:400; opacity:0.7; font-size:10px;">Gagal menghubungi http://'+currentHost+':3000<br>Pastikan port 3000 terbuka.</span></div>';
+        }
+        console.error('WA Gateway Error:', e);
     }
 }
 
