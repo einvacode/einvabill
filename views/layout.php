@@ -428,7 +428,8 @@
         
         try {
             // Using CID to check specific user connection
-            const response = await fetch('/waapi/status?cid=' + WAGatewayCID);
+            // Using CID to check specific user connection via PHP Proxy
+            const response = await fetch('waapi.php?path=status&cid=' + WAGatewayCID);
             const data = await response.json();
             const indicators = document.querySelectorAll('.wa-status-indicator');
             indicators.forEach(el => {
@@ -442,7 +443,7 @@
             const indicators = document.querySelectorAll('.wa-status-indicator');
             indicators.forEach(el => {
                 if (window.location.protocol === 'https:') {
-                    el.innerHTML = '<div style="color:#f59e0b; font-size:12px; font-weight:700;"><i class="fas fa-shield-alt"></i> BLOCKED BY HTTPS<br><span style="font-weight:400; opacity:0.8; font-size:10px;">Gunakan <b>HTTP (Tanpa S)</b> atau klik Gembok -> "Allow Insecure Content" di browser.</span></div>';
+                    el.innerHTML = '<span class="badge" style="background:rgba(217,119,6,0.1); color:#d97706; border:1px solid rgba(217,119,6,0.3); font-size:10px;"><i class="fas fa-shield-alt"></i> WA HTTPS PROXY</span>';
                 } else {
                     el.innerHTML = '<span class="badge" style="background:rgba(148,163,184,0.1); color:#94a3b8; border:1px solid rgba(148,163,184,0.3); font-size:10px;"><i class="fas fa-power-off"></i> WA OFFLINE</span>';
                 }
@@ -470,8 +471,8 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             
             try {
-                // Using CID to route send request to correct device
-                const response = await fetch('/waapi/send', {
+                // Using CID to route send request to correct device via PHP Proxy
+                const response = await fetch('waapi.php?path=send', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ cid: WAGatewayCID, phone, message })

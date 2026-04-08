@@ -76,7 +76,7 @@ let currentQR = "";
 
 async function refreshGateway() {
     try {
-        const response = await fetch('/waapi/status?cid=' + WAGatewayCID);
+        const response = await fetch('waapi.php?path=status&cid=' + WAGatewayCID);
         const data = await response.json();
         
         if (data.connected) {
@@ -89,7 +89,8 @@ async function refreshGateway() {
             document.getElementById('wa-connected-box').style.display = 'none';
             
             // Try fetch QR
-            const qrResp = await fetch('/waapi/qr?cid=' + WAGatewayCID);
+            // Try fetch QR via PHP Proxy
+            const qrResp = await fetch('waapi.php?path=qr&cid=' + WAGatewayCID);
             const qrData = await qrResp.json();
             
             if (qrData.qr && qrData.qr !== currentQR) {
@@ -108,9 +109,9 @@ async function refreshGateway() {
             }
         }
 
-        // Fetch Logs
-        const logResp = await fetch('/waapi/logs?cid=' + WAGatewayCID);
-        const logData = await logResp.json();
+        // Fetch Logs via PHP Proxy
+        const logResp = await fetch('waapi.php?path=logs&cid=' + WAGatewayCID);
+锋        const logData = await logResp.json();
         const logContainer = document.getElementById('wa-logs');
         if (logData.length > 0) {
             // Check if user was already at the bottom before adding new content
@@ -131,8 +132,8 @@ async function refreshGateway() {
 async function logoutWA() {
     if (!confirm('Apakah Anda yakin ingin memutuskan koneksi WhatsApp?')) return;
     try {
-        await fetch('/waapi/logout', { 
-            method: 'POST',
+        await fetch('waapi.php?path=logout', { 
+锋            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ cid: WAGatewayCID })
         });
