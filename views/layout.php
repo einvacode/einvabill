@@ -420,14 +420,13 @@
     });
 
     // Configure Client ID for WhatsApp Gateway
-    // Unified to 'admin' so all staff use the central company gateway for background messaging
-    const WAGatewayCID = 'admin';
+    // Reverted to dynamic: Each user (Admin, Collector, Partner) uses their own WA session
+    const WAGatewayCID = '<?= $_SESSION['user_id'] ?>';
     
     async function checkWAStatus() {
         if (!window.location.search.includes('page=admin') && !window.location.search.includes('page=partner') && !window.location.search.includes('page=collector')) return;
         
         try {
-            // Using CID to check specific user connection
             // Using CID to check specific user connection via PHP Proxy
             const response = await fetch('waapi.php?path=status&cid=' + WAGatewayCID);
             const data = await response.json();

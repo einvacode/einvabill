@@ -213,6 +213,33 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
 }
 </style>
 
+    <!-- WA Connection Alert for Partner -->
+    <div id="wa-connection-alert" style="display:none; margin-bottom:20px; padding:15px; border-radius:15px; background:rgba(239, 68, 68, 0.1); border:1px solid rgba(239, 68, 68, 0.2); align-items:center; gap:15px; animation: pulse 2s infinite;">
+        <div style="width:40px; height:40px; background:#ef4444; border-radius:10px; display:flex; align-items:center; justify-content:center; color:white;">
+            <i class="fab fa-whatsapp" style="font-size:22px;"></i>
+        </div>
+        <div style="flex:1;">
+            <div style="font-size:14px; font-weight:800; color:var(--text-primary);">WhatsApp Belum Terhubung!</div>
+            <div style="font-size:12px; color:var(--text-secondary);">Silakan hubungkan WhatsApp Mitra agar struk pembayaran bisa otomatis terkirim.</div>
+        </div>
+        <a href="index.php?page=admin_wa_gateway" class="btn btn-sm" style="background:#ef4444; color:white; border-radius:8px; font-weight:700; white-space:nowrap; padding:8px 15px;">HUBUNGKAN</a>
+    </div>
+    <script>
+    async function checkPartnerWA() {
+        try {
+            const resp = await fetch('waapi.php?path=status&cid=<?= $_SESSION['user_id'] ?>');
+            const data = await resp.json();
+            if (!data.connected) {
+                document.getElementById('wa-connection-alert').style.display = 'flex';
+            } else {
+                document.getElementById('wa-connection-alert').style.display = 'none';
+            }
+        } catch(e) {}
+    }
+    checkPartnerWA();
+    setInterval(checkPartnerWA, 30000);
+    </script>
+
 <div class="tab-flex-container">
     <!-- STATIC HEADER: Title & Banners -->
     <div style="flex-shrink:0; margin-bottom:10px;">
@@ -263,6 +290,33 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
         </div>
         <?php endif; ?>
 
+        <!-- WA Connection Alert for Collector -->
+        <div id="wa-connection-alert" style="display:none; margin-bottom:20px; padding:15px; border-radius:15px; background:rgba(239, 68, 68, 0.1); border:1px solid rgba(239, 68, 68, 0.2); align-items:center; gap:15px; animation: pulse 2s infinite;">
+            <div style="width:40px; height:40px; background:#ef4444; border-radius:10px; display:flex; align-items:center; justify-content:center; color:white;">
+                <i class="fab fa-whatsapp" style="font-size:22px;"></i>
+            </div>
+            <div style="flex:1;">
+                <div style="font-size:14px; font-weight:800; color:var(--text-primary);">WhatsApp Belum Terhubung!</div>
+                <div style="font-size:12px; color:var(--text-secondary);">Silakan hubungkan WhatsApp Anda agar bisa kirim tagihan otomatis.</div>
+            </div>
+            <a href="index.php?page=admin_wa_gateway" class="btn btn-sm" style="background:#ef4444; color:white; border-radius:8px; font-weight:700; white-space:nowrap; padding:8px 15px;">HUBUNGKAN</a>
+        </div>
+        <script>
+        async function checkDashboardWA() {
+            try {
+                const resp = await fetch('waapi.php?path=status&cid=<?= $_SESSION['user_id'] ?>');
+                const data = await resp.json();
+                if (!data.connected) {
+                    document.getElementById('wa-connection-alert').style.display = 'flex';
+                } else {
+                    document.getElementById('wa-connection-alert').style.display = 'none';
+                }
+            } catch(e) {}
+        }
+        checkDashboardWA();
+        setInterval(checkDashboardWA, 30000);
+        </script>
+        
         <!-- Support Area -->
         <div class="glass-panel" style="padding: 20px; margin-bottom:20px; border-left:4px solid var(--primary); background:linear-gradient(135deg, rgba(var(--primary-rgb), 0.05), transparent);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
