@@ -32,7 +32,7 @@
                 <div class="sidebar-header" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 20px 10px 30px;">
                     <?php if(!empty($site_settings['company_logo'])): ?>
                         <div class="brand-logo-wrapper sidebar-logo-box">
-                            <img src="<?= htmlspecialchars($site_settings['company_logo']) ?>" alt="Logo">
+                            <img src="<?= htmlspecialchars($site_settings['company_logo']) ?>" alt="Logo" loading="eager">
                         </div>
                     <?php else: ?>
                         <div style="background: var(--nav-active-bg); padding: 12px; border-radius: 12px; margin-bottom: 5px;">
@@ -309,173 +309,110 @@
     </div>
 
     <script>
-    /**
-     * 1. GLOBAL UI TOGGLES
-     * Attached to window for immediate accessibility from HTML onclick
-     */
+    /** UI TOGGLES */
     window.toggleSidebar = function() {
-        const sidebar = document.querySelector('.sidebar');
-        const overlay = document.getElementById('sidebarOverlay');
-        if (sidebar && overlay) {
-            sidebar.classList.toggle('active');
-            overlay.classList.toggle('active');
-            document.body.style.overflow = sidebar.classList.contains('active') ? 'hidden' : 'auto';
+        const s = document.querySelector('.sidebar'), o = document.getElementById('sidebarOverlay');
+        if (s && o) {
+            s.classList.toggle('active'); o.classList.toggle('active');
+            document.body.style.overflow = s.classList.contains('active') ? 'hidden' : 'auto';
+        }
+    };
+    window.toggleDropdown = (el) => el && el.parentElement && el.parentElement.classList.toggle('open');
+    window.toggleTheme = () => {
+        const h = document.documentElement;
+        if (h) {
+            const n = h.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            h.setAttribute('data-theme', n); localStorage.setItem('billing_theme', n);
         }
     };
 
-    window.toggleDropdown = function(el) {
-        if (el && el.parentElement) {
-            el.parentElement.classList.toggle('open');
-        }
-    };
-
-    window.toggleTheme = function() {
-        const html = document.documentElement;
-        if (html) {
-            const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-            html.setAttribute('data-theme', next);
-            localStorage.setItem('billing_theme', next);
-        }
-    };
-
-    /**
-     * 2. WHATSAPP GATEWAY CONNECTIVITY
-     */
+    /** WA GATEWAY */
     const WAGatewayCID = '<?= ($_SESSION["user_role"] === "admin") ? "admin" : "u_" . ($_SESSION["user_id"] ?? "guest") ?>';
     const WAApiProxy = 'wa_proxy.php?path=';
 
     async function checkWAStatus() {
-        // Only run on dashboard/authenticated pages
-        const isAuthPage = ['admin', 'partner', 'collector'].some(p => window.location.search.includes('page=' + p));
-        if (!isAuthPage) return;
-        
+        if (!['admin', 'partner', 'collector'].some(p => window.location.search.includes('page=' + p))) return;
         try {
-            const response = await fetch(WAApiProxy + 'status&cid=' + WAGatewayCID);
-            if (!response.ok) throw new Error('Proxy error');
-            const data = await response.json();
-            
-            // Update UI Badges
+            const r = await fetch(WAApiProxy + 'status&cid=' + WAGatewayCID);
+            const data = await r.json();
+            if (data.error) console.warn('WA Gateway Error:', data.debug || data.message);
             updateWAIndicators(data.connected);
-        } catch (e) {
-            console.warn('WA Status check skipped:', e.message);
-        }
+        } catch (e) { console.warn('WA Status check skipped'); }
     }
 
-    function updateWAIndicators(connected) {
-        const indicators = document.querySelectorAll('.wa-status-indicator');
-        const badges = document.querySelectorAll('.wa-status-sidebar-badge');
-        
-        const statusHtml = connected ? 
+    function updateWAIndicators(c) {
+        const statusHtml = c ? 
             '<span class="badge badge-success" style="background:rgba(16,185,129,0.1); color:#10b981; border:1px solid rgba(16,185,129,0.3); font-size:10px;"><i class="fas fa-link"></i> WA CONNECTED</span>' : 
             '<span class="status-badge" style="background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.2); padding:2px 8px; border-radius:10px; font-size:10px;"><i class="fas fa-times"></i> WA Disconnected</span>';
         
-        indicators.forEach(el => el.innerHTML = statusHtml);
-        badges.forEach(el => {
+        document.querySelectorAll('.wa-status-indicator').forEach(el => el.innerHTML = statusHtml);
+        document.querySelectorAll('.wa-status-sidebar-badge').forEach(el => {
             Object.assign(el.style, {
-                width: '8px', height: '8px', borderRadius: '50%', display: 'inline-block',
-                background: connected ? '#10b981' : '#ef4444',
-                boxShadow: connected ? '0 0 10px rgba(16,185,129,0.5)' : 'none'
+                width:'8px', height:'8px', borderRadius:'50%', display:'inline-block',
+                background: c ? '#10b981' : '#ef4444', boxShadow: c ? '0 0 10px rgba(16,185,129,0.5)' : 'none'
             });
         });
     }
 
     window.sendWAGateway = async function(phone, message, fallback, btn) {
         if (!btn) return;
-        const originalHtml = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        
+        const old = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         try {
-            const response = await fetch(WAApiProxy + 'send', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+            const r = await fetch(WAApiProxy + 'send', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ cid: WAGatewayCID, phone, message })
             });
-            const data = await response.json();
-            if (data.error) throw new Error(data.message);
-            
-            btn.style.color = '#10b981';
-            btn.innerHTML = '<i class="fas fa-check"></i>';
-            setTimeout(() => { Object.assign(btn, { innerHTML: originalHtml, style: { color: '' }, disabled: false }); }, 2000);
+            if ((await r.json()).error) throw new Error();
+            btn.style.color = '#10b981'; btn.innerHTML = '<i class="fas fa-check"></i>';
+            setTimeout(() => { Object.assign(btn, { innerHTML: old, style: { color: '' }, disabled: false }); }, 2000);
         } catch (e) {
-            console.error('Gateway failed, using fallback:', e);
-            window.open(fallback, '_blank');
-            Object.assign(btn, { innerHTML: originalHtml, disabled: false });
+            window.open(fallback, '_blank'); Object.assign(btn, { innerHTML: old, disabled: false });
         }
     };
 
-    /**
-     * 3. INITIALIZATION & SCROLL PERSISTENCE
-     */
+    /** INIT & PERSISTENCE */
     window.addEventListener('DOMContentLoaded', () => {
-        // Scroll restoration
-        const sidebar = document.querySelector('.sidebar');
-        const main = document.querySelector('.main-content');
-        if (sidebar && sessionStorage.getItem('sidebarScroll')) sidebar.scrollTop = sessionStorage.getItem('sidebarScroll');
-        
-        const lastUrl = sessionStorage.getItem('lastUrl');
-        if (lastUrl && new URL(lastUrl).searchParams.get('page') === new URL(window.location.href).searchParams.get('page')) {
-            if (main && sessionStorage.getItem('mainScroll')) main.scrollTop = sessionStorage.getItem('mainScroll');
+        const s = document.querySelector('.sidebar'), m = document.querySelector('.main-content');
+        if (s && sessionStorage.getItem('sidebarScroll')) s.scrollTop = sessionStorage.getItem('sidebarScroll');
+        const last = sessionStorage.getItem('lastUrl');
+        if (last && new URL(last).searchParams.get('page') === new URL(window.location.href).searchParams.get('page')) {
+            if (m && sessionStorage.getItem('mainScroll')) m.scrollTop = sessionStorage.getItem('mainScroll');
             if (sessionStorage.getItem('windowScroll')) window.scrollTo(0, sessionStorage.getItem('windowScroll'));
         }
-
-        // Global Toast Notifications
-        const params = new URLSearchParams(window.location.search);
-        if (['bulk_paid', 'paid'].includes(params.get('msg'))) {
-            showToast('Pembayaran Berhasil Diproses!');
+        const p = new URLSearchParams(window.location.search);
+        if (['bulk_paid', 'paid'].includes(p.get('msg'))) {
+            showToast('Pembayaran Berhasil!');
             window.history.replaceState({}, '', window.location.href.replace(/[&?]msg=(bulk_paid|paid)/, ''));
         }
-
-        // Start WA status loop
-        checkWAStatus();
-        setInterval(checkWAStatus, 30000);
+        let waInterval = null;
+        const startPoll = () => { if (!waInterval) { checkWAStatus(); waInterval = setInterval(checkWAStatus, 60000); } };
+        const stopPoll = () => { if (waInterval) { clearInterval(waInterval); waInterval = null; } };
+        document.addEventListener('visibilitychange', () => document.hidden ? stopPoll() : startPoll());
+        startPoll();
     });
 
     window.addEventListener('beforeunload', () => {
-        const sidebar = document.querySelector('.sidebar');
-        const main = document.querySelector('.main-content');
-        if (sidebar) sessionStorage.setItem('sidebarScroll', sidebar.scrollTop);
-        if (main) sessionStorage.setItem('mainScroll', main.scrollTop);
+        const s = document.querySelector('.sidebar'), m = document.querySelector('.main-content');
+        if (s) sessionStorage.setItem('sidebarScroll', s.scrollTop);
+        if (m) sessionStorage.setItem('mainScroll', m.scrollTop);
         sessionStorage.setItem('windowScroll', window.scrollY);
         sessionStorage.setItem('lastUrl', window.location.href);
     });
 
-    function showToast(text) {
-        const toast = document.createElement('div');
-        toast.style.cssText = `position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:#10b981; color:white; padding:12px 24px; border-radius:50px; font-weight:700; box-shadow:0 10px 25px rgba(16,185,129,0.3); z-index:10000; transition:all 0.3s ease; opacity:0;`;
-        toast.innerHTML = `<i class="fas fa-check-circle"></i> ${text}`;
-        document.body.appendChild(toast);
-        setTimeout(() => { toast.style.opacity = '1'; toast.style.transform = 'translate(-50%, 0)'; }, 10);
-        setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
+    function showToast(t) {
+        const el = document.createElement('div');
+        el.style.cssText = `position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:#10b981; color:white; padding:12px 24px; border-radius:50px; font-weight:700; box-shadow:0 10px 25px rgba(16,185,129,0.3); z-index:10000; transition:all 0.3s ease; opacity:0;`;
+        el.innerHTML = `<i class="fas fa-check-circle"></i> ${t}`;
+        document.body.appendChild(el);
+        setTimeout(() => { el.style.opacity = '1'; el.style.transform = 'translate(-50%, 0)'; }, 10);
+        setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 3000);
     }
 
-    /**
-     * 4. APP NAVIGATION HELPERS
-     */
-    window.toggleMobileMenu = function(e) {
-        if(e) e.preventDefault();
-        const overlay = document.getElementById('mobileMenuOverlay');
-        if(overlay) overlay.style.display = overlay.style.display === 'flex' ? 'none' : 'flex';
-    };
-    
-    window.closeMobileMenu = function() {
-        const overlay = document.getElementById('mobileMenuOverlay');
-        if(overlay) overlay.style.display = 'none';
-    };
-
-    window.openImagePreview = function(src) {
-        const modal = document.getElementById('globalImageModal');
-        const img = document.getElementById('modalImg');
-        if(modal && img) {
-            modal.style.display = 'flex'; img.src = src;
-            document.body.style.overflow = 'hidden';
-        }
-    };
-
-    window.closeImagePreview = function() {
-        const modal = document.getElementById('globalImageModal');
-        if(modal) { modal.style.display = 'none'; document.body.style.overflow = 'auto'; }
-    };
+    /** MODALS & HELPERS */
+    window.toggleMobileMenu = (e) => { if(e) e.preventDefault(); const o = document.getElementById('mobileMenuOverlay'); if(o) o.style.display = o.style.display === 'flex' ? 'none' : 'flex'; };
+    window.closeMobileMenu = () => { const o = document.getElementById('mobileMenuOverlay'); if(o) o.style.display = 'none'; };
+    window.openImagePreview = (src) => { const m = document.getElementById('globalImageModal'), i = document.getElementById('modalImg'); if(m && i) { m.style.display = 'flex'; i.src = src; document.body.style.overflow = 'hidden'; } };
+    window.closeImagePreview = () => { const m = document.getElementById('globalImageModal'); if(m) { m.style.display = 'none'; document.body.style.overflow = 'auto'; } };
     </script>
 </body>
 </html>
