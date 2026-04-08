@@ -199,30 +199,21 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
         $status_wa = ($tunggakan_val > 0) ? "LUNAS SEBAGIAN (Masih ada sisa tunggakan)" : "LUNAS SEPENUHNYA";
 
         $portal_link = $base_url . "/index.php?page=customer_portal&code=" . ($success_data['customer_code'] ?: $success_data['id']);
-        $receipt_msg = str_replace(
-            [
-                '{nama}', '{id_cust}', '{tagihan}', '{paket}', '{bulan}', '{tunggakan}', 
-                '{waktu_bayar}', '{admin}', '{link_tagihan}', '{rekening}', '{nominal}',
-                '{status_pembayaran}', '{sisa_tunggakan}', '{total_bayar}'
-            ], 
-            [
-                $success_data['name'], 
-                ($success_data['customer_code'] ?: $success_data['id']), 
-                'Rp ' . number_format($success_data['monthly_fee'], 0, ',', '.'), 
-                ($success_data['package_name'] ?: '-'), 
-                $months_paid . ' Bulan', 
-                $tunggakan_display, 
-                date('d/m/Y H:i'), 
-                $_SESSION['user_name'], 
-                $portal_link, 
-                $rekening_receipt, 
-                $total_display,
-                $status_wa,
-                $tunggakan_display,
-                $total_display
-            ], 
-            $wa_tpl_paid
-        );
+        $receipt_msg = parse_wa_template($wa_tpl_paid, [
+            'name' => $success_data['name'],
+            'id_cust' => ($success_data['customer_code'] ?: $success_data['id']),
+            'tagihan' => $success_data['monthly_fee'],
+            'package' => ($success_data['package_name'] ?: '-'),
+            'period' => $months_paid . ' Bulan',
+            'tunggakan' => $tunggakan_val,
+            'payment_time' => date('d/m/Y H:i') . ' WIB',
+            'admin_name' => $_SESSION['user_name'],
+            'portal_link' => $portal_link,
+            'rekening' => $rekening_receipt,
+            'total_paid' => $total_paid,
+            'payment_status' => $status_wa,
+            'sisa_tunggakan' => $tunggakan_val
+        ]);
         $success_data['wa_link'] = "https://api.whatsapp.com/send?phone=$wa_num_paid&text=" . urlencode($receipt_msg);
     }
 }
@@ -435,11 +426,17 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
                         $mon_label = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
                         $curr_month = $mon_label[intval(date('m')) - 1] . ' ' . date('Y');
                         $portal_link_rem = $base_url . "/index.php?page=customer_portal&code=" . ($ui['customer_code'] ?: $ui['cust_id']);
-                        $rem_msg = str_replace(
-                            ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{link_tagihan}'], 
-                            [$ui['name'], '*' . ($ui['customer_code'] ?: $ui['cust_id']) . '*', $ui['package_name'], $curr_month, '*Rp ' . number_format($ui['total_unpaid'], 0, ',', '.') . '*', '*' . date('d/m/Y', strtotime($ui['oldest_due_date'])) . '*', '*' . trim($settings['bank_account']) . '*', $portal_link_rem], 
-                            $wa_tpl
-                        );
+                        $rem_msg = parse_wa_template($wa_tpl, [
+                            'name' => $ui['name'],
+                            'id_cust' => ($ui['customer_code'] ?: $ui['cust_id']),
+                            'package' => $ui['package_name'],
+                            'period' => $curr_month,
+                            'tagihan' => $ui['total_unpaid'],
+                            'jatuh_tempo' => date('d/m/Y', strtotime($ui['oldest_due_date'])),
+                            'rekening' => trim($settings['bank_account']),
+                            'portal_link' => $portal_link_rem,
+                            'total_payment' => $ui['total_unpaid']
+                        ]);
                         $rem_wa_link = "https://api.whatsapp.com/send?phone=$wa_num&text=" . urlencode($rem_msg);
                     ?>
                     <button onclick="sendWAGateway('<?= $wa_num ?>', <?= htmlspecialchars(json_encode($rem_msg)) ?>, '<?= $rem_wa_link ?>', this)" class="btn" style="background:rgba(37, 211, 102, 0.1); color:#25D366; width:42px; height:42px; border-radius:12px; border:none; display:flex; align-items:center; justify-content:center; cursor:pointer;">

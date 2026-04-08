@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/app/init.php';
 
+
+
 $page = $_GET['page'] ?? 'home';
 
 // Handle Logout

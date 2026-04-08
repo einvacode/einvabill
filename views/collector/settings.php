@@ -95,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             <div style="background: rgba(var(--primary-rgb), 0.05); border-radius: 10px; padding: 15px; margin-top: 15px; border: 1px solid rgba(var(--primary-rgb), 0.1); display: flex; align-items: flex-start; gap: 10px;">
                 <i class="fas fa-info-circle text-primary" style="margin-top: 3px;"></i> 
-                <span style="font-size: 12px; color: var(--text-secondary); line-height: 1.5;">Placeholder: {nama}, {id_cust}, {paket}, {bulan}, {tagihan}, {jatuh_tempo}, {rekening}, {tunggakan}, {total_bayar}, {link_tagihan}</span>
+                <span style="font-size: 11px; color: var(--text-secondary); line-height: 1.5;">Variabel: {nama}, {id_cust}, {paket}, {bulan}, {tagihan}, {jatuh_tempo}, {rekening}, {tunggakan}, {total_harus}, {total_bayar}, {sisa_tunggakan}, {link_tagihan}, {admin}, {waktu_bayar}</span>
             </div>
         </div>
 

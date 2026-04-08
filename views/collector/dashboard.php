@@ -202,29 +202,21 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
         $status_wa = ($tunggakan_val > 0) ? "LUNAS SEBAGIAN (Masih ada sisa tunggakan)" : "LUNAS SEPENUHNYA";
         
         $portal_link = $base_url . "/index.php?page=customer_portal&code=" . ($success_data['customer_code'] ?: $success_data['id']);
-        $receipt_msg = str_replace(
-            [
-                '{nama}', '{id_cust}', '{tagihan}', '{paket}', '{bulan}', 
-                '{tunggakan}', '{waktu_bayar}', '{admin}', '{link_tagihan}', '{rekening}', '{nominal}', '{status_pembayaran}', '{sisa_tunggakan}', '{total_bayar}'
-            ], 
-            [
-                $success_data['name'], 
-                ($success_data['customer_code'] ?: $success_data['id']), 
-                ($success_data['package_name'] ?: '-'),
-                $months_paid . ' Bulan', 
-                'Rp ' . number_format($success_data['monthly_fee'], 0, ',', '.'),
-                $tunggakan_display,
-                date('d/m/Y H:i') . ' WIB',
-                $_SESSION['user_name'],
-                $portal_link,
-                trim($my_bank_info),
-                $total_display,
-                $status_wa,
-                $tunggakan_display,
-                $total_display
-            ], 
-            $wa_tpl_paid
-        );
+        $receipt_msg = parse_wa_template($wa_tpl_paid, [
+            'name' => $success_data['name'],
+            'id_cust' => ($success_data['customer_code'] ?: $success_data['id']),
+            'package' => ($success_data['package_name'] ?: '-'),
+            'period' => $months_paid . ' Bulan',
+            'tagihan' => $success_data['monthly_fee'],
+            'tunggakan' => $tunggakan_val,
+            'payment_time' => date('d/m/Y H:i') . ' WIB',
+            'admin_name' => $_SESSION['user_name'],
+            'portal_link' => $portal_link,
+            'rekening' => trim($my_bank_info),
+            'total_paid' => $total_paid,
+            'payment_status' => $status_wa,
+            'sisa_tunggakan' => $tunggakan_val
+        ]);
         $success_data['wa_link_msg'] = $receipt_msg;
         $success_data['wa_num'] = $wa_num_paid;
     }
@@ -570,29 +562,22 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
         $tunggakan_display = 'Rp ' . number_format($inv_data['total_tunggakan'], 0, ',', '.');
         $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . ($inv_data['customer_code'] ?: $inv_data['customer_id']);
         
-        $receipt_msg = str_replace(
-            [
-                '{nama}', '{id_cust}', '{tagihan}', '{paket}', '{bulan}', 
-                '{tunggakan}', '{waktu_bayar}', '{admin}', '{perusahaan}', '{link_tagihan}', '{status_pembayaran}', '{sisa_tunggakan}', '{total_bayar}', '{rekening}'
-            ], 
-            [
-                $inv_data['name'], 
-                ($inv_data['customer_code'] ?: $inv_data['customer_id']), 
-                'Rp ' . number_format($inv_data['monthly_fee'] ?: ($inv_data['amount']), 0, ',', '.'),
-                ($inv_data['package_name'] ?: '-'),
-                '1 Bulan',
-                $tunggakan_display,
-                date('d/m/Y H:i', strtotime($inv_data['payment_date'] ?: 'now')) . ' WIB',
-                $_SESSION['user_name'],
-                $settings['company_name'],
-                $portal_link,
-                $status_wa,
-                $tunggakan_display,
-                'Rp ' . number_format($inv_data['amount'], 0, ',', '.'),
-                $my_bank_info
-            ], 
-            $wa_tpl_paid
-        );
+        $receipt_msg = parse_wa_template($wa_tpl_paid, [
+            'name' => $inv_data['name'],
+            'id_cust' => ($inv_data['customer_code'] ?: $inv_data['customer_id']),
+            'tagihan' => ($inv_data['monthly_fee'] ?: ($inv_data['amount'])),
+            'package' => ($inv_data['package_name'] ?: '-'),
+            'period' => '1 Bulan',
+            'tunggakan' => $tunggakan_display,
+            'payment_time' => date('d/m/Y H:i', strtotime($inv_data['payment_date'] ?: 'now')) . ' WIB',
+            'admin_name' => $_SESSION['user_name'],
+            'company_name' => $settings['company_name'],
+            'portal_link' => $portal_link,
+            'payment_status' => $status_wa,
+            'sisa_tunggakan' => $tunggakan_display,
+            'total_paid' => $inv_data['amount'],
+            'rekening' => $my_bank_info
+        ]);
     $wa_msg = urlencode($receipt_msg);
 ?>
 

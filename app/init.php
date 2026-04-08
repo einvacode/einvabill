@@ -1,6 +1,8 @@
 <?php
 ob_start();
+require_once __DIR__ . '/helpers.php';
 error_reporting(E_ALL & ~E_NOTICE);
+
 ini_set('display_errors', 0);
 
 // --- UNIVERSAL STABLE SESSION ---

@@ -16,11 +16,19 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['id'])) {
         $me = $db->query("SELECT * FROM users WHERE id = " . $_SESSION['user_id'])->fetch();
         $wa_tpl_paid = !empty($me['wa_template_paid']) ? $me['wa_template_paid'] : ($settings['wa_template_paid'] ?: "Halo {nama}, pembayaran {tagihan} LUNAS. Cek nota: {link_tagihan}");
         
-        $receipt_msg = str_replace(
-            ['{nama}', '{id_cust}', '{tagihan}', '{paket}', '{bulan}', '{tunggakan}', '{waktu_bayar}', '{admin}', '{perusahaan}', '{link_tagihan}'], 
-            [$success_data['name'], ($success_data['customer_code'] ?: $success_data['id']), 'Rp ' . number_format($success_data['monthly_fee'], 0, ',', '.'), ($success_data['package_name'] ?: '-'), $months_paid, $tunggakan_display, date('d/m/Y H:i') . ' WIB', $_SESSION['user_name'], $settings['company_name'], $portal_link], 
-            $wa_tpl_paid
-        );
+        $receipt_msg = parse_wa_template($wa_tpl_paid, [
+            'name' => $success_data['name'],
+            'id_cust' => ($success_data['customer_code'] ?: $success_data['id']),
+            'tagihan' => $success_data['monthly_fee'],
+            'package' => ($success_data['package_name'] ?: '-'),
+            'period' => $months_paid . ' Bulan',
+            'tunggakan' => $tunggakan_val,
+            'payment_time' => date('d/m/Y H:i') . ' WIB',
+            'admin_name' => $_SESSION['user_name'],
+            'company_name' => $settings['company_name'],
+            'portal_link' => $portal_link,
+            'total_paid' => floatval($success_data['monthly_fee'] * $months_paid)
+        ]);
         $success_data['wa_link'] = "https://api.whatsapp.com/send?phone=$wa_num_paid&text=" . urlencode($receipt_msg);
     }
 }
@@ -1399,11 +1407,18 @@ document.addEventListener("DOMContentLoaded", () => {
                                                 $portal_link = $base_url_me . "/index.php?page=customer_portal&code=" . $cust_id_display;
                                                 
                                                 // Variable Replacement
-                                                $wa_msg = str_replace(
-                                                    ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{link_tagihan}'], 
-                                                    [$c['name'], '*' . $cust_id_display . '*', $c['package_name'], $inv_month, '*Rp ' . number_format($ui['amount'] - ($ui['discount'] ?? 0), 0, ',', '.') . '*', '*' . date('d/m/Y', strtotime($ui['due_date'])) . '*', '*' . trim($bank_acc_me) . '*', $portal_link], 
-                                                    $wa_tpl
-                                                );
+                                                $wa_msg = parse_wa_template($wa_tpl, [
+                                                    'name' => $c['name'],
+                                                    'id_cust' => $cust_id_display,
+                                                    'package' => $c['package_name'],
+                                                    'period' => $inv_month,
+                                                    'tagihan' => $ui['amount'] - ($ui['discount'] ?? 0),
+                                                    'jatuh_tempo' => date('d/m/Y', strtotime($ui['due_date'])),
+                                                    'rekening' => trim($bank_acc_me),
+                                                    'tunggakan' => $unpaid_total - ($ui['amount'] - ($ui['discount'] ?? 0)),
+                                                    'total_payment' => $unpaid_total,
+                                                    'portal_link' => $portal_link
+                                                ]);
                                                 $wa_fallback = "https://api.whatsapp.com/send?phone=$wa_raw&text=" . urlencode($wa_msg);
                                             ?>
                                             <button onclick="sendWAGateway('<?= $wa_raw ?>', <?= htmlspecialchars(json_encode($wa_msg)) ?>, '<?= $wa_fallback ?>', this)" class="btn btn-xs btn-ghost" style="color:#25D366;" title="Kirim Pengingat WA"><i class="fab fa-whatsapp"></i></button>

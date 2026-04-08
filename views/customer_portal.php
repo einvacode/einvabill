@@ -166,7 +166,7 @@ $active_banners = $db->query("SELECT * FROM banners WHERE is_active = 1 AND targ
                 $total_inv = count($invoices);
                 $lunas = array_filter($invoices, fn($i) => $i['status'] === 'Lunas');
                 $belum = array_filter($invoices, fn($i) => $i['status'] === 'Belum Lunas');
-                $total_belum = array_sum(array_column(array_values($belum), 'amount'));
+                $total_belum = array_sum(array_map(fn($i) => floatval($i['amount'] - ($i['discount'] ?? 0)), $belum));
             ?>
             <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:20px;">
                 <div class="glass-panel" style="padding:16px; text-align:center;">
@@ -200,7 +200,7 @@ $active_banners = $db->query("SELECT * FROM banners WHERE is_active = 1 AND targ
                         <div style="font-size:12px; color:var(--text-secondary);">Jatuh tempo: <?= date('d/m/Y', strtotime($inv['due_date'])) ?></div>
                     </div>
                     <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
-                        <div style="font-weight:700;">Rp <?= number_format($inv['amount'], 0, ',', '.') ?></div>
+                        <div style="font-weight:700;">Rp <?= number_format($inv['amount'] - ($inv['discount'] ?? 0), 0, ',', '.') ?></div>
                         <div style="display:flex; gap:6px;">
                             <?php if($inv['status'] === 'Lunas'): ?>
                                 <span class="badge badge-success" style="font-size:10px;"><i class="fas fa-check"></i> Lunas</span>

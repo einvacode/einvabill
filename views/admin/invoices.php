@@ -26,25 +26,21 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
         $status_wa = ($tunggakan_val > 0) ? "LUNAS SEBAGIAN" : "LUNAS SEPENUHNYA";
         
         $portal_link = $base_url . "/index.php?page=customer_portal&code=" . ($success_data['customer_code'] ?: $success_data['id']);
-        $receipt_msg = str_replace(
-            ['{nama}', '{id_cust}', '{tagihan}', '{paket}', '{bulan}', '{tunggakan}', '{waktu_bayar}', '{admin}', '{perusahaan}', '{link_tagihan}', '{status_pembayaran}', '{sisa_tunggakan}', '{total_bayar}'], 
-            [
-                $success_data['name'], 
-                ($success_data['customer_code'] ?: $success_data['id']), 
-                'Rp ' . number_format($success_data['monthly_fee'], 0, ',', '.'), 
-                ($success_data['package_name'] ?: '-'), 
-                $months_paid . ' Bulan', 
-                $tunggakan_display, 
-                date('d/m/Y H:i') . ' WIB', 
-                $_SESSION['user_name'], 
-                $settings['company_name'], 
-                $portal_link,
-                $status_wa,
-                $tunggakan_display,
-                $total_display
-            ], 
-            $wa_tpl_paid
-        );
+        $receipt_msg = parse_wa_template($wa_tpl_paid, [
+            'name' => $success_data['name'],
+            'id_cust' => ($success_data['customer_code'] ?: $success_data['id']),
+            'tagihan' => $success_data['monthly_fee'],
+            'package' => ($success_data['package_name'] ?: '-'),
+            'period' => $months_paid . ' Bulan',
+            'tunggakan' => $tunggakan_val,
+            'payment_time' => date('d/m/Y H:i') . ' WIB',
+            'admin_name' => $_SESSION['user_name'],
+            'company_name' => $settings['company_name'],
+            'portal_link' => $portal_link,
+            'payment_status' => $status_wa,
+            'sisa_tunggakan' => $tunggakan_val, // or should it be $tunggakan_val? In this context it is the same.
+            'total_paid' => $total_paid
+        ]);
         $success_data['wa_text'] = $receipt_msg;
         $success_data['wa_link'] = "https://api.whatsapp.com/send?phone=$wa_num_paid&text=" . urlencode($receipt_msg);
     }
@@ -709,26 +705,20 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                     }
                     $t_remain_display = $tunggakan_remain > 0 ? 'Rp ' . number_format($tunggakan_remain, 0, ',', '.') : 'LUNAS SELURUHNYA';
 
-                    $portal_link = $base_url . "/index.php?page=customer_portal&code=" . $cust_id_display;
-                    $msg = str_replace(
-                        ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{tunggakan}', '{admin}', '{link_tagihan}'], 
-                        [$inv['customer_name'], '*' . $cust_id_display . '*', $package_display, $inv_month, '*' . $nominal_display . '*', '*' . $t_remain_display . '*', '*' . $admin_bayar . '*', $portal_link], 
-                        $wa_tpl_paid
-                    );
-                    
-                    if(strpos($msg, '{tunggakan}') === false && strpos($msg, 'Tunggakan') === false) {
-                        $msg .= "\n*Sisa Tunggakan : $t_remain_display*";
-                    }
-                    
-                    // Final emphasis on LUNAS
-                    $msg = str_ireplace('LUNAS', '*LUNAS*', $msg);
-                    $msg = str_replace('**', '*', $msg); // Clean up potential double bolding
-
-                    if(strpos($msg, '{waktu_bayar}') !== false) {
-                        $msg = str_replace('{waktu_bayar}', '*' . $realtime_bayar . '*', $msg);
-                    } elseif(strpos($msg, 'Waktu Lunas') === false) {
-                        $msg .= "\n\n*Informasi Sistem:*\n- Waktu Lunas: *$realtime_bayar*\n- Petugas: *$admin_bayar*";
-                    }
+                    $msg = parse_wa_template($wa_tpl_paid, [
+                        'name' => $inv['customer_name'],
+                        'id_cust' => $cust_id_display,
+                        'package' => $package_display,
+                        'period' => $inv_month,
+                        'tagihan' => $inv['amount'],
+                        'tunggakan' => $tunggakan_remain,
+                        'admin_name' => $admin_bayar,
+                        'portal_link' => $portal_link,
+                        'payment_time' => $realtime_bayar,
+                        'total_paid' => $inv['amount'], // or whatever was paid
+                        'sisa_tunggakan' => $tunggakan_remain,
+                        'status_pembayaran' => 'LUNAS'
+                    ]);
                 } else {
                     // Calculate previous arrears
                     $tunggakan_prev = 0;
@@ -740,21 +730,18 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                     $total_harus = $inv['amount'] + $tunggakan_prev;
                     $total_harus_display = 'Rp ' . number_format($total_harus, 0, ',', '.');
 
-                    $portal_link = $base_url . "/index.php?page=customer_portal&code=" . $cust_id_display;
-                    $msg = str_replace(
-                        ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{tunggakan}', '{total_harus}', '{link_tagihan}'], 
-                        [$inv['customer_name'], '*' . $cust_id_display . '*', $package_display, $inv_month, '*' . $nominal_display . '*', '*' . date('d/m/Y', strtotime($inv['due_date'])) . '*', '*' . trim($settings['bank_account']) . '*', '*' . $t_prev_display . '*', '*' . $total_harus_display . '*', $portal_link], 
-                        $wa_tpl
-                    );
-
-                    // Add breakdown if not in template
-                    if(strpos($msg, '{total_harus}') === false && strpos($msg, 'TOTAL') === false) {
-                        $msg .= "\n\n*Rincian:*";
-                        $msg .= "\n- Tagihan: $nominal_display";
-                        if($tunggakan_prev > 0) $msg .= "\n- Tunggakan: $t_prev_display";
-                        $msg .= "\n-------------------";
-                        $msg .= "\n*TOTAL: $total_harus_display*";
-                    }
+                    $msg = parse_wa_template($wa_tpl, [
+                        'name' => $inv['customer_name'],
+                        'id_cust' => $cust_id_display,
+                        'package' => $package_display,
+                        'period' => $inv_month,
+                        'tagihan' => $inv['amount'],
+                        'due_date' => date('d/m/Y', strtotime($inv['due_date'])),
+                        'rekening' => trim($settings['bank_account']),
+                        'tunggakan' => $tunggakan_prev,
+                        'total_payment' => $total_harus,
+                        'portal_link' => $portal_link
+                    ]);
                 }
                 $wa_text = urlencode($msg);
             ?>
