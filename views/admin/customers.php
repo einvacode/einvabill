@@ -430,12 +430,23 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $where_type = "";
     if ($filter_type) $where_type = " AND type = " . $db->quote($filter_type);
     
+    // Auto-scope for Collector based on their assigned area
+    $assigned_area = "";
+    if ($_SESSION['user_role'] === 'collector') {
+        $assigned_area = $db->query("SELECT area FROM users WHERE id = " . intval($_SESSION['user_id']))->fetchColumn();
+    }
+    
     $where_collector = "";
+    // If Admin selects a specific collector, filter by that collector's area
     if ($filter_collector) {
         $coll_area = $db->query("SELECT area FROM users WHERE id = " . intval($filter_collector))->fetchColumn();
         if ($coll_area && trim($coll_area) != '') {
             $where_collector = " AND area = " . $db->quote(trim($coll_area));
         }
+    } 
+    // If no specific collector is filtered but the user is a collector, lock to their assigned area
+    elseif (!empty($assigned_area)) {
+        $where_collector = " AND area = " . $db->quote(trim($assigned_area));
     }
 
     $where_search = "";
