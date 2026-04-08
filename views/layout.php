@@ -459,7 +459,7 @@
     }
 
     // Global WhatsApp Gateway Send Function
-    async function sendWAGateway(phone, message, waLink, btn) {
+    async function sendWAGateway(phone, message, fallback, btn) {
         const cid = WAGatewayCID; // Use the global CID
         const endpoint = `/waapi/send?cid=${cid}`;
         

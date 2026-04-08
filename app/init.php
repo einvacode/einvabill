@@ -1,11 +1,24 @@
 <?php
-// Secure & Mobile-Compatible Session Settings
+// --- SECURE & STABLE SESSION MANAGEMENT ---
+$session_path = __DIR__ . '/sessions';
+if (!is_dir($session_path)) {
+    mkdir($session_path, 0777, true);
+}
+
+// Optimization for Linux/Proxmox: Use local project folder for sessions
+ini_set('session.save_path', $session_path);
+ini_set('session.gc_maxlifetime', 86400); // 24 Hours
+ini_set('session.cookie_lifetime', 86400); // 24 Hours
 ini_set('session.cookie_httponly', 1);
 ini_set('session.use_only_cookies', 1);
-ini_set('session.cookie_samesite', 'Lax'); 
 
-// Set session name to avoid conflicts
-session_name('EINVABILL_SESS');
+// Auto-detect secure cookie (HTTPS only if available)
+$is_secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443);
+ini_set('session.cookie_secure', $is_secure ? 1 : 0);
+ini_set('session.cookie_samesite', 'Lax');
+
+// Set session name to avoid conflicts with other apps
+session_name('EINVABILL_PRO_SESS');
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
