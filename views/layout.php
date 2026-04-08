@@ -257,6 +257,42 @@
         }
     }
 
+    // Scroll Persistence Script
+    window.addEventListener('beforeunload', () => {
+        const sidebar = document.querySelector('.sidebar');
+        const mainContent = document.querySelector('.main-content');
+        if (sidebar) sessionStorage.setItem('sidebarScroll', sidebar.scrollTop);
+        if (mainContent) sessionStorage.setItem('mainScroll', mainContent.scrollTop);
+        sessionStorage.setItem('windowScroll', window.scrollY);
+        sessionStorage.setItem('lastUrl', window.location.href);
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+        const sidebar = document.querySelector('.sidebar');
+        const mainContent = document.querySelector('.main-content');
+        const savedSidebar = sessionStorage.getItem('sidebarScroll');
+        const savedMain = sessionStorage.getItem('mainScroll');
+        const savedWindow = sessionStorage.getItem('windowScroll');
+        const lastUrl = sessionStorage.getItem('lastUrl');
+
+        if (sidebar && savedSidebar) sidebar.scrollTop = savedSidebar;
+
+        // Restore main content & window scroll only if we stay on the same base page (page param matches)
+        if (lastUrl) {
+            const currentUrl = window.location.href;
+            const getPage = (url) => {
+                try {
+                    return new URL(url).searchParams.get('page');
+                } catch(e) { return null; }
+            };
+            
+            if (getPage(lastUrl) === getPage(currentUrl)) {
+                if (mainContent && savedMain) mainContent.scrollTop = savedMain;
+                if (savedWindow) window.scrollTo(0, savedWindow);
+            }
+        }
+    });
+
     function toggleTheme() {
         const html = document.documentElement;
         const current = html.getAttribute('data-theme');
