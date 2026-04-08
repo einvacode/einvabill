@@ -787,17 +787,17 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
             </div>
             <div style="display:flex; gap:10px; margin-top:15px;" onclick="event.stopPropagation();">
                 <?php if($ac['unpaid_count'] > 0): ?>
-                <button class="btn btn-sm" style="background:#25D366; color:white; font-weight:800; border-radius:10px; padding:0 15px; height:42px; display:flex; align-items:center; gap:8px;" onclick="handlePay(<?= $ac['id'] ?>, <?= $ac['unpaid_count'] ?>, '<?= addslashes($ac['name']) ?>', <?= $ac['monthly_fee'] ?>)">
+                <button class="btn btn-sm" style="background:#25D366; color:white; font-weight:800; border-radius:10px; padding:0 15px; height:42px; display:flex; align-items:center; gap:8px;" onclick="handlePay(<?= $ac['id'] ?>, <?= $ac['unpaid_count'] ?>, '<?= addslashes($ac['name']) ?>', <?= $ac['monthly_fee'] ?>); event.stopPropagation();">
                     <i class="fas fa-wallet"></i> BAYAR
                 </button>
                 <?php endif; ?>
-                <button class="btn btn-sm" style="background:var(--warning); color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0;" onclick="showCreateInvoice(<?= $ac['id'] ?>, '<?= addslashes($ac['name']) ?>', <?= $ac['monthly_fee'] ?>)" title="Buat Tagihan Manual">
+                <button class="btn btn-sm" style="background:var(--warning); color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0;" onclick="showCreateInvoice(<?= $ac['id'] ?>, '<?= addslashes($ac['name']) ?>', <?= $ac['monthly_fee'] ?>); event.stopPropagation();" title="Buat Tagihan Manual">
                     <i class="fas fa-file-invoice-dollar" style="font-size:16px;"></i>
                 </button>
-                <button class="btn btn-sm btn-ghost" style="width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; border:1px solid var(--glass-border);" onclick="showUpdateContact(<?= $ac['id'] ?>, '<?= addslashes($ac['name']) ?>', '<?= htmlspecialchars($ac['contact'] ?: '') ?>')" title="Ubah Nama/Nomor Telepon">
+                <button class="btn btn-sm btn-ghost" style="width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; border:1px solid var(--glass-border);" onclick="showUpdateContact(<?= $ac['id'] ?>, '<?= addslashes($ac['name']) ?>', '<?= htmlspecialchars($ac['contact'] ?: '') ?>'); event.stopPropagation();" title="Ubah Nama/Nomor Telepon">
                     <i class="fas fa-edit" style="font-size:16px;"></i>
                 </button>
-                <button class="btn btn-sm" style="background:#d97706; color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; box-shadow:0 4px 10px rgba(217, 119, 6, 0.2);" onclick="showCustomerDetails(<?= $ac['id'] ?>); setTimeout(() => openAddonModal(), 500);" title="Tambah Add-on">
+                <button class="btn btn-sm" style="background:#d97706; color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; box-shadow:0 4px 10px rgba(217, 119, 6, 0.2);" onclick="showCustomerDetails(<?= $ac['id'] ?>); setTimeout(() => openAddonModal(), 500); event.stopPropagation();" title="Tambah Add-on">
                     <i class="fas fa-plus-circle" style="font-size:18px;"></i>
                 </button>
                 <?php if($wa_num): 
@@ -811,10 +811,10 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                     );
                     $rem_wa_link = "https://api.whatsapp.com/send?phone=$wa_num&text=" . urlencode($rem_msg);
                 ?>
-                <button onclick="sendWAGateway('<?= $wa_num ?>', <?= htmlspecialchars(json_encode($rem_msg)) ?>, '<?= $rem_wa_link ?>', this)" class="btn btn-sm" style="background:#25D366; color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; border:none; cursor:pointer;" title="WhatsApp Reminder">
+                <button onclick="sendWAGateway('<?= $wa_num ?>', <?= htmlspecialchars(json_encode($rem_msg)) ?>, '<?= $rem_wa_link ?>', this); event.stopPropagation();" class="btn btn-sm" style="background:#25D366; color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; border:none; cursor:pointer;" title="WhatsApp Reminder">
                     <i class="fab fa-whatsapp" style="font-size:18px;"></i>
                 </button>
-                <a href="tel:<?= htmlspecialchars($ac['contact']) ?>" class="btn btn-sm btn-ghost" style="width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; border:1px solid var(--glass-border);" title="Telepon">
+                <a href="tel:<?= htmlspecialchars($ac['contact']) ?>" class="btn btn-sm btn-ghost" style="width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; border:1px solid var(--glass-border);" title="Telepon" onclick="event.stopPropagation();">
                     <i class="fas fa-phone" style="font-size:16px;"></i>
                 </a>
                 <?php endif; ?>
@@ -881,7 +881,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                                 );
                                 $rem_wa_link = "https://api.whatsapp.com/send?phone=$wa_num&text=" . urlencode($rem_msg);
                             ?>
-                                <button onclick="sendWAGateway('<?= $wa_num ?>', <?= htmlspecialchars(json_encode($rem_msg)) ?>, '<?= $rem_wa_link ?>', this)" class="btn btn-sm" style="background:#25D366; color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; box-shadow:0 4px 10px rgba(37, 211, 102, 0.2); border:none; cursor:pointer;" title="Kirim Pesan Tagihan">
+                                <button onclick="sendWAGateway('<?= $wa_num ?>', <?= htmlspecialchars(json_encode($rem_msg)) ?>, '<?= $rem_wa_link ?>', this); event.stopPropagation();" class="btn btn-sm" style="background:#25D366; color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; box-shadow:0 4px 10px rgba(37, 211, 102, 0.2); border:none; cursor:pointer;" title="Kirim Pesan Tagihan">
                                     <i class="fab fa-whatsapp" style="font-size:18px;"></i>
                                 </button>
                             <?php endif; ?>
@@ -987,7 +987,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                                     );
                                     $rem_wa_link_t = "https://api.whatsapp.com/send?phone=$wa_num_t&text=" . urlencode($rem_msg_t);
                                 ?>
-                                <button onclick="sendWAGateway('<?= $wa_num_t ?>', <?= htmlspecialchars(json_encode($rem_msg_t)) ?>, '<?= $rem_wa_link_t ?>', this)" class="btn btn-sm" style="background:#25D366; color:white; width:34px; height:34px; display:flex; align-items:center; justify-content:center; border-radius:8px; padding:0; border:none; cursor:pointer;" title="WhatsApp Reminder">
+                                <button onclick="sendWAGateway('<?= $wa_num_t ?>', <?= htmlspecialchars(json_encode($rem_msg_t)) ?>, '<?= $rem_wa_link_t ?>', this); event.stopPropagation();" class="btn btn-sm" style="background:#25D366; color:white; width:34px; height:34px; display:flex; align-items:center; justify-content:center; border-radius:8px; padding:0; border:none; cursor:pointer;" title="WhatsApp Reminder">
                                     <i class="fab fa-whatsapp" style="font-size:16px;"></i>
                                 </button>
                                 <a href="tel:<?= htmlspecialchars($ui['contact']) ?>" class="btn btn-sm btn-ghost" style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; border-radius:8px; padding:0; border:1px solid var(--glass-border);" title="Telepon">
@@ -1023,16 +1023,16 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
             </div>
             
             <div style="display:flex; gap:10px; margin-top:15px;" onclick="event.stopPropagation();">
-                <button class="btn btn-sm" style="background:#25D366; color:white; font-weight:800; border-radius:10px; padding:0 15px; height:42px; display:flex; align-items:center; gap:8px;" onclick="handlePay(<?= $ui['cust_id'] ?>, <?= $ui['num_arrears'] ?>, '<?= addslashes($ui['name']) ?>', <?= ($ui['total_unpaid'] / $ui['num_arrears']) ?>)">
+                <button class="btn btn-sm" style="background:#25D366; color:white; font-weight:800; border-radius:10px; padding:0 15px; height:42px; display:flex; align-items:center; gap:8px;" onclick="handlePay(<?= $ui['cust_id'] ?>, <?= $ui['num_arrears'] ?>, '<?= addslashes($ui['name']) ?>', <?= ($ui['total_unpaid'] / $ui['num_arrears']) ?>); event.stopPropagation();">
                     <i class="fas fa-wallet"></i> BAYAR
                 </button>
-                <button class="btn btn-sm" style="background:var(--warning); color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0;" onclick="showCreateInvoice(<?= $ui['cust_id'] ?>, '<?= addslashes($ui['name']) ?>', <?= ($ui['total_unpaid'] / $ui['num_arrears']) ?>)" title="Buat Tagihan Manual">
+                <button class="btn btn-sm" style="background:var(--warning); color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0;" onclick="showCreateInvoice(<?= $ui['cust_id'] ?>, '<?= addslashes($ui['name']) ?>', <?= ($ui['total_unpaid'] / $ui['num_arrears']) ?>); event.stopPropagation();" title="Buat Tagihan Manual">
                     <i class="fas fa-file-invoice-dollar" style="font-size:16px;"></i>
                 </button>
-                <button class="btn btn-sm btn-ghost" style="width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; border:1px solid var(--glass-border);" onclick="showUpdateContact(<?= $ui['cust_id'] ?>, '<?= addslashes($ui['name']) ?>', '<?= htmlspecialchars($ui['contact'] ?: '') ?>')" title="Ubah Nama/Nomor Telepon">
+                <button class="btn btn-sm btn-ghost" style="width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; border:1px solid var(--glass-border);" onclick="showUpdateContact(<?= $ui['cust_id'] ?>, '<?= addslashes($ui['name']) ?>', '<?= htmlspecialchars($ui['contact'] ?: '') ?>'); event.stopPropagation();" title="Ubah Nama/Nomor Telepon">
                     <i class="fas fa-edit" style="font-size:16px;"></i>
                 </button>
-                <button class="btn btn-sm" style="background:#d97706; color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; box-shadow:0 4px 10px rgba(217, 119, 6, 0.2);" onclick="showCustomerDetails(<?= $ui['cust_id'] ?>); setTimeout(() => openAddonModal(), 500);" title="Tambah Add-on">
+                <button class="btn btn-sm" style="background:#d97706; color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; box-shadow:0 4px 10px rgba(217, 119, 6, 0.2);" onclick="showCustomerDetails(<?= $ui['cust_id'] ?>); setTimeout(() => openAddonModal(), 500); event.stopPropagation();" title="Tambah Add-on">
                     <i class="fas fa-plus-circle" style="font-size:18px;"></i>
                 </button>
                 <?php if($wa_num_t): 
@@ -1047,10 +1047,10 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                     );
                     $rem_wa_link_t = "https://api.whatsapp.com/send?phone=$wa_num_t&text=" . urlencode($rem_msg_t);
                 ?>
-                <button onclick="sendWAGateway('<?= $wa_num_t ?>', <?= htmlspecialchars(json_encode($rem_msg_t)) ?>, '<?= $rem_wa_link_t ?>', this)" class="btn btn-sm" style="background:#25D366; color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; border:none; cursor:pointer;" title="WhatsApp Reminder">
+                <button onclick="sendWAGateway('<?= $wa_num_t ?>', <?= htmlspecialchars(json_encode($rem_msg_t)) ?>, '<?= $rem_wa_link_t ?>', this); event.stopPropagation();" class="btn btn-sm" style="background:#25D366; color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; border:none; cursor:pointer;" title="WhatsApp Reminder">
                     <i class="fab fa-whatsapp" style="font-size:18px;"></i>
                 </button>
-                <a href="tel:<?= htmlspecialchars($ui['contact']) ?>" class="btn btn-sm btn-ghost" style="width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; border:1px solid var(--glass-border);" title="Telepon">
+                <a href="tel:<?= htmlspecialchars($ui['contact']) ?>" class="btn btn-sm btn-ghost" style="width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; border:1px solid var(--glass-border);" title="Telepon" onclick="event.stopPropagation();">
                     <i class="fas fa-phone" style="font-size:16px;"></i>
                 </a>
                 <?php endif; ?>
