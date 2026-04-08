@@ -293,33 +293,36 @@ if ($action === 'import_file' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset(
     if (!empty($file) && is_uploaded_file($file)) {
         $handle = fopen($file, "r");
         
-        // Detect delimiter
         $firstLine = fgets($handle);
-        // Better delimiter detection: check count of each common delimiter
         $delimiters = [',', ';', "\t"];
-        $delimiter = ',';
-        $maxCount = 0;
+        $delimiter = ','; $maxCount = 0;
         foreach ($delimiters as $d) {
             $count = substr_count($firstLine, $d);
-            if ($count > $maxCount) {
-                $maxCount = $count;
-                $delimiter = $d;
-            }
+            if ($count > $maxCount) { $maxCount = $count; $delimiter = $d; }
         }
         rewind($handle);
 
         $pending = [];
+        $mapping = null;
+        $isFirst = true;
 
         while (($row = fgetcsv($handle, 1000, $delimiter)) !== FALSE) {
-            if (empty($row) || count($row) < 5) continue;
-            // Clean BOM from first element if present
+            if (empty($row) || count($row) < 3) continue;
             $row[0] = preg_replace('/^\xEF\xBB\xBF/', '', $row[0]);
             
-            if (trim($row[1] ?? '') == '' || strtolower(trim($row[1] ?? '')) == 'nama pelanggan') continue;
+            if ($isFirst) {
+                // Try to detect mapping from header
+                $mapping = detectImportMapping($row);
+                $isFirst = false;
+                if ($mapping) continue; // Skip header row if identified
+            }
+
+            if (trim($row[$mapping['name'] ?? 1] ?? '') == '') continue;
             $pending[] = $row;
         }
         fclose($handle);
         $_SESSION['pending_import'] = $pending;
+        $_SESSION['pending_mapping'] = $mapping;
         header("Location: index.php?page=admin_customers&action=import_preview");
         exit;
     }
@@ -329,25 +332,55 @@ if ($action === 'import_paste' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = $_POST['paste_data'];
     $lines = explode("\n", trim($data));
     $pending = [];
+    $mapping = null;
+    $isFirst = true;
     
     foreach ($lines as $line) {
         if (trim($line) === '') continue;
         $row = explode("\t", trim($line)); 
-        if (count($row) < 9) $row = explode(";", trim($line));
-        if (count($row) < 9) $row = str_getcsv(trim($line));
+        if (count($row) < 5) $row = explode(";", trim($line));
+        if (count($row) < 5) $row = str_getcsv(trim($line));
 
-        if (count($row) >= 5) {
-            if (trim($row[1] ?? '') == '' || strtolower(trim($row[1] ?? '')) == 'nama pelanggan') continue;
+        if (count($row) >= 3) {
+            if ($isFirst) {
+                $mapping = detectImportMapping($row);
+                $isFirst = false;
+                if ($mapping) continue;
+            }
+            if (trim($row[$mapping['name'] ?? 1] ?? '') == '') continue;
             $pending[] = $row;
         }
     }
     $_SESSION['pending_import'] = $pending;
+    $_SESSION['pending_mapping'] = $mapping;
     header("Location: index.php?page=admin_customers&action=import_preview");
     exit;
 }
 
+// Helper to detect column mapping from a row
+function detectImportMapping($row) {
+    $map = ['type' => 0, 'name' => 1, 'address' => 2, 'contact' => 3, 'package' => 4, 'fee' => 5, 'ip' => 6, 'reg_date' => 7, 'bill_date' => 8, 'area' => 9];
+    $found = false;
+    foreach ($row as $idx => $val) {
+        $val = strtolower(trim($val));
+        if (empty($val)) continue;
+        if (strpos($val, 'tipe') !== false || strpos($val, 'type') !== false) { $map['type'] = $idx; $found = true; }
+        if (strpos($val, 'nama') !== false || strpos($val, 'name') !== false || strpos($val, 'pelanggan') !== false) { $map['name'] = $idx; $found = true; }
+        if (strpos($val, 'alamat') !== false || strpos($val, 'address') !== false) { $map['address'] = $idx; $found = true; }
+        if (strpos($val, 'kontak') !== false || strpos($val, 'wa') !== false || strpos($val, 'whatsapp') !== false || strpos($val, 'phone') !== false || strpos($val, 'hp') !== false) { $map['contact'] = $idx; $found = true; }
+        if (strpos($val, 'paket') !== false || strpos($val, 'package') !== false) { $map['package'] = $idx; $found = true; }
+        if (strpos($val, 'biaya') !== false || strpos($val, 'fee') !== false || strpos($val, 'harga') !== false || strpos($val, 'tarif') !== false) { $map['fee'] = $idx; $found = true; }
+        if (strpos($val, 'ip') !== false) { $map['ip'] = $idx; $found = true; }
+        if (strpos($val, 'registrasi') !== false || strpos($val, 'daftar') !== false) { $map['reg_date'] = $idx; $found = true; }
+        if (strpos($val, 'tagihan') !== false || strpos($val, 'billing') !== false || strpos($val, 'tempo') !== false) { $map['bill_date'] = $idx; $found = true; }
+        if (strpos($val, 'area') !== false || strpos($val, 'wilayah') !== false || strpos($val, 'lokasi') !== false) { $map['area'] = $idx; $found = true; }
+    }
+    return $found ? $map : null;
+}
+
 if ($action === 'import_confirm' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $pending = $_SESSION['pending_import'] ?? [];
+    $map = $_SESSION['pending_mapping'] ?? ['type' => 0, 'name' => 1, 'address' => 2, 'contact' => 3, 'package' => 4, 'fee' => 5, 'ip' => 6, 'reg_date' => 7, 'bill_date' => 8, 'area' => 9];
     if (empty($pending)) { header("Location: index.php?page=admin_customers"); exit; }
 
     $stmt = $db->prepare("INSERT INTO customers (name, address, contact, package_name, monthly_fee, ip_address, type, registration_date, billing_date, area, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
@@ -356,8 +389,11 @@ if ($action === 'import_confirm' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $u_id_import = $_SESSION['user_id'];
 
     foreach ($pending as $row) {
-        $pkg_name = trim($row[4] ?? '');
-        $pkg_fee = (float)preg_replace('/[^0-9]/', '', $row[5] ?? 0);
+        $name = trim($row[$map['name']] ?? '');
+        if (empty($name)) continue;
+
+        $pkg_name = trim($row[$map['package']] ?? 'Standar');
+        $pkg_fee = (float)preg_replace('/[^0-9]/', '', $row[$map['fee']] ?? 0);
 
         // Smart Sync: Package
         if (!empty($pkg_name)) {
@@ -369,7 +405,7 @@ if ($action === 'import_confirm' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Smart Sync: Area
-        $cust_area = isset($row[9]) ? trim($row[9]) : '';
+        $cust_area = isset($row[$map['area']]) ? trim($row[$map['area']]) : '';
         if (!empty($cust_area)) {
             $area_exist = $db->prepare("SELECT id FROM areas WHERE name = ?");
             $area_exist->execute([$cust_area]);
@@ -379,9 +415,9 @@ if ($action === 'import_confirm' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $stmt->execute([
-            trim($row[1]), trim($row[2]), trim($row[3]), $pkg_name, $pkg_fee,
-            trim($row[6] ?? ''), strtolower(trim($row[0] ?? '')) == 'partner' ? 'partner' : 'customer', 
-            trim($row[7] ?? date('Y-m-d')), (int)trim($row[8] ?? 1), $cust_area, $u_id_import
+            $name, trim($row[$map['address']] ?? ''), trim($row[$map['contact']] ?? ''), $pkg_name, $pkg_fee,
+            trim($row[$map['ip']] ?? ''), strtolower(trim($row[$map['type']] ?? '')) == 'partner' ? 'partner' : 'customer', 
+            trim($row[$map['reg_date']] ?? date('Y-m-d')), (int)trim($row[$map['bill_date']] ?? 1), $cust_area, $u_id_import
         ]);
         $count++;
         
@@ -394,6 +430,7 @@ if ($action === 'import_confirm' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     unset($_SESSION['pending_import']);
+    unset($_SESSION['pending_mapping']);
     header("Location: index.php?page=admin_customers&msg=import_success&count=" . $count);
     exit;
 }
@@ -1383,49 +1420,59 @@ document.addEventListener("DOMContentLoaded", () => {
 
 <?php elseif ($action === 'import_preview'): 
     $pending = $_SESSION['pending_import'] ?? [];
+    $map = $_SESSION['pending_mapping'] ?? ['type' => 0, 'name' => 1, 'address' => 2, 'contact' => 3, 'package' => 4, 'fee' => 5, 'ip' => 6, 'reg_date' => 7, 'bill_date' => 8, 'area' => 9];
+    $hasMapping = isset($_SESSION['pending_mapping']);
 ?>
-<div class="glass-panel" style="padding: 24px; max-width:1000px; margin:0 auto;">
+<div class="glass-panel" style="padding: 24px; max-width:1100px; margin:0 auto;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-        <h3 style="margin:0;"><i class="fas fa-eye text-primary"></i> Preview Import</h3>
-        <div class="badge badge-info" style="font-size:14px; padding:6px 12px;"><?= count($pending) ?> Calon Data Terdeteksi</div>
+        <h3 style="margin:0;"><i class="fas fa-eye text-primary"></i> Preview & Verifikasi Kolom</h3>
+        <div class="badge badge-info" style="font-size:14px; padding:6px 12px;"><?= count($pending) ?> Calon Pelanggan</div>
     </div>
 
-    <div style="background:rgba(var(--primary-rgb), 0.05); padding:15px; border-radius:12px; margin-bottom:20px; font-size:13px; color:var(--text-secondary); border-left:4px solid var(--primary);">
-        <i class="fas fa-info-circle"></i> Mohon tinjau kecocokan kolom di bawah ini. Jika tabel terlihat berantakan atau kolom tidak pas, silakan batalkan dan periksa format file Anda.
-    </div>
+    <?php if ($hasMapping): ?>
+        <div class="glass-panel" style="background:rgba(34,197,94,0.05); border:1px dashed var(--success); padding:15px; margin-bottom:20px; font-size:13px;">
+            <i class="fas fa-magic text-success"></i> <strong>Sistem Mendeteksi Judul Kolom (Header)!</strong><br>
+            Data akan diproses berdasarkan nama kolom yang ditemukan, bukan berdasarkan urutan template standar.
+        </div>
+    <?php else: ?>
+        <div class="glass-panel" style="background:rgba(245,158,11,0.05); border:1px dashed #f59e0b; padding:15px; margin-bottom:20px; font-size:13px;">
+            <i class="fas fa-exclamation-triangle text-warning"></i> <strong>Judul Kolom Tidak Ditemukan!</strong><br>
+            Sistem akan menggunakan urutan template standar EinvaBill. Pastikan data Anda sudah berurutan dengan benar.
+        </div>
+    <?php endif; ?>
 
-    <div class="table-container" style="max-height: 500px; overflow-y:auto; border:1px solid var(--glass-border);">
-        <table style="width:100%; font-size:12px;">
-            <thead style="position:sticky; top:0; background:var(--bg-color); z-index:10;">
+    <div class="table-container" style="max-height: 500px; overflow-y:auto; border:1px solid var(--glass-border); border-radius:12px;">
+        <table style="width:100%; font-size:11px; border-collapse: collapse;">
+            <thead style="position:sticky; top:0; background:var(--bg-color); z-index:10; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
                 <tr>
-                    <th>Tipe</th>
-                    <th>Nama</th>
-                    <th>Alamat</th>
-                    <th>WhatsApp</th>
-                    <th>Paket</th>
-                    <th>Biaya</th>
-                    <th>IP Address</th>
-                    <th>Tgl Registrasi</th>
-                    <th>Tgl Tagihan</th>
-                    <th>Area</th>
+                    <th style="padding:12px; border-bottom:2px solid var(--primary);"><div style="color:var(--text-secondary); font-size:9px; margin-bottom:4px;">Kolom <?= $map['type']+1 ?></div>Tipe</th>
+                    <th style="padding:12px; border-bottom:2px solid var(--primary);"><div style="color:var(--text-secondary); font-size:9px; margin-bottom:4px;">Kolom <?= $map['name']+1 ?></div>Nama</th>
+                    <th style="padding:12px; border-bottom:2px solid var(--primary);"><div style="color:var(--text-secondary); font-size:9px; margin-bottom:4px;">Kolom <?= $map['address']+1 ?></div>Alamat</th>
+                    <th style="padding:12px; border-bottom:2px solid var(--primary);"><div style="color:var(--text-secondary); font-size:9px; margin-bottom:4px;">Kolom <?= $map['contact']+1 ?></div>WhatsApp</th>
+                    <th style="padding:12px; border-bottom:2px solid var(--primary);"><div style="color:var(--text-secondary); font-size:9px; margin-bottom:4px;">Kolom <?= $map['package']+1 ?></div>Paket</th>
+                    <th style="padding:12px; border-bottom:2px solid var(--primary);"><div style="color:var(--text-secondary); font-size:9px; margin-bottom:4px;">Kolom <?= $map['fee']+1 ?></div>Biaya</th>
+                    <th style="padding:12px; border-bottom:2px solid var(--primary);"><div style="color:var(--text-secondary); font-size:9px; margin-bottom:4px;">Kolom <?= $map['ip']+1 ?></div>IP Address</th>
+                    <th style="padding:12px; border-bottom:2px solid var(--primary);"><div style="color:var(--text-secondary); font-size:9px; margin-bottom:4px;">Kolom <?= $map['reg_date']+1 ?></div>Tgl Daftar</th>
+                    <th style="padding:12px; border-bottom:2px solid var(--primary);"><div style="color:var(--text-secondary); font-size:9px; margin-bottom:4px;">Kolom <?= $map['bill_date']+1 ?></div>Jatuh Tempo</th>
+                    <th style="padding:12px; border-bottom:2px solid var(--primary);"><div style="color:var(--text-secondary); font-size:9px; margin-bottom:4px;">Kolom <?= $map['area']+1 ?></div>Area</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if(empty($pending)): ?>
-                    <tr><td colspan="10" style="text-align:center; padding:50px;">Tidak ada data yang terdeteksi. Pastikan file tidak kosong.</td></tr>
+                    <tr><td colspan="10" style="text-align:center; padding:50px;">Tidak ada data yang terdeteksi.</td></tr>
                 <?php else: ?>
                     <?php foreach($pending as $row): ?>
                     <tr>
-                        <td style="font-weight:700; color:var(--primary);"><?= htmlspecialchars($row[0] ?? '-') ?></td>
-                        <td style="font-weight:700;"><?= htmlspecialchars($row[1] ?? '-') ?></td>
-                        <td><?= htmlspecialchars($row[2] ?? '-') ?></td>
-                        <td style="font-family:monospace;"><?= htmlspecialchars($row[3] ?? '-') ?></td>
-                        <td><?= htmlspecialchars($row[4] ?? '-') ?></td>
-                        <td style="font-weight:700;">Rp <?= number_format(floatval(preg_replace('/[^0-9]/', '', $row[5] ?? 0)), 0, ',', '.') ?></td>
-                        <td style="font-family:monospace;"><?= htmlspecialchars($row[6] ?? '-') ?></td>
-                        <td><?= htmlspecialchars($row[7] ?? '-') ?></td>
-                        <td style="text-align:center;"><?= htmlspecialchars($row[8] ?? '-') ?></td>
-                        <td style="font-weight:600;"><?= htmlspecialchars($row[9] ?? '-') ?></td>
+                        <td style="padding:10px; border-bottom:1px solid var(--glass-border); text-align:center;"><span class="badge badge-sm"><?= htmlspecialchars($row[$map['type']] ?? '-') ?></span></td>
+                        <td style="padding:10px; border-bottom:1px solid var(--glass-border); font-weight:700;"><?= htmlspecialchars($row[$map['name']] ?? '-') ?></td>
+                        <td style="padding:10px; border-bottom:1px solid var(--glass-border);"><?= htmlspecialchars($row[$map['address']] ?? '-') ?></td>
+                        <td style="padding:10px; border-bottom:1px solid var(--glass-border); font-family:monospace;"><?= htmlspecialchars($row[$map['contact']] ?? '-') ?></td>
+                        <td style="padding:10px; border-bottom:1px solid var(--glass-border);"><?= htmlspecialchars($row[$map['package']] ?? '-') ?></td>
+                        <td style="padding:10px; border-bottom:1px solid var(--glass-border); font-weight:700; color:var(--success);">Rp <?= number_format(floatval(preg_replace('/[^0-9]/', '', $row[$map['fee']] ?? 0)), 0, ',', '.') ?></td>
+                        <td style="padding:10px; border-bottom:1px solid var(--glass-border); font-family:monospace;"><?= htmlspecialchars($row[$map['ip']] ?? '-') ?></td>
+                        <td style="padding:10px; border-bottom:1px solid var(--glass-border);"><?= htmlspecialchars($row[$map['reg_date']] ?? '-') ?></td>
+                        <td style="padding:10px; border-bottom:1px solid var(--glass-border); text-align:center;"><?= htmlspecialchars($row[$map['bill_date']] ?? '-') ?></td>
+                        <td style="padding:10px; border-bottom:1px solid var(--glass-border);"><?= htmlspecialchars($row[$map['area']] ?? '-') ?></td>
                     </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -1439,8 +1486,8 @@ document.addEventListener("DOMContentLoaded", () => {
         </form>
         <?php if(!empty($pending)): ?>
             <form action="index.php?page=admin_customers&action=import_confirm" method="POST">
-                <button type="submit" class="btn btn-primary" style="background:var(--success); border-color:var(--success); color:white; padding:12px 30px;">
-                    <i class="fas fa-check"></i> Konfirmasi & Impor Sekarang
+                <button type="submit" class="btn btn-primary" style="background:var(--success); border-color:var(--success); color:white; padding:12px 40px; font-weight:700;">
+                    <i class="fas fa-check"></i> Sudah Sesuai, Impor Sekarang
                 </button>
             </form>
         <?php endif; ?>
