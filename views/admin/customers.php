@@ -295,56 +295,32 @@ if ($action === 'import_file' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset(
         
         // Detect delimiter
         $firstLine = fgets($handle);
-        $delimiter = (strpos($firstLine, ';') !== false) ? ';' : ',';
+        // Better delimiter detection: check count of each common delimiter
+        $delimiters = [',', ';', "\t"];
+        $delimiter = ',';
+        $maxCount = 0;
+        foreach ($delimiters as $d) {
+            $count = substr_count($firstLine, $d);
+            if ($count > $maxCount) {
+                $maxCount = $count;
+                $delimiter = $d;
+            }
+        }
         rewind($handle);
 
-        $stmt = $db->prepare("INSERT INTO customers (name, address, contact, package_name, monthly_fee, ip_address, type, registration_date, billing_date, area, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt_chk = $db->prepare("SELECT COUNT(*) FROM customers WHERE customer_code = ?");
-        $count = 0;
-        $u_id_import = $_SESSION['user_id'];
+        $pending = [];
 
         while (($row = fgetcsv($handle, 1000, $delimiter)) !== FALSE) {
             if (empty($row) || count($row) < 5) continue;
-            if (trim($row[1]) == '' || strtolower(trim($row[1])) == 'nama pelanggan') continue;
-
-            $pkg_name = trim($row[4]);
-            $pkg_fee = (float)preg_replace('/[^0-9]/', '', $row[5] ?? 0);
-
-            // Smart Sync: Package
-            if (!empty($pkg_name)) {
-                $pkg_exist = $db->prepare("SELECT id FROM packages WHERE name = ?");
-                $pkg_exist->execute([$pkg_name]);
-                if (!$pkg_exist->fetch()) {
-                    $db->prepare("INSERT INTO packages (name, fee) VALUES (?, ?)")->execute([$pkg_name, $pkg_fee]);
-                }
-            }
-
-            // Smart Sync: Area
-            $cust_area = isset($row[9]) ? trim($row[9]) : '';
-            if (!empty($cust_area)) {
-                $area_exist = $db->prepare("SELECT id FROM areas WHERE name = ?");
-                $area_exist->execute([$cust_area]);
-                if (!$area_exist->fetch()) {
-                    $db->prepare("INSERT INTO areas (name) VALUES (?)")->execute([$cust_area]);
-                }
-            }
-
-            $stmt->execute([
-                trim($row[1]), trim($row[2]), trim($row[3]), $pkg_name, $pkg_fee,
-                trim($row[6] ?? ''), strtolower(trim($row[0])) == 'partner' ? 'partner' : 'customer', 
-                trim($row[7] ?? date('Y-m-d')), (int)trim($row[8] ?? 1), $cust_area, $u_id_import
-            ]);
-            $count++;
+            // Clean BOM from first element if present
+            $row[0] = preg_replace('/^\xEF\xBB\xBF/', '', $row[0]);
             
-            $imp_id = $db->lastInsertId();
-            do {
-                $imp_code = 'CUST-' . str_pad(mt_rand(100000, 999999), 6, '0', STR_PAD_LEFT);
-                $stmt_chk->execute([$imp_code]);
-            } while ($stmt_chk->fetchColumn() > 0);
-            $db->prepare("UPDATE customers SET customer_code = ? WHERE id = ?")->execute([$imp_code, $imp_id]);
+            if (trim($row[1] ?? '') == '' || strtolower(trim($row[1] ?? '')) == 'nama pelanggan') continue;
+            $pending[] = $row;
         }
         fclose($handle);
-        header("Location: index.php?page=admin_customers&msg=import_success&count=" . $count);
+        $_SESSION['pending_import'] = $pending;
+        header("Location: index.php?page=admin_customers&action=import_preview");
         exit;
     }
 }
@@ -352,9 +328,7 @@ if ($action === 'import_file' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset(
 if ($action === 'import_paste' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = $_POST['paste_data'];
     $lines = explode("\n", trim($data));
-    $u_id_import = $_SESSION['user_id'];
-    $stmt = $db->prepare("INSERT INTO customers (name, address, contact, package_name, monthly_fee, ip_address, type, registration_date, billing_date, area, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $count = 0;
+    $pending = [];
     
     foreach ($lines as $line) {
         if (trim($line) === '') continue;
@@ -362,47 +336,71 @@ if ($action === 'import_paste' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         if (count($row) < 9) $row = explode(";", trim($line));
         if (count($row) < 9) $row = str_getcsv(trim($line));
 
-        if (count($row) >= 9) {
-            if (trim($row[1]) == '' || strtolower(trim($row[1])) == 'nama pelanggan') continue;
-            
-            $pkg_name = trim($row[4]);
-            $pkg_fee = (float)preg_replace('/[^0-9]/', '', $row[5]);
-
-            // Smart Sync: Check/Create Package
-            if (!empty($pkg_name)) {
-                $pkg_exist = $db->prepare("SELECT id FROM packages WHERE name = ?");
-                $pkg_exist->execute([$pkg_name]);
-                if (!$pkg_exist->fetch()) {
-                    $db->prepare("INSERT INTO packages (name, fee) VALUES (?, ?)")->execute([$pkg_name, $pkg_fee]);
-                }
-            }
-
-            $cust_area = isset($row[9]) ? trim($row[9]) : '';
-            // Smart Sync: Check/Create Area
-            if (!empty($cust_area)) {
-                $area_exist = $db->prepare("SELECT id FROM areas WHERE name = ?");
-                $area_exist->execute([$cust_area]);
-                if (!$area_exist->fetch()) {
-                    $db->prepare("INSERT INTO areas (name) VALUES (?)")->execute([$cust_area]);
-                }
-            }
-
-            $stmt->execute([
-                trim($row[1]), trim($row[2]), trim($row[3]), $pkg_name, $pkg_fee,
-                trim($row[6]), strtolower(trim($row[0])) == 'partner' ? 'partner' : 'customer', trim($row[7]), (int)trim($row[8]), $cust_area, $u_id_import
-            ]);
-            $count++;
-            
-            $imp_id = $db->lastInsertId();
-            $stmt_chk = $db->prepare("SELECT COUNT(*) FROM customers WHERE customer_code = ?");
-            do {
-                $imp_code = 'CUST-' . str_pad(mt_rand(100000, 999999), 6, '0', STR_PAD_LEFT);
-                $stmt_chk->execute([$imp_code]);
-            } while ($stmt_chk->fetchColumn() > 0);
-            $db->prepare("UPDATE customers SET customer_code = ? WHERE id = ?")->execute([$imp_code, $imp_id]);
+        if (count($row) >= 5) {
+            if (trim($row[1] ?? '') == '' || strtolower(trim($row[1] ?? '')) == 'nama pelanggan') continue;
+            $pending[] = $row;
         }
     }
+    $_SESSION['pending_import'] = $pending;
+    header("Location: index.php?page=admin_customers&action=import_preview");
+    exit;
+}
+
+if ($action === 'import_confirm' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $pending = $_SESSION['pending_import'] ?? [];
+    if (empty($pending)) { header("Location: index.php?page=admin_customers"); exit; }
+
+    $stmt = $db->prepare("INSERT INTO customers (name, address, contact, package_name, monthly_fee, ip_address, type, registration_date, billing_date, area, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt_chk = $db->prepare("SELECT COUNT(*) FROM customers WHERE customer_code = ?");
+    $count = 0;
+    $u_id_import = $_SESSION['user_id'];
+
+    foreach ($pending as $row) {
+        $pkg_name = trim($row[4] ?? '');
+        $pkg_fee = (float)preg_replace('/[^0-9]/', '', $row[5] ?? 0);
+
+        // Smart Sync: Package
+        if (!empty($pkg_name)) {
+            $pkg_exist = $db->prepare("SELECT id FROM packages WHERE name = ?");
+            $pkg_exist->execute([$pkg_name]);
+            if (!$pkg_exist->fetch()) {
+                $db->prepare("INSERT INTO packages (name, fee) VALUES (?, ?)")->execute([$pkg_name, $pkg_fee]);
+            }
+        }
+
+        // Smart Sync: Area
+        $cust_area = isset($row[9]) ? trim($row[9]) : '';
+        if (!empty($cust_area)) {
+            $area_exist = $db->prepare("SELECT id FROM areas WHERE name = ?");
+            $area_exist->execute([$cust_area]);
+            if (!$area_exist->fetch()) {
+                $db->prepare("INSERT INTO areas (name) VALUES (?)")->execute([$cust_area]);
+            }
+        }
+
+        $stmt->execute([
+            trim($row[1]), trim($row[2]), trim($row[3]), $pkg_name, $pkg_fee,
+            trim($row[6] ?? ''), strtolower(trim($row[0] ?? '')) == 'partner' ? 'partner' : 'customer', 
+            trim($row[7] ?? date('Y-m-d')), (int)trim($row[8] ?? 1), $cust_area, $u_id_import
+        ]);
+        $count++;
+        
+        $imp_id = $db->lastInsertId();
+        do {
+            $imp_code = 'CUST-' . str_pad(mt_rand(100000, 999999), 6, '0', STR_PAD_LEFT);
+            $stmt_chk->execute([$imp_code]);
+        } while ($stmt_chk->fetchColumn() > 0);
+        $db->prepare("UPDATE customers SET customer_code = ? WHERE id = ?")->execute([$imp_code, $imp_id]);
+    }
+    
+    unset($_SESSION['pending_import']);
     header("Location: index.php?page=admin_customers&msg=import_success&count=" . $count);
+    exit;
+}
+
+if ($action === 'import_cancel') {
+    unset($_SESSION['pending_import']);
+    header("Location: index.php?page=admin_customers&action=import_view");
     exit;
 }
 
@@ -1382,6 +1380,72 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 </script>
+
+<?php elseif ($action === 'import_preview'): 
+    $pending = $_SESSION['pending_import'] ?? [];
+?>
+<div class="glass-panel" style="padding: 24px; max-width:1000px; margin:0 auto;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h3 style="margin:0;"><i class="fas fa-eye text-primary"></i> Preview Import</h3>
+        <div class="badge badge-info" style="font-size:14px; padding:6px 12px;"><?= count($pending) ?> Calon Data Terdeteksi</div>
+    </div>
+
+    <div style="background:rgba(var(--primary-rgb), 0.05); padding:15px; border-radius:12px; margin-bottom:20px; font-size:13px; color:var(--text-secondary); border-left:4px solid var(--primary);">
+        <i class="fas fa-info-circle"></i> Mohon tinjau kecocokan kolom di bawah ini. Jika tabel terlihat berantakan atau kolom tidak pas, silakan batalkan dan periksa format file Anda.
+    </div>
+
+    <div class="table-container" style="max-height: 500px; overflow-y:auto; border:1px solid var(--glass-border);">
+        <table style="width:100%; font-size:12px;">
+            <thead style="position:sticky; top:0; background:var(--bg-color); z-index:10;">
+                <tr>
+                    <th>Tipe</th>
+                    <th>Nama</th>
+                    <th>Alamat</th>
+                    <th>WhatsApp</th>
+                    <th>Paket</th>
+                    <th>Biaya</th>
+                    <th>IP Address</th>
+                    <th>Tgl Registrasi</th>
+                    <th>Tgl Tagihan</th>
+                    <th>Area</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if(empty($pending)): ?>
+                    <tr><td colspan="10" style="text-align:center; padding:50px;">Tidak ada data yang terdeteksi. Pastikan file tidak kosong.</td></tr>
+                <?php else: ?>
+                    <?php foreach($pending as $row): ?>
+                    <tr>
+                        <td style="font-weight:700; color:var(--primary);"><?= htmlspecialchars($row[0] ?? '-') ?></td>
+                        <td style="font-weight:700;"><?= htmlspecialchars($row[1] ?? '-') ?></td>
+                        <td><?= htmlspecialchars($row[2] ?? '-') ?></td>
+                        <td style="font-family:monospace;"><?= htmlspecialchars($row[3] ?? '-') ?></td>
+                        <td><?= htmlspecialchars($row[4] ?? '-') ?></td>
+                        <td style="font-weight:700;">Rp <?= number_format(floatval(preg_replace('/[^0-9]/', '', $row[5] ?? 0)), 0, ',', '.') ?></td>
+                        <td style="font-family:monospace;"><?= htmlspecialchars($row[6] ?? '-') ?></td>
+                        <td><?= htmlspecialchars($row[7] ?? '-') ?></td>
+                        <td style="text-align:center;"><?= htmlspecialchars($row[8] ?? '-') ?></td>
+                        <td style="font-weight:600;"><?= htmlspecialchars($row[9] ?? '-') ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:30px; padding-top:20px; border-top:1px solid var(--glass-border);">
+        <form action="index.php?page=admin_customers&action=import_cancel" method="POST">
+            <button type="submit" class="btn btn-ghost">Batalkan</button>
+        </form>
+        <?php if(!empty($pending)): ?>
+            <form action="index.php?page=admin_customers&action=import_confirm" method="POST">
+                <button type="submit" class="btn btn-primary" style="background:var(--success); border-color:var(--success); color:white; padding:12px 30px;">
+                    <i class="fas fa-check"></i> Konfirmasi & Impor Sekarang
+                </button>
+            </form>
+        <?php endif; ?>
+    </div>
+</div>
 
 <?php elseif ($action === 'details'): 
     $id = intval($_GET['id']);
