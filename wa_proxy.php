@@ -3,6 +3,10 @@
  * WhatsApp Gateway PHP Proxy
  * Bridges the gap between browser and Node.js server to avoid CORS/HTTPS issues.
  */
+// Prevent caching of status checks
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Cache-Control: post-check=0, pre-check=0', false);
+header('Pragma: no-cache');
 header('Content-Type: application/json');
 
 $method = $_SERVER['REQUEST_METHOD'];
