@@ -7,6 +7,19 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Global States
+let lastQR = null;
+let isReady = false;
+let logs = [];
+
+// Logger Function
+function addLog(msg) {
+    const timestamp = new Date().toLocaleString('id-ID');
+    logs.unshift({ timestamp, msg });
+    if (logs.length > 50) logs.pop();
+    console.log(`[${timestamp}] ${msg}`);
+}
+
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
@@ -22,21 +35,11 @@ const client = new Client({
     }
 });
 
-let qrCodeData = '';
-let isConnected = false;
-
+// WhatsApp Events
 client.on('qr', (qr) => {
-    qrCodeData = qr;
-    console.log('QR Code generated. Please fetch from API to scan.');
-});
-
-client.on('ready', () => {
-    console.log('WhatsApp Gateway is Ready!');
-    isConnected = true;
-    qrCodeData = '';
     lastQR = qr;
     isReady = false;
-    addLog('QR Code diperbarui, menunggu scan...');
+    addLog('QR Code diperbarui, silakan scan...');
 });
 
 client.on('authenticated', () => {
@@ -52,10 +55,13 @@ client.on('ready', () => {
 client.on('disconnected', (reason) => {
     isReady = false;
     addLog(`WhatsApp Terputus: ${reason}`);
+    // Delay re-init to avoid loop on network down
+    setTimeout(() => client.initialize(), 5000);
 });
 
 client.initialize();
 
+// API Endpoints
 app.get('/status', (req, res) => {
     res.json({ 
         connected: isReady, 
@@ -74,47 +80,47 @@ app.get('/logs', (req, res) => {
 
 app.post('/send', async (req, res) => {
     const { phone, message } = req.body;
+    
     if (!isReady) {
         addLog(`Gagal mengirim ke ${phone}: Gateway belum siap`);
         return res.status(400).json({ error: true, message: 'Gateway belum siap' });
     }
 
     if (!phone || !message) {
-        return res.status(400).json({ error: true, message: 'Phone and message body are required.' });
+        return res.status(400).json({ error: true, message: 'Nomor dan pesan wajib diisi' });
     }
-
-    // Sanitize phone number (strip spaces/symbols)
-    let formattedPhone = phone.replace(/[^0-9]/g, '');
-    
-    // Auto convert prefix 0 to 62
-    if (formattedPhone.startsWith('0')) {
-        formattedPhone = '62' + formattedPhone.slice(1);
-    }
-    // Append WA domain
-    const target = formattedPhone + '@c.us';
 
     try {
+        // Sanitize & Format
+        let formattedPhone = phone.replace(/[^0-9]/g, '');
+        if (formattedPhone.startsWith('0')) {
+            formattedPhone = '62' + formattedPhone.slice(1);
+        }
+        const target = formattedPhone + '@c.us';
+
         await client.sendMessage(target, message);
-        res.json({ error: false, message: 'Message sent successfully.' });
+        addLog(`Pesan berhasil dikirim ke: ${formattedPhone}`);
+        res.json({ error: false, message: 'Pesan terkirim' });
     } catch (err) {
-        res.status(500).json({ error: true, message: 'Failed to send message: ' + err.toString() });
+        addLog(`Error mengirim ke ${phone}: ${err.message}`);
+        res.status(500).json({ error: true, message: 'Gagal mengirim: ' + err.message });
     }
 });
 
 app.post('/logout', async (req, res) => {
     try {
         await client.logout();
-        isConnected = false;
-        qrCodeData = '';
-        res.json({ error: false, message: 'Logged out successfully.' });
-        // Re-initialize to get a new QR
+        isReady = false;
+        lastQR = null;
+        addLog('Sesi diputus manual oleh admin');
+        res.json({ error: false, message: 'Logged out' });
         client.initialize();
     } catch (err) {
-        res.status(500).json({ error: true, message: 'Failed to logout: ' + err.toString() });
+        res.status(500).json({ error: true, message: 'Gagal logout: ' + err.message });
     }
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`WhatsApp API Gateway is running on http://0.0.0.0:${PORT}`);
+    addLog(`Server Gateway berjalan di http://0.0.0.0:${PORT}`);
 });
