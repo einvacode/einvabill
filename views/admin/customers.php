@@ -36,15 +36,15 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['id'])) {
 <?php endif; ?>
 <?php
 // Fetch all packages for dropdowns (Scoped)
-$u_id = $_SESSION['user_id'];
-$u_role = $_SESSION['user_role'] ?? 'admin';
-$scope_where = ($u_role === 'admin') ? " AND (created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL) " : " AND (created_by = $u_id) ";
-$pkg_scope = ($u_role === 'admin') ? "WHERE created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL" : "WHERE created_by = $u_id";
+    $u_id = $_SESSION['user_id'];
+    $u_role = $_SESSION['user_role'] ?? 'admin';
+    $scope_where = ($u_role === 'admin' || $u_role === 'collector') ? " AND (created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL) " : " AND (created_by = $u_id) ";
+$pkg_scope = ($u_role === 'admin' || $u_role === 'collector') ? "WHERE created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL" : "WHERE created_by = $u_id";
 $packages_all = $db->query("SELECT * FROM packages $pkg_scope ORDER BY name ASC")->fetchAll();
 $packages_json = json_encode($packages_all);
 
 // Fetch all areas for dropdowns (Scoped: Hidden for Partner)
-$areas_all = ($u_role === 'admin') ? $db->query("SELECT * FROM areas ORDER BY name ASC")->fetchAll() : [];
+$areas_all = ($u_role === 'admin' || $u_role === 'collector') ? $db->query("SELECT * FROM areas ORDER BY name ASC")->fetchAll() : [];
 
 if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = $_POST['name'];
@@ -137,7 +137,7 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $u_id = $_SESSION['user_id'];
     $u_role = $_SESSION['user_role'];
     $check = $db->query("SELECT created_by FROM customers WHERE id = $id")->fetchColumn();
-    $is_owner = ($u_role === 'admin') ? ($check == $u_id || $check == 0 || $check === NULL) : ($check == $u_id);
+    $is_owner = ($u_role === 'admin' || $u_role === 'collector') ? ($check == $u_id || $check == 0 || $check === NULL) : ($check == $u_id);
     
     if (!$is_owner) {
         header("Location: index.php?page=admin_customers&msg=forbidden");
@@ -247,7 +247,7 @@ if ($action === 'export') {
     $u_id = $_SESSION['user_id'];
     $u_role = $_SESSION['user_role'];
     $scope_where_exp = " AND (created_by = $u_id) ";
-    if ($u_role === 'admin') {
+    if ($u_role === 'admin' || $u_role === 'collector') {
         $scope_where_exp = " AND (created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL) ";
     }
 
@@ -460,7 +460,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $u_id = $_SESSION['user_id'];
     $u_role = $_SESSION['user_role'];
     $scope_where = " AND (created_by = $u_id) ";
-    if ($u_role === 'admin') {
+    if ($u_role === 'admin' || $u_role === 'collector') {
         $scope_where = " AND (created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL) ";
     }
 

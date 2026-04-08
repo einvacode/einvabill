@@ -441,7 +441,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
     $view_mode = $_GET['view_mode'] ?? 'customers'; 
 
     // Scoping Logic for Invoices
-    if ($u_role === 'admin') {
+    if ($u_role === 'admin' || $u_role === 'collector') {
         $scope_where = " AND (c.created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR c.created_by = 0 OR c.created_by IS NULL) ";
     } elseif ($u_role === 'partner') {
         $partner_cid = $db->query("SELECT customer_id FROM users WHERE id = $u_id")->fetchColumn() ?: 0;
@@ -452,8 +452,6 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
             // View ONLY own customers
             $scope_where = " AND c.created_by = $u_id";
         }
-    } elseif ($u_role === 'collector') {
-        $scope_where = " AND c.collector_id = $u_id";
     }
 
     $collectors = $db->query("SELECT id, name FROM users WHERE role = 'collector' ORDER BY name ASC")->fetchAll();
