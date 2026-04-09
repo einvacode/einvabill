@@ -46,6 +46,23 @@ if ($action === 'delete') {
     exit;
 }
 
+if ($action === 'bulk_delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $ids = $_POST['ids'] ?? [];
+    if (!empty($ids)) {
+        $id_placeholders = implode(',', array_fill(0, count($ids), '?'));
+        // Ownership Check & Filter
+        $scope_cond = ($u_role === 'admin') ? "(created_by = ? OR created_by = 0 OR created_by IS NULL)" : "created_by = ?";
+        $stmt = $db->prepare("DELETE FROM packages WHERE id IN ($id_placeholders) AND $scope_cond");
+        $params = array_merge($ids, [$u_id]);
+        $stmt->execute($params);
+        
+        header("Location: index.php?page=admin_packages&msg=bulk_deleted");
+        exit;
+    }
+    header("Location: index.php?page=admin_packages");
+    exit;
+}
+
 if ($action === 'sync_all') {
     // Ownership Check
     $packages = $db->query("SELECT name, fee FROM packages WHERE created_by = $u_id OR created_by = 0 OR created_by IS NULL")->fetchAll();
@@ -72,19 +89,28 @@ if ($action === 'sync_all') {
 </div>
 <?php endif; ?>
 
+<?php if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_deleted'): ?>
+<div class="glass-panel" style="margin-bottom:20px; border-left:4px solid var(--danger); padding:15px; background:rgba(239,68,68,0.1); color:var(--danger); display:flex; align-items:center; gap:10px;">
+    <i class="fas fa-trash-alt"></i> Berhasil menghapus paket yang dipilih.
+</div>
+<?php endif; ?>
+
 <div class="glass-panel" style="padding: 24px;">
     <div style="display:flex; justify-content:space-between; margin-bottom:20px; align-items:center;">
         <h3 style="font-size:20px;"><i class="fas fa-box text-primary"></i> Manajemen Paket Internet</h3>
         <div style="display:flex; gap:10px;">
+            <button id="btnBulkDelete" onclick="submitBulkDelete()" class="btn btn-danger btn-sm" style="display:none;"><i class="fas fa-trash"></i> Hapus Masal (<span id="selectedCount">0</span>)</button>
             <a href="index.php?page=admin_packages&action=sync_all" class="btn btn-ghost btn-sm" onclick="return confirm('Sinkronkan SEMUA harga pelanggan dengan harga paket terbaru?')" title="Selaraskan Semua Harga"><i class="fas fa-sync"></i> Sync Semua</a>
             <button onclick="document.getElementById('addPackageModal').style.display='flex'" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Tambah Paket</button>
         </div>
     </div>
 
     <div class="table-container">
+        <form id="bulkDeleteForm" action="index.php?page=admin_packages&action=bulk_delete" method="POST">
         <table>
             <thead>
                 <tr>
+                    <th style="width:40px; text-align:center;"><input type="checkbox" id="checkAll" style="transform:scale(1.2); cursor:pointer;"></th>
                     <th>Nama Paket</th>
                     <th>Biaya Bulanan</th>
                     <th>Tanggal Dibuat</th>
@@ -98,22 +124,26 @@ if ($action === 'sync_all') {
                 foreach($packages as $p):
                 ?>
                 <tr>
+                    <td style="text-align:center;">
+                        <input type="checkbox" name="ids[]" value="<?= $p['id'] ?>" class="package-checkbox" style="transform:scale(1.2); cursor:pointer;">
+                    </td>
                     <td style="font-weight:600;"><?= htmlspecialchars($p['name']) ?></td>
                     <td style="font-weight:bold; color:var(--primary);">Rp <?= number_format($p['fee'], 0, ',', '.') ?></td>
                     <td style="font-size:12px; color:var(--text-secondary);"><?= date('d M Y', strtotime($p['created_at'])) ?></td>
                     <td>
                         <div style="display:flex; gap:8px;">
-                            <button onclick="editPackage(<?= $p['id'] ?>, '<?= addslashes($p['name']) ?>', <?= $p['fee'] ?>)" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></button>
+                            <button type="button" onclick="editPackage(<?= $p['id'] ?>, '<?= addslashes($p['name']) ?>', <?= $p['fee'] ?>)" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></button>
                             <a href="index.php?page=admin_packages&action=delete&id=<?= $p['id'] ?>" onclick="return confirm('Hapus paket ini?')" class="btn btn-sm btn-danger" title="Hapus"><i class="fas fa-trash"></i></a>
                         </div>
                     </td>
                 </tr>
                 <?php endforeach; ?>
                 <?php if(count($packages) == 0): ?>
-                    <tr><td colspan="4" style="text-align:center; padding:30px;">Belum ada paket. Klik "Tambah Paket" untuk memulai.</td></tr>
+                    <tr><td colspan="5" style="text-align:center; padding:30px;">Belum ada paket. Klik "Tambah Paket" untuk memulai.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>
+        </form>
     </div>
 </div>
 
@@ -168,6 +198,33 @@ function editPackage(id, name, fee) {
     document.getElementById('editPkgId').value = id;
     document.getElementById('editPkgName').value = name;
     document.getElementById('editPkgFee').value = fee;
+    document.getElementById('editPkgFee').value = fee;
     document.getElementById('editPackageModal').style.display = 'flex';
+}
+
+const checkAll = document.getElementById('checkAll');
+const checkboxes = document.querySelectorAll('.package-checkbox');
+const btnBulkDelete = document.getElementById('btnBulkDelete');
+const selectedCount = document.getElementById('selectedCount');
+
+checkAll?.addEventListener('change', function() {
+    checkboxes.forEach(cb => cb.checked = this.checked);
+    updateBulkButton();
+});
+
+checkboxes.forEach(cb => {
+    cb.addEventListener('change', updateBulkButton);
+});
+
+function updateBulkButton() {
+    const checkedCount = document.querySelectorAll('.package-checkbox:checked').length;
+    selectedCount.textContent = checkedCount;
+    btnBulkDelete.style.display = checkedCount > 0 ? 'inline-flex' : 'none';
+}
+
+function submitBulkDelete() {
+    if (confirm('Hapus semua paket yang dipilih?')) {
+        document.getElementById('bulkDeleteForm').submit();
+    }
 }
 </script>

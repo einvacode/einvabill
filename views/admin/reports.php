@@ -32,7 +32,7 @@ $sql_lunas_tepat = "
     JOIN invoices i ON p.invoice_id = i.id
     JOIN customers c ON i.customer_id = c.id
     WHERE p.payment_date BETWEEN ? AND ?
-      AND strftime('%Y-%m', p.payment_date) = strftime('%Y-%m', i.due_date)
+      AND strftime('%Y-%m', p.payment_date) <= strftime('%Y-%m', i.due_date)
       $scope_where
 ";
 $params_lunas_tepat = [$sql_date_from, $sql_date_to];
