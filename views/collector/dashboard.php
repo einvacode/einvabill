@@ -223,7 +223,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
 }
 
 // Fetch Packages & Areas for Adding Customers
-$packages_all = $db->query("SELECT * FROM packages ORDER BY name ASC")->fetchAll();
+$packages_all = $db->query("SELECT * FROM packages WHERE created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL ORDER BY name ASC")->fetchAll();
 $areas_all = $db->query("SELECT * FROM areas ORDER BY name ASC")->fetchAll();
 
 // Handle manual invoice creation by collector
