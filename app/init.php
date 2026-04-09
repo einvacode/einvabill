@@ -62,7 +62,7 @@ $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 // High-Performance Concurrency Settings (WAL Mode)
 $db->exec("PRAGMA journal_mode=WAL;");
 $db->exec("PRAGMA synchronous=NORMAL;");
-$db->exec("PRAGMA cache_size = -2000;"); // 2MB Cache
+$db->exec("PRAGMA cache_size = -10000;"); // 10MB Cache
 $db->exec("PRAGMA temp_store = MEMORY;");
 
 // --- VERSIONED SCHEMA MANAGEMENT ---

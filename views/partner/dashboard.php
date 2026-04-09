@@ -44,14 +44,22 @@ if (isset($_GET['action']) && $_GET['action'] === 'add_customer' && $_SERVER['RE
         $stmt_check->execute([$customer_code]);
     } while ($stmt_check->fetchColumn() > 0);
     
-    $stmt = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, package_name, monthly_fee, type, registration_date, billing_date, area, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$customer_code, $name, $address, $contact, $package_name, $monthly_fee, $type, $registration_date, $billing_date, $area, $user_id]);
-    $new_id = $db->lastInsertId();
+    $db->beginTransaction();
+    try {
+        $stmt = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, package_name, monthly_fee, type, registration_date, billing_date, area, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$customer_code, $name, $address, $contact, $package_name, $monthly_fee, $type, $registration_date, $billing_date, $area, $user_id]);
+        $new_id = $db->lastInsertId();
 
-    // Initial Invoice for current month
-    if ($monthly_fee > 0) {
-        $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Belum Lunas', ?)");
-        $stmt_inv->execute([$new_id, $monthly_fee, $registration_date, date('Y-m-d H:i:s')]);
+        // Initial Invoice for current month
+        if ($monthly_fee > 0) {
+            $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Belum Lunas', ?)");
+            $stmt_inv->execute([$new_id, $monthly_fee, $registration_date, date('Y-m-d H:i:s')]);
+        }
+        $db->commit();
+    } catch (Exception $e) {
+        $db->rollBack();
+        header("Location: index.php?page=partner&msg=error&err=" . urlencode($e->getMessage()));
+        exit;
     }
     
     header("Location: index.php?page=partner&msg=added&t=" . time());
@@ -212,7 +220,6 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
 
 // Fetch Packages & Areas (Scoped for Partner)
 $packages_all = $db->query("SELECT * FROM packages WHERE created_by = $user_id OR created_by = 0 OR created_by IS NULL ORDER BY name ASC")->fetchAll();
-$areas_all = $db->query("SELECT * FROM areas ORDER BY name ASC")->fetchAll();
 ?>
 
 <style>
@@ -436,15 +443,6 @@ function syncAddPrice(select) {
                     <div class="form-group">
                         <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Biaya Bulanan (Rp)</label>
                         <input type="number" name="monthly_fee" id="add_monthly_fee" class="form-control" required style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%; font-weight:700;">
-                    </div>
-                    <div class="form-group">
-                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Area Pemasangan</label>
-                        <select name="area" class="form-control" style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;">
-                            <option value="">-- Tanpa Area --</option>
-                            <?php foreach($areas_all as $area): ?>
-                                <option value="<?= htmlspecialchars($area['name']) ?>"><?= htmlspecialchars($area['name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
                     </div>
                     <div class="form-group">
                         <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Tanggal Tagih</label>

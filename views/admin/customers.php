@@ -422,54 +422,63 @@ if ($action === 'import_confirm' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } catch(Exception $e) {}
 
-    foreach ($pending as $row) {
-        $name = trim($row[$map['name']] ?? '');
-        if (empty($name)) continue;
+    $db->beginTransaction();
+    try {
+        foreach ($pending as $row) {
+            $name = trim($row[$map['name']] ?? '');
+            if (empty($name)) continue;
 
-        $pkg_name = trim($row[$map['package']] ?? 'Standar');
-        $pkg_fee = (float)preg_replace('/[^0-9]/', '', $row[$map['fee']] ?? 0);
+            $pkg_name = trim($row[$map['package']] ?? 'Standar');
+            $pkg_fee = (float)preg_replace('/[^0-9]/', '', $row[$map['fee']] ?? 0);
 
-        // Smart Sync: Package
-        if (!empty($pkg_name)) {
-            $pkg_exist = $db->prepare("SELECT id FROM packages WHERE name = ?");
-            $pkg_exist->execute([$pkg_name]);
-            if (!$pkg_exist->fetch()) {
-                $db->prepare("INSERT INTO packages (name, fee) VALUES (?, ?)")->execute([$pkg_name, $pkg_fee]);
+            // Smart Sync: Package (Optimize: maybe use a cache array for large imports)
+            if (!empty($pkg_name)) {
+                $pkg_exist = $db->prepare("SELECT id FROM packages WHERE name = ?");
+                $pkg_exist->execute([$pkg_name]);
+                if (!$pkg_exist->fetch()) {
+                    $db->prepare("INSERT INTO packages (name, fee) VALUES (?, ?)")->execute([$pkg_name, $pkg_fee]);
+                }
             }
-        }
 
-        // Smart Sync: Area
-        $cust_area = isset($row[$map['area']]) ? trim($row[$map['area']]) : '';
-        if (!empty($cust_area)) {
-            $area_exist = $db->prepare("SELECT id FROM areas WHERE name = ?");
-            $area_exist->execute([$cust_area]);
-            if (!$area_exist->fetch()) {
-                $db->prepare("INSERT INTO areas (name) VALUES (?)")->execute([$cust_area]);
+            // Smart Sync: Area
+            $cust_area = isset($row[$map['area']]) ? trim($row[$map['area']]) : '';
+            if (!empty($cust_area)) {
+                $area_exist = $db->prepare("SELECT id FROM areas WHERE name = ?");
+                $area_exist->execute([$cust_area]);
+                if (!$area_exist->fetch()) {
+                    $db->prepare("INSERT INTO areas (name) VALUES (?)")->execute([$cust_area]);
+                }
             }
-        }
 
-        // SMART ASSIGNMENT: If no collector selected, try matching by area
-        $row_collector_id = $collector_id;
-        if ($row_collector_id == 0 && !empty($cust_area)) {
-            $area_key = strtolower(trim($cust_area));
-            if (isset($collector_lookup[$area_key])) {
-                $row_collector_id = $collector_lookup[$area_key];
+            // SMART ASSIGNMENT
+            $row_collector_id = $collector_id;
+            if ($row_collector_id == 0 && !empty($cust_area)) {
+                $area_key = strtolower(trim($cust_area));
+                if (isset($collector_lookup[$area_key])) {
+                    $row_collector_id = $collector_lookup[$area_key];
+                }
             }
-        }
 
-        $stmt->execute([
-            $name, trim($row[$map['address']] ?? ''), trim($row[$map['contact']] ?? ''), $pkg_name, $pkg_fee,
-            trim($row[$map['ip']] ?? ''), strtolower(trim($row[$map['type']] ?? '')) == 'partner' ? 'partner' : 'customer', 
-            trim($row[$map['reg_date']] ?? date('Y-m-d')), (int)trim($row[$map['bill_date']] ?? 1), $cust_area, $u_id_import, $row_collector_id
-        ]);
-        $count++;
-        
-        $imp_id = $db->lastInsertId();
-        do {
-            $imp_code = 'CUST-' . str_pad(mt_rand(100000, 999999), 6, '0', STR_PAD_LEFT);
-            $stmt_chk->execute([$imp_code]);
-        } while ($stmt_chk->fetchColumn() > 0);
-        $db->prepare("UPDATE customers SET customer_code = ? WHERE id = ?")->execute([$imp_code, $imp_id]);
+            $stmt->execute([
+                $name, trim($row[$map['address']] ?? ''), trim($row[$map['contact']] ?? ''), $pkg_name, $pkg_fee,
+                trim($row[$map['ip']] ?? ''), strtolower(trim($row[$map['type']] ?? '')) == 'partner' ? 'partner' : 'customer', 
+                trim($row[$map['reg_date']] ?? date('Y-m-d')), (int)trim($row[$map['bill_date']] ?? 1), $cust_area, $u_id_import, $row_collector_id
+            ]);
+            $count++;
+            
+            $imp_id = $db->lastInsertId();
+            // Generate Code (Fast enough within transaction, but we can improve later if needed)
+            do {
+                $imp_code = 'CUST-' . str_pad(mt_rand(100000, 999999), 6, '0', STR_PAD_LEFT);
+                $stmt_chk->execute([$imp_code]);
+            } while ($stmt_chk->fetchColumn() > 0);
+            $db->prepare("UPDATE customers SET customer_code = ? WHERE id = ?")->execute([$imp_code, $imp_id]);
+        }
+        $db->commit();
+    } catch (Exception $e) {
+        $db->rollBack();
+        header("Location: index.php?page=admin_customers&msg=import_error&err=" . urlencode($e->getMessage()));
+        exit;
     }
     
     unset($_SESSION['pending_import']);

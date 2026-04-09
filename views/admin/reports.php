@@ -127,11 +127,25 @@ $sql_table_p = "
     WHERE p.payment_date BETWEEN ? AND ?
     $scope_where
 ";
-$params_table = [$sql_date_from, $sql_date_to];
-if ($filter_user !== 'all' && $u_role === 'admin') {
-    $sql_table_p .= " AND p.received_by = ?";
-    $params_table[] = $filter_user;
-}
+// Table Data Pagination (Only for view action)
+$items_per_page = 50;
+$current_page = isset($_GET['p']) ? max(1, intval($_GET['p'])) : 1;
+$offset = ($current_page - 1) * $items_per_page;
+
+$sql_count = "
+    SELECT COUNT(*) FROM (
+        SELECT 1 FROM payments p JOIN invoices i ON p.invoice_id = i.id JOIN customers c ON i.customer_id = c.id WHERE p.payment_date BETWEEN ? AND ? $scope_where " . (($filter_user !== 'all' && $u_role === 'admin') ? " AND p.received_by = ?" : "") . "
+        UNION ALL
+        SELECT 1 FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.due_date BETWEEN ? AND ? AND i.status = 'Belum Lunas' $scope_where
+    ) AS total
+";
+$params_count = array_merge([$sql_date_from, $sql_date_to], (($filter_user !== 'all' && $u_role === 'admin') ? [$filter_user] : []), [$date_from, $date_to]);
+$total_rows = $db->prepare($sql_count);
+$total_rows->execute($params_count);
+$total_count = $total_rows->fetchColumn() ?: 0;
+$total_pages = ceil($total_count / $items_per_page);
+
+$limit_sql = ($action === 'view') ? " LIMIT $items_per_page OFFSET $offset " : "";
 
 $sql_table = $sql_table_p . "
     UNION ALL
@@ -156,12 +170,21 @@ $sql_table = $sql_table_p . "
     $scope_where
     
     ORDER BY activity_date DESC
+    $limit_sql
 ";
 $params_table[] = $date_from;
 $params_table[] = $date_to;
 
+if ($filter_user !== 'all' && $u_role === 'admin') {
+    // Re-assign params for the second part of union if needed? No, params_table already has date_from, date_to at the end.
+    // Actually, params_table construction above was a bit messy. Let's fix it.
+}
+
+// Clean params construction
+$params_final = array_merge([$sql_date_from, $sql_date_to], (($filter_user !== 'all' && $u_role === 'admin') ? [$filter_user] : []), [$date_from, $date_to]);
+
 $q_table = $db->prepare($sql_table);
-$q_table->execute($params_table);
+$q_table->execute($params_final);
 $report_data = $q_table->fetchAll();
 
 if ($action === 'export') {
@@ -749,6 +772,34 @@ if ($action === 'print') {
             </tbody>
         </table>
     </div>
+
+    <!-- Pagination Navigation -->
+    <?php if ($total_pages > 1): ?>
+        <div style="display:flex; justify-content:center; gap:8px; margin:24px 0; flex-wrap:wrap;">
+            <?php 
+                $params = $_GET; 
+                unset($params['p']); 
+                $query_str = http_build_query($params);
+                $base_p_url = "index.php?" . $query_str . "&p=";
+            ?>
+            
+            <?php if($current_page > 1): ?>
+                <a href="<?= $base_p_url . ($current_page - 1) ?>" class="btn btn-sm btn-ghost">&laquo;</a>
+            <?php endif; ?>
+
+            <?php 
+                $start_p = max(1, $current_page - 2);
+                $end_p = min($total_pages, $current_page + 2);
+                for($i = $start_p; $i <= $end_p; $i++): 
+            ?>
+                <a href="<?= $base_p_url . $i ?>" class="btn btn-sm <?= $i == $current_page ? 'btn-primary' : 'btn-ghost' ?>" style="min-width:35px;"><?= $i ?></a>
+            <?php endfor; ?>
+
+            <?php if($current_page < $total_pages): ?>
+                <a href="<?= $base_p_url . ($current_page + 1) ?>" class="btn btn-sm btn-ghost">&raquo;</a>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
 </div>
 
 <script>

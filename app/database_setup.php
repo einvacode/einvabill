@@ -219,6 +219,10 @@ function run_database_setup($db) {
     $db->exec("CREATE INDEX IF NOT EXISTS idx_customers_code ON customers(customer_code)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_customers_reg_date ON customers(registration_date)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_payments_date ON payments(payment_date)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_customers_created_by ON customers(created_by)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_customers_collector ON customers(collector_id)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_invoices_created ON invoices(created_at)");
 
     // 4. Seed Data
     // Default Settings

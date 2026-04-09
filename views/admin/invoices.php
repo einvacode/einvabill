@@ -349,10 +349,18 @@ if ($action === 'create_auto_bulk' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     ")->fetchAll();
     
     $count = 0;
-    $stmt = $db->prepare("INSERT INTO invoices (customer_id, amount, status, due_date, created_at, discount) VALUES (?, ?, 'Belum Lunas', ?, CURRENT_TIMESTAMP, 0)");
-    foreach ($customers as $c) {
-        $stmt->execute([$c['id'], $c['monthly_fee'], $due_date]);
-        $count++;
+    $db->beginTransaction();
+    try {
+        $stmt = $db->prepare("INSERT INTO invoices (customer_id, amount, status, due_date, created_at, discount) VALUES (?, ?, 'Belum Lunas', ?, CURRENT_TIMESTAMP, 0)");
+        foreach ($customers as $c) {
+            $stmt->execute([$c['id'], $c['monthly_fee'], $due_date]);
+            $count++;
+        }
+        $db->commit();
+    } catch (Exception $e) {
+        $db->rollBack();
+        header("Location: index.php?page=admin_invoices&msg=bulk_error&err=" . urlencode($e->getMessage()));
+        exit;
     }
     
     header("Location: index.php?page=admin_invoices&filter_type=$filter_type&msg=bulk_created&count=$count");

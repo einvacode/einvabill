@@ -148,7 +148,7 @@
         <main class="main-content">
             <!-- Topbar (Hidden for Collector as requested) -->
             <?php if($page !== 'collector'): ?>
-            <div class="topbar glass-panel" style="padding:15px 24px;">
+            <div class="topbar glass-panel <?= ($_SESSION['user_role'] === 'partner') ? 'hide-mobile' : '' ?>" style="padding:15px 24px;">
                 <div style="font-weight:600; font-size:18px;">
                     <?php
                         if($page == 'admin_dashboard') echo 'Dashboard Admin';

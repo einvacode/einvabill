@@ -270,57 +270,64 @@ if (isset($_GET['action']) && $_GET['action'] === 'add_customer' && $_SERVER['RE
         $stmt_check->execute([$customer_code]);
     } while ($stmt_check->fetchColumn() > 0);
     
-    $stmt = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, package_name, monthly_fee, type, registration_date, billing_date, area, collector_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$customer_code, $name, $address, $contact, $package_name, $monthly_fee, $type, $registration_date, $billing_date, $area, $collector_id, $user_id]);
-    $new_id = $db->lastInsertId();
+    $db->beginTransaction();
+    try {
+        $stmt = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, package_name, monthly_fee, type, registration_date, billing_date, area, collector_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$customer_code, $name, $address, $contact, $package_name, $monthly_fee, $type, $registration_date, $billing_date, $area, $collector_id, $user_id]);
+        $new_id = $db->lastInsertId();
 
-    // Automated Billing Loop (Back-billing logic)
-    $now = date('Y-m-d H:i:s');
-    if ($monthly_fee > 0) {
-        if ($type === 'customer') {
-            // 1. Initial Invoice (Registration Month)
-            $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Belum Lunas', ?)");
-            $stmt_inv->execute([$new_id, $monthly_fee, $registration_date, $now]);
+        // Automated Billing Loop (Back-billing logic)
+        $now = date('Y-m-d H:i:s');
+        if ($monthly_fee > 0) {
+            if ($type === 'customer') {
+                // 1. Initial Invoice (Registration Month)
+                $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Belum Lunas', ?)");
+                $stmt_inv->execute([$new_id, $monthly_fee, $registration_date, $now]);
 
-            // 2. Subsequent Monthly Invoices (Until Today)
-            $month_idx = 1;
-            while (true) {
-                $next_month_ts = strtotime("+$month_idx month", strtotime($registration_date));
-                $bday = str_pad($billing_date, 2, '0', STR_PAD_LEFT);
-                $next_due = date('Y-m', $next_month_ts) . '-' . $bday;
-                
-                if ($next_due > date('Y-m-d')) break; // Stop at future dates
-                
-                $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Belum Lunas', ?)")
-                   ->execute([$new_id, $monthly_fee, $next_due, $now]);
-                   
-                $month_idx++;
-                if($month_idx > 60) break; // Safety cap
-            }
-        } else {
-            // MITRA: Always starts 1 month after registration
-            $month_idx = 1;
-            while (true) {
-                $next_month_ts = strtotime("+$month_idx month", strtotime($registration_date));
-                $bday = str_pad($billing_date, 2, '0', STR_PAD_LEFT);
-                $next_due = date('Y-m', $next_month_ts) . '-' . $bday;
-                
-                // If reg was Jan, first bill is Feb. If today is Apr, create Feb, Mar, Apr.
-                if ($next_due > date('Y-m-d')) break;
-                
-                $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Belum Lunas', ?)")
-                   ->execute([$new_id, $monthly_fee, $next_due, $now]);
-                   
-                $month_idx++;
-                if($month_idx > 60) break;
+                // 2. Subsequent Monthly Invoices (Until Today)
+                $month_idx = 1;
+                while (true) {
+                    $next_month_ts = strtotime("+$month_idx month", strtotime($registration_date));
+                    $bday = str_pad($billing_date, 2, '0', STR_PAD_LEFT);
+                    $next_due = date('Y-m', $next_month_ts) . '-' . $bday;
+                    
+                    if ($next_due > date('Y-m-d')) break; // Stop at future dates
+                    
+                    $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Belum Lunas', ?)")
+                    ->execute([$new_id, $monthly_fee, $next_due, $now]);
+                    
+                    $month_idx++;
+                    if($month_idx > 60) break; // Safety cap
+                }
+            } else {
+                // MITRA: Always starts 1 month after registration
+                $month_idx = 1;
+                while (true) {
+                    $next_month_ts = strtotime("+$month_idx month", strtotime($registration_date));
+                    $bday = str_pad($billing_date, 2, '0', STR_PAD_LEFT);
+                    $next_due = date('Y-m', $next_month_ts) . '-' . $bday;
+                    
+                    if ($next_due > date('Y-m-d')) break;
+                    
+                    $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Belum Lunas', ?)")
+                    ->execute([$new_id, $monthly_fee, $next_due, $now]);
+                    
+                    $month_idx++;
+                    if($month_idx > 60) break;
+                }
             }
         }
-    }
 
-    // Create extra invoice for previous debt if any
-    if ($previous_debt > 0) {
-        $stmt_debt = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Belum Lunas', ?)");
-        $stmt_debt->execute([$new_id, $previous_debt, $registration_date, $now]);
+        // Create extra invoice for previous debt if any
+        if ($previous_debt > 0) {
+            $stmt_debt = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Belum Lunas', ?)");
+            $stmt_debt->execute([$new_id, $previous_debt, $registration_date, $now]);
+        }
+        $db->commit();
+    } catch (Exception $e) {
+        $db->rollBack();
+        header("Location: index.php?page=collector&tab=pelanggan&msg=error&err=" . urlencode($e->getMessage()));
+        exit;
     }
 
     header("Location: index.php?page=collector&tab=pelanggan&msg=customer_added");
