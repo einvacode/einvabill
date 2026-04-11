@@ -32,8 +32,9 @@
     (function(){
         function safeToggle(){
             try {
+                console.debug('safeToggle called');
                 const s = document.querySelector('.sidebar'), o = document.getElementById('sidebarOverlay');
-                if(!s || !o) return;
+                if(!s || !o) { console.debug('safeToggle: missing sidebar or overlay', !!s, !!o); return; }
                 s.classList.toggle('active'); o.classList.toggle('active');
                 document.body.style.overflow = s.classList.contains('active') ? 'hidden' : 'auto';
             } catch(e) { console.warn('safeToggle error', e); }
@@ -81,18 +82,19 @@
             }, true);
 
         document.addEventListener('DOMContentLoaded', function(){
-            const burger = document.querySelector('.burger-btn');
-            if(burger) {
-                burger.addEventListener('click', safeToggle);
-                // also handle touchstart for mobile devices
-                burger.addEventListener('touchstart', function(e){ e.preventDefault(); safeToggle(); }, {passive:false});
-            }
-            const overlay = document.getElementById('sidebarOverlay');
-            if(overlay) {
-                overlay.addEventListener('click', safeToggle);
-                overlay.addEventListener('touchstart', function(e){ e.preventDefault(); safeToggle(); }, {passive:false});
-            }
-        });
+                console.debug('DOMContentLoaded: binding burger');
+                const burger = document.querySelector('.burger-btn');
+                if(burger) {
+                    burger.addEventListener('click', function(e){ console.debug('burger click event'); safeToggle(); });
+                    // also handle touchstart for mobile devices
+                    burger.addEventListener('touchstart', function(e){ console.debug('burger touchstart'); e.preventDefault(); safeToggle(); }, {passive:false});
+                } else { console.debug('burger element not found'); }
+                const overlay = document.getElementById('sidebarOverlay');
+                if(overlay) {
+                    overlay.addEventListener('click', function(){ console.debug('overlay click'); safeToggle(); });
+                    overlay.addEventListener('touchstart', function(e){ console.debug('overlay touchstart'); e.preventDefault(); safeToggle(); }, {passive:false});
+                } else { console.debug('overlay element not found'); }
+            });
         window.safeToggleSidebar = safeToggle;
     })();
     </script>
@@ -472,6 +474,22 @@
         document.addEventListener('visibilitychange', () => document.hidden ? stopPoll() : startPoll());
         startPoll();
     });
+
+    // Close sidebar when a nav link is clicked on small screens
+    document.addEventListener('click', function(ev){
+        try {
+            const link = ev.target.closest && ev.target.closest('.nav-link');
+            if(!link) return;
+            if(window.innerWidth <= 768) {
+                const s = document.querySelector('.sidebar'), o = document.getElementById('sidebarOverlay');
+                if(s && s.classList.contains('active')) {
+                    s.classList.remove('active');
+                    if(o) o.classList.remove('active');
+                    document.body.style.overflow = 'auto';
+                }
+            }
+        } catch(e) { /* ignore */ }
+    }, true);
 
     window.addEventListener('beforeunload', () => {
         const s = document.querySelector('.sidebar'), m = document.querySelector('.main-content');
