@@ -11,6 +11,9 @@ ini_set('session.gc_maxlifetime', 86400);
 ini_set('session.cookie_lifetime', 86400);
 ini_set('session.cookie_httponly', 1);
 
+// Set session save path to app/sessions for better control
+ini_set('session.save_path', __DIR__ . '/sessions');
+
 // Auto-detect protocol for cookie security
 $is_secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443);
 ini_set('session.cookie_secure', $is_secure ? 1 : 0);

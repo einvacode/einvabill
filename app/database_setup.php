@@ -237,7 +237,7 @@ function run_database_setup($db) {
     // Default Users
     $check_users = $db->query("SELECT COUNT(*) FROM users")->fetchColumn();
     if ($check_users == 0) {
-        $hash = password_hash('admin123', PASSWORD_DEFAULT);
+        $hash = password_hash('123456', PASSWORD_DEFAULT);
         $stmt = $db->prepare("INSERT INTO users (username, password, role, name) VALUES (?, ?, ?, ?)");
         $stmt->execute(['admin', $hash, 'admin', 'Administrator']);
         $stmt->execute(['tagih', $hash, 'collector', 'Petugas Tagih']);
