@@ -200,6 +200,21 @@ function run_database_setup($db) {
         'packages' => ['created_by' => 'INTEGER DEFAULT 0'],
         'expenses' => ['created_by' => 'INTEGER DEFAULT 0'],
         'infrastructure_assets' => ['price' => 'REAL DEFAULT 0', 'status' => "TEXT DEFAULT 'Deployed'", 'installation_date' => 'TEXT', 'created_by' => 'INTEGER DEFAULT 0', 'path_json' => 'TEXT'],
+        'invoices' => [
+            'discount' => 'REAL DEFAULT 0',
+            'issued_by_id' => 'INTEGER DEFAULT 0',
+            'issued_by_name' => "TEXT",
+            'billing_address' => 'TEXT',
+            'billing_phone' => 'TEXT',
+            'billing_email' => 'TEXT'
+        ],
+        // Mark invoices created via quick standalone invoice tool
+        'invoices_meta' => [
+            'created_via' => "TEXT"
+        ],
+        'invoices_extra' => [
+            'payment_instructions' => 'TEXT'
+        ],
         'settings' => ['license_key' => 'TEXT', 'license_expiry' => 'TEXT', 'license_type' => 'TEXT', 'installation_date' => 'TEXT', 'site_url' => "TEXT DEFAULT 'http://fibernodeinternet.com'", 'acs_url' => 'TEXT', 'acs_user' => 'TEXT', 'acs_pass' => 'TEXT', 'landing_hero_title' => 'TEXT', 'landing_hero_text' => 'TEXT', 'landing_about_us' => 'TEXT', 'db_version' => 'INTEGER DEFAULT 0']
     ];
 

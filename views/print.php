@@ -35,6 +35,38 @@ $bulan_bayar = "Tagihan Bulan " . date('m/Y', strtotime($invoice['due_date']));
 // Fetch items for itemized billing
 $invoice_items = $db->query("SELECT * FROM invoice_items WHERE invoice_id = " . intval($invoice['id']))->fetchAll();
 
+// Defensive: if invoice doesn't already include customer fields, try to populate them
+if (empty($invoice['name']) && !empty($invoice['customer_id'])) {
+    try {
+        $cstmt = $db->prepare("SELECT id, name, address, contact, package_name, type, created_by FROM customers WHERE id = ? LIMIT 1");
+        $cstmt->execute([intval($invoice['customer_id'])]);
+        $custRow = $cstmt->fetch();
+        if ($custRow) {
+            // only set fields that are empty to avoid overwriting provider-specific branding set earlier
+            foreach (['name','address','contact','package_name','type','created_by'] as $k) {
+                if (empty($invoice[$k]) && isset($custRow[$k])) $invoice[$k] = $custRow[$k];
+            }
+        }
+    } catch (Exception $e) {
+        // ignore
+    }
+}
+
+// Detect if this invoice was created via the quick-invoice flow:
+// - customer_id absent (0) OR customers.type == 'note' (temporary note customer)
+$is_quick_invoice = false;
+try {
+    $cid = intval($invoice['customer_id'] ?? 0);
+    if ($cid <= 0) {
+        $is_quick_invoice = true;
+    } else {
+        $cust = $db->prepare("SELECT type FROM customers WHERE id = ?");
+        $cust->execute([$cid]);
+        $c = $cust->fetch();
+        if ($c && ($c['type'] === 'note' || $c['type'] === 'temp')) $is_quick_invoice = true;
+    }
+} catch (Exception $e) { $is_quick_invoice = false; }
+
 // Define Status Text Logic
 $status_label = strtoupper($invoice['status'] ?? 'BELUM LUNAS');
 if (($invoice['status'] ?? '') === 'Lunas') {
@@ -134,19 +166,48 @@ if (($invoice['status'] ?? '') === 'Lunas') {
                 <?php if(empty($invoice_items)): ?>
                     <strong>Paket:</strong> <?= htmlspecialchars($invoice['package_name']) ?><br>
                 <?php endif; ?>
-                <?php if($invoice['address']): ?>
-                    <strong>Alamat:</strong> <?= htmlspecialchars($invoice['address']) ?>
+                <?php
+                    $inv_addr = $invoice['billing_address'] ?? $invoice['address'] ?? '';
+                    $inv_phone = $invoice['billing_phone'] ?? $invoice['contact'] ?? '';
+                    $inv_email = $invoice['billing_email'] ?? '';
+                ?>
+                <?php if($inv_addr): ?>
+                    <strong>Alamat:</strong> <?= htmlspecialchars($inv_addr) ?><br>
+                <?php elseif($invoice['address']): ?>
+                    <strong>Alamat:</strong> <?= htmlspecialchars($invoice['address']) ?><br>
+                <?php endif; ?>
+                <?php if($inv_phone): ?>
+                    <strong>Telp/WA:</strong> <?= htmlspecialchars($inv_phone) ?><br>
+                <?php endif; ?>
+                <?php if($inv_email): ?>
+                    <strong>Email:</strong> <?= htmlspecialchars($inv_email) ?><br>
                 <?php endif; ?>
             </div>
             
             <div class="divider"></div>
 
             <?php if(!empty($invoice_items)): ?>
-                <div style="font-size:13px; margin-bottom:10px;">
+                <div style="font-size:12px; margin-bottom:10px;">
+                    <div style="display:flex; font-weight:700; border-bottom:1px dashed #000; padding-bottom:6px;">
+                        <div style="flex:1; min-width:120px;">KETERANGAN</div>
+                        <div style="flex:0 0 22%; text-align:right;">HARGA</div>
+                        <div style="flex:0 0 12%; text-align:center;">JML</div>
+                        <div style="flex:0 0 22%; text-align:right;">TOTAL</div>
+                    </div>
                     <?php foreach($invoice_items as $item): ?>
-                        <div class="flex-between">
-                            <span><?= htmlspecialchars($item['description']) ?></span>
-                            <span><?= number_format($item['amount'], 0, ',', '.') ?></span>
+                        <?php
+                            $qty = intval($item['qty'] ?? $item['quantity'] ?? 1);
+                            $unit = isset($item['unit_price']) ? floatval($item['unit_price']) : (isset($item['unit']) ? floatval($item['unit']) : null);
+                            if (empty($unit)) {
+                                $unit = ($qty > 0) ? round(floatval($item['amount']) / $qty) : floatval($item['amount']);
+                            }
+                            $line_total = floatval($item['amount']);
+                        ?>
+                        <div style="display:flex; padding:6px 0; border-bottom:1px dotted #ddd; align-items:center;">
+                            <div style="flex:1; min-width:120px;"><?= htmlspecialchars($item['description']) ?></div>
+                            <div style="flex:0 0 22%; text-align:right;">Rp <?= number_format($unit, 0, ',', '.') ?></div>
+                            <div style="flex:0 0 12%; text-align:center;"><?= $qty ?></div>
+                            <div style="flex:0 0 22%; text-align:right;">Rp <?= number_format($line_total, 0, ',', '.') ?></div>
                         </div>
                     <?php endforeach; ?>
                 </div>
@@ -199,7 +260,7 @@ if (($invoice['status'] ?? '') === 'Lunas') {
             
             <div class="divider"></div>
             
-            <?php if(!empty($company['bank_account']) || !empty($company['company_qris']) || !empty($company['company_bank'])): ?>
+            <?php if(!$is_quick_invoice && (!empty($company['bank_account']) || !empty($company['company_qris']) || !empty($company['company_bank']))): ?>
             <div style="font-size:12px; margin-bottom:10px;">
                 <?php if(!empty($company['company_bank']) && !empty($company['company_rekening'])): ?>
                     <div class="text-center" style="margin-top:10px; border:1px dashed #000; padding:8px; border-radius:5px;">
@@ -220,7 +281,15 @@ if (($invoice['status'] ?? '') === 'Lunas') {
             </div>
             <div class="divider"></div>
             <?php endif; ?>
-            
+
+            <?php if(!empty($invoice['payment_instructions'])): ?>
+            <div style="margin-top:10px; font-size:12px;">
+                <strong>Instruksi Pembayaran:</strong><br>
+                <?= nl2br(htmlspecialchars($invoice['payment_instructions'])) ?>
+            </div>
+            <div class="divider"></div>
+            <?php endif; ?>
+
             <div class="text-center" style="font-size:12px; margin-top:20px;">
                 <strong>TERIMA KASIH</strong><br>
                 Telah Mempercayakan Koneksi Anda<br>
@@ -259,6 +328,14 @@ if (($invoice['status'] ?? '') === 'Lunas') {
                     <div style="font-size:16px; font-weight:bold;"><?= htmlspecialchars($invoice['name']) ?></div>
                     <div style="font-size:13px; color:#475569; margin-top:2px;"><?= htmlspecialchars($invoice['address'] ?: '-') ?></div>
                     <div style="font-size:13px; color:#475569;">WA/Telp: <?= htmlspecialchars($invoice['contact'] ?: '-') ?></div>
+                    <?php if(!empty($invoice['billing_email']) || !empty($invoice['billing_phone']) || !empty($invoice['billing_address'])): ?>
+                        <div style="margin-top:8px; font-size:13px; color:#475569;">
+                            <strong>Kontak Penagihan:</strong><br>
+                            <?= htmlspecialchars($invoice['billing_address'] ?? '-') ?><br>
+                            <?= !empty($invoice['billing_phone']) ? 'Telp: '.htmlspecialchars($invoice['billing_phone']) . '<br>' : '' ?>
+                            <?= !empty($invoice['billing_email']) ? 'Email: '.htmlspecialchars($invoice['billing_email']) . '<br>' : '' ?>
+                        </div>
+                    <?php endif; ?>
                 </div>
                 
                 <div style="text-align:right;">
@@ -270,24 +347,60 @@ if (($invoice['status'] ?? '') === 'Lunas') {
                 </div>
             </div>
 
+            <div style="margin-top:10px; display:flex; justify-content:flex-end; gap:20px; align-items:center;">
+                <div style="text-align:right; font-size:13px; color:#475569;">
+                    <div><strong>Dibuat Oleh:</strong></div>
+                    <div><?= htmlspecialchars($invoice['issued_by_name'] ?? ($_SESSION['user_name'] ?? '-')) ?></div>
+                </div>
+            </div>
+
+            <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center; gap:20px;">
+                <div style="font-size:13px; color:#475569;">
+                    <?php if(!empty($invoice['billing_address']) || !empty($invoice['billing_phone']) || !empty($invoice['billing_email'])): ?>
+                        <strong>Kontak Penagihan:</strong><br>
+                        <?= htmlspecialchars($invoice['billing_address'] ?? '-') ?><br>
+                        <?= !empty($invoice['billing_phone']) ? 'Telp: '.htmlspecialchars($invoice['billing_phone']) . '<br>' : '' ?>
+                        <?= !empty($invoice['billing_email']) ? 'Email: '.htmlspecialchars($invoice['billing_email']) . '<br>' : '' ?>
+                    <?php endif; ?>
+                </div>
+                <div style="text-align:right; font-size:13px; color:#475569;">
+                    <div><strong>Dibuat Oleh:</strong></div>
+                    <div><?= htmlspecialchars($invoice['issued_by_name'] ?? ($_SESSION['user_name'] ?? '-')) ?></div>
+                </div>
+            </div>
+
             <table style="width:100%; margin-top:20px; border-collapse:collapse; font-size:14px;">
                 <thead>
                     <tr style="background:#f8fafc; border-bottom:1px solid #cbd5e1;">
-                        <th style="padding:10px; text-align:left;">Deskripsi Layanan</th>
-                        <th style="padding:10px; text-align:right;">Total Harga</th>
+                        <th style="padding:10px; text-align:left;">Deskripsi</th>
+                        <th style="padding:10px; text-align:center; width:90px;">Jumlah</th>
+                        <th style="padding:10px; text-align:right; width:140px;">Harga Satuan</th>
+                        <th style="padding:10px; text-align:right; width:160px;">Total Harga</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if(empty($invoice_items)): ?>
                         <tr>
                             <td style="padding:12px 10px; border-bottom:1px solid #e2e8f0;">Layanan Internet: <strong><?= htmlspecialchars($invoice['package_name']) ?></strong></td>
+                            <td style="padding:12px 10px; border-bottom:1px solid #e2e8f0; text-align:center;">1</td>
+                            <td style="padding:12px 10px; border-bottom:1px solid #e2e8f0; text-align:right;">Rp <?= number_format($invoice['amount'], 0, ',', '.') ?></td>
                             <td style="padding:12px 10px; border-bottom:1px solid #e2e8f0; text-align:right; font-weight:bold;">Rp <?= number_format($invoice['amount'], 0, ',', '.') ?></td>
                         </tr>
                     <?php else: ?>
                         <?php foreach($invoice_items as $item): ?>
+                            <?php
+                                $qty = intval($item['qty'] ?? $item['quantity'] ?? 1);
+                                $unit = isset($item['unit_price']) ? floatval($item['unit_price']) : (isset($item['unit']) ? floatval($item['unit']) : null);
+                                if (empty($unit)) {
+                                    $unit = ($qty > 0) ? round(floatval($item['amount']) / $qty) : floatval($item['amount']);
+                                }
+                                $line_total = floatval($item['amount']);
+                            ?>
                             <tr>
                                 <td style="padding:8px 10px; border-bottom:1px solid #e2e8f0;"><?= htmlspecialchars($item['description']) ?></td>
-                                <td style="padding:8px 10px; border-bottom:1px solid #e2e8f0; text-align:right; font-weight:bold;">Rp <?= number_format($item['amount'], 0, ',', '.') ?></td>
+                                <td style="padding:8px 10px; border-bottom:1px solid #e2e8f0; text-align:center;"><?= $qty ?></td>
+                                <td style="padding:8px 10px; border-bottom:1px solid #e2e8f0; text-align:right;">Rp <?= number_format($unit, 0, ',', '.') ?></td>
+                                <td style="padding:8px 10px; border-bottom:1px solid #e2e8f0; text-align:right; font-weight:bold;">Rp <?= number_format($line_total, 0, ',', '.') ?></td>
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -334,7 +447,7 @@ if (($invoice['status'] ?? '') === 'Lunas') {
             </div>
             <?php endif; ?>
 
-            <?php if(!empty($company['company_bank']) || !empty($company['company_qris']) || !empty($company['bank_account'])): ?>
+            <?php if(!$is_quick_invoice && (!empty($company['company_bank']) || !empty($company['company_qris']) || !empty($company['bank_account']))): ?>
             <div style="margin-top:20px; padding:20px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px;">
                 <div style="display:flex; gap:30px; align-items:center;">
                     <div style="flex:1;">
@@ -360,6 +473,13 @@ if (($invoice['status'] ?? '') === 'Lunas') {
                     </div>
                     <?php endif; ?>
                 </div>
+            </div>
+            <?php endif; ?>
+
+            <?php if(!empty($invoice['payment_instructions'])): ?>
+            <div style="margin-top:18px; padding:12px; background:#fff8e6; border:1px solid #f1e7c8; border-radius:8px; font-size:13px;">
+                <strong>Instruksi Pembayaran:</strong><br>
+                <?= nl2br(htmlspecialchars($invoice['payment_instructions'])) ?>
             </div>
             <?php endif; ?>
 

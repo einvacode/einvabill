@@ -27,6 +27,66 @@
         </div>
         <div onclick="toggleTheme()" style="cursor: pointer; opacity: 0.8;"><i class="fas fa-moon"></i></div>
     </header>
+    <script>
+    // Defensive binding: ensure burger and overlay always toggle sidebar
+    (function(){
+        function safeToggle(){
+            try {
+                const s = document.querySelector('.sidebar'), o = document.getElementById('sidebarOverlay');
+                if(!s || !o) return;
+                s.classList.toggle('active'); o.classList.toggle('active');
+                document.body.style.overflow = s.classList.contains('active') ? 'hidden' : 'auto';
+            } catch(e) { console.warn('safeToggle error', e); }
+        }
+        // Provide an early, defensive toggleDropdown so inline onclicks won't break
+        // if a later script fails to execute. This ensures dropdowns remain responsive.
+        window.toggleDropdown = function(el){
+            try {
+                if(!el || !el.parentElement) return;
+                el.parentElement.classList.toggle('open');
+            } catch(e) { console.warn('toggleDropdown fallback error', e); }
+        };
+
+            // Universal invoice edit modal opener — ensures edit modal can be
+            // triggered even if page-specific JS fails to load. Buttons should
+            // include the class `btn-edit-invoice` and data attributes.
+            window.openInvoiceEditModal = function(id, amount, discount, date) {
+                try {
+                    const modal = document.getElementById('editInvoiceModal');
+                    if(!modal) return false;
+                    const setVal = (sel, v) => { const el = document.getElementById(sel); if(el) el.value = v ?? ''; };
+                    setVal('editInvId', id);
+                    setVal('editInvAmount', amount);
+                    setVal('editInvDiscount', discount || 0);
+                    setVal('editInvDate', date || '');
+                    const title = document.getElementById('editTitle'); if(title) title.innerText = 'Edit INV-' + String(id).padStart(5, '0');
+                    modal.style.display = 'flex';
+                    return true;
+                } catch(e) { console.warn('openInvoiceEditModal error', e); return false; }
+            };
+
+            // Delegated click handler for edit buttons (works even if inline
+            // onclick handlers are missing or JS earlier failed).
+            document.addEventListener('click', function(ev){
+                try {
+                    const btn = ev.target.closest && ev.target.closest('.btn-edit-invoice');
+                    if(!btn) return;
+                    ev.preventDefault();
+                    const id = btn.dataset.invId || btn.getAttribute('data-inv-id');
+                    const amount = btn.dataset.invAmount || btn.getAttribute('data-inv-amount');
+                    const discount = btn.dataset.invDiscount || btn.getAttribute('data-inv-discount');
+                    const date = btn.dataset.invDate || btn.getAttribute('data-inv-date');
+                    window.openInvoiceEditModal(id, amount, discount, date);
+                } catch(e) { /* swallow */ }
+            }, true);
+
+        document.addEventListener('DOMContentLoaded', function(){
+            const burger = document.querySelector('.burger-btn'); if(burger) burger.addEventListener('click', safeToggle);
+            const overlay = document.getElementById('sidebarOverlay'); if(overlay) overlay.addEventListener('click', safeToggle);
+        });
+        window.safeToggleSidebar = safeToggle;
+    })();
+    </script>
     <div class="app-layout">
         <aside class="sidebar">
             <div>
@@ -41,7 +101,6 @@
                             $logo_src = '/' . str_replace(' ', '%20', $site_settings['company_logo']);
                         }
                     }
-                ?>
                 ?>
                 <div class="sidebar-header" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 20px 10px 30px;">
                     <?php if(!empty($logo_src)): ?>
@@ -63,6 +122,7 @@
                         <a href="index.php?page=admin_customers&filter_type=partner" class="nav-link <?= $page == 'admin_customers' && ($_GET['filter_type'] ?? '') == 'partner' ? 'active' : '' ?>"><i class="fas fa-handshake"></i> Kemitraan (B2B)</a>
                         <a href="index.php?page=admin_invoices&filter_type=customer" class="nav-link <?= $page == 'admin_invoices' && ($_GET['filter_type'] ?? '') == 'customer' && ($filter_status ?? '') != 'belum' ? 'active' : '' ?>"><i class="fas fa-file-invoice-dollar"></i> Tagihan Pelanggan</a>
                         <a href="index.php?page=admin_invoices&filter_type=partner" class="nav-link <?= $page == 'admin_invoices' && ($_GET['filter_type'] ?? '') == 'partner' ? 'active' : '' ?>"><i class="fas fa-handshake" style="color:var(--primary);"></i> Tagihan Kemitraan</a>
+                            <a href="index.php?page=admin_create_invoice" class="nav-link <?= $page == 'admin_create_invoice' ? 'active' : '' ?>"><i class="fas fa-plus-circle" style="color:#06b6d4;"></i> Buat Invoice</a>
                         <a href="index.php?page=admin_expenses" class="nav-link <?= $page == 'admin_expenses' ? 'active' : '' ?>"><i class="fas fa-wallet" style="color:var(--warning);"></i> Pengeluaran</a>
                         
                         <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">INFRASTRUKTUR</div>
@@ -86,6 +146,7 @@
                             <div class="dropdown-content">
                                 <a href="index.php?page=admin_reports" class="nav-link dropdown-link <?= $page == 'admin_reports' ? 'active' : '' ?>"><i class="fas fa-chart-line"></i> Keuangan</a>
                                 <a href="index.php?page=admin_report_assets" class="nav-link dropdown-link <?= $page == 'admin_report_assets' ? 'active' : '' ?>"><i class="fas fa-file-contract"></i> Aset</a>
+                                <!-- KPI removed -->
                             </div>
                         </div>
 
@@ -138,6 +199,7 @@
                             </div>
                             <div class="dropdown-content">
                                 <a href="index.php?page=admin_invoices" class="nav-link dropdown-link <?= $page == 'admin_invoices' ? 'active' : '' ?>"><i class="fas fa-file-invoice-dollar"></i> Riwayat Tagihan</a>
+                                <a href="index.php?page=admin_create_invoice" class="nav-link dropdown-link <?= $page == 'admin_create_invoice' ? 'active' : '' ?>"><i class="fas fa-plus-circle"></i> Buat Invoice</a>
                                 <a href="index.php?page=partner_isp_invoices" class="nav-link dropdown-link <?= $page == 'partner_isp_invoices' ? 'active' : '' ?>"><i class="fas fa-receipt" style="color:#ef4444;"></i> Tagihan Ke ISP</a>
                                 <a href="index.php?page=admin_expenses" class="nav-link dropdown-link <?= $page == 'admin_expenses' ? 'active' : '' ?>"><i class="fas fa-wallet"></i> Pengeluaran</a>
                                 <a href="index.php?page=admin_reports" class="nav-link dropdown-link <?= $page == 'admin_reports' ? 'active' : '' ?>"><i class="fas fa-chart-line"></i> Laporan Laba</a>

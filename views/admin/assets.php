@@ -35,6 +35,290 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     }
+
+    // Create invoice for asset sale
+    if ($action === 'invoice_create') {
+        $asset_id = intval($_POST['asset_id'] ?? 0);
+        $customer_id = intval($_POST['customer_id'] ?? 0);
+        $recipient_name = trim($_POST['recipient_name'] ?? '');
+        $amount = floatval($_POST['amount'] ?? 0);
+        $due_date = $_POST['due_date'] ?? date('Y-m-d');
+        $description = trim($_POST['description'] ?? 'Pembelian Perangkat');
+        $billing_address = trim($_POST['billing_address'] ?? '');
+        $billing_phone = trim($_POST['billing_phone'] ?? '');
+        $billing_email = trim($_POST['billing_email'] ?? '');
+
+        // Ownership / permission: only admin or creator can issue invoice
+        $u_id = $_SESSION['user_id'];
+        $u_role = $_SESSION['user_role'] ?? 'guest';
+
+        if ($u_role === 'admin' || $u_role === 'partner') {
+            $created_at = date('Y-m-d H:i:s');
+            $issued_by_id = $u_id;
+            $issued_by_name = $_SESSION['user_name'] ?? '';
+
+            // If no customer selected but recipient name provided, create a temporary customer record so invoice history can reference it
+            if ($customer_id <= 0 && !empty($recipient_name)) {
+                try {
+                    // Create a temporary customer record but do NOT attribute it to the current user/partner
+                    // to avoid it appearing in partner/mitra lists. Use created_by = 0 (system).
+                    $stmt_c = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, type, created_by, registration_date) VALUES (?, ?, ?, ?, 'note', ?, datetime('now'))");
+                    $cust_code = null;
+                    $stmt_c->execute([$cust_code, $recipient_name, $billing_address, $billing_phone, 0]);
+                    $customer_id = $db->lastInsertId();
+                } catch (Exception $e) {
+                    // fallback: leave customer_id as 0
+                    $customer_id = 0;
+                }
+            }
+
+            // Ensure invoices table has extended columns (auto-migrate if needed)
+            try {
+                $existing = $db->query("PRAGMA table_info(invoices)")->fetchAll(PDO::FETCH_COLUMN, 1);
+            } catch (Exception $e) { $existing = []; }
+
+            $ensure_cols = [
+                'billing_address' => 'TEXT',
+                'billing_phone' => 'TEXT',
+                'billing_email' => 'TEXT',
+                'issued_by_id' => 'INTEGER DEFAULT 0',
+                'issued_by_name' => 'TEXT',
+                'payment_instructions' => 'TEXT',
+                'created_via' => 'TEXT'
+            ];
+            foreach ($ensure_cols as $col => $def) {
+                if (!in_array($col, $existing)) {
+                    try { $db->exec("ALTER TABLE invoices ADD COLUMN $col $def"); } catch (Exception $e) {}
+                }
+            }
+
+            // Refresh columns list
+            try {
+                $cols = $db->query("PRAGMA table_info(invoices)")->fetchAll(PDO::FETCH_COLUMN, 1);
+            } catch (Exception $e) { $cols = []; }
+            $has_extra_cols = is_array($cols) && (in_array('billing_address', $cols) || in_array('issued_by_name', $cols));
+
+            // check if invoices table has 'created_via' column
+            $has_created_via = false;
+            try {
+                $inv_cols = $db->query("PRAGMA table_info(invoices)")->fetchAll(PDO::FETCH_COLUMN, 1);
+                $has_created_via = is_array($inv_cols) && in_array('created_via', $inv_cols);
+            } catch (Exception $e) { $has_created_via = false; }
+
+            if ($has_extra_cols) {
+                if ($has_created_via) {
+                    $stmt = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, created_at, status, discount, billing_address, billing_phone, billing_email, issued_by_id, issued_by_name, created_via) VALUES (?, ?, ?, ?, 'Belum Lunas', 0, ?, ?, ?, ?, ?, ?)");
+                    $stmt->execute([$customer_id, $amount, $due_date, $created_at, $billing_address, $billing_phone, $billing_email, $issued_by_id, $issued_by_name, ($_POST['created_via'] ?? '')]);
+                } else {
+                    $stmt = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, created_at, status, discount, billing_address, billing_phone, billing_email, issued_by_id, issued_by_name) VALUES (?, ?, ?, ?, 'Belum Lunas', 0, ?, ?, ?, ?, ?)");
+                    $stmt->execute([$customer_id, $amount, $due_date, $created_at, $billing_address, $billing_phone, $billing_email, $issued_by_id, $issued_by_name]);
+                }
+            } else {
+                // Fallback to legacy insert (DB without new columns)
+                if ($has_created_via) {
+                    $stmt = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, created_at, status, discount, created_via) VALUES (?, ?, ?, ?, 'Belum Lunas', 0, ?)");
+                    $stmt->execute([$customer_id, $amount, $due_date, $created_at, ($_POST['created_via'] ?? '')]);
+                } else {
+                    $stmt = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, created_at, status, discount) VALUES (?, ?, ?, ?, 'Belum Lunas', 0)");
+                    $stmt->execute([$customer_id, $amount, $due_date, $created_at]);
+                }
+            }
+            $invoice_id = $db->lastInsertId();
+
+            // Ensure invoice_items has qty/unit columns (auto-migrate if needed)
+            try {
+                $item_cols = $db->query("PRAGMA table_info(invoice_items)")->fetchAll(PDO::FETCH_COLUMN, 1);
+            } catch (Exception $e) { $item_cols = []; }
+            $ensure_item_cols = [ 'qty' => 'INTEGER DEFAULT 1', 'unit_price' => 'REAL DEFAULT 0' ];
+            foreach ($ensure_item_cols as $col => $def) {
+                if (!in_array($col, $item_cols)) {
+                    try { $db->exec("ALTER TABLE invoice_items ADD COLUMN $col $def"); } catch (Exception $e) {}
+                }
+            }
+
+            try {
+                $item_cols = $db->query("PRAGMA table_info(invoice_items)")->fetchAll(PDO::FETCH_COLUMN, 1);
+            } catch (Exception $e) { $item_cols = []; }
+
+            $has_qty = is_array($item_cols) && (in_array('qty', $item_cols) || in_array('quantity', $item_cols));
+            $has_unit = is_array($item_cols) && (in_array('unit_price', $item_cols) || in_array('unit', $item_cols));
+
+            if ($has_qty && $has_unit) {
+                $stmt_item = $db->prepare("INSERT INTO invoice_items (invoice_id, description, amount, qty, unit_price) VALUES (?, ?, ?, ?, ?)");
+            } else {
+                $stmt_item = $db->prepare("INSERT INTO invoice_items (invoice_id, description, amount) VALUES (?, ?, ?)");
+            }
+
+            if (!empty($_POST['item_desc']) && is_array($_POST['item_desc'])) {
+                $descs = $_POST['item_desc'];
+                $amounts = $_POST['item_amount'] ?? array_fill(0, count($descs), 0);
+                $qtys = $_POST['item_qty'] ?? array_fill(0, count($descs), 1);
+                $units = $_POST['item_unit'] ?? array_fill(0, count($descs), 0);
+                foreach ($descs as $i => $d) {
+                    $d = trim($d);
+                    $a = floatval($amounts[$i] ?? 0);
+                    $q = intval($qtys[$i] ?? 1);
+                    $u = floatval($units[$i] ?? 0);
+                    if ($d !== '' && $a >= 0) {
+                        if ($has_qty && $has_unit) {
+                            $stmt_item->execute([$invoice_id, $d, $a, $q, $u]);
+                        } else {
+                            // If DB doesn't have qty/unit columns, embed qty and unit into description for print clarity
+                            $desc_extra = $d;
+                            if ($q > 1 || $u > 0) {
+                                $desc_extra .= ' - ' . $q . ' x Rp ' . number_format($u, 0, ',', '.');
+                            }
+                            $stmt_item->execute([$invoice_id, $desc_extra, $a]);
+                        }
+                    }
+                }
+            } else {
+                // single fallback
+                if ($has_qty && $has_unit) {
+                    $single_qty = intval($_POST['item_qty'][0] ?? 1);
+                    $single_unit = floatval($_POST['item_unit'][0] ?? $amount);
+                    $db->prepare("INSERT INTO invoice_items (invoice_id, description, amount, qty, unit_price) VALUES (?, ?, ?, ?, ?)")->execute([$invoice_id, $description, $amount, $single_qty, $single_unit]);
+                } else {
+                    $desc_extra = $description;
+                    $sq = intval($_POST['item_qty'][0] ?? 0);
+                    $su = floatval($_POST['item_unit'][0] ?? 0);
+                    if ($sq > 1 || $su > 0) $desc_extra .= ' - ' . $sq . ' x Rp ' . number_format($su, 0, ',', '.');
+                    $stmt_item->execute([$invoice_id, $desc_extra, $amount]);
+                }
+            }
+
+            // Save payment_instructions if provided and column exists
+            $payment_instructions = trim($_POST['payment_instructions'] ?? '');
+            if ($payment_instructions) {
+                try {
+                    $cols = $db->query("PRAGMA table_info(invoices)")->fetchAll(PDO::FETCH_COLUMN, 1);
+                    if (is_array($cols) && in_array('payment_instructions', $cols)) {
+                        $db->prepare("UPDATE invoices SET payment_instructions = ? WHERE id = ?")->execute([$payment_instructions, $invoice_id]);
+                    }
+                } catch (Exception $e) {}
+            }
+
+            // Optionally mark asset as sold (set status to 'Sold') if requested
+            if (isset($_POST['mark_sold']) && intval($_POST['mark_sold']) === 1 && $asset_id > 0) {
+                try {
+                    $db->prepare("UPDATE infrastructure_assets SET status = 'Sold' WHERE id = ?")->execute([$asset_id]);
+                } catch (Exception $e) {}
+            }
+
+            header("Location: index.php?page=admin_invoices&action=print&id=$invoice_id");
+            exit;
+        } else {
+            header("Location: index.php?page=admin_assets&msg=forbidden");
+            exit;
+        }
+    }
+
+    // Update existing quick invoice (edit form posts here)
+    if ($action === 'invoice_update') {
+        $invoice_id = intval($_POST['invoice_id'] ?? 0);
+        if ($invoice_id <= 0) { header("Location: index.php?page=admin_create_invoice&msg=invalid"); exit; }
+
+        // fetch invoice and verify it's a quick invoice
+        try {
+            $inv = $db->prepare("SELECT * FROM invoices WHERE id = ? LIMIT 1");
+            $inv->execute([$invoice_id]);
+            $invoice = $inv->fetch();
+        } catch (Exception $e) { $invoice = null; }
+
+        if (!$invoice) { header("Location: index.php?page=admin_create_invoice&msg=notfound"); exit; }
+
+        // check created_via if column exists
+        try {
+            $cols = $db->query("PRAGMA table_info(invoices)")->fetchAll(PDO::FETCH_COLUMN,1);
+        } catch (Exception $e) { $cols = []; }
+        if (is_array($cols) && in_array('created_via', $cols) && ($invoice['created_via'] ?? '') !== 'quick') {
+            header("Location: index.php?page=admin_create_invoice&msg=not_quick"); exit;
+        }
+
+        // permission: only admin or issuer can edit
+        $u_id = $_SESSION['user_id']; $u_role = $_SESSION['user_role'] ?? 'guest';
+        $can_edit = false;
+        if ($u_role === 'admin' || $u_role === 'partner') $can_edit = true;
+        if (!$can_edit) { header("Location: index.php?page=admin_create_invoice&msg=forbidden"); exit; }
+
+        // collect header fields
+        $billing_address = trim($_POST['billing_address'] ?? '');
+        $billing_phone = trim($_POST['billing_phone'] ?? '');
+        $billing_email = trim($_POST['billing_email'] ?? '');
+        $payment_instructions = trim($_POST['payment_instructions'] ?? '');
+        $due_date = $_POST['due_date'] ?? $invoice['due_date'];
+        $status = $_POST['status'] ?? $invoice['status'];
+
+        // compute total from posted items
+        $total_amount = 0;
+        $descs = $_POST['item_desc'] ?? [];
+        $amounts = $_POST['item_amount'] ?? [];
+        foreach ($descs as $i => $d) {
+            $a = floatval($amounts[$i] ?? 0);
+            $total_amount += $a;
+        }
+
+        // update invoice header (only if columns exist)
+        try {
+            $cols = $db->query("PRAGMA table_info(invoices)")->fetchAll(PDO::FETCH_COLUMN,1);
+        } catch (Exception $e) { $cols = []; }
+        $has_payment_instr = is_array($cols) && in_array('payment_instructions', $cols);
+        $has_billing_cols = is_array($cols) && in_array('billing_address', $cols);
+
+        if ($has_billing_cols) {
+            if ($has_payment_instr) {
+                $db->prepare("UPDATE invoices SET amount = ?, due_date = ?, billing_address = ?, billing_phone = ?, billing_email = ?, payment_instructions = ?, status = ? WHERE id = ?")->execute([$total_amount, $due_date, $billing_address, $billing_phone, $billing_email, $payment_instructions, $status, $invoice_id]);
+            } else {
+                $db->prepare("UPDATE invoices SET amount = ?, due_date = ?, billing_address = ?, billing_phone = ?, billing_email = ?, status = ? WHERE id = ?")->execute([$total_amount, $due_date, $billing_address, $billing_phone, $billing_email, $status, $invoice_id]);
+            }
+        } else {
+            // minimal update
+            $db->prepare("UPDATE invoices SET amount = ?, due_date = ?, status = ? WHERE id = ?")->execute([$total_amount, $due_date, $status, $invoice_id]);
+        }
+
+        // Replace invoice items: delete existing then insert posted
+        try { $db->prepare("DELETE FROM invoice_items WHERE invoice_id = ?")->execute([$invoice_id]); } catch (Exception $e) {}
+
+        // Ensure invoice_items has qty/unit columns (like in create)
+        try {
+            $item_cols = $db->query("PRAGMA table_info(invoice_items)" )->fetchAll(PDO::FETCH_COLUMN,1);
+        } catch (Exception $e) { $item_cols = []; }
+        $ensure_item_cols = [ 'qty' => 'INTEGER DEFAULT 1', 'unit_price' => 'REAL DEFAULT 0' ];
+        foreach ($ensure_item_cols as $col => $def) {
+            if (!in_array($col, $item_cols)) {
+                try { $db->exec("ALTER TABLE invoice_items ADD COLUMN $col $def"); } catch (Exception $e) {}
+            }
+        }
+        try { $item_cols = $db->query("PRAGMA table_info(invoice_items)")->fetchAll(PDO::FETCH_COLUMN,1); } catch (Exception $e) { $item_cols = []; }
+        $has_qty = is_array($item_cols) && in_array('qty', $item_cols);
+        $has_unit = is_array($item_cols) && in_array('unit_price', $item_cols);
+
+        if ($has_qty && $has_unit) {
+            $stmt_item = $db->prepare("INSERT INTO invoice_items (invoice_id, description, amount, qty, unit_price) VALUES (?, ?, ?, ?, ?)");
+        } else {
+            $stmt_item = $db->prepare("INSERT INTO invoice_items (invoice_id, description, amount) VALUES (?, ?, ?)");
+        }
+
+        $qtys = $_POST['item_qty'] ?? [];
+        $units = $_POST['item_unit'] ?? [];
+        foreach ($descs as $i => $d) {
+            $d = trim($d);
+            $a = floatval($amounts[$i] ?? 0);
+            $q = intval($qtys[$i] ?? 1);
+            $u = floatval($units[$i] ?? 0);
+            if ($d === '') continue;
+            if ($has_qty && $has_unit) {
+                $stmt_item->execute([$invoice_id, $d, $a, $q, $u]);
+            } else {
+                $desc_extra = $d;
+                if ($q > 1 || $u > 0) $desc_extra .= ' - ' . $q . ' x Rp ' . number_format($u, 0, ',', '.');
+                $stmt_item->execute([$invoice_id, $desc_extra, $a]);
+            }
+        }
+
+        header("Location: index.php?page=admin_create_invoice&msg=updated");
+        exit;
+    }
 }
 
 if ($action === 'delete') {
@@ -47,6 +331,47 @@ if ($action === 'delete') {
         $db->prepare("DELETE FROM infrastructure_assets WHERE id = ?")->execute([$id]);
     }
     header("Location: index.php?page=admin_assets");
+    exit;
+}
+
+// Allow marking quick invoices as paid from the quick-invoice UI and return there
+if ($action === 'invoice_mark_paid') {
+    $id = intval($_GET['id'] ?? 0);
+    if ($id > 0) {
+        try {
+            $stmt = $db->prepare("SELECT amount, discount FROM invoices WHERE id = ?");
+            $stmt->execute([$id]);
+            $inv = $stmt->fetch();
+        } catch (Exception $e) { $inv = null; }
+
+        if ($inv) {
+            $net_amount = floatval($inv['amount']) - floatval($inv['discount'] ?? 0);
+            $receiver_id = $_SESSION['user_id'];
+            $payment_date = date('Y-m-d H:i:s');
+            try {
+                $db->prepare("UPDATE invoices SET status = 'Lunas' WHERE id = ?")->execute([$id]);
+                $db->prepare("INSERT INTO payments (invoice_id, amount, received_by, payment_date) VALUES (?, ?, ?, ?)")->execute([$id, $net_amount, $receiver_id, $payment_date]);
+            } catch (Exception $e) {}
+        }
+    }
+    header("Location: index.php?page=admin_create_invoice&msg=paid");
+    exit;
+}
+
+// Delete quick invoice and return to quick-invoice page
+if ($action === 'invoice_delete_quick') {
+    $id = intval($_GET['id'] ?? 0);
+    if ($id > 0) {
+        try {
+            // remove payments, items, invoice
+            $db->prepare("DELETE FROM payments WHERE invoice_id = ?")->execute([$id]);
+            $db->prepare("DELETE FROM invoice_items WHERE invoice_id = ?")->execute([$id]);
+            $db->prepare("DELETE FROM invoices WHERE id = ?")->execute([$id]);
+        } catch (Exception $e) {
+            // ignore errors but continue
+        }
+    }
+    header("Location: index.php?page=admin_create_invoice&msg=deleted");
     exit;
 }
 
@@ -199,6 +524,7 @@ $utilization_pct = ($total_ports_capacity > 0) ? ($total_ports_used / $total_por
                     </td>
                     <td>
                         <button class="btn btn-sm btn-warning" onclick='editAsset(<?= json_encode($a) ?>)' title="Edit"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-sm btn-primary" onclick='showInvoiceModal(<?= json_encode($a) ?>)' title="Buat Nota / Cetak"><i class="fas fa-receipt"></i></button>
                         <a href="index.php?page=admin_assets&action=delete&id=<?= $a['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus aset ini?')"><i class="fas fa-trash"></i></a>
                     </td>
                 </tr>
@@ -385,6 +711,62 @@ $utilization_pct = ($total_ports_capacity > 0) ? ($total_ports_used / $total_por
     </div>
 </div>
 
+<!-- Invoice Modal -->
+<div id="invoiceModal" class="modal" style="display:none; position:fixed; z-index:1002; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.8); backdrop-filter:blur(10px);">
+    <div class="glass-panel" style="width:90%; max-width:520px; margin:5% auto; padding:20px;">
+        <h3 style="margin-bottom:10px;"><i class="fas fa-receipt"></i> Buat Nota Penjualan Aset</h3>
+        <form method="POST" id="invoiceForm" action="index.php?page=admin_assets&action=invoice_create">
+            <input type="hidden" name="asset_id" id="inv_asset_id">
+            <div class="form-group">
+                <label>Pilih Mitra / Pelanggan (Untuk menagih)</label>
+                <select name="customer_id" id="inv_customer" class="form-control" required>
+                    <option value="">-- Pilih Mitra / Pelanggan --</option>
+                    <?php
+                        $partners = $db->query("SELECT id, name FROM customers WHERE type = 'partner' ORDER BY name ASC")->fetchAll();
+                        foreach($partners as $p) echo "<option value='" . intval($p['id']) . "'>" . htmlspecialchars($p['name']) . "</option>";
+                    ?>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Jumlah (Rp)</label>
+                <input type="number" name="amount" id="inv_amount" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>Deskripsi / Item</label>
+                <input type="text" name="description" id="inv_description" class="form-control" placeholder="Contoh: Pembelian Router XYZ">
+            </div>
+            <div class="form-group">
+                <label>Alamat Penagihan (opsional)</label>
+                <input type="text" name="billing_address" id="inv_billing_address" class="form-control" placeholder="Alamat untuk dicantumkan di invoice">
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div class="form-group">
+                    <label>No. HP / Telepon</label>
+                    <input type="text" name="billing_phone" id="inv_billing_phone" class="form-control" placeholder="Contoh: 08123456789">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="billing_email" id="inv_billing_email" class="form-control" placeholder="email@example.com">
+                </div>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <div class="form-group" style="flex:1;">
+                    <label>Tanggal Jatuh Tempo</label>
+                    <input type="date" name="due_date" id="inv_due_date" class="form-control" value="<?= date('Y-m-d') ?>">
+                </div>
+                <div class="form-group" style="width:140px; display:flex; align-items:center; gap:8px;">
+                    <label style="margin:0; font-size:13px;">Tandai Terjual</label>
+                    <input type="checkbox" name="mark_sold" id="inv_mark_sold" value="1" style="width:20px; height:20px;">
+                </div>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+                <button type="button" class="btn btn-ghost" onclick="closeInvoiceModal()">Batal</button>
+                <button type="submit" class="btn btn-primary">Buat & Cetak</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 function showAssetModal() {
 // ...
@@ -397,6 +779,21 @@ function showAssetModal() {
 }
 function closeAssetModal() {
     document.getElementById('assetModal').style.display = 'none';
+}
+ 
+function showInvoiceModal(asset) {
+    try {
+        document.getElementById('inv_asset_id').value = asset.id || '';
+        document.getElementById('inv_amount').value = asset.price ? parseFloat(asset.price) : 0;
+        document.getElementById('inv_description').value = 'Pembelian: ' + (asset.name || 'Perangkat');
+        document.getElementById('inv_due_date').value = '<?= date('Y-m-d') ?>';
+        document.getElementById('inv_mark_sold').checked = false;
+        document.getElementById('invoiceModal').style.display = 'block';
+    } catch(e) { console.error(e); alert('Gagal membuka modal invoice'); }
+}
+
+function closeInvoiceModal() {
+    document.getElementById('invoiceModal').style.display = 'none';
 }
 function editAsset(a) {
     document.getElementById('assetForm').action = 'index.php?page=admin_assets&action=edit';

@@ -591,6 +591,12 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     
     $where_type = "";
     if ($filter_type) $where_type = " AND type = " . $db->quote($filter_type);
+
+    // By default, exclude temporary quick-invoice customers from general lists
+    // They should only appear when an explicit filter requests them.
+    if (empty($filter_type)) {
+        $where_type .= " AND type NOT IN ('note','temp')";
+    }
     
     $where_collector = "";
     if ($filter_collector) {
@@ -1737,7 +1743,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                             ?>
                                             <button onclick="sendWAGateway('<?= $wa_raw ?>', <?= htmlspecialchars(json_encode($wa_msg)) ?>, '<?= $wa_fallback ?>', this)" class="btn btn-xs btn-ghost" style="color:#25D366;" title="Kirim Pengingat WA"><i class="fab fa-whatsapp"></i></button>
                                             <a href="index.php?page=admin_invoices&action=mark_paid&id=<?= $ui['id'] ?>&ref=customer_details&cust_id=<?= $id ?>" class="btn btn-xs btn-success" onclick="return confirm('Tandai tagihan ini Lunas?')"><i class="fas fa-check"></i> Bayar</a>
-                                            <button onclick="showEditInvoice(<?= $ui['id'] ?>, <?= $ui['amount'] ?>, <?= $ui['discount'] ?? 0 ?>, '<?= $ui['due_date'] ?>')" class="btn btn-xs btn-warning" title="Edit"><i class="fas fa-edit"></i></button>
+                                            <button onclick="showEditInvoice(<?= $ui['id'] ?>, <?= $ui['amount'] ?>, <?= $ui['discount'] ?? 0 ?>, '<?= $ui['due_date'] ?>')" class="btn btn-xs btn-warning btn-edit-invoice" title="Edit" data-inv-id="<?= $ui['id'] ?>" data-inv-amount="<?= $ui['amount'] ?>" data-inv-discount="<?= $ui['discount'] ?? 0 ?>" data-inv-date="<?= $ui['due_date'] ?>"><i class="fas fa-edit"></i></button>
                                             <a href="index.php?page=admin_invoices&action=delete&id=<?= $ui['id'] ?>&ref=customer_details&cust_id=<?= $id ?>" class="btn btn-xs btn-ghost" style="color:var(--danger);" onclick="return confirm('Hapus tagihan ini?')"><i class="fas fa-trash"></i></a>
                                         </div>
                                     </td>

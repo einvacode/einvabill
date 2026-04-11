@@ -3,12 +3,40 @@ $action = $_GET['action'] ?? 'view';
 $u_id = $_SESSION['user_id'];
 $u_role = $_SESSION['user_role'] ?? 'admin';
 
+// Admin delete handler for report transactions (payments, invoices, expenses)
+if ($action === 'delete_tx' && ($u_role === 'admin')) {
+    $tx = $_GET['tx'] ?? '';
+    $del_id = intval($_GET['id'] ?? 0);
+    if ($del_id > 0) {
+        try {
+            if ($tx === 'payment') {
+                $db->prepare("DELETE FROM payments WHERE id = ?")->execute([$del_id]);
+            } elseif ($tx === 'invoice') {
+                // cascade delete: payments, items, invoice
+                $db->prepare("DELETE FROM payments WHERE invoice_id = ?")->execute([$del_id]);
+                $db->prepare("DELETE FROM invoice_items WHERE invoice_id = ?")->execute([$del_id]);
+                $db->prepare("DELETE FROM invoices WHERE id = ?")->execute([$del_id]);
+            } elseif ($tx === 'expense') {
+                $db->prepare("DELETE FROM expenses WHERE id = ?")->execute([$del_id]);
+            }
+            header('Location: index.php?page=admin_reports&msg=deleted');
+            exit;
+        } catch (Exception $e) {
+            header('Location: index.php?page=admin_reports&msg=delete_error&err=' . urlencode($e->getMessage()));
+            exit;
+        }
+    }
+}
+
 $filter_month = $_GET['month'] ?? date('m');
 $filter_year = $_GET['year'] ?? date('Y');
 $filter_user = $_GET['user_id'] ?? 'all';
 
 // Scoping Logic
-$scope_where = ($u_role === 'admin') ? " AND (c.created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR c.created_by = 0 OR c.created_by IS NULL) " : " AND (c.created_by = $u_id) ";
+$scope_inner = ($u_role === 'admin') ? "(c.created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR c.created_by = 0 OR c.created_by IS NULL)" : "(c.created_by = $u_id)";
+$scope_where = " AND " . $scope_inner . " ";
+// Allow invoices marked as external or those for temporary customers to be visible in financial reports
+$scope_with_external = " AND (" . $scope_inner . " OR (i.created_via IS NOT NULL AND i.created_via <> '') OR i.created_via IN ('external','quick') OR c.type IN ('note','temp')) ";
 $exp_scope = ($u_role === 'admin') ? " AND (created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL) " : " AND (created_by = $u_id) ";
 
 // Date range filters
@@ -32,12 +60,12 @@ $sql_lunas_tepat = "
     JOIN invoices i ON p.invoice_id = i.id
     JOIN customers c ON i.customer_id = c.id
     WHERE p.payment_date BETWEEN ? AND ?
-      AND strftime('%Y-%m', p.payment_date) <= strftime('%Y-%m', i.due_date)
-      $scope_where
+    AND datetime(p.payment_date) <= datetime(i.due_date)
+    $scope_with_external
 ";
 $params_lunas_tepat = [$sql_date_from, $sql_date_to];
 if ($filter_user !== 'all' && $u_role === 'admin') {
-    $sql_lunas_tepat .= " AND p.received_by = ?";
+    $sql_lunas_tepat = str_replace("$scope_where", "AND p.received_by = ? $scope_with_external", $sql_lunas_tepat);
     $params_lunas_tepat[] = $filter_user;
 }
 $q_lunas_tepat = $db->prepare($sql_lunas_tepat);
@@ -50,12 +78,12 @@ $sql_tunggakan_dibayar = "
     JOIN invoices i ON p.invoice_id = i.id
     JOIN customers c ON i.customer_id = c.id
     WHERE p.payment_date BETWEEN ? AND ?
-      AND strftime('%Y-%m', p.payment_date) > strftime('%Y-%m', i.due_date)
-      $scope_where
+    AND datetime(p.payment_date) > datetime(i.due_date)
+    $scope_with_external
 ";
 $params_tunggakan_dibayar = [$sql_date_from, $sql_date_to];
 if ($filter_user !== 'all' && $u_role === 'admin') {
-    $sql_tunggakan_dibayar .= " AND p.received_by = ?";
+    $sql_tunggakan_dibayar = str_replace("$scope_where", "AND p.received_by = ? $scope_with_external", $sql_tunggakan_dibayar);
     $params_tunggakan_dibayar[] = $filter_user;
 }
 $q_tunggakan_dibayar = $db->prepare($sql_tunggakan_dibayar);
@@ -66,11 +94,10 @@ $q_belum_bayar = $db->prepare("
     SELECT SUM(i.amount - i.discount) as total
     FROM invoices i
     JOIN customers c ON i.customer_id = c.id
-    WHERE i.due_date BETWEEN ? AND ? 
-      AND i.status = 'Belum Lunas'
-      $scope_where
+        WHERE ( (i.due_date BETWEEN ? AND ?) OR ((i.created_via IS NOT NULL AND i.created_via <> '') AND (i.created_at BETWEEN ? AND ?)) ) AND i.status = 'Belum Lunas'
+        $scope_with_external
 ");
-$q_belum_bayar->execute([$date_from, $date_to]);
+    $q_belum_bayar->execute([$date_from, $date_to, $sql_date_from, $sql_date_to]);
 $belum_bayar = $q_belum_bayar->fetchColumn() ?: 0;
 
 $q_tertunggak_lama = $db->prepare("
@@ -79,22 +106,33 @@ $q_tertunggak_lama = $db->prepare("
     JOIN customers c ON i.customer_id = c.id
     WHERE i.due_date < ? 
       AND i.status = 'Belum Lunas'
-      $scope_where
+    $scope_with_external
 ");
 $q_tertunggak_lama->execute([$date_from]);
 $tertunggak_lama = $q_tertunggak_lama->fetchColumn() ?: 0;
 
 $sql_discount = "
-    SELECT SUM(i.discount) 
-    FROM invoices i
-    JOIN payments p ON i.id = p.invoice_id
-    JOIN customers c ON i.customer_id = c.id
-    WHERE p.payment_date BETWEEN ? AND ?
-      $scope_where
+    SELECT SUM(t.d) as total_discount FROM (
+        SELECT i.id, COALESCE(i.discount,0) as d
+        FROM invoices i
+        JOIN payments p ON i.id = p.invoice_id
+        JOIN customers c ON i.customer_id = c.id
+        WHERE p.payment_date BETWEEN ? AND ?
+        GROUP BY i.id
+    ) t
 ";
 $params_discount = [$sql_date_from, $sql_date_to];
 if ($filter_user !== 'all' && $u_role === 'admin') {
-    $sql_discount .= " AND p.received_by = ?";
+    $sql_discount = "
+    SELECT SUM(t.d) as total_discount FROM (
+        SELECT i.id, COALESCE(i.discount,0) as d
+        FROM invoices i
+        JOIN payments p ON i.id = p.invoice_id
+        JOIN customers c ON i.customer_id = c.id
+        WHERE p.payment_date BETWEEN ? AND ? AND p.received_by = ?
+        GROUP BY i.id
+    ) t
+";
     $params_discount[] = $filter_user;
 }
 $q_discount = $db->prepare($sql_discount);
@@ -118,6 +156,7 @@ $sql_table_p = "
         c.package_name,
         c.monthly_fee,
         i.id as invoice_id,
+        p.id as payment_id,
         i.due_date,
         p.amount as amount,
         'Lunas' as status
@@ -125,7 +164,7 @@ $sql_table_p = "
     JOIN invoices i ON p.invoice_id = i.id
     JOIN customers c ON i.customer_id = c.id
     WHERE p.payment_date BETWEEN ? AND ?
-    $scope_where
+    $scope_with_external
 ";
 // Table Data Pagination (Only for view action)
 $items_per_page = 50;
@@ -134,9 +173,9 @@ $offset = ($current_page - 1) * $items_per_page;
 
 $sql_count = "
     SELECT COUNT(*) FROM (
-        SELECT 1 FROM payments p JOIN invoices i ON p.invoice_id = i.id JOIN customers c ON i.customer_id = c.id WHERE p.payment_date BETWEEN ? AND ? $scope_where " . (($filter_user !== 'all' && $u_role === 'admin') ? " AND p.received_by = ?" : "") . "
+        SELECT 1 FROM payments p JOIN invoices i ON p.invoice_id = i.id JOIN customers c ON i.customer_id = c.id WHERE p.payment_date BETWEEN ? AND ? $scope_with_external " . (($filter_user !== 'all' && $u_role === 'admin') ? " AND p.received_by = ?" : "") . "
         UNION ALL
-        SELECT 1 FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.due_date BETWEEN ? AND ? AND i.status = 'Belum Lunas' $scope_where
+        SELECT 1 FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.due_date BETWEEN ? AND ? AND i.status = 'Belum Lunas' $scope_with_external
     ) AS total
 ";
 $params_count = array_merge([$sql_date_from, $sql_date_to], (($filter_user !== 'all' && $u_role === 'admin') ? [$filter_user] : []), [$date_from, $date_to]);
@@ -161,27 +200,40 @@ $sql_table = $sql_table_p . "
         c.package_name,
         c.monthly_fee,
         i.id as invoice_id,
+        NULL as payment_id,
         i.due_date,
         (i.amount - i.discount) as amount,
         'Belum Lunas' as status
     FROM invoices i
     JOIN customers c ON i.customer_id = c.id
-    WHERE i.due_date BETWEEN ? AND ? AND i.status = 'Belum Lunas'
-    $scope_where
+    WHERE ( (i.due_date BETWEEN ? AND ?) OR ((i.created_via IS NOT NULL AND i.created_via <> '') AND (i.created_at BETWEEN ? AND ?)) ) AND i.status = 'Belum Lunas'
+    $scope_with_external
     
     ORDER BY activity_date DESC
     $limit_sql
 ";
 $params_table[] = $date_from;
 $params_table[] = $date_to;
+$params_table[] = $sql_date_from;
+$params_table[] = $sql_date_to;
 
 if ($filter_user !== 'all' && $u_role === 'admin') {
     // Re-assign params for the second part of union if needed? No, params_table already has date_from, date_to at the end.
     // Actually, params_table construction above was a bit messy. Let's fix it.
 }
 
-// Clean params construction
-$params_final = array_merge([$sql_date_from, $sql_date_to], (($filter_user !== 'all' && $u_role === 'admin') ? [$filter_user] : []), [$date_from, $date_to]);
+// Clean params construction for the UNION query:
+// - payments part: datetime range ($sql_date_from, $sql_date_to)
+// - invoices part: date range ($date_from, $date_to) OR created_at datetime range ($sql_date_from, $sql_date_to)
+$params_final = array_merge([
+    $sql_date_from,
+    $sql_date_to
+], (($filter_user !== 'all' && $u_role === 'admin') ? [$filter_user] : []), [
+    $date_from,
+    $date_to,
+    $sql_date_from,
+    $sql_date_to
+]);
 
 $q_table = $db->prepare($sql_table);
 $q_table->execute($params_final);
@@ -468,6 +520,13 @@ if ($action === 'print') {
                             <a href="index.php?page=admin_invoices&action=print&id=<?= $row['invoice_id'] ?>" target="_blank" class="btn btn-xs btn-ghost" style="color:var(--primary); padding:0 5px; margin-left:5px;" title="Cetak Kuitansi">
                                 <i class="fas fa-print"></i>
                             </a>
+                            <?php if($_SESSION['user_role'] === 'admin'): ?>
+                                <?php if($row['activity_type'] == 'Pembayaran Masuk' && !empty($row['payment_id'])): ?>
+                                    <a href="index.php?page=admin_reports&action=delete_tx&tx=payment&id=<?= intval($row['payment_id']) ?>" class="btn btn-xs btn-danger" style="margin-left:6px; padding:0 5px;" onclick="return confirm('Hapus pembayaran ini? Semua perubahan akan permanent.')" title="Hapus Pembayaran"><i class="fas fa-trash"></i></a>
+                                <?php else: ?>
+                                    <a href="index.php?page=admin_reports&action=delete_tx&tx=invoice&id=<?= intval($row['invoice_id']) ?>" class="btn btn-xs btn-danger" style="margin-left:6px; padding:0 5px;" onclick="return confirm('Hapus invoice ini beserta item dan pembayaran terkait?')" title="Hapus Invoice"><i class="fas fa-trash"></i></a>
+                                <?php endif; ?>
+                            <?php endif; ?>
                         <?php endif; ?>
                     </td>
                 </tr>
@@ -690,6 +749,13 @@ if ($action === 'print') {
                     ?>
                         <button onclick="sendWAGateway('<?= $wa_num ?>', <?= htmlspecialchars(json_encode($receipt_msg)) ?>, '<?= $wa_link ?>', this)" style="margin-left:5px; color:#25D366; background:none; border:none; padding:0; cursor:pointer;"><i class="fab fa-whatsapp" style="font-size:14px;"></i></button>
                         <a href="index.php?page=admin_invoices&action=print&id=<?= $row['invoice_id'] ?>" target="_blank" style="margin-left:8px; color:var(--primary);"><i class="fas fa-print"></i></a>
+                        <?php if($_SESSION['user_role'] === 'admin'): ?>
+                            <?php if($row['activity_type'] == 'Pembayaran Masuk' && !empty($row['payment_id'])): ?>
+                                <a href="index.php?page=admin_reports&action=delete_tx&tx=payment&id=<?= intval($row['payment_id']) ?>" onclick="return confirm('Hapus pembayaran ini?')" style="margin-left:8px; color:#ef4444;"><i class="fas fa-trash"></i></a>
+                            <?php else: ?>
+                                <a href="index.php?page=admin_reports&action=delete_tx&tx=invoice&id=<?= intval($row['invoice_id']) ?>" onclick="return confirm('Hapus invoice ini beserta item dan pembayaran terkait?')" style="margin-left:8px; color:#ef4444;"><i class="fas fa-trash"></i></a>
+                            <?php endif; ?>
+                        <?php endif; ?>
                     <?php endif; ?>
                 </div>
             </div>
@@ -757,6 +823,13 @@ if ($action === 'print') {
                             <a href="index.php?page=admin_invoices&action=print&id=<?= $row['invoice_id'] ?>" target="_blank" class="btn btn-xs btn-ghost" style="color:var(--primary); margin-left:8px;" title="Cetak Kuitansi">
                                 <i class="fas fa-print"></i>
                             </a>
+                                <?php if($_SESSION['user_role'] === 'admin'): ?>
+                                    <?php if($row['activity_type'] == 'Pembayaran Masuk' && !empty($row['payment_id'])): ?>
+                                        <a href="index.php?page=admin_reports&action=delete_tx&tx=payment&id=<?= intval($row['payment_id']) ?>" class="btn btn-xs btn-danger" style="margin-left:8px;" onclick="return confirm('Hapus pembayaran ini? Semua perubahan akan permanent.')" title="Hapus Pembayaran"><i class="fas fa-trash"></i></a>
+                                    <?php else: ?>
+                                        <a href="index.php?page=admin_reports&action=delete_tx&tx=invoice&id=<?= intval($row['invoice_id']) ?>" class="btn btn-xs btn-danger" style="margin-left:8px;" onclick="return confirm('Hapus invoice ini beserta item dan pembayaran terkait?')" title="Hapus Invoice"><i class="fas fa-trash"></i></a>
+                                    <?php endif; ?>
+                                <?php endif; ?>
                         <?php endif; ?>
                         <?php if($row['status'] == 'Belum Lunas'): ?>
                             <a href="index.php?page=admin_invoices&action=print&id=<?= $row['invoice_id'] ?>" target="_blank" class="btn btn-xs btn-ghost" style="color:var(--text-secondary); margin-left:8px;" title="Cetak Tagihan">

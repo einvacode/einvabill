@@ -68,7 +68,7 @@ if ($page === 'home') {
 $permissions = [
     'admin' => '*', // Full access
     'collector' => ['collector', 'admin_customers', 'admin_invoices', 'router_data', 'admin_areas', 'admin_map', 'admin_wa_gateway', 'collector_settings'],
-    'partner' => ['partner', 'partner_collection', 'admin_invoices', 'admin_customers', 'admin_packages', 'admin_reports', 'admin_expenses', 'admin_map', 'admin_router', 'partner_settings', 'partner_isp_invoices', 'admin_wa_gateway'] // Added 'admin_router' for sync, 'partner_settings' for branding, 'partner_isp_invoices' for billing
+    'partner' => ['partner', 'partner_collection', 'admin_invoices', 'admin_customers', 'admin_packages', 'admin_reports', 'admin_expenses', 'admin_map', 'admin_router', 'partner_settings', 'partner_isp_invoices', 'admin_wa_gateway', 'admin_create_invoice'] // Added 'admin_router' for sync, 'partner_settings' for branding, 'partner_isp_invoices' for billing
 ];
 
 $user_role = $_SESSION['user_role'] ?? 'guest';
@@ -118,6 +118,9 @@ switch ($page) {
     case 'admin_invoices':
         require __DIR__ . '/views/admin/invoices.php';
         break;
+    case 'admin_create_invoice':
+        require __DIR__ . '/views/admin/create_invoice.php';
+        break;
     case 'admin_expenses':
         require __DIR__ . '/views/admin/expenses.php';
         break;
@@ -127,6 +130,7 @@ switch ($page) {
     case 'admin_reports':
         require __DIR__ . '/views/admin/reports.php';
         break;
+    // 'admin_kpis' removed per user request
     case 'admin_banners':
         require __DIR__ . '/views/admin/banners.php';
         break;
@@ -153,6 +157,9 @@ switch ($page) {
         break;
     case 'admin_assets':
         require __DIR__ . '/views/admin/assets.php';
+        break;
+    case 'admin_temp_customers':
+        require __DIR__ . '/views/admin/temp_customers.php';
         break;
     case 'admin_map':
         require __DIR__ . '/views/admin/map.php';

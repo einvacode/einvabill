@@ -53,8 +53,11 @@ function get_dashboard_stats($db, $scope_where, $c_scope) {
         JOIN customers c ON i.customer_id = c.id 
         WHERE 1=1 $c_scope
     ")->fetch();
+    
+        // 4. External Invoices (created via external integrations or quick temp customers)
+        $external_stats = $db->query("SELECT COUNT(*) as ext_count, COALESCE(SUM(i.amount - i.discount),0) as ext_total FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE (i.created_via = 'external' OR c.type IN ('note','temp')) $c_scope")->fetch();
 
-    return array_merge($cust_stats, $unpaid_stats, $cash_stats);
+    return array_merge($cust_stats, $unpaid_stats, $cash_stats, $external_stats ?? []);
 }
 
 // --- AJAX REFRESH ENDPOINT ---
@@ -74,7 +77,9 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'stats') {
         'koleksi_r'    => 'Rp' . number_format($s['koleksi_r'] ?: 0, 0, ',', '.'),
         'koleksi_m'    => 'Rp' . number_format($s['koleksi_m'] ?: 0, 0, ',', '.'),
         'cash_r'       => 'Rp' . number_format($s['cash_r'] ?: 0, 0, ',', '.'),
-        'cash_m'       => 'Rp' . number_format($s['cash_m'] ?: 0, 0, ',', '.')
+        'cash_m'       => 'Rp' . number_format($s['cash_m'] ?: 0, 0, ',', '.'),
+        'ext_count'    => intval($s['ext_count'] ?? 0),
+        'ext_total'    => 'Rp' . number_format($s['ext_total'] ?? 0, 0, ',', '.')
     ]);
     exit;
 }
@@ -227,6 +232,18 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
             <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Baru</div>
             <div id="stat-baru-count" style="font-size:20px; font-weight:800; line-height:1.2;"><?= number_format($new_customers_month, 0) ?></div>
             <div style="font-size:10px; opacity:0.6; margin-top:2px;">Growth</div>
+        </div>
+    </div>
+
+    <!-- 7. Invoice External -->
+    <div class="glass-panel" style="border-color: #f59e0b; display:flex; align-items:center; gap:12px; padding:15px;">
+        <div style="background:rgba(245, 158, 11, 0.1); color:#f59e0b; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
+            <i class="fas fa-file-invoice"></i>
+        </div>
+        <div style="flex:1; overflow:hidden;">
+            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Invoice External</div>
+            <div id="stat-inv-external" style="font-size:16px; font-weight:800; line-height:1.2; color:#f59e0b;"><?php echo 'Rp' . number_format($s['ext_total'] ?? 0,0,',','.'); ?></div>
+            <div style="font-size:10px; opacity:0.6; margin-top:2px;">Jumlah: <?= number_format($s['ext_count'] ?? 0) ?></div>
         </div>
     </div>
 
