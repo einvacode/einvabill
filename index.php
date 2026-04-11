@@ -35,6 +35,24 @@ if ($page === 'login_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = "Username atau password salah!";
         $page = 'login';
     }
+
+    // Debug: write login attempt details to log for troubleshooting (no plaintext password)
+    try {
+        $dbg = [];
+        $dbg['time'] = date('c');
+        $dbg['page'] = $page;
+        $dbg['username'] = $username;
+        $dbg['user_found'] = $user ? true : false;
+        $dbg['user_id'] = $user['id'] ?? null;
+        $dbg['password_verify'] = ($user ? (int)password_verify($password, $user['password']) : 0);
+        $dbg['session_id'] = session_id();
+        $dbg['session_save_path'] = ini_get('session.save_path');
+        $dbg['cookie_params'] = session_get_cookie_params();
+        $dbg['headers_sent'] = headers_sent() ? true : false;
+        file_put_contents(__DIR__ . '/app/login_debug.log', json_encode($dbg) . PHP_EOL, FILE_APPEND | LOCK_EX);
+    } catch (Exception $e) {
+        // ignore logging errors
+    }
 }
 
 // Authentication Check
