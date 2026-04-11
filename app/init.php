@@ -11,6 +11,9 @@ ini_set('session.gc_maxlifetime', 86400);
 ini_set('session.cookie_lifetime', 86400);
 ini_set('session.cookie_httponly', 1);
 
+// Disable garbage collection for testing
+ini_set('session.gc_probability', 0);
+
 // Set session save path to app/sessions for Proxmox compatibility
 ini_set('session.save_path', __DIR__ . '/sessions');
 
