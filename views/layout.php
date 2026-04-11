@@ -22,7 +22,7 @@
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
     <header class="mobile-header">
         <div style="display: flex; align-items: center; gap: 12px;">
-            <button class="burger-btn" onclick="(window.safeToggleSidebar||window.toggleSidebar||function(){})()" aria-label="Toggle sidebar" tabindex="0"><i class="fas fa-bars"></i></button>
+            <button class="menu-btn" aria-label="Open menu">Menu</button>
             <span style="font-weight: 800; font-size: 16px; letter-spacing: 0.5px;"><?= htmlspecialchars($site_settings['company_name'] ?? 'BILLING') ?></span>
         </div>
         <div onclick="toggleTheme()" style="cursor: pointer; opacity: 0.8;"><i class="fas fa-moon"></i></div>
@@ -86,9 +86,14 @@
                 const burger = document.querySelector('.burger-btn');
                 if(burger) {
                     burger.addEventListener('click', function(e){ console.debug('burger click event'); safeToggle(); });
-                    // also handle touchstart for mobile devices
                     burger.addEventListener('touchstart', function(e){ console.debug('burger touchstart'); e.preventDefault(); safeToggle(); }, {passive:false});
                 } else { console.debug('burger element not found'); }
+
+                const menuBtn = document.querySelector('.menu-btn');
+                if(menuBtn) {
+                    menuBtn.addEventListener('click', function(e){ console.debug('menu click event'); safeToggle(); });
+                    menuBtn.addEventListener('touchstart', function(e){ console.debug('menu touchstart'); e.preventDefault(); safeToggle(); }, {passive:false});
+                } else { console.debug('menu element not found'); }
                 const overlay = document.getElementById('sidebarOverlay');
                 if(overlay) {
                     overlay.addEventListener('click', function(){ console.debug('overlay click'); safeToggle(); });
