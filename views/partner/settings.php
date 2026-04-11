@@ -18,29 +18,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $wa_template = $_POST['wa_template'] ?? '';
     $wa_template_paid = $_POST['wa_template_paid'] ?? '';
     
-    $upload_dir = 'uploads/partner/';
-    if (!is_dir($upload_dir)) {
-        mkdir($upload_dir, 0777, true);
+    $web_upload_dir = 'uploads/partner/';
+    $fs_upload_dir = __DIR__ . '/../../public/' . $web_upload_dir;
+    if (!is_dir($fs_upload_dir)) {
+        mkdir($fs_upload_dir, 0777, true);
     }
-    
+
     $logo_path = $user['brand_logo'];
     $qris_path = $user['brand_qris'];
     
     // Handle Logo Upload
     if (!empty($_FILES['brand_logo']['name'])) {
         $ext = pathinfo($_FILES['brand_logo']['name'], PATHINFO_EXTENSION);
-        $new_logo = $upload_dir . 'logo_' . $u_id . '_' . time() . '.' . $ext;
-        if (move_uploaded_file($_FILES['brand_logo']['tmp_name'], $new_logo)) {
-            $logo_path = $new_logo;
+        $logo_filename = 'logo_' . $u_id . '_' . time() . '.' . $ext;
+        $new_logo_fs = $fs_upload_dir . $logo_filename;
+        if (move_uploaded_file($_FILES['brand_logo']['tmp_name'], $new_logo_fs)) {
+            $logo_path = $web_upload_dir . $logo_filename;
         }
     }
     
     // Handle QRIS Upload
     if (!empty($_FILES['brand_qris']['name'])) {
         $ext = pathinfo($_FILES['brand_qris']['name'], PATHINFO_EXTENSION);
-        $new_qris = $upload_dir . 'qris_' . $u_id . '_' . time() . '.' . $ext;
-        if (move_uploaded_file($_FILES['brand_qris']['tmp_name'], $new_qris)) {
-            $qris_path = $new_qris;
+        $qris_filename = 'qris_' . $u_id . '_' . time() . '.' . $ext;
+        $new_qris_fs = $fs_upload_dir . $qris_filename;
+        if (move_uploaded_file($_FILES['brand_qris']['tmp_name'], $new_qris_fs)) {
+            $qris_path = $web_upload_dir . $qris_filename;
         }
     }
     
