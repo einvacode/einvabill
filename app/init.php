@@ -21,6 +21,12 @@ ini_set('session.save_path', __DIR__ . '/sessions');
 $is_secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443);
 ini_set('session.cookie_secure', $is_secure ? 1 : 0);
 
+// Set cookie domain to match host
+ini_set('session.cookie_domain', $_SERVER['HTTP_HOST']);
+
+// Set same site for cookie
+ini_set('session.cookie_samesite', 'Lax');
+
 // Standard session name
 session_name('EINVABILL_AUTH');
 
