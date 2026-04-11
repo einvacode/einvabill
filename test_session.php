@@ -3,6 +3,7 @@ require_once __DIR__ . '/app/init.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $_SESSION['test'] = 'Session works!';
+    session_write_close();
     header("Location: test_session.php");
     exit;
 }
