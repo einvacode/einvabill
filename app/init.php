@@ -21,8 +21,13 @@ ini_set('session.save_path', __DIR__ . '/sessions');
 $is_secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443);
 ini_set('session.cookie_secure', $is_secure ? 1 : 0);
 
-// Set cookie domain to match host
-ini_set('session.cookie_domain', $_SERVER['HTTP_HOST']);
+// Set cookie domain to match host (strip port if present)
+$cookie_host = $_SERVER['HTTP_HOST'] ?? '';
+// Remove port if present (e.g., example.com:8080) because cookie domains must not include port
+$cookie_host = preg_replace('/:\d+$/', '', $cookie_host);
+if (!empty($cookie_host)) {
+    ini_set('session.cookie_domain', $cookie_host);
+}
 
 // Set same site for cookie
 ini_set('session.cookie_samesite', 'Lax');
