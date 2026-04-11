@@ -729,8 +729,21 @@ tbody tr:hover {
   }
   
   /* Hide desktop sidebar on mobile */
+  /* Make sidebar an off-canvas panel on mobile instead of fully hidden */
   .sidebar { 
-    display: none; 
+    display: flex !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 280px;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    z-index: 1002;
+    box-shadow: 20px 0 50px rgba(0,0,0,0.5);
+    -webkit-overflow-scrolling: touch;
+    overflow-y: auto;
+    background: var(--sidebar-bg);
   }
   
   /* Show mobile bottom nav */
