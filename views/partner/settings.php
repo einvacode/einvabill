@@ -121,8 +121,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="form-group">
                     <label style="font-weight: 700; font-size: 13px; margin-bottom: 8px; display: block;">Logo Bisnis</label>
                     <div style="background: rgba(255,255,255,0.02); border: 2px dashed var(--glass-border); border-radius: 12px; padding: 15px; text-align: center;">
-                        <?php if(!empty($user['brand_logo'])): ?>
-                            <img src="<?= htmlspecialchars($user['brand_logo']) ?>" style="max-height: 60px; margin-bottom: 15px; border-radius: 5px;">
+                        <?php
+                            $logo_src = '';
+                            if (!empty($user['brand_logo'])) {
+                                $logo_src = preg_match('/^http/', $user['brand_logo']) ? $user['brand_logo'] : '/' . str_replace(' ', '%20', $user['brand_logo']);
+                            }
+                        ?>
+                        <?php if(!empty($logo_src)): ?>
+                            <img src="<?= htmlspecialchars($logo_src) ?>" style="max-height: 60px; margin-bottom: 15px; border-radius: 5px;">
                         <?php else: ?>
                             <div style="font-size: 24px; opacity: 0.2; margin-bottom: 10px;"><i class="fas fa-image"></i></div>
                         <?php endif; ?>
@@ -134,8 +140,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="form-group">
                     <label style="font-weight: 700; font-size: 13px; margin-bottom: 8px; display: block;">File QRIS Pembayaran</label>
                     <div style="background: rgba(255,255,255,0.02); border: 2px dashed var(--glass-border); border-radius: 12px; padding: 15px; text-align: center;">
-                        <?php if(!empty($user['brand_qris'])): ?>
-                            <img src="<?= htmlspecialchars($user['brand_qris']) ?>" style="max-height: 80px; margin-bottom: 15px; border-radius: 5px; border: 1px solid #ddd;">
+                        <?php
+                            $qris_src = '';
+                            if (!empty($user['brand_qris'])) {
+                                $qris_src = preg_match('/^http/', $user['brand_qris']) ? $user['brand_qris'] : '/' . str_replace(' ', '%20', $user['brand_qris']);
+                            }
+                        ?>
+                        <?php if(!empty($qris_src)): ?>
+                            <img src="<?= htmlspecialchars($qris_src) ?>" style="max-height: 80px; margin-bottom: 15px; border-radius: 5px; border: 1px solid #ddd;">
                         <?php else: ?>
                             <div style="font-size: 24px; opacity: 0.2; margin-bottom: 10px;"><i class="fas fa-qrcode"></i></div>
                         <?php endif; ?>
