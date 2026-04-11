@@ -30,13 +30,23 @@
     <div class="app-layout">
         <aside class="sidebar">
             <div>
-                <?php $site_settings = $db->query("SELECT company_name, company_logo, site_url FROM settings WHERE id=1")->fetch(); 
-                $app_base_url = rtrim($site_settings['site_url'] ?? '', '/');
+                <?php
+                    $site_settings = $db->query("SELECT company_name, company_logo, site_url FROM settings WHERE id=1")->fetch();
+                    $app_base_url = rtrim($site_settings['site_url'] ?? '', '/');
+                    $logo_src = '';
+                    if (!empty($site_settings['company_logo'])) {
+                        if (preg_match('/^https?:\/\//', $site_settings['company_logo'])) {
+                            $logo_src = $site_settings['company_logo'];
+                        } else {
+                            $logo_src = '/' . str_replace(' ', '%20', $site_settings['company_logo']);
+                        }
+                    }
+                ?>
                 ?>
                 <div class="sidebar-header" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 20px 10px 30px;">
-                    <?php if(!empty($site_settings['company_logo'])): ?>
+                    <?php if(!empty($logo_src)): ?>
                         <div class="brand-logo-wrapper sidebar-logo-box">
-                            <img src="<?= htmlspecialchars($site_settings['company_logo']) ?>" alt="Logo" loading="eager">
+                            <img src="<?= htmlspecialchars($logo_src) ?>" alt="Logo" loading="eager">
                         </div>
                     <?php else: ?>
                         <div style="background: var(--nav-active-bg); padding: 12px; border-radius: 12px; margin-bottom: 5px;">
