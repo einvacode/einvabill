@@ -948,6 +948,21 @@ tbody tr:hover {
 
 /* Extra small screens */
 @media (max-width: 480px) {
+  /* Show mobile header (burger) on small screens */
+  .mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: var(--sidebar-bg);
+    border-bottom: 1px solid var(--glass-border);
+    position: sticky;
+    top: 0;
+    z-index: 1100;
+    backdrop-filter: blur(6px);
+  }
+
+  .mobile-header .burger-btn { font-size: 22px; }
   .stats-grid {
     grid-template-columns: 1fr 1fr;
     gap: 8px;
