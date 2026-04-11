@@ -31,3 +31,5 @@ wa-gateway/node_modules/
 wa-gateway/.wwebjs_auth/
 setup_linux.sh
 start_wa_gateway.bat
+wa-gateway/.wwebjs_cache/
+app/sessions/
