@@ -193,7 +193,7 @@ function run_database_setup($db) {
 
     // 2. Incremental Schema Migrations (Safety check for existing databases)
     $cols_to_add = [
-        'customers' => ['router_id' => 'INTEGER DEFAULT 0', 'pppoe_name' => 'TEXT', 'customer_code' => 'TEXT', 'area' => 'TEXT', 'created_by' => 'INTEGER DEFAULT 0', 'lat' => 'TEXT', 'lng' => 'TEXT', 'odp_id' => 'INTEGER DEFAULT 0', 'odp_port' => 'INTEGER', 'path_json' => 'TEXT'],
+        'customers' => ['router_id' => 'INTEGER DEFAULT 0', 'pppoe_name' => 'TEXT', 'customer_code' => 'TEXT', 'area' => 'TEXT', 'created_by' => 'INTEGER DEFAULT 0', 'lat' => 'TEXT', 'lng' => 'TEXT', 'odp_id' => 'INTEGER DEFAULT 0', 'odp_port' => 'INTEGER', 'path_json' => 'TEXT', 'collector_id' => 'INTEGER DEFAULT 0'],
         'users' => ['area' => 'TEXT', 'customer_id' => 'INTEGER', 'brand_name' => 'TEXT', 'brand_logo' => 'TEXT', 'brand_qris' => 'TEXT', 'brand_address' => 'TEXT', 'brand_contact' => 'TEXT', 'brand_bank' => 'TEXT', 'brand_rekening' => 'TEXT', 'wa_template' => 'TEXT', 'wa_template_paid' => 'TEXT'],
         'invoices' => ['discount' => 'REAL DEFAULT 0'],
         'routers' => ['created_by' => 'INTEGER DEFAULT 0'],
