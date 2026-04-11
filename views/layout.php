@@ -22,7 +22,7 @@
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
     <header class="mobile-header">
         <div style="display: flex; align-items: center; gap: 12px;">
-            <button class="burger-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+            <button class="burger-btn" onclick="(window.safeToggleSidebar||window.toggleSidebar||function(){})()" aria-label="Toggle sidebar" tabindex="0"><i class="fas fa-bars"></i></button>
             <span style="font-weight: 800; font-size: 16px; letter-spacing: 0.5px;"><?= htmlspecialchars($site_settings['company_name'] ?? 'BILLING') ?></span>
         </div>
         <div onclick="toggleTheme()" style="cursor: pointer; opacity: 0.8;"><i class="fas fa-moon"></i></div>
@@ -81,8 +81,17 @@
             }, true);
 
         document.addEventListener('DOMContentLoaded', function(){
-            const burger = document.querySelector('.burger-btn'); if(burger) burger.addEventListener('click', safeToggle);
-            const overlay = document.getElementById('sidebarOverlay'); if(overlay) overlay.addEventListener('click', safeToggle);
+            const burger = document.querySelector('.burger-btn');
+            if(burger) {
+                burger.addEventListener('click', safeToggle);
+                // also handle touchstart for mobile devices
+                burger.addEventListener('touchstart', function(e){ e.preventDefault(); safeToggle(); }, {passive:false});
+            }
+            const overlay = document.getElementById('sidebarOverlay');
+            if(overlay) {
+                overlay.addEventListener('click', safeToggle);
+                overlay.addEventListener('touchstart', function(e){ e.preventDefault(); safeToggle(); }, {passive:false});
+            }
         });
         window.safeToggleSidebar = safeToggle;
     })();
