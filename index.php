@@ -141,6 +141,9 @@ switch ($page) {
     case 'admin_create_invoice':
         require __DIR__ . '/views/admin/create_invoice.php';
         break;
+    case 'admin_edit_quick_invoice':
+        require __DIR__ . '/views/admin/edit_quick_invoice.php';
+        break;
     case 'admin_expenses':
         require __DIR__ . '/views/admin/expenses.php';
         break;

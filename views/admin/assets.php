@@ -227,12 +227,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (!$invoice) { header("Location: index.php?page=admin_create_invoice&msg=notfound"); exit; }
 
-        // check created_via if column exists
+        // check created_via if column exists — allow editing for 'quick' and 'external' types
         try {
             $cols = $db->query("PRAGMA table_info(invoices)")->fetchAll(PDO::FETCH_COLUMN,1);
         } catch (Exception $e) { $cols = []; }
-        if (is_array($cols) && in_array('created_via', $cols) && ($invoice['created_via'] ?? '') !== 'quick') {
-            header("Location: index.php?page=admin_create_invoice&msg=not_quick"); exit;
+        if (is_array($cols) && in_array('created_via', $cols)) {
+            $cv = $invoice['created_via'] ?? '';
+            if ($cv !== 'quick' && $cv !== 'external' && $cv !== '') {
+                header("Location: index.php?page=admin_create_invoice&msg=not_quick"); exit;
+            }
         }
 
         // permission: only admin or issuer can edit

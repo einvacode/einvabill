@@ -30,7 +30,7 @@ if ($invoice['status'] === 'Lunas') {
 $tunggakan = $db->query("SELECT SUM(amount - discount) FROM invoices WHERE customer_id = " . intval($invoice['customer_id']) . " AND status = 'Belum Lunas' AND id != " . intval($invoice['id']))->fetchColumn() ?: 0;
 $tunggakan_bulan = $db->query("SELECT COUNT(*) FROM invoices WHERE customer_id = " . intval($invoice['customer_id']) . " AND status = 'Belum Lunas' AND id != " . intval($invoice['id']))->fetchColumn() ?: 0;
 
-$bulan_bayar = "Tagihan Bulan " . date('m/Y', strtotime($invoice['due_date']));
+$bulan_bayar = "Tagihan Bulan " . (!empty($invoice['due_date']) ? date('m/Y', strtotime($invoice['due_date'])) : date('m/Y', strtotime($invoice['created_at'] ?? 'now')));
 
 // Fetch items for itemized billing
 $invoice_items = $db->query("SELECT * FROM invoice_items WHERE invoice_id = " . intval($invoice['id']))->fetchAll();
@@ -157,6 +157,7 @@ if (($invoice['status'] ?? '') === 'Lunas') {
             <div class="mb-2" style="font-size:12px;">
                 Nomor: INV-<?= str_pad($invoice['id'], 5, "0", STR_PAD_LEFT) ?><br>
                 Tanggal: <?= date('d/m/Y', strtotime($invoice['created_at'])) ?><br>
+                Jatuh Tempo: <?= (!empty($invoice['due_date']) ? date('d/m/Y', strtotime($invoice['due_date'])) : '-') ?><br>
                 Dicetak: <?= date('d/m/Y H:i') ?>
             </div>
             
@@ -317,8 +318,8 @@ if (($invoice['status'] ?? '') === 'Lunas') {
                 <div style="text-align:right;">
                     <div class="invoice-title">INVOICE</div>
                     <div style="font-size:14px; font-weight:bold; margin-top:5px;">#INV-<?= str_pad($invoice['id'], 5, "0", STR_PAD_LEFT) ?></div>
-                    <div style="color:#64748b; font-size:11px; margin-top:2px;">Terbit: <?= date('d/m/Y', strtotime($invoice['created_at'])) ?></div>
-                    <div style="color:#ef4444; font-weight:bold; font-size:11px; margin-top:2px;">Jatuh Tempo: <?= date('d/m/Y', strtotime($invoice['due_date'])) ?></div>
+                    <div style="color:#64748b; font-size:11px; margin-top:2px;">Terbit: <?= (!empty($invoice['created_at']) ? date('d/m/Y', strtotime($invoice['created_at'])) : '-') ?></div>
+                    <div style="color:#ef4444; font-weight:bold; font-size:11px; margin-top:2px;">Jatuh Tempo: <?= (!empty($invoice['due_date']) ? date('d/m/Y', strtotime($invoice['due_date'])) : '-') ?></div>
                 </div>
             </div>
 
