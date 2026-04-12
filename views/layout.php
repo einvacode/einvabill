@@ -1,9 +1,26 @@
+<?php
+// Fetch minimal settings early so we can set favicon in <head>
+$__layout_settings = $db->query("SELECT company_name, company_logo, site_url FROM settings WHERE id=1")->fetch();
+$__favicon_src = '';
+if (!empty($__layout_settings['company_logo'])) {
+    if (preg_match('/^https?:\/\//', $__layout_settings['company_logo'])) {
+        $__favicon_src = $__layout_settings['company_logo'];
+    } else {
+        $__favicon_src = '/' . str_replace(' ', '%20', ltrim($__layout_settings['company_logo'], '/'));
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="id" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Billing Dashboard</title>
+    <?php if (!empty($__favicon_src)): ?>
+        <link rel="icon" href="<?= htmlspecialchars($__favicon_src) ?>" sizes="any">
+    <?php else: ?>
+        <link rel="icon" href="public/favicon.png">
+    <?php endif; ?>
     <link rel="stylesheet" href="public/style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script>
