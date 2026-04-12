@@ -114,35 +114,11 @@ $site_settings = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
 // Application debug flag (toggle from settings table if available)
 define('APP_DEBUG', !empty($site_settings['debug_mode']));
 
-$MASTER_KEY = getenv('MASTER_KEY') ?: "EB-ULTIMATE-2026";
-$license_key = $site_settings['license_key'] ?? '';
-$install_date = $site_settings['installation_date'] ?: date('Y-m-d');
-$expiry_date = $site_settings['license_expiry'] ?? '';
-
-if (empty($site_settings['installation_date'])) {
-    $db->prepare("UPDATE settings SET installation_date = ? WHERE id=1")->execute([$install_date]);
-}
-
-$LICENSE_ST = 'EXPIRED';
-$LICENSE_MSG = '';
-
-if ($license_key === $MASTER_KEY) {
-    $LICENSE_ST = 'UNLIMITED';
-} elseif (!empty($expiry_date) && strtotime($expiry_date) >= strtotime(date('Y-m-d'))) {
-    $LICENSE_ST = 'ACTIVE';
-} else {
-    $days_since_install = (strtotime(date('Y-m-d')) - strtotime($install_date)) / 86400;
-    if ($days_since_install <= 7) {
-        $LICENSE_ST = 'TRIAL';
-        $remaining = 7 - floor($days_since_install);
-        $LICENSE_MSG = "Masa Percobaan (Trial) sisa $remaining hari.";
-    } else {
-        $LICENSE_ST = 'EXPIRED';
-        $LICENSE_MSG = "Masa Percobaan / Lisensi Anda telah habis.";
-    }
-}
-
-define('LICENSE_ST', $LICENSE_ST);
-define('LICENSE_MSG', $LICENSE_MSG);
+// Centralized license verification
+require_once __DIR__ . '/license.php';
+$lic = verify_license($db);
+define('LICENSE_ST', $lic['status'] ?? 'EXPIRED');
+define('LICENSE_MSG', $lic['msg'] ?? '');
+if (!empty($lic['expiry'])) define('LICENSE_EXPIRY', $lic['expiry']);
 
 ?>
