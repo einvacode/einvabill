@@ -152,7 +152,7 @@ $partner_invoices = $stmt_inv->fetchAll();
                             <span class="badge <?= $p_inv['status'] == 'Lunas' ? 'badge-success' : 'badge-danger' ?>" style="font-size:10px; font-weight:800; padding:4px 12px; border-radius:8px;"><?= strtoupper($p_inv['status']) ?></span>
                         </td>
                         <td style="padding:15px; text-align:right;">
-                            <a href="index.php?page=admin_invoices&action=print&id=<?= $p_inv['id'] ?>" target="_blank" class="btn btn-sm btn-ghost" style="width:36px; height:36px; padding:0; border-radius:10px; border:1px solid var(--glass-border);"><i class="fas fa-print"></i></a>
+                            <a href="index.php?page=invoice_print&id=<?= $p_inv['id'] ?>" target="_blank" class="btn btn-sm btn-ghost" style="width:36px; height:36px; padding:0; border-radius:10px; border:1px solid var(--glass-border);"><i class="fas fa-print"></i></a>
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -182,7 +182,7 @@ $partner_invoices = $stmt_inv->fetchAll();
                     </div>
                 </div>
                 <div style="display:flex; gap:10px;">
-                    <a href="index.php?page=admin_invoices&action=print&id=<?= $p_inv['id'] ?>" target="_blank" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:var(--text-primary); text-decoration:none; padding:12px; border-radius:12px; font-weight:700; font-size:13px;">
+                    <a href="index.php?page=invoice_print&id=<?= $p_inv['id'] ?>" target="_blank" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:var(--text-primary); text-decoration:none; padding:12px; border-radius:12px; font-weight:700; font-size:13px;">
                         <i class="fas fa-print"></i> CETAK STRUK PEMBAYARAN
                     </a>
                 </div>

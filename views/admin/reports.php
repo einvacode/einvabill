@@ -35,8 +35,12 @@ $filter_user = $_GET['user_id'] ?? 'all';
 // Scoping Logic
 $scope_inner = ($u_role === 'admin') ? "(c.created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR c.created_by = 0 OR c.created_by IS NULL)" : "(c.created_by = $u_id)";
 $scope_where = " AND " . $scope_inner . " ";
-// Allow invoices marked as external or those for temporary customers to be visible in financial reports
-$scope_with_external = " AND (" . $scope_inner . " OR (i.created_via IS NOT NULL AND i.created_via <> '') OR i.created_via IN ('external','quick') OR c.type IN ('note','temp')) ";
+// For admin include external/temporary invoices; for partners/collectors only their own customers
+if ($u_role === 'admin') {
+    $scope_with_external = " AND (" . $scope_inner . " OR (i.created_via IS NOT NULL AND i.created_via <> '') OR i.created_via IN ('external','quick') OR c.type IN ('note','temp')) ";
+} else {
+    $scope_with_external = " AND " . $scope_inner;
+}
 $exp_scope = ($u_role === 'admin') ? " AND (created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL) " : " AND (created_by = $u_id) ";
 
 // Date range filters
@@ -285,12 +289,13 @@ if ($action === 'print') {
     $company = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
     $total_income = $lunas_tepat + $tunggakan_dibayar;
     
-    // Expenses for the printed period
+    // Expenses for the printed period (scoped: non-admin only sees own expenses)
+    $exp_scope_print = ($u_role === 'admin') ? "" : " AND e.created_by = " . intval($u_id);
     $q_expenses_print = $db->prepare("
         SELECT e.*, u.name as creator_name, u.role as creator_role 
         FROM expenses e
         LEFT JOIN users u ON e.created_by = u.id
-        WHERE e.date BETWEEN ? AND ? 
+        WHERE e.date BETWEEN ? AND ? $exp_scope_print
         ORDER BY e.date ASC
     ");
     $q_expenses_print->execute([$date_from, $date_to]);
@@ -517,7 +522,7 @@ if ($action === 'print') {
                             <button onclick="sendWAGateway('<?= $wa_num ?>', <?= htmlspecialchars(json_encode($receipt_msg)) ?>, '<?= $wa_link ?>', this)" class="btn btn-xs btn-ghost" style="color:#25D366; padding:0 5px; margin-left:5px;" title="Kirim Ulang Nota">
                                 <i class="fab fa-whatsapp"></i>
                             </button>
-                            <a href="index.php?page=admin_invoices&action=print&id=<?= $row['invoice_id'] ?>" target="_blank" class="btn btn-xs btn-ghost" style="color:var(--primary); padding:0 5px; margin-left:5px;" title="Cetak Kuitansi">
+                            <a href="index.php?page=invoice_print&id=<?= $row['invoice_id'] ?>" target="_blank" class="btn btn-xs btn-ghost" style="color:var(--primary); padding:0 5px; margin-left:5px;" title="Cetak Kuitansi">
                                 <i class="fas fa-print"></i>
                             </a>
                             <?php if($_SESSION['user_role'] === 'admin'): ?>
@@ -614,9 +619,11 @@ if ($action === 'print') {
                 <a href="index.php?page=admin_reports&action=export&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&user_id=<?= $filter_user ?>" class="btn btn-sm btn-success" style="background:#10b981; border:none; color:white;">
                     <i class="fas fa-file-excel"></i> <span>Export</span>
                 </a>
+                <?php if ($u_role === 'admin'): ?>
                 <a href="index.php?page=admin_report_assets" class="btn btn-sm btn-ghost" style="border: 1px solid var(--glass-border);">
                     <i class="fas fa-boxes"></i> <span>Aset</span>
                 </a>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -748,7 +755,7 @@ if ($action === 'print') {
                         $wa_link = "https://api.whatsapp.com/send?phone=$wa_num&text=" . urlencode($receipt_msg);
                     ?>
                         <button onclick="sendWAGateway('<?= $wa_num ?>', <?= htmlspecialchars(json_encode($receipt_msg)) ?>, '<?= $wa_link ?>', this)" style="margin-left:5px; color:#25D366; background:none; border:none; padding:0; cursor:pointer;"><i class="fab fa-whatsapp" style="font-size:14px;"></i></button>
-                        <a href="index.php?page=admin_invoices&action=print&id=<?= $row['invoice_id'] ?>" target="_blank" style="margin-left:8px; color:var(--primary);"><i class="fas fa-print"></i></a>
+                        <a href="index.php?page=invoice_print&id=<?= $row['invoice_id'] ?>" target="_blank" style="margin-left:8px; color:var(--primary);"><i class="fas fa-print"></i></a>
                         <?php if($_SESSION['user_role'] === 'admin'): ?>
                             <?php if($row['activity_type'] == 'Pembayaran Masuk' && !empty($row['payment_id'])): ?>
                                 <a href="index.php?page=admin_reports&action=delete_tx&tx=payment&id=<?= intval($row['payment_id']) ?>" onclick="return confirm('Hapus pembayaran ini?')" style="margin-left:8px; color:#ef4444;"><i class="fas fa-trash"></i></a>
@@ -820,7 +827,7 @@ if ($action === 'print') {
                             <button onclick="sendWAGateway('<?= $wa_num ?>', <?= htmlspecialchars(json_encode($receipt_msg)) ?>, '<?= $wa_link ?>', this)" class="btn btn-xs btn-ghost" style="color:#25D366; margin-left:8px;" title="Kirim Ulang Nota">
                                 <i class="fab fa-whatsapp"></i>
                             </button>
-                            <a href="index.php?page=admin_invoices&action=print&id=<?= $row['invoice_id'] ?>" target="_blank" class="btn btn-xs btn-ghost" style="color:var(--primary); margin-left:8px;" title="Cetak Kuitansi">
+                            <a href="index.php?page=invoice_print&id=<?= $row['invoice_id'] ?>" target="_blank" class="btn btn-xs btn-ghost" style="color:var(--primary); margin-left:8px;" title="Cetak Kuitansi">
                                 <i class="fas fa-print"></i>
                             </a>
                                 <?php if($_SESSION['user_role'] === 'admin'): ?>
@@ -832,7 +839,7 @@ if ($action === 'print') {
                                 <?php endif; ?>
                         <?php endif; ?>
                         <?php if($row['status'] == 'Belum Lunas'): ?>
-                            <a href="index.php?page=admin_invoices&action=print&id=<?= $row['invoice_id'] ?>" target="_blank" class="btn btn-xs btn-ghost" style="color:var(--text-secondary); margin-left:8px;" title="Cetak Tagihan">
+                            <a href="index.php?page=invoice_print&id=<?= $row['invoice_id'] ?>" target="_blank" class="btn btn-xs btn-ghost" style="color:var(--text-secondary); margin-left:8px;" title="Cetak Tagihan">
                                 <i class="fas fa-print"></i>
                             </a>
                         <?php endif; ?>

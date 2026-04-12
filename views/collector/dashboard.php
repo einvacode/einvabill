@@ -604,7 +604,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                 <i class="fab fa-whatsapp"></i> Kirim Kwitansi
             </button>
         <?php endif; ?>
-        <a href="index.php?page=admin_invoices&action=print&id=<?= $last_id ?>&format=thermal" target="_blank" class="btn btn-primary" style="flex:1; min-width:140px; padding:12px;">
+        <a href="index.php?page=invoice_print&id=<?= $last_id ?>&format=thermal" target="_blank" class="btn btn-primary" style="flex:1; min-width:140px; padding:12px;">
             <i class="fas fa-print"></i> Cetak Struk
         </a>
     </div>
@@ -715,7 +715,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
         <button onclick="sendWAGateway('<?= $success_data['wa_num'] ?>', <?= htmlspecialchars(json_encode($success_data['wa_link_msg'])) ?>, 'https://api.whatsapp.com/send?phone=<?= $success_data['wa_num'] ?>&text=<?= urlencode($success_data['wa_link_msg']) ?>', this)" class="btn" style="background:#25D366; color:white; flex:1; min-width:150px; padding:12px; font-weight:700; text-align:center; border-radius:10px; border:none; cursor:pointer;">
             <i class="fab fa-whatsapp"></i> Kirim Nota WA
         </button>
-        <a href="index.php?page=admin_invoices&action=print&id=<?= intval($_GET['last_id'] ?? 0) ?>&format=thermal" target="_blank" class="btn btn-ghost" style="flex:1; min-width:150px; padding:12px; font-weight:700; border-radius:10px; text-align:center; text-decoration:none; border:1px solid var(--glass-border);">
+        <a href="index.php?page=invoice_print&id=<?= intval($_GET['last_id'] ?? 0) ?>&format=thermal" target="_blank" class="btn btn-ghost" style="flex:1; min-width:150px; padding:12px; font-weight:700; border-radius:10px; text-align:center; text-decoration:none; border:1px solid var(--glass-border);">
             <i class="fas fa-print"></i> Cetak Struk
         </a>
     </div>
@@ -1289,7 +1289,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                     <?php 
                         $wa_num_rp = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $rp['contact'] ?? ''));
                         // Fix for redirecting directly to admin_invoices?action=print
-                        $receipt_link = "index.php?page=admin_invoices&action=print&id=" . $rp['id'] . "&format=thermal";
+                        $receipt_link = "index.php?page=invoice_print&id=" . $rp['id'] . "&format=thermal";
                     ?>
                     <?php if($wa_num_rp): 
                         $bulan_rp = date('m/Y', strtotime($rp['due_date']));
