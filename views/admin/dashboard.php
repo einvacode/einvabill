@@ -442,8 +442,6 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
     </div>
 </div>
 
-</style>
-
 <!-- Hidden Form for Quick Pay -->
 <form id="quickPayForm" action="index.php?page=admin_invoices&action=mark_paid_bulk" method="POST" style="display:none;">
     <input type="hidden" name="customer_id" id="qp_cust_id">
