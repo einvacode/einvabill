@@ -192,3 +192,29 @@ footer{ padding:40px 20px; }
 @media (min-width: 993px) {
     .mobile-bottom-nav { display: none !important; }
 }
+
+/* Topbar / User avatar fixes to avoid overlap and stacking */
+.topbar {
+    position: relative;
+    z-index: 1003; /* above sidebar and panels */
+}
+
+.topbar .user-profile { display:flex; align-items:center; gap:12px; }
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), #a78bfa);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: #fff;
+    box-shadow: 4px 6px 16px rgba(0,0,0,0.18), -4px -4px 10px rgba(255,255,255,0.04);
+    flex-shrink: 0;
+}
+
+/* Ensure glass panels in main content don't overlay topbar */
+.main-content .glass-panel { z-index: 1; position: relative; }
+
