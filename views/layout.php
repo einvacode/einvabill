@@ -21,7 +21,7 @@ if (!empty($__layout_settings['company_logo'])) {
     <?php else: ?>
         <link rel="icon" href="public/favicon.png">
     <?php endif; ?>
-    <link rel="stylesheet" href="public/style.css">
+    <link rel="stylesheet" href="public/neumorphism.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script>
         // Load saved theme instantly to prevent flash
