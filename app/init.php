@@ -111,15 +111,8 @@ if ($current_db_ver < APP_DB_VERSION) {
 // Fetch Core Settings
 $site_settings = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
 
-// Application debug flag: prefer environment variable (APP_DEBUG=1),
-// otherwise fallback to settings table value. This avoids enabling debug on production unintentionally.
-$env_debug = getenv('APP_DEBUG');
-if ($env_debug !== false) {
-    $env_debug = in_array(strtolower($env_debug), ['1','true','on','yes']);
-    define('APP_DEBUG', $env_debug);
-} else {
-    define('APP_DEBUG', !empty($site_settings['debug_mode']));
-}
+// Application debug flag (toggle from settings table if available)
+define('APP_DEBUG', !empty($site_settings['debug_mode']));
 
 // --- LICENSE ENGINE (Static Optimization) ---
 $MASTER_KEY = "EB-ULTIMATE-2026";

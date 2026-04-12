@@ -21,21 +21,14 @@ if (!empty($__layout_settings['company_logo'])) {
     <?php else: ?>
         <link rel="icon" href="public/favicon.png">
     <?php endif; ?>
-    <link rel="stylesheet" href="public/neumorphism.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="public/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script>
         // Load saved theme instantly to prevent flash
         (function() {
             const saved = localStorage.getItem('billing_theme') || 'dark';
             document.documentElement.setAttribute('data-theme', saved);
         })();
-
-        // Expose server-side debug flag to client
-        window.APP_DEBUG = <?= (defined('APP_DEBUG') && APP_DEBUG) ? 'true' : 'false' ?>;
-        if (!window.APP_DEBUG) {
-            // Silence verbose debug calls in production
-            if (console && console.debug) console.debug = function(){};
-        }
 
         // Global WhatsApp API Constants (Available to all sub-views)
         window.WAGatewayCID = '<?= ($_SESSION["user_role"] === "admin") ? "admin" : "u_" . ($_SESSION["user_id"] ?? "guest") ?>';
