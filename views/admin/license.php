@@ -1,6 +1,7 @@
 <?php
 $msg_status = '';
 $msg_error = '';
+$generated_code = '';
 
 if ($page === 'admin_license_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $key = trim($_POST['license_key'] ?? '');
@@ -28,6 +29,29 @@ if ($page === 'admin_license_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } else {
         $msg_error = "Format Kode Lisensi salah.";
+    }
+}
+
+if ($page === 'admin_license_generate' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $MASTER_KEY = "EB-ULTIMATE-2026";
+    $salt = "EINVABILL_SECRET";
+    $type = $_POST['gen_type'] ?? 'trial';
+
+    if ($type === 'unlimited') {
+        $generated_code = $MASTER_KEY;
+        $msg_status = "Kunci UNLIMITED dibuat.";
+    } else {
+        if ($type === 'trial') {
+            $days = max(1, intval($_POST['trial_days'] ?? 30));
+            $expiry = date('Y-m-d', strtotime("+{$days} days"));
+        } else {
+            $expiry = $_POST['expiry_date'] ?? date('Y-m-d', strtotime('+365 days'));
+        }
+
+        $date_str = date('Ymd', strtotime($expiry)); // YYYYMMDD
+        $crc = strtoupper(substr(md5($date_str . $salt), 0, 4));
+        $generated_code = "EXP-{$date_str}-{$crc}";
+        $msg_status = "License EXP dibuat untuk kedaluwarsa: {$expiry}";
     }
 }
 
@@ -69,7 +93,6 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'activated') {
                 <div style="font-size: 12px; margin-top: 8px; font-style: italic; color: var(--text-secondary);"><?= LICENSE_MSG ?></div>
             <?php endif; ?>
         </div>
-
         <?php if(LICENSE_ST !== 'UNLIMITED' && LICENSE_ST !== 'ACTIVE' || isset($_GET['reauth'])): ?>
             <form action="index.php?page=admin_license_post" method="POST">
                 <div class="form-group" style="text-align: left;">
@@ -86,5 +109,41 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'activated') {
         <?php else: ?>
             <a href="index.php" class="btn btn-ghost" style="width: 100%; padding: 15px; border-radius: 12px;">Kembali ke Utama</a>
         <?php endif; ?>
+
+        <!-- Admin: License Generator -->
+        <div style="margin-top:28px; padding:18px; background: rgba(255,255,255,0.02); border-radius:12px; border:1px solid var(--glass-border);">
+            <h3 style="margin:0 0 12px; font-size:16px;">Buat Kode Lisensi (Admin)</h3>
+            <form action="index.php?page=admin_license_generate" method="POST" id="genForm">
+                <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
+                    <select name="gen_type" id="gen_type" onchange="toggleGenFields()" style="padding:8px; border-radius:8px;">
+                        <option value="trial">Trial (hari)</option>
+                        <option value="annual">Annual / Custom Date</option>
+                        <option value="unlimited">Unlimited (MASTER)</option>
+                    </select>
+                    <input type="number" name="trial_days" id="trial_days" value="30" min="1" style="width:120px; padding:8px; border-radius:8px;" />
+                    <input type="date" name="expiry_date" id="expiry_date" style="display:none; padding:8px; border-radius:8px;" />
+                    <button type="submit" class="btn btn-primary" style="margin-left:auto;">Buat</button>
+                </div>
+            </form>
+
+            <?php if(!empty($generated_code)): ?>
+                <div style="margin-top:12px; padding:12px; background: rgba(59,130,246,0.06); border-radius:8px;">
+                    <div style="font-size:13px; color:var(--text-secondary); margin-bottom:6px;">Kode Lisensi:</div>
+                    <div style="font-family: monospace; font-size:18px; font-weight:700; display:flex; gap:12px; align-items:center;">
+                        <div><?= htmlspecialchars($generated_code) ?></div>
+                        <a href="https://wa.me/6282346268845?text=Halo,%20saya%20mau%20mengirim%20kode%20lisensi%20<?= urlencode($generated_code) ?>" target="_blank" class="btn btn-ghost">Kirim WA</a>
+                    </div>
+                </div>
+            <?php endif; ?>
+        </div>
     </div>
 </div>
+
+<script>
+function toggleGenFields(){
+    var t = document.getElementById('gen_type').value;
+    document.getElementById('trial_days').style.display = t === 'trial' ? 'inline-block' : 'none';
+    document.getElementById('expiry_date').style.display = t === 'annual' ? 'inline-block' : 'none';
+}
+document.addEventListener('DOMContentLoaded', function(){ toggleGenFields(); });
+</script>
