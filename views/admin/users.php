@@ -46,8 +46,10 @@ if ($action === 'delete') {
     exit;
 }
 
-// Fetch customers (Rumahan) for linking to Mitra/Collector accounts
+// Fetch customers (Rumahan) for linking to Collector accounts
 $customers_list = $db->query("SELECT id, name FROM customers WHERE type='customer' ORDER BY name ASC")->fetchAll();
+// Fetch partners (Mitra) for linking to Mitra accounts
+$partners_list = $db->query("SELECT id, name FROM customers WHERE type='partner' ORDER BY name ASC")->fetchAll();
 
 // Fetch all areas for dropdown
 $areas_all = $db->query("SELECT * FROM areas ORDER BY name ASC")->fetchAll();
@@ -165,15 +167,17 @@ $areas_all = $db->query("SELECT * FROM areas ORDER BY name ASC")->fetchAll();
         </div>
         
         <div id="field_customer_link" class="form-group" style="display:none; border:1px dashed var(--glass-border); padding: 15px; border-radius:8px;">
-            <label style="color:var(--primary);"><i class="fas fa-link"></i> Tautkan ke Data Pelanggan</label>
-            <select name="customer_id" class="form-control" style="background:rgba(15,23,42,0.8);">
-                <option value="">-- Pilih Data Pelanggan Rumahan --</option>
-                <?php foreach($customers_list as $cl): ?>
-                    <option value="<?= $cl['id'] ?>" <?= ($u['customer_id'] ?? '') == $cl['id'] ? 'selected' : '' ?>><?= htmlspecialchars($cl['name']) ?></option>
-                <?php endforeach; ?>
+            <label style="color:var(--primary);" id="link_label"><i class="fas fa-link"></i> Tautkan ke Data Pelanggan</label>
+            <select name="customer_id" id="customerIdSelect" class="form-control" style="background:rgba(15,23,42,0.8);">
+                <option value="">-- Pilih --</option>
             </select>
-            <small style="color:var(--text-secondary); display:block; margin-top:5px;">Tautkan akun ini ke satu profil pelanggan rumahan untuk monitoring tagihan mandiri.</small>
+            <small id="link_hint" style="color:var(--text-secondary); display:block; margin-top:5px;">Tautkan akun ini ke satu profil pelanggan.</small>
         </div>
+        <script>
+        var _customersList = <?= json_encode(array_map(function($c){ return ['id'=>$c['id'],'name'=>$c['name']]; }, $customers_list)) ?>;
+        var _partnersList = <?= json_encode(array_map(function($p){ return ['id'=>$p['id'],'name'=>$p['name']]; }, $partners_list)) ?>;
+        var _currentLinkedId = <?= json_encode($u['customer_id'] ?? '') ?>;
+        </script>
 
         <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
             <a href="index.php?page=admin_users" class="btn btn-ghost">Batal</a>
@@ -187,7 +191,33 @@ function toggleRoleFields() {
     var role = document.getElementById('roleSelect').value;
     document.getElementById('field_area').style.display = (role === 'collector') ? 'block' : 'none';
     document.getElementById('field_customer_link').style.display = (role === 'partner' || role === 'collector') ? 'block' : 'none';
+    
+    // Populate correct customer/partner list based on role
+    var sel = document.getElementById('customerIdSelect');
+    var label = document.getElementById('link_label');
+    var hint = document.getElementById('link_hint');
+    var list = (role === 'partner') ? _partnersList : _customersList;
+    var placeholder = (role === 'partner') ? '-- Pilih Data Mitra --' : '-- Pilih Data Pelanggan Rumahan --';
+    
+    sel.innerHTML = '<option value="">' + placeholder + '</option>';
+    list.forEach(function(item) {
+        var opt = document.createElement('option');
+        opt.value = item.id;
+        opt.textContent = item.name;
+        if (String(item.id) === String(_currentLinkedId)) opt.selected = true;
+        sel.appendChild(opt);
+    });
+    
+    if (role === 'partner') {
+        label.innerHTML = '<i class="fas fa-link"></i> Tautkan ke Data Mitra';
+        hint.textContent = 'Tautkan akun login mitra ini ke profil data mitra (B2B) agar bisa melihat tagihan ke ISP.';
+    } else {
+        label.innerHTML = '<i class="fas fa-link"></i> Tautkan ke Data Pelanggan';
+        hint.textContent = 'Tautkan akun ini ke satu profil pelanggan rumahan untuk monitoring tagihan mandiri.';
+    }
 }
-window.onload = toggleRoleFields;
+// Run immediately (script is at bottom, DOM already available) + backup listener
+toggleRoleFields();
+document.addEventListener('DOMContentLoaded', toggleRoleFields);
 </script>
 <?php endif; ?>
