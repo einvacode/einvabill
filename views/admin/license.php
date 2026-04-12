@@ -80,8 +80,8 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'activated') {
                     AKTIFKAN SEKARANG
                 </button>
             </form>
-            <p style="font-size: 12px; color: var(--text-secondary); margin-top: 20px;">
-                Belum punya lisensi? <a href="https://wa.me/6281234567890?text=Halo%20Admin,%20saya%20ingin%20memesan%20lisensi%20EinvaBill%20Billing" target="_blank" style="color: var(--primary);">Hubungi Administrator Utama</a>
+            <p style="font-size: 13px; color: var(--text-secondary); margin-top: 18px;">
+                Belum punya lisensi? <a href="https://wa.me/6282346268845?text=Halo,%20saya%20ingin%20memesan%20lisensi%20EinvaBill" target="_blank" style="color: var(--primary);">Hubungi Sales: 0823-4626-8845</a>
             </p>
         <?php else: ?>
             <a href="index.php" class="btn btn-ghost" style="width: 100%; padding: 15px; border-radius: 12px;">Kembali ke Utama</a>

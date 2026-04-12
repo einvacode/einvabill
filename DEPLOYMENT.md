@@ -108,3 +108,13 @@ Akses aplikasi melalui IP address Proxmox LXC Anda.
 > **Common Issues di Proxmox:**
 > 1. **Permission Denied**: Selalu jalankan `chown -R www-data:www-data` setelah melakukan update/git pull.
 > 2. **SQLite Locked**: Pastikan container tidak kehabisan storage (disk full).
+
+---
+
+## 💼 Pembelian Lisensi & Dukungan Berbayar
+
+Jika Anda ingin membeli lisensi aplikasi ini, meminta bantuan instalasi di server produksi, atau membutuhkan kustomisasi fitur, silakan hubungi:
+
+- **Kontak Penjualan / Dukungan:** 0823-4626-8845
+
+Tim kami akan membantu proses pembelian lisensi dan penjadwalan layanan dukungan teknis.

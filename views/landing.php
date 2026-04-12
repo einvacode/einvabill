@@ -632,6 +632,9 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
             <a href="#" style="color:var(--text-secondary); font-size:20px; transition:color 0.3s;"><i class="fab fa-instagram"></i></a>
             <a href="https://wa.me/<?= $wa_contact ?>" style="color:var(--text-secondary); font-size:20px; transition:color 0.3s;"><i class="fab fa-whatsapp"></i></a>
         </div>
+        <div style="margin-bottom:20px; font-size:16px; font-weight:700;">
+            Kontak Penjualan: <a href="https://wa.me/6282346268845?text=Halo,%20saya%20ingin%20memesan%20lisensi" target="_blank" style="color:var(--primary);">0823-4626-8845</a>
+        </div>
         <div style="border-top:1px solid rgba(255,255,255,0.05); padding-top:20px; color:var(--text-secondary); font-size:14px;">
             &copy; <?= date('Y') ?> <?= htmlspecialchars($comp_name) ?>. Hak Cipta Dilindungi Undang-Undang.<br>
             Aplikasi Billing & Profil Web Internal Terintegrasi.

@@ -67,3 +67,11 @@ Tertarik untuk mengembangkan fitur bersama? Silakan lakukan **Fork** dan kirimka
 
 ---
 *Developed with ❤️ by [Einva Code](https://github.com/einvacode)*
+
+## 💼 Pembelian Lisensi / Kontak Penjualan
+
+Jika ada pihak yang berminat membeli lisensi aplikasi ini atau membutuhkan layanan kustomisasi/instalasi berbayar, silakan hubungi:
+
+- **Kontak Penjualan:** 0823-4626-8845
+
+Kami akan membantu proses lisensi, pemasangan di server, dan opsi dukungan lanjutan.
