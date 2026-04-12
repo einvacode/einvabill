@@ -11,7 +11,8 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'admin') {
     die("Akses Ditolak.");
 }
 
-$salt = "EINVABILL_SECRET";
+// Prefer environment secret; fallback to existing constant for backward compatibility
+$salt = getenv('EINVABILL_SALT') ?: "EINVABILL_SECRET";
 
 function generate_annual_key($expiry_date, $salt) {
     $date_str = str_replace('-', '', $expiry_date); // YYYYMMDD
@@ -19,7 +20,7 @@ function generate_annual_key($expiry_date, $salt) {
     return "EXP-" . $date_str . "-" . $crc;
 }
 
-$master_key = "EB-ULTIMATE-2026";
+$master_key = getenv('MASTER_KEY') ?: "EB-ULTIMATE-2026";
 $results = [];
 
 if (isset($_POST['gen_annual'])) {
@@ -35,10 +36,9 @@ if (isset($_POST['gen_annual'])) {
 <div class="glass-panel" style="padding: 30px; max-width: 600px; margin: 40px auto;">
     <h2 style="margin-bottom: 20px;"><i class="fas fa-magic"></i> Generator Kode Lisensi</h2>
     
-    <div style="background: rgba(59, 130, 246, 0.1); padding: 15px; border-radius: 12px; margin-bottom: 25px;">
+    <div style="background: rgba(59, 130, 246, 0.05); padding: 12px; border-radius: 12px; margin-bottom: 18px;">
         <strong>Kunci Master (Unlimited):</strong><br>
-        <code style="font-size: 18px; color: var(--primary);"><?= $master_key ?></code>
-        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 5px;">* Gunakan ini khusus untuk Anda sendiri / Administrator Utama.</div>
+        <div style="font-size: 13px; color: var(--text-secondary); margin-top: 6px;">Master key disimpan sebagai variabel lingkungan pada server dan tidak ditampilkan di antarmuka untuk keamanan. Gunakan generator di bawah untuk membuat kode customer.</div>
     </div>
 
     <form method="POST" style="background: rgba(0,0,0,0.2); padding: 20px; border-radius: 12px; border: 1px solid var(--glass-border);">

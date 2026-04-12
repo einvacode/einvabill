@@ -5,7 +5,7 @@ $generated_code = '';
 
 if ($page === 'admin_license_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $key = trim($_POST['license_key'] ?? '');
-    $MASTER_KEY = "EB-ULTIMATE-2026";
+    $MASTER_KEY = getenv('MASTER_KEY') ?: "EB-ULTIMATE-2026";
     
     if ($key === $MASTER_KEY) {
         $db->prepare("UPDATE settings SET license_key = ?, license_type = 'unlimited' WHERE id = 1")->execute([$key]);
@@ -16,8 +16,8 @@ if ($page === 'admin_license_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $crc_str = $matches[2];
         $formatted_date = substr($date_str, 0, 4) . '-' . substr($date_str, 4, 2) . '-' . substr($date_str, 6, 2);
         
-        // Simple CRC Check
-        $salt = "EINVABILL_SECRET";
+        // Simple CRC Check (prefer environment secret)
+        $salt = getenv('EINVABILL_SALT') ?: "EINVABILL_SECRET";
         $expected_crc = strtoupper(substr(md5($date_str . $salt), 0, 4));
         
         if ($crc_str === $expected_crc) {
@@ -33,8 +33,8 @@ if ($page === 'admin_license_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if ($page === 'admin_license_generate' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $MASTER_KEY = "EB-ULTIMATE-2026";
-    $salt = "EINVABILL_SECRET";
+    $MASTER_KEY = getenv('MASTER_KEY') ?: "EB-ULTIMATE-2026";
+    $salt = getenv('EINVABILL_SALT') ?: "EINVABILL_SECRET";
     $type = $_POST['gen_type'] ?? 'trial';
 
     if ($type === 'unlimited') {

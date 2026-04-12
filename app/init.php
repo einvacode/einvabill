@@ -114,8 +114,7 @@ $site_settings = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
 // Application debug flag (toggle from settings table if available)
 define('APP_DEBUG', !empty($site_settings['debug_mode']));
 
-// --- LICENSE ENGINE (Static Optimization) ---
-$MASTER_KEY = "EB-ULTIMATE-2026";
+$MASTER_KEY = getenv('MASTER_KEY') ?: "EB-ULTIMATE-2026";
 $license_key = $site_settings['license_key'] ?? '';
 $install_date = $site_settings['installation_date'] ?: date('Y-m-d');
 $expiry_date = $site_settings['license_expiry'] ?? '';
