@@ -170,6 +170,8 @@ if (!empty($__layout_settings['company_logo'])) {
 
                         <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">SISTEM & TOOLS</div>
                         
+                        <a href="index.php?page=admin_license" class="nav-link <?= $page == 'admin_license' ? 'active' : '' ?>"><i class="fas fa-key" style="color:#f59e0b;"></i> Lisensi</a>
+                        
                         <!-- Dropdown Laporan -->
                         <div class="nav-dropdown <?= in_array($page, ['admin_reports', 'admin_report_assets']) ? 'open' : '' ?>">
                             <div class="nav-link dropdown-toggle" onclick="toggleDropdown(this)">
@@ -396,6 +398,9 @@ if (!empty($__layout_settings['company_logo'])) {
                     </a>
                     <a href="index.php?page=admin_wa_gateway" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 8px; border-radius:12px; color:var(--text-primary); text-decoration:none; background:var(--hover-bg); font-size:12px; font-weight:500; transition:all 0.2s;" class="<?= $page == 'admin_wa_gateway' ? 'active' : '' ?>">
                         <i class="fab fa-whatsapp" style="font-size:22px; color:#25D366;"></i> WA Perangkat
+                    </a>
+                    <a href="index.php?page=admin_license" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 8px; border-radius:12px; color:var(--text-primary); text-decoration:none; background:var(--hover-bg); font-size:12px; font-weight:500; transition:all 0.2s;">
+                        <i class="fas fa-key" style="font-size:22px; color:#f59e0b;"></i> Lisensi
                     </a>
                     <a href="index.php?page=logout" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 8px; border-radius:12px; color:var(--danger); text-decoration:none; background:var(--hover-bg); font-size:12px; font-weight:500; transition:all 0.2s;">
                         <i class="fas fa-sign-out-alt" style="font-size:22px;"></i> Keluar
