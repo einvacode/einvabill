@@ -1,5 +1,15 @@
 <?php
-ob_start();
+// Prefer gzip output when client supports it to reduce response size
+if (extension_loaded('zlib') && !ini_get('zlib.output_compression')) {
+    if (!empty($_SERVER['HTTP_ACCEPT_ENCODING']) && strpos($_SERVER['HTTP_ACCEPT_ENCODING'], 'gzip') !== false) {
+        ob_start('ob_gzhandler');
+    } else {
+        ob_start();
+    }
+} else {
+    ob_start();
+}
+
 require_once __DIR__ . '/helpers.php';
 error_reporting(E_ALL & ~E_NOTICE);
 
@@ -100,6 +110,9 @@ if ($current_db_ver < APP_DB_VERSION) {
 
 // Fetch Core Settings
 $site_settings = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
+
+// Application debug flag (toggle from settings table if available)
+define('APP_DEBUG', !empty($site_settings['debug_mode']));
 
 // --- LICENSE ENGINE (Static Optimization) ---
 $MASTER_KEY = "EB-ULTIMATE-2026";
