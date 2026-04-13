@@ -1743,7 +1743,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                             ?>
                                             <button onclick="sendWAGateway('<?= $wa_raw ?>', <?= htmlspecialchars(json_encode($wa_msg)) ?>, '<?= $wa_fallback ?>', this)" class="btn btn-xs btn-ghost" style="color:#25D366;" title="Kirim Pengingat WA"><i class="fab fa-whatsapp"></i></button>
                                             <a href="index.php?page=admin_invoices&action=mark_paid&id=<?= $ui['id'] ?>&ref=customer_details&cust_id=<?= $id ?>" class="btn btn-xs btn-success" onclick="return confirm('Tandai tagihan ini Lunas?')"><i class="fas fa-check"></i> Bayar</a>
-                                            <button onclick="showEditInvoice(<?= $ui['id'] ?>, <?= $ui['amount'] ?>, <?= $ui['discount'] ?? 0 ?>, '<?= $ui['due_date'] ?>')" class="btn btn-xs btn-warning btn-edit-invoice" title="Edit" data-inv-id="<?= $ui['id'] ?>" data-inv-amount="<?= $ui['amount'] ?>" data-inv-discount="<?= $ui['discount'] ?? 0 ?>" data-inv-date="<?= $ui['due_date'] ?>"><i class="fas fa-edit"></i></button>
+                                            <button onclick="CustomersPage.showEditInvoice(<?= $ui['id'] ?>, <?= $ui['amount'] ?>, <?= $ui['discount'] ?? 0 ?>, '<?= $ui['due_date'] ?>')" class="btn btn-xs btn-warning btn-edit-invoice" title="Edit" data-inv-id="<?= $ui['id'] ?>" data-inv-amount="<?= $ui['amount'] ?>" data-inv-discount="<?= $ui['discount'] ?? 0 ?>" data-inv-date="<?= $ui['due_date'] ?>"><i class="fas fa-edit"></i></button>
                                             <a href="index.php?page=admin_invoices&action=delete&id=<?= $ui['id'] ?>&ref=customer_details&cust_id=<?= $id ?>" class="btn btn-xs btn-ghost" style="color:var(--danger);" onclick="return confirm('Hapus tagihan ini?')"><i class="fas fa-trash"></i></a>
                                         </div>
                                     </td>
@@ -1833,7 +1833,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     </div>
                 </div>
 
-                <button type="button" class="btn btn-sm btn-ghost" onclick="addItemRow()" style="margin-bottom:20px; color:var(--primary);">
+                <button type="button" class="btn btn-sm btn-ghost" onclick="CustomersPage.addItemRow()" style="margin-bottom:20px; color:var(--primary);">
                     <i class="fas fa-plus"></i> Tambah Item
                 </button>
 
@@ -1862,46 +1862,46 @@ document.addEventListener("DOMContentLoaded", () => {
 </div>
 
 <script>
-function addItemRow() {
-    const container = document.getElementById('itemsContainer');
-    const div = document.createElement('div');
-    div.style.display = 'grid';
-    div.style.gridTemplateColumns = '1fr 140px 40px';
-    div.style.gap = '10px';
-    div.style.marginBottom = '10px';
-    div.style.alignItems = 'center';
-    div.innerHTML = `
-        <input type="text" name="item_desc[]" class="form-control" placeholder="Biaya Lainnya..." required>
-        <input type="number" name="item_amount[]" class="form-control item-amount" value="0" placeholder="Nominal" required>
-        <button type="button" class="btn btn-sm btn-danger" onclick="this.parentElement.remove(); updateItemizedTotal();" style="padding:8px;"><i class="fas fa-times"></i></button>
-    `;
-    container.appendChild(div);
-    
-    // Add event listener to new input
-    div.querySelector('.item-amount').addEventListener('input', updateItemizedTotal);
-}
+window.CustomersPage = (function(){
+    function addItemRow() {
+        const container = document.getElementById('itemsContainer');
+        const div = document.createElement('div');
+        div.style.display = 'grid';
+        div.style.gridTemplateColumns = '1fr 140px 40px';
+        div.style.gap = '10px';
+        div.style.marginBottom = '10px';
+        div.style.alignItems = 'center';
+        div.innerHTML = `
+            <input type="text" name="item_desc[]" class="form-control" placeholder="Biaya Lainnya..." required>
+            <input type="number" name="item_amount[]" class="form-control item-amount" value="0" placeholder="Nominal" required>
+            <button type="button" class="btn btn-sm btn-danger" onclick="CustomersPage.removeRow(this)" style="padding:8px;"><i class="fas fa-times"></i></button>
+        `;
+        container.appendChild(div);
+        // Add event listener to new input
+        const amt = div.querySelector('.item-amount'); if (amt) amt.addEventListener('input', updateItemizedTotal);
+    }
+    function removeRow(btn) { const row = btn.closest('div'); if (row) row.remove(); updateItemizedTotal(); }
+    function updateItemizedTotal() {
+        const amounts = document.querySelectorAll('.item-amount');
+        const discountInput = document.querySelector('input[name="invoice_discount"]');
+        const discount = parseInt(discountInput ? discountInput.value : 0) || 0;
+        let subtotal = 0;
+        amounts.forEach(input => { subtotal += parseInt(input.value) || 0; });
+        let total = subtotal - discount;
+        const formattedSub = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(subtotal).replace('IDR', 'Rp');
+        const formattedTotal = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(total).replace('IDR', 'Rp');
+        const subEl = document.getElementById('itemized_subtotal_display'); if (subEl) subEl.innerText = formattedSub;
+        const totEl = document.getElementById('itemized_total_display'); if (totEl) totEl.innerText = formattedTotal;
+    }
+    function init(){
+        document.querySelectorAll('.item-amount').forEach(i => i.addEventListener('input', updateItemizedTotal));
+        // ensure displays are correct
+        updateItemizedTotal();
+    }
+    return { addItemRow, removeRow, updateItemizedTotal, init };
+})();
 
-function updateItemizedTotal() {
-    const amounts = document.querySelectorAll('.item-amount');
-    const discountInput = document.querySelector('input[name="invoice_discount"]');
-    const discount = parseInt(discountInput ? discountInput.value : 0) || 0;
-    
-    let subtotal = 0;
-    amounts.forEach(input => {
-        subtotal += parseInt(input.value) || 0;
-    });
-    
-    let total = subtotal - discount;
-    
-    const formattedSub = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(subtotal).replace('IDR', 'Rp');
-    const formattedTotal = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(total).replace('IDR', 'Rp');
-    
-    document.getElementById('itemized_subtotal_display').innerText = formattedSub;
-    document.getElementById('itemized_total_display').innerText = formattedTotal;
-}
-
-// Initial listener
-document.querySelector('.item-amount').addEventListener('input', updateItemizedTotal);
+document.addEventListener('DOMContentLoaded', function(){ try{ if(window.CustomersPage) window.CustomersPage.init(); }catch(e){} });
 </script>
 
 <style>
@@ -1964,8 +1964,8 @@ document.querySelector('input[name="num_months"]').addEventListener('input', fun
                 <label style="font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase;">Jatuh Tempo</label>
                 <input type="date" name="due_date" id="editInvDate" class="form-control" required>
             </div>
-            <div style="display:flex; justify-content:flex-end; gap:10px;">
-                <button type="button" class="btn btn-ghost" onclick="hideEditInvoice()">Batal</button>
+                <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" class="btn btn-ghost" onclick="CustomersPage.hideEditInvoice()">Batal</button>
                 <button type="submit" class="btn btn-warning" style="font-weight:800; padding:10px 25px;">SIMPAN PERUBAHAN</button>
             </div>
         </form>
@@ -1973,39 +1973,34 @@ document.querySelector('input[name="num_months"]').addEventListener('input', fun
 </div>
 
 <script>
-function showEditInvoice(id, amount, discount, date) {
-    document.getElementById('editInvId').value = id;
-    document.getElementById('editInvAmount').value = amount;
-    document.getElementById('editInvDiscount').value = discount;
-    document.getElementById('editInvDate').value = date;
-    document.getElementById('editTitle').innerText = 'Edit INV-' + String(id).padStart(5, '0');
-    document.getElementById('editInvoiceModal').style.display = 'flex';
-}
-function hideEditInvoice() {
-    document.getElementById('editInvoiceModal').style.display = 'none';
-}
-
-function viewTR069(pppoe) {
-    const modal = document.getElementById('tr069Modal');
-    const content = document.getElementById('tr069-content');
-    modal.style.display = 'block';
-    if(window.innerWidth < 900) modal.style.paddingTop = '20px';
-    
-    content.innerHTML = '<div style="text-align:center; padding:40px;"><i class="fas fa-circle-notch fa-spin fa-2x text-primary"></i><p style="margin-top:15px; color:var(--text-secondary);">Mengambil data perangkat...</p></div>';
-    
-    fetch('views/components/tr069_monitor.php?pppoe=' + encodeURIComponent(pppoe))
-        .then(response => response.text())
-        .then(html => {
-            content.innerHTML = html;
-        })
-        .catch(err => {
-            content.innerHTML = '<div class="alert alert-danger">Gagal memuat data monitoring.</div>';
-        });
-}
-window.onclick = function(event) {
-    const modal = document.getElementById('tr069Modal');
-    if (event.target == modal) {
-        modal.style.display = "none";
-    }
-}
+if (!window.CustomersPage) window.CustomersPage = {};
+(function(ns){
+    ns.showEditInvoice = function(id, amount, discount, date) {
+        const elId = document.getElementById('editInvId'); if(elId) elId.value = id;
+        const am = document.getElementById('editInvAmount'); if(am) am.value = amount;
+        const disc = document.getElementById('editInvDiscount'); if(disc) disc.value = discount;
+        const dt = document.getElementById('editInvDate'); if(dt) dt.value = date;
+        const title = document.getElementById('editTitle'); if(title) title.innerText = 'Edit INV-' + String(id).padStart(5, '0');
+        const modal = document.getElementById('editInvoiceModal'); if(modal) modal.style.display = 'flex';
+    };
+    ns.hideEditInvoice = function(){ const modal = document.getElementById('editInvoiceModal'); if(modal) modal.style.display = 'none'; };
+    ns.viewTR069 = function(pppoe) {
+        const modal = document.getElementById('tr069Modal');
+        const content = document.getElementById('tr069-content');
+        if (!modal || !content) return;
+        modal.style.display = 'block';
+        if(window.innerWidth < 900) modal.style.paddingTop = '20px';
+        content.innerHTML = '<div style="text-align:center; padding:40px;'><i class="fas fa-circle-notch fa-spin fa-2x text-primary"></i><p style="margin-top:15px; color:var(--text-secondary);">Mengambil data perangkat...</p></div>';
+        fetch('views/components/tr069_monitor.php?pppoe=' + encodeURIComponent(pppoe))
+            .then(response => response.text())
+            .then(html => { content.innerHTML = html; })
+            .catch(err => { content.innerHTML = '<div class="alert alert-danger">Gagal memuat data monitoring.</div>'; });
+    };
+    // Close TR-069 modal when clicking outside
+    window.addEventListener('click', function(event){
+        const modal = document.getElementById('tr069Modal');
+        if (!modal) return;
+        if (event.target == modal) modal.style.display = 'none';
+    });
+})(window.CustomersPage);
 </script>

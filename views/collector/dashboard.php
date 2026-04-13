@@ -1003,14 +1003,14 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                         <i class="fab fa-whatsapp" style="font-size:18px;"></i>
                     </button>
                 <?php else: ?>
-                    <button class="btn" style="background:rgba(var(--primary-rgb), 0.1); color:var(--primary); flex:1; height:42px; border-radius:12px; font-weight:800; font-size:13px; border:none;" onclick="showCreateInvoice(<?= $ac['id'] ?>, '<?= addslashes($ac['name']) ?>', <?= $ac['monthly_fee'] ?>)">
+                    <button class="btn" style="background:rgba(var(--primary-rgb), 0.1); color:var(--primary); flex:1; height:42px; border-radius:12px; font-weight:800; font-size:13px; border:none;" onclick="CollectorPage.showCreateInvoice(<?= $ac['id'] ?>, '<?= addslashes($ac['name']) ?>', <?= $ac['monthly_fee'] ?>)">
                         <i class="fas fa-plus-circle"></i> ADD-ON / MANUAL
                     </button>
                 <?php endif; ?>
                 
                 <div style="height:25px; width:1px; background:rgba(255,255,255,0.1); margin:0 5px;"></div>
                 
-                <button class="btn-ghost" style="width:40px; height:42px; border-radius:12px; border:1px solid var(--glass-border); color:var(--text-secondary);" onclick="showUpdateProfile(<?= $ac['id'] ?>, '<?= addslashes($ac['name']) ?>', '<?= htmlspecialchars($ac['contact'] ?: '') ?>', '<?= addslashes($ac['address'] ?: '') ?>')">
+                <button class="btn-ghost" style="width:40px; height:42px; border-radius:12px; border:1px solid var(--glass-border); color:var(--text-secondary);" onclick="CollectorPage.showUpdateProfile(<?= $ac['id'] ?>, '<?= addslashes($ac['name']) ?>', '<?= htmlspecialchars($ac['contact'] ?: '') ?>', '<?= addslashes($ac['address'] ?: '') ?>')">
                     <i class="fas fa-user-edit"></i>
                 </button>
                 <a href="tel:<?= htmlspecialchars($ac['contact']) ?>" class="btn-ghost" style="width:40px; height:42px; border-radius:12px; border:1px solid var(--glass-border); color:var(--text-secondary); display:flex; align-items:center; justify-content:center; text-decoration:none;">
@@ -1551,41 +1551,18 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
 </div>
 
 <script>
-function showAddCustomerModal() {
-    document.getElementById('addCustomerModal').style.display = 'flex';
-}
-
-function syncAddPrice(select) {
-    const fee = select.options[select.selectedIndex].getAttribute('data-fee');
-    if(fee) {
-        document.getElementById('add_monthly_fee').value = fee;
-    }
-}
-
-function showCreateInvoice(id, name, fee) {
-    document.getElementById('modalCustId').value = id;
-    document.getElementById('modalCustName').textContent = name;
-    document.getElementById('modalAmount').value = fee;
-    document.getElementById('createInvoiceModal').style.display = 'flex';
-}
-
-function showUpdateProfile(id, name, contact, address) {
-    document.getElementById('modalContactCustId').value = id;
-    document.getElementById('modalContactCustNameInput').value = name;
-    document.getElementById('modalContactValue').value = contact;
-    document.getElementById('modalContactAddrInput').value = address || '';
-    document.getElementById('updateContactModal').style.display = 'flex';
-}
-
-let currentPayData = { custId: 0, monthlyFee: 0, maxMonths: 0 };
-
-function handlePay(custId, maxMonths, custName, monthlyFee) {
-    currentPayData = { custId, monthlyFee, maxMonths };
-    
-    if (maxMonths > 1) {
-        document.getElementById('bulkCustNameTitle').innerText = custName;
-        document.getElementById('bulkTotalMonthsTitle').innerText = maxMonths;
-        const input = document.getElementById('bulkMonthInput');
+if (!window.CollectorPage) window.CollectorPage = {};
+(function(ns){
+    ns.showAddCustomerModal = function(){ const m = document.getElementById('addCustomerModal'); if(m) m.style.display = 'flex'; };
+    ns.syncAddPrice = function(select){ const fee = select.options[select.selectedIndex].getAttribute('data-fee'); if(fee){ const el = document.getElementById('add_monthly_fee'); if(el) el.value = fee; } };
+    ns.showCreateInvoice = function(id, name, fee){ const elId = document.getElementById('modalCustId'); if(elId) elId.value = id; const elName = document.getElementById('modalCustName'); if(elName) elName.textContent = name; const amt = document.getElementById('modalAmount'); if(amt) amt.value = fee; const modal = document.getElementById('createInvoiceModal'); if(modal) modal.style.display = 'flex'; };
+    ns.showUpdateProfile = function(id, name, contact, address){ const a = document.getElementById('modalContactCustId'); if(a) a.value = id; const n = document.getElementById('modalContactCustNameInput'); if(n) n.value = name; const v = document.getElementById('modalContactValue'); if(v) v.value = contact; const addr = document.getElementById('modalContactAddrInput'); if(addr) addr.value = address || ''; const modal = document.getElementById('updateContactModal'); if(modal) modal.style.display = 'flex'; };
+    ns.currentPayData = { custId: 0, monthlyFee: 0, maxMonths: 0 };
+    ns.handlePay = function(custId, maxMonths, custName, monthlyFee){ ns.currentPayData = { custId, monthlyFee, maxMonths };
+        if (maxMonths > 1) {
+            const n = document.getElementById('bulkCustNameTitle'); if(n) n.innerText = custName;
+            const t = document.getElementById('bulkTotalMonthsTitle'); if(t) t.innerText = maxMonths;
+            const input = document.getElementById('bulkMonthInput');
         input.max = maxMonths;
         input.value = maxMonths;
         updateBulkTotalDisplay();

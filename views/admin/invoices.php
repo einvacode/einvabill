@@ -831,7 +831,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                 <?php endif; ?>
                 
                 <?php if($can_manage_item): ?>
-                    <button onclick="showEditInvoice(<?= $inv['id'] ?>, <?= $inv['amount'] ?>, <?= $inv['discount'] ?? 0 ?>, '<?= $inv['due_date'] ?>')" class="btn btn-ghost btn-edit-invoice" data-inv-id="<?= $inv['id'] ?>" data-inv-amount="<?= $inv['amount'] ?>" data-inv-discount="<?= $inv['discount'] ?? 0 ?>" data-inv-date="<?= $inv['due_date'] ?>" style="width:40px; height:40px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; color:var(--warning);">
+                    <button onclick="InvoicesPage.showEditInvoice(<?= $inv['id'] ?>, <?= $inv['amount'] ?>, <?= $inv['discount'] ?? 0 ?>, '<?= $inv['due_date'] ?>')" class="btn btn-ghost btn-edit-invoice" data-inv-id="<?= $inv['id'] ?>" data-inv-amount="<?= $inv['amount'] ?>" data-inv-discount="<?= $inv['discount'] ?? 0 ?>" data-inv-date="<?= $inv['due_date'] ?>" style="width:40px; height:40px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; color:var(--warning);">
                         <i class="fas fa-edit" style="font-size:15px;"></i>
                     </button>
                     <a href="index.php?page=admin_invoices&action=delete&id=<?= $inv['id'] ?>" class="btn btn-ghost" style="width:40px; height:40px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; color:var(--danger);" onclick="return confirm('Hapus tagihan ini?')">
@@ -1035,7 +1035,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                                 $can_manage = ($u_role === 'admin') ? ($check_owner == $u_id || $check_owner == 0 || $check_owner === NULL) : ($check_owner == $u_id);
                                 if($can_manage): 
                             ?>
-                                <button onclick="showEditInvoice(<?= $inv['id'] ?>, <?= $inv['amount'] ?>, <?= $inv['discount'] ?? 0 ?>, '<?= $inv['due_date'] ?>')" class="btn btn-sm btn-ghost btn-edit-invoice" title="Edit" data-inv-id="<?= $inv['id'] ?>" data-inv-amount="<?= $inv['amount'] ?>" data-inv-discount="<?= $inv['discount'] ?? 0 ?>" data-inv-date="<?= $inv['due_date'] ?>" style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; padding:0; background:rgba(245, 158, 11, 0.05); color:var(--warning);"><i class="fas fa-edit" style="font-size:13px;"></i></button>
+                                <button onclick="InvoicesPage.showEditInvoice(<?= $inv['id'] ?>, <?= $inv['amount'] ?>, <?= $inv['discount'] ?? 0 ?>, '<?= $inv['due_date'] ?>')" class="btn btn-sm btn-ghost btn-edit-invoice" title="Edit" data-inv-id="<?= $inv['id'] ?>" data-inv-amount="<?= $inv['amount'] ?>" data-inv-discount="<?= $inv['discount'] ?? 0 ?>" data-inv-date="<?= $inv['due_date'] ?>" style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; padding:0; background:rgba(245, 158, 11, 0.05); color:var(--warning);"><i class="fas fa-edit" style="font-size:13px;"></i></button>
                                 <a href="index.php?page=admin_invoices&action=delete&id=<?= $inv['id'] ?>" class="btn btn-sm btn-ghost" title="Hapus" style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; padding:0; background:rgba(239, 68, 68, 0.05); color:var(--danger);" onclick="return confirm('Hapus tagihan ini permanent?')"><i class="fas fa-trash" style="font-size:13px;"></i></a>
                             <?php endif; ?>
                         </div>
@@ -1239,26 +1239,26 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
         document.getElementById('manualInvoiceModal').style.display = 'none';
     }
 
-    function showEditInvoice(id, amount, discount, date) {
-        if (window.location.protocol === 'https:') {
-            document.getElementById('qrcode').innerHTML = '<div style="background:rgba(245,158,11,0.1); padding:15px; border-radius:10px; border:1px solid #f59e0b; color:#f59e0b; font-size:11px; text-align:left;">' +
-                '<h6 style="margin:0 0 5px; color:#f59e0b;"><i class="fas fa-shield-alt"></i> BLOKIR HTTPS</h6>' +
-                'Izin diperlukan:<br>1. Klik ikon <b>Gembok</b> di URL bar<br>2. Pilih <b>Site Settings</b><br>3. Cari <b>Insecure Content</b><br>4. Ubah ke <b>Allow</b><br>5. Refresh (F5)' +
-                '</div>';
-        } else {
-            document.getElementById('qrcode').innerHTML = '<div style="color:#ef4444; font-size:12px; font-weight:700;"><i class="fas fa-exclamation-triangle"></i> GATEWAY OFFLINE<br><span style="font-weight:400; opacity:0.7;">Harap nyalakan node server.js</span></div>';
-        }
-        document.getElementById('editInvId').value = id;
-        document.getElementById('editInvAmount').value = amount;
-        document.getElementById('editInvDiscount').value = discount;
-        document.getElementById('editInvDate').value = date;
-        document.getElementById('editTitle').innerText = 'Edit INV-' + String(id).padStart(5, '0');
-        document.getElementById('editInvoiceModal').style.display = 'flex';
-    }
-
-    function hideEditInvoice() {
-        document.getElementById('editInvoiceModal').style.display = 'none';
-    }
+    if (!window.InvoicesPage) window.InvoicesPage = {};
+    (function(ns){
+        ns.showEditInvoice = function(id, amount, discount, date) {
+            if (window.location.protocol === 'https:') {
+                const q = document.getElementById('qrcode'); if(q) q.innerHTML = '<div style="background:rgba(245,158,11,0.1); padding:15px; border-radius:10px; border:1px solid #f59e0b; color:#f59e0b; font-size:11px; text-align:left;">' +
+                    '<h6 style="margin:0 0 5px; color:#f59e0b;"><i class="fas fa-shield-alt"></i> BLOKIR HTTPS</h6>' +
+                    'Izin diperlukan:<br>1. Klik ikon <b>Gembok</b> di URL bar<br>2. Pilih <b>Site Settings</b><br>3. Cari <b>Insecure Content</b><br>4. Ubah ke <b>Allow</b><br>5. Refresh (F5)' +
+                    '</div>';
+            } else {
+                const q = document.getElementById('qrcode'); if(q) q.innerHTML = '<div style="color:#ef4444; font-size:12px; font-weight:700;"><i class="fas fa-exclamation-triangle"></i> GATEWAY OFFLINE<br><span style="font-weight:400; opacity:0.7;">Harap nyalakan node server.js</span></div>';
+            }
+            const elId = document.getElementById('editInvId'); if(elId) elId.value = id;
+            const am = document.getElementById('editInvAmount'); if(am) am.value = amount;
+            const disc = document.getElementById('editInvDiscount'); if(disc) disc.value = discount;
+            const dt = document.getElementById('editInvDate'); if(dt) dt.value = date;
+            const title = document.getElementById('editTitle'); if(title) title.innerText = 'Edit INV-' + String(id).padStart(5, '0');
+            const modal = document.getElementById('editInvoiceModal'); if(modal) modal.style.display = 'flex';
+        };
+        ns.hideEditInvoice = function(){ const modal = document.getElementById('editInvoiceModal'); if(modal) modal.style.display = 'none'; };
+    })(window.InvoicesPage);
 
     let currentMonthlyFee = 0;
     function showBulkPayModal(custId, custName, totalMonths, monthlyFee, totalAmt) {
@@ -1347,7 +1347,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                 <input type="date" name="due_date" id="editInvDate" class="form-control" required>
             </div>
             <div style="display:flex; justify-content:flex-end; gap:10px;">
-                <button type="button" class="btn btn-ghost" onclick="hideEditInvoice()">Batal</button>
+                <button type="button" class="btn btn-ghost" onclick="InvoicesPage.hideEditInvoice()">Batal</button>
                 <button type="submit" class="btn btn-warning" style="font-weight:800; padding:10px 25px;">SIMPAN PERUBAHAN</button>
             </div>
         </form>

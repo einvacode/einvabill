@@ -203,7 +203,7 @@ try {
                                         <a class="btn btn-xs btn-ghost" title="Cetak" href="index.php?page=admin_invoices&action=print&id=<?= intval($inv['id']) ?>"><i class="fas fa-print"></i></a>
                                         <a class="btn btn-xs btn-ghost" title="Edit" href="index.php?page=admin_edit_quick_invoice&id=<?= intval($inv['id']) ?>"><i class="fas fa-edit"></i></a>
                                         <a class="btn btn-xs btn-danger" title="Hapus" href="index.php?page=admin_assets&action=invoice_delete_quick&id=<?= intval($inv['id']) ?>" onclick="return confirm('Hapus invoice ini?')"><i class="fas fa-trash"></i></a>
-                                        <button class="btn btn-xs btn-ghost" title="Item" onclick="toggleInvoiceItems(<?= intval($inv['id']) ?>)"><i class="fas fa-list"></i></button>
+                                        <button class="btn btn-xs btn-ghost" title="Item" onclick="CreateInvoice.toggleInvoiceItems(<?= intval($inv['id']) ?>)"><i class="fas fa-list"></i></button>
                                     </div>
                                 </td>
                                 <td style="padding:8px; text-align:right; vertical-align:top;">Rp <?= number_format($inv['amount'],0,',','.') ?></td>
@@ -351,16 +351,16 @@ function showTab(name) {
     document.getElementById('tabHistoryBtn').className = name === 'history' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-ghost';
     const tTemps = document.getElementById('tabTempsBtn'); if(tTemps) tTemps.className = name === 'temps' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-ghost';
 }
-function toggleItems(id) {
+CreateInvoice.toggleItems = function(id) {
     window.open('index.php?page=admin_invoices&action=print&id=' + id, '_blank');
-}
+};
 </script>
 <script>
-function toggleInvoiceItems(id) {
+CreateInvoice.toggleInvoiceItems = function(id) {
     const el = document.getElementById('invItems-' + id);
     if(!el) return;
     el.style.display = (el.style.display === 'none' || el.style.display === '') ? 'table-row' : 'none';
-}
+};
 </script>
 <script>
 // Recent temps data and helper to populate form
