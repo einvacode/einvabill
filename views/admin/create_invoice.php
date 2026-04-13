@@ -258,25 +258,30 @@ try {
             <?php if(empty($recent_temps)): ?>
                 <div style="color:var(--text-secondary);">Tidak ada pelanggan sementara.</div>
             <?php else: ?>
-                <div style="display:flex; flex-direction:column; gap:8px;">
-                            <?php foreach($recent_temps as $t): ?>
-                                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px; border-radius:8px; background:rgba(0,0,0,0.02);">
-                                    <div style="flex:1;">
-                                        <div style="font-weight:700;"><?= htmlspecialchars($t['name']) ?></div>
-                                        <div style="font-size:12px; color:var(--text-secondary);"><?= htmlspecialchars($t['contact'] ?: '-') ?></div>
-                                        <div style="font-size:11px; color:var(--text-secondary);"><?= htmlspecialchars($t['address'] ?: '-') ?></div>
-                                    </div>
-                                    <div style="display:flex; flex-direction:column; gap:6px;">
-                                        <button class="btn btn-sm btn-primary" onclick="useTempCustomer(<?= intval($t['id']) ?>)">Gunakan</button>
-                                        <a class="btn btn-sm btn-ghost" href="index.php?page=admin_customers&action=details&id=<?= intval($t['id']) ?>">Detail</a>
-                                        <form method="POST" action="index.php?page=admin_temp_customers" style="margin:0;">
-                                            <input type="hidden" name="action" value="delete">
-                                            <input type="hidden" name="id" value="<?= intval($t['id']) ?>">
-                                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Hapus pelanggan sementara ini?')">Hapus</button>
-                                        </form>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
+                <style>
+                .temps-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px; }
+                .temp-card { padding:12px; border-radius:12px; background:rgba(0,0,0,0.02); display:flex; flex-direction:column; gap:8px; }
+                .temp-card .meta { font-size:13px; color:var(--text-secondary); }
+                .temp-card .actions { display:flex; gap:8px; margin-top:8px; }
+                .temp-card .actions form { margin:0; }
+                </style>
+                <div class="temps-grid">
+                    <?php foreach($recent_temps as $t): ?>
+                        <div class="temp-card">
+                            <div style="font-weight:700; font-size:15px;"><?= htmlspecialchars($t['name']) ?></div>
+                            <div class="meta"><?= htmlspecialchars($t['contact'] ?: '-') ?></div>
+                            <div class="meta" style="white-space:normal;"><?= htmlspecialchars($t['address'] ?: '-') ?></div>
+                            <div class="actions">
+                                <button class="btn btn-sm btn-primary" onclick="useTempCustomer(<?= intval($t['id']) ?>)">Gunakan</button>
+                                <a class="btn btn-sm btn-ghost" href="index.php?page=admin_customers&action=details&id=<?= intval($t['id']) ?>">Detail</a>
+                                <form method="POST" action="index.php?page=admin_temp_customers">
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="id" value="<?= intval($t['id']) ?>">
+                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Hapus pelanggan sementara ini?')">Hapus</button>
+                                </form>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
             <?php endif; ?>
         </div>
