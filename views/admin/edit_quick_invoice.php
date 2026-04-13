@@ -25,9 +25,9 @@
  $items = $db->query("SELECT * FROM invoice_items WHERE invoice_id = " . intval($id))->fetchAll();
 
  ?>
-<div class="glass-panel" style="max-width:900px; margin:20px auto; padding:20px;">
+<div class="glass-panel" style="width:100%; margin:20px 0; padding:20px;">
     <h3>Edit Invoice <?= strtoupper($created_via ?: 'Cepat') ?> - INV-<?= str_pad($invoice['id'],5,'0',STR_PAD_LEFT) ?></h3>
-    <form method="POST" action="index.php?page=admin_assets&action=invoice_update" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+    <form method="POST" action="index.php?page=admin_assets&action=invoice_update" style="display:grid; grid-template-columns: 1fr 420px; gap:16px;">
         <input type="hidden" name="invoice_id" value="<?= intval($invoice['id']) ?>">
         <div>
             <label>Nama Penerima</label>
