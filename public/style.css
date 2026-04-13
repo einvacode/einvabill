@@ -303,17 +303,14 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .theme-toggle {
   background: transparent;
   border: none;
-  padding: 6px;
-  width: 36px;
-  height: 36px;
+  padding: 0 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
   cursor: pointer;
 }
-.theme-toggle i { font-size: 14px; color: var(--text-secondary); }
-.theme-toggle:hover { background: rgba(255,255,255,0.03); }
+.theme-toggle i { font-size: 16px; color: var(--text-secondary); }
+.theme-toggle:hover { opacity: 0.9; transform: translateY(-1px); }
 
 .wa-status-sidebar-badge {
   width: 10px !important;
