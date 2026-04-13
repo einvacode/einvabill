@@ -219,32 +219,19 @@ if (!empty($__layout_settings['company_logo'])) {
                         <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">DASHBOARD MITRA</div>
                         <a href="index.php?page=partner" class="nav-link <?= $page == 'partner' ? 'active' : '' ?>"><i class="fas fa-home" style="color:var(--primary);"></i> Ringkasan Utama</a>
                         <a href="index.php?page=partner_collection" class="nav-link <?= $page == 'partner_collection' ? 'active' : '' ?>"><i class="fas fa-motorcycle" style="color:var(--warning);"></i> Penagihan Lapangan</a>
-                        <a href="index.php?page=admin_customers" class="nav-link <?= $page == 'admin_customers' ? 'active' : '' ?>"><i class="fas fa-users" style="color:#60a5fa;"></i> Pelanggan Saya</a>
-                        
-                        <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">OPERASIONAL & TEKNIS</div>
-                        <a href="index.php?page=admin_packages" class="nav-link <?= $page == 'admin_packages' ? 'active' : '' ?>"><i class="fas fa-box" style="color:#ec4899;"></i> Paket Internet</a>
-                        <a href="index.php?page=admin_router" class="nav-link <?= $page == 'admin_router' ? 'active' : '' ?>"><i class="fas fa-network-wired" style="color:var(--success);"></i> Manajemen Router</a>
-                        <a href="index.php?page=admin_map" class="nav-link <?= $page == 'admin_map' ? 'active' : '' ?>"><i class="fas fa-map-location-dot" style="color:#f97316;"></i> Peta Pelanggan</a>
+                        <a href="index.php?page=partner_collection&tab=pelanggan" class="nav-link <?= ($page == 'partner_collection' && ($_GET['tab'] ?? '') == 'pelanggan') ? 'active' : '' ?>"><i class="fas fa-users" style="color:#60a5fa;"></i> Pelanggan Saya</a>
                         
                         <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">KEUANGAN & TOOLS</div>
-                        <div class="nav-dropdown <?= in_array($page, ['admin_invoices', 'partner_isp_invoices', 'admin_reports', 'admin_expenses']) ? 'open' : '' ?>">
+                        <div class="nav-dropdown <?= in_array($page, ['partner_isp_invoices']) ? 'open' : '' ?>">
                             <div class="nav-link dropdown-toggle" onclick="toggleDropdown(this)">
                                 <span><i class="fas fa-wallet" style="color:#10b981;"></i> Administrasi Keuangan</span>
                                 <i class="fas fa-chevron-down"></i>
                             </div>
                             <div class="dropdown-content">
-                                <a href="index.php?page=admin_invoices" class="nav-link dropdown-link <?= $page == 'admin_invoices' ? 'active' : '' ?>"><i class="fas fa-file-invoice-dollar"></i> Riwayat Tagihan</a>
-                                <a href="index.php?page=admin_create_invoice" class="nav-link dropdown-link <?= $page == 'admin_create_invoice' ? 'active' : '' ?>"><i class="fas fa-plus-circle"></i> Buat Invoice</a>
                                 <a href="index.php?page=partner_isp_invoices" class="nav-link dropdown-link <?= $page == 'partner_isp_invoices' ? 'active' : '' ?>"><i class="fas fa-receipt" style="color:#ef4444;"></i> Tagihan Ke ISP</a>
-                                <a href="index.php?page=admin_expenses" class="nav-link dropdown-link <?= $page == 'admin_expenses' ? 'active' : '' ?>"><i class="fas fa-wallet"></i> Pengeluaran</a>
-                                <a href="index.php?page=admin_reports" class="nav-link dropdown-link <?= $page == 'admin_reports' ? 'active' : '' ?>"><i class="fas fa-chart-line"></i> Laporan Laba</a>
                             </div>
                         </div>
 
-                        <a href="index.php?page=admin_wa_gateway" class="nav-link <?= $page == 'admin_wa_gateway' ? 'active' : '' ?>">
-                            <i class="fab fa-whatsapp" style="color:#25D366;"></i> WhatsApp Perangkat
-                            <span class="wa-status-sidebar-badge" style="margin-left:auto;"></span>
-                        </a>
                         <a href="index.php?page=partner_settings" class="nav-link <?= $page == 'partner_settings' ? 'active' : '' ?>"><i class="fas fa-cog" style="color:var(--text-secondary);"></i> Profil & Branding</a>
                     <?php endif; ?>
                 </div>
