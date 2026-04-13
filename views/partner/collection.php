@@ -565,7 +565,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
                 $initial = strtoupper(substr($ac['name'], 0, 1));
                 $is_unpaid = $ac['unpaid_count'] > 0;
             ?>
-            <div class="glass-panel" style="padding:0; margin-bottom:15px; border-radius:24px; overflow:hidden; border:1px solid var(--glass-border); transition:all 0.3s ease; <?= $is_unpaid ? 'border-left:5px solid var(--danger);' : 'border-left:5px solid var(--success);' ?>" onclick="showCustomerDetails(<?= $ac['id'] ?>)">
+            <div class="glass-panel" style="padding:0; margin-bottom:15px; border-radius:24px; overflow:hidden; border:1px solid var(--glass-border); transition:all 0.3s ease; <?= $is_unpaid ? 'border-left:5px solid var(--danger);' : 'border-left:5px solid var(--success);' ?>" onclick="PartnerPage.showCustomerDetails(<?= $ac['id'] ?>)">
                 <!-- Header: Profile & Status -->
                 <div style="padding:16px 20px; display:flex; gap:15px; align-items:center;">
                     <div style="width:48px; height:48px; border-radius:50%; background:<?= $is_unpaid ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)' ?>; color:<?= $is_unpaid ? 'var(--danger)' : 'var(--success)' ?>; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:18px; border:1px solid <?= $is_unpaid ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)' ?>;">
@@ -606,7 +606,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
                         </button>
                     <?php endif; ?>
                     
-                    <button class="btn-ghost" style="width:40px; height:42px; border-radius:12px; border:1px solid var(--glass-border); color:var(--text-secondary); display:flex; align-items:center; justify-content:center;" onclick="showCustomerDetails(<?= $ac['id'] ?>)">
+                    <button class="btn-ghost" style="width:40px; height:42px; border-radius:12px; border:1px solid var(--glass-border); color:var(--text-secondary); display:flex; align-items:center; justify-content:center;" onclick="PartnerPage.showCustomerDetails(<?= $ac['id'] ?>)">
                         <i class="fas fa-eye"></i>
                     </button>
                     <a href="https://api.whatsapp.com/send?phone=<?= $wa_num ?>" target="_blank" class="btn" style="background:rgba(37, 211, 102, 0.1); color:#25D366; width:42px; height:42px; border-radius:12px; border:none; display:flex; align-items:center; justify-content:center; text-decoration:none;">
@@ -752,43 +752,34 @@ function confirmBulkPay() {
 </div>
 
 <script>
-async function showCustomerDetails(id) {
-    document.getElementById('detCustName').textContent = 'Memuat...';
-    document.getElementById('detHistoryList').innerHTML = '<div style="text-align:center; padding:30px; opacity:0.5;"><i class="fas fa-spinner fa-spin"></i> Memuat data...</div>';
-    document.getElementById('customerDetailModal').style.display = 'flex';
-    
-    try {
-        const response = await fetch(`app/customer_history.php?id=${id}`);
-        const data = await response.json();
-        
-        document.getElementById('detCustName').textContent = data.customer.name;
-        document.getElementById('detCustId').textContent = 'ID: ' + (data.customer.customer_code || data.customer.id);
-        document.getElementById('detCustPkg').textContent = data.customer.package_name;
-        document.getElementById('detCustBilling').textContent = 'Tanggal ' + data.customer.billing_date;
-        document.getElementById('detCustPhone').textContent = data.customer.contact;
-        document.getElementById('detCustRegDate').textContent = data.customer.registration_date;
-        
-        let historyHtml = '';
-        data.history.forEach(item => {
-            const isPaid = item.status === 'Lunas';
-            const color = isPaid ? 'var(--success)' : 'var(--danger)';
-            historyHtml += `
-                <div class="glass-panel" style="padding:12px; border-left:4px solid ${color}; background:rgba(255,255,255,0.02); margin-bottom:8px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <div style="font-size:12px; font-weight:800; color:${color};">${item.status}</div>
-                            <div style="font-size:10px; color:var(--text-secondary);">${item.due_date}</div>
-                        </div>
-                        <div style="font-weight:800;">Rp${new Intl.NumberFormat('id-ID').format(item.invoice_amount)}</div>
-                    </div>
-                </div>
-            `;
-        });
-        document.getElementById('detHistoryList').innerHTML = historyHtml;
-    } catch (e) {
-        document.getElementById('detHistoryList').innerHTML = 'Error loading history.';
-    }
-}
+if (!window.PartnerPage) window.PartnerPage = {};
+(function(ns){
+    ns.showCustomerDetails = async function(id){
+        const nameEl = document.getElementById('detCustName'); if(nameEl) nameEl.textContent = 'Memuat...';
+        const histEl = document.getElementById('detHistoryList'); if(histEl) histEl.innerHTML = '<div style="text-align:center; padding:30px; opacity:0.5;"><i class="fas fa-spinner fa-spin"></i> Memuat data...</div>';
+        const modal = document.getElementById('customerDetailModal'); if(modal) modal.style.display = 'flex';
+        try {
+            const response = await fetch(`app/customer_history.php?id=${id}`);
+            const data = await response.json();
+            if(nameEl) nameEl.textContent = data.customer.name;
+            const idEl = document.getElementById('detCustId'); if(idEl) idEl.textContent = 'ID: ' + (data.customer.customer_code || data.customer.id);
+            const pkgEl = document.getElementById('detCustPkg'); if(pkgEl) pkgEl.textContent = data.customer.package_name;
+            const billEl = document.getElementById('detCustBilling'); if(billEl) billEl.textContent = 'Tanggal ' + data.customer.billing_date;
+            const phoneEl = document.getElementById('detCustPhone'); if(phoneEl) phoneEl.textContent = data.customer.contact;
+            const regEl = document.getElementById('detCustRegDate'); if(regEl) regEl.textContent = data.customer.registration_date;
+
+            let historyHtml = '';
+            (data.history||[]).forEach(item => {
+                const isPaid = item.status === 'Lunas';
+                const color = isPaid ? 'var(--success)' : 'var(--danger)';
+                historyHtml += `\n                <div class="glass-panel" style="padding:12px; border-left:4px solid ${color}; background:rgba(255,255,255,0.02); margin-bottom:8px;">\n                    <div style="display:flex; justify-content:space-between; align-items:center;">\n                        <div>\n                            <div style="font-size:12px; font-weight:800; color:${color};">${item.status}</div>\n                            <div style="font-size:10px; color:var(--text-secondary);">${item.due_date}</div>\n                        </div>\n                        <div style="font-weight:800;">Rp${new Intl.NumberFormat('id-ID').format(item.invoice_amount)}</div>\n                    </div>\n                </div>`;
+            });
+            if(histEl) histEl.innerHTML = historyHtml;
+        } catch (e) {
+            if(histEl) histEl.innerHTML = 'Error loading history.';
+        }
+    };
+})(window.PartnerPage);
 </script>
 
 <!-- Filter Modal (Synced with Collector) -->

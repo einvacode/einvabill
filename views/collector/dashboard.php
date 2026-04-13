@@ -949,7 +949,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
             $initial = strtoupper(substr($ac['name'], 0, 1));
             $is_unpaid = $ac['unpaid_count'] > 0;
         ?>
-        <div class="glass-panel" style="padding:0; margin-bottom:15px; border-radius:24px; overflow:hidden; border:1px solid var(--glass-border); transition:all 0.3s ease; <?= $is_unpaid ? 'border-left:5px solid var(--danger);' : 'border-left:5px solid var(--success);' ?>" onclick="showCustomerDetails(<?= $ac['id'] ?>)">
+                <div class="glass-panel" style="padding:0; margin-bottom:15px; border-radius:24px; overflow:hidden; border:1px solid var(--glass-border); transition:all 0.3s ease; <?= $is_unpaid ? 'border-left:5px solid var(--danger);' : 'border-left:5px solid var(--success);' ?>" onclick="CollectorPage.showCustomerDetails(<?= $ac['id'] ?>)">
             <!-- Header: Profile & Status -->
             <div style="padding:16px 20px; display:flex; gap:15px; align-items:center;">
                 <div style="width:48px; height:48px; border-radius:50%; background:<?= $is_unpaid ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)' ?>; color:<?= $is_unpaid ? 'var(--danger)' : 'var(--success)' ?>; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:18px; border:1px solid <?= $is_unpaid ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)' ?>;">
@@ -1035,7 +1035,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                     $wa_num = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $ac['contact']));
                     $cust_id_display = $ac['customer_code'] ?: str_pad($ac['id'], 5, "0", STR_PAD_LEFT);
                 ?>
-                <tr style="cursor:pointer;" onclick="showCustomerDetails(<?= $ac['id'] ?>)">
+                <tr style="cursor:pointer;" onclick="CollectorPage.showCustomerDetails(<?= $ac['id'] ?>)">
                     <td style="padding:15px;">
                         <div style="font-weight:700; color:var(--text-primary); font-size:15px;"><?= htmlspecialchars($ac['name']) ?></div>
                         <div style="font-size:11px; color:var(--primary); font-family:monospace; margin-top:2px;">ID: <?= $cust_id_display ?></div>
@@ -1064,7 +1064,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                             <button class="btn btn-sm btn-ghost" style="width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; border:1px solid var(--glass-border); background:rgba(255,255,255,0.05);" onclick="showUpdateProfile(<?= $ac['id'] ?>, '<?= addslashes($ac['name']) ?>', '<?= htmlspecialchars($ac['contact'] ?: '') ?>', '<?= addslashes($ac['address'] ?: '') ?>')" title="Ubah Profil">
                                 <i class="fas fa-edit" style="font-size:16px;"></i>
                             </button>
-                            <button class="btn btn-sm" style="background:#d97706; color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; box-shadow:0 4px 10px rgba(217, 119, 6, 0.2);" onclick="showCustomerDetails(<?= $ac['id'] ?>); setTimeout(() => openAddonModal(), 500);" title="Tambah Add-on">
+                            <button class="btn btn-sm" style="background:#d97706; color:white; width:45px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; box-shadow:0 4px 10px rgba(217, 119, 6, 0.2);" onclick="CollectorPage.showCustomerDetails(<?= $ac['id'] ?>); setTimeout(() => openAddonModal(), 500);" title="Tambah Add-on">
                                 <i class="fas fa-plus-circle" style="font-size:18px;"></i>
                             </button>
                             <?php if($wa_num): 
@@ -1139,7 +1139,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                         $wa_num_t = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $ui['contact']));
                         $cust_id_t = $ui['customer_code'] ?: str_pad($ui['cust_id'], 5, "0", STR_PAD_LEFT);
                     ?>
-                    <tr style="border-bottom:1px solid var(--glass-border); transition:background 0.2s; cursor:pointer;" onclick="showCustomerDetails(<?= $ui['cust_id'] ?>)">
+                    <tr style="border-bottom:1px solid var(--glass-border); transition:background 0.2s; cursor:pointer;" onclick="CollectorPage.showCustomerDetails(<?= $ui['cust_id'] ?>)">
                         <td style="padding:15px;">
                             <div style="font-weight:700; font-size:14px;"><?= htmlspecialchars($ui['name']) ?></div>
                             <div style="font-size:11px; color:var(--primary); font-family:monospace;">ID: <?= $cust_id_t ?></div>
@@ -1196,7 +1196,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
             $wa_num_t = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $ui['contact']));
             $cust_id_t = $ui['customer_code'] ?: str_pad($ui['cust_id'], 5, "0", STR_PAD_LEFT);
         ?>
-        <div class="glass-panel" style="margin-bottom:12px; padding:15px; border-left:4px solid var(--danger); cursor:pointer;" onclick="showCustomerDetails(<?= $ui['cust_id'] ?>)">
+        <div class="glass-panel" style="margin-bottom:12px; padding:15px; border-left:4px solid var(--danger); cursor:pointer;" onclick="CollectorPage.showCustomerDetails(<?= $ui['cust_id'] ?>)">
             <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                 <div style="flex:1;">
                     <div style="font-weight:700; font-size:15px;"><?= htmlspecialchars($ui['name']) ?></div>
@@ -1597,72 +1597,50 @@ function submitPay(custId, months) {
 }
 
 let lastViewedCustId = 0;
-async function showCustomerDetails(id) {
-    lastViewedCustId = id;
-    // 1. Show loading state in modal
-    document.getElementById('detCustName').textContent = 'Memuat...';
-    document.getElementById('detHistoryList').innerHTML = '<div style="text-align:center; padding:30px; opacity:0.5;"><i class="fas fa-spinner fa-spin"></i> Sedang mengambil data...</div>';
-    document.getElementById('customerDetailModal').style.display = 'flex';
-    
-    try {
-        const response = await fetch(`app/customer_history.php?id=${id}`);
-        const data = await response.json();
-        
-        if(data.error) { throw new Error(data.error); }
-        
-        // 2. Populate Header & Info
-        document.getElementById('detCustName').textContent = data.customer.name;
-        document.getElementById('detCustId').textContent = 'ID: ' + (data.customer.customer_code || data.customer.id.toString().padStart(5, '0'));
-        document.getElementById('detCustPkg').textContent = data.customer.package_name;
-        document.getElementById('detCustBilling').textContent = 'Tanggal ' + data.customer.billing_date;
-        document.getElementById('detCustAddr').textContent = data.customer.address || '-';
-        document.getElementById('detCustPhone').textContent = data.customer.contact || '-';
-        
-        // Format Registration Date
-        const regDate = data.customer.registration_date ? new Date(data.customer.registration_date).toLocaleDateString('id-ID', {day:'2-digit', month:'long', year:'numeric'}) : '-';
-        document.getElementById('detCustRegDate').textContent = regDate;
-        
-        // 3. Arrears logic
-        const hasArrears = data.history.some(h => h.status === 'Belum Lunas');
-        document.getElementById('detCustArrearsSection').style.display = hasArrears ? 'block' : 'none';
-
-        // 4. Populate History
-        let historyHtml = '';
-        if(data.history && data.history.length > 0) {
-            data.history.forEach(item => {
-                const isPaid = item.status === 'Lunas';
-                const statusColor = isPaid ? '#10b981' : '#ef4444';
-                const statusIcon = isPaid ? 'fa-check-circle' : 'fa-clock';
-                const payDate = item.payment_date ? new Date(item.payment_date).toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'}) : '-';
-                const amount = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(item.invoice_amount).replace('IDR', 'Rp');
-
-                historyHtml += `
-                    <div class="glass-panel" style="padding:12px; padding-left:15px; border-left:4px solid ${statusColor}; background:rgba(255,255,255,0.02); margin-bottom:8px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <div>
-                                <div style="font-size:13px; font-weight:800; color:${statusColor}; text-transform:uppercase;">${item.status}</div>
-                                <div style="font-size:11px; font-weight:700; margin-top:2px;">${item.description ? item.description : 'Tagihan Bulanan'}</div>
-                                <div style="font-size:10px; color:var(--text-secondary); margin-top:2px;">Jatuh Tempo: ${item.due_date}</div>
-                                ${isPaid ? `<div style="font-size:10px; color:var(--text-secondary); margin-top:2px;"><i class="fas fa-calendar-check"></i> Dibayar: ${payDate}</div>` : ''}
-                            </div>
-                            <div style="text-align:right;">
-                                <div style="font-weight:800; font-size:15px;">${amount}</div>
-                                <div style="font-size:9px; color:var(--text-secondary);">${item.collector_name ? 'Oleh: '+item.collector_name : ''}</div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-        } else {
-            historyHtml = '<div style="text-align:center; padding:30px; opacity:0.5;">Belum ada riwayat tagihan.</div>';
+if (!window.CollectorPage) window.CollectorPage = {};
+(function(ns){
+    ns.showCustomerDetails = async function(id){
+        lastViewedCustId = id;
+        // 1. Show loading state in modal
+        const nameEl = document.getElementById('detCustName'); if(nameEl) nameEl.textContent = 'Memuat...';
+        const histEl = document.getElementById('detHistoryList'); if(histEl) histEl.innerHTML = '<div style="text-align:center; padding:30px; opacity:0.5;\"><i class="fas fa-spinner fa-spin"></i> Sedang mengambil data...</div>';
+        const modal = document.getElementById('customerDetailModal'); if(modal) modal.style.display = 'flex';
+        try {
+            const response = await fetch(`app/customer_history.php?id=${id}`);
+            const data = await response.json();
+            if(data.error) { throw new Error(data.error); }
+            // 2. Populate Header & Info
+            const elName = document.getElementById('detCustName'); if(elName) elName.textContent = data.customer.name;
+            const elId = document.getElementById('detCustId'); if(elId) elId.textContent = 'ID: ' + (data.customer.customer_code || data.customer.id.toString().padStart(5, '0'));
+            const elPkg = document.getElementById('detCustPkg'); if(elPkg) elPkg.textContent = data.customer.package_name;
+            const elBill = document.getElementById('detCustBilling'); if(elBill) elBill.textContent = 'Tanggal ' + data.customer.billing_date;
+            const elAddr = document.getElementById('detCustAddr'); if(elAddr) elAddr.textContent = data.customer.address || '-';
+            const elPhone = document.getElementById('detCustPhone'); if(elPhone) elPhone.textContent = data.customer.contact || '-';
+            const regDate = data.customer.registration_date ? new Date(data.customer.registration_date).toLocaleDateString('id-ID', {day:'2-digit', month:'long', year:'numeric'}) : '-';
+            const elReg = document.getElementById('detCustRegDate'); if(elReg) elReg.textContent = regDate;
+            // 3. Arrears logic
+            const hasArrears = (data.history || []).some(h => h.status === 'Belum Lunas');
+            const arrearsEl = document.getElementById('detCustArrearsSection'); if(arrearsEl) arrearsEl.style.display = hasArrears ? 'block' : 'none';
+            // 4. Populate History
+            let historyHtml = '';
+            if(data.history && data.history.length > 0){
+                data.history.forEach(item => {
+                    const isPaid = item.status === 'Lunas';
+                    const statusColor = isPaid ? '#10b981' : '#ef4444';
+                    const payDate = item.payment_date ? new Date(item.payment_date).toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'}) : '-';
+                    const amount = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(item.invoice_amount).replace('IDR', 'Rp');
+                    historyHtml += `\n                    <div class="glass-panel" style="padding:12px; padding-left:15px; border-left:4px solid ${statusColor}; background:rgba(255,255,255,0.02); margin-bottom:8px;">\n                        <div style="display:flex; justify-content:space-between; align-items:center;">\n                            <div>\n                                <div style="font-size:13px; font-weight:800; color:${statusColor}; text-transform:uppercase;">${item.status}</div>\n                                <div style="font-size:11px; font-weight:700; margin-top:2px;">${item.description ? item.description : 'Tagihan Bulanan'}</div>\n                                <div style="font-size:10px; color:var(--text-secondary); margin-top:2px;">Jatuh Tempo: ${item.due_date}</div>\n                                ${isPaid ? `<div style="font-size:10px; color:var(--text-secondary); margin-top:2px;\"><i class="fas fa-calendar-check"></i> Dibayar: ${payDate}</div>` : ''}\n                            </div>\n                            <div style="text-align:right;">\n                                <div style="font-weight:800; font-size:15px;">${amount}</div>\n                                <div style="font-size:9px; color:var(--text-secondary);">${item.collector_name ? 'Oleh: '+item.collector_name : ''}</div>\n                            </div>\n                        </div>\n                    </div>`;
+                });
+            } else {
+                historyHtml = '<div style="text-align:center; padding:30px; opacity:0.5;">Belum ada riwayat tagihan.</div>';
+            }
+            const histContainer = document.getElementById('detHistoryList'); if(histContainer) histContainer.innerHTML = historyHtml;
+        } catch (error) {
+            const elName = document.getElementById('detCustName'); if(elName) elName.textContent = 'Error';
+            const histContainer = document.getElementById('detHistoryList'); if(histContainer) histContainer.innerHTML = `<div style="text-align:center; padding:30px; color:var(--danger);">${error.message}</div>`;
         }
-        document.getElementById('detHistoryList').innerHTML = historyHtml;
-
-    } catch (error) {
-        document.getElementById('detCustName').textContent = 'Error';
-        document.getElementById('detHistoryList').innerHTML = `<div style="text-align:center; padding:30px; color:var(--danger);">${error.message}</div>`;
-    }
-}
+    };
+})(window.CollectorPage);
 
 function openAddonModal() {
     // Get currently viewed customer data from detail state

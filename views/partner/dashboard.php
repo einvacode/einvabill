@@ -277,7 +277,7 @@ $packages_all = $db->query("SELECT * FROM packages WHERE created_by = $user_id O
                 <h2 style="margin:0; font-size:20px; font-weight:800; color:var(--text-primary);">Dashboard Mitra</h2>
                 <p style="margin:0; font-size:12px; color:var(--text-secondary);"><?= $_SESSION['user_name'] ?> | ID: <?= $partner_cid ?: 'N/A' ?></p>
             </div>
-            <button onclick="showAddCustomerModal()" class="btn btn-sm btn-primary" style="height:38px; border-radius:10px; font-weight:700;"><i class="fas fa-user-plus"></i> <span class="hide-mobile">Tambah Pelanggan</span></button>
+            <button onclick="PartnerPage.showAddCustomerModal()" class="btn btn-sm btn-primary" style="height:38px; border-radius:10px; font-weight:700;"><i class="fas fa-user-plus"></i> <span class="hide-mobile">Tambah Pelanggan</span></button>
         </div>
     </div>
 
@@ -370,25 +370,19 @@ $packages_all = $db->query("SELECT * FROM packages WHERE created_by = $user_id O
 </form>
 
 <script>
-function quickPay(custId, name, months, total) {
-    const formattedTotal = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(total);
-    if (confirm(`Konfirmasi pembayaran dari ${name}?\n\nTotal: ${formattedTotal} (${months} Bulan)\n\nTindakan ini akan menandai tagihan sebagai LUNAS.`)) {
-        document.getElementById('qp_cust_id').value = custId;
-        document.getElementById('qp_num_months').value = months;
-        document.getElementById('quickPayForm').submit();
+window.PartnerPage = (function(){
+    function quickPay(custId, name, months, total){
+        const formattedTotal = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(total);
+        if (confirm(`Konfirmasi pembayaran dari ${name}?\n\nTotal: ${formattedTotal} (${months} Bulan)\n\nTindakan ini akan menandai tagihan sebagai LUNAS.`)) {
+            const elId = document.getElementById('qp_cust_id'); if(elId) elId.value = custId;
+            const elNum = document.getElementById('qp_num_months'); if(elNum) elNum.value = months;
+            const form = document.getElementById('quickPayForm'); if(form) form.submit();
+        }
     }
-}
-
-function showAddCustomerModal() {
-    document.getElementById('addCustomerModal').style.display = 'flex';
-}
-
-function syncAddPrice(select) {
-    const fee = select.options[select.selectedIndex].getAttribute('data-fee');
-    if(fee) {
-        document.getElementById('add_monthly_fee').value = fee;
-    }
-}
+    function showAddCustomerModal(){ const m = document.getElementById('addCustomerModal'); if(m) m.style.display = 'flex'; }
+    function syncAddPrice(select){ const fee = select.options[select.selectedIndex].getAttribute('data-fee'); if(fee){ const el = document.getElementById('add_monthly_fee'); if(el) el.value = fee; } }
+    return { quickPay, showAddCustomerModal, syncAddPrice };
+})();
 </script>
 
 <!-- Modal Tambah Pelanggan Baru -->
