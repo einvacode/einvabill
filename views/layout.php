@@ -243,27 +243,29 @@ if (!empty($__layout_settings['company_logo'])) {
             <!-- Topbar (Hidden for Collector as requested) -->
             <?php if($page !== 'collector'): ?>
             <div class="topbar glass-panel <?= ($_SESSION['user_role'] === 'partner') ? 'hide-mobile' : '' ?>" style="padding:15px 24px;">
-                <div style="font-weight:600; font-size:18px;">
-                    <?php
-                        if($page == 'admin_dashboard') echo 'Dashboard Admin';
-                        elseif($page == 'admin_customers') echo 'Manajemen Pelanggan';
-                        elseif($page == 'admin_assets') echo 'Manajemen Aset (OLT/ODP)';
-                        elseif($page == 'admin_map') echo 'Peta Sebaran Jaringan';
-                        elseif($page == 'admin_invoices') echo 'Manajemen Tagihan';
-                        elseif($page == 'admin_expenses') echo 'Manajemen Pengeluaran';
-                        elseif($page == 'admin_reports') echo 'Laporan Keuangan';
-                        elseif($page == 'admin_report_assets') echo 'Laporan Inventaris Aset';
-                        elseif($page == 'admin_banners') echo 'Manajemen Banner Informasi';
-                        elseif($page == 'admin_landing') echo 'Pengaturan Web Profil';
-                        elseif($page == 'admin_users') echo 'Akses Pengguna';
-                        elseif($page == 'admin_wa_gateway') echo 'Manajemen Perangkat WhatsApp';
-                        elseif($page == 'admin_settings') echo 'Pengaturan Perusahaan';
-                        elseif($page == 'admin_backup') echo 'Backup & Restore Database';
-                        elseif($page == 'collector') echo 'Dashboard Penagih';
-                        elseif($page == 'partner') echo 'Dashboard Mitra';
-                        elseif($page == 'partner_settings') echo 'Pengaturan Profil Mitra';
-                    ?>
-                </div>
+                <?php
+                    $topbar_title = '';
+                    if($page == 'admin_dashboard') $topbar_title = 'Dashboard Admin';
+                    elseif($page == 'admin_customers') $topbar_title = 'Manajemen Pelanggan';
+                    elseif($page == 'admin_assets') $topbar_title = 'Manajemen Aset (OLT/ODP)';
+                    elseif($page == 'admin_map') $topbar_title = 'Peta Sebaran Jaringan';
+                    elseif($page == 'admin_invoices') $topbar_title = 'Manajemen Tagihan';
+                    elseif($page == 'admin_expenses') $topbar_title = 'Manajemen Pengeluaran';
+                    elseif($page == 'admin_reports') $topbar_title = 'Laporan Keuangan';
+                    elseif($page == 'admin_report_assets') $topbar_title = 'Laporan Inventaris Aset';
+                    elseif($page == 'admin_banners') $topbar_title = 'Manajemen Banner Informasi';
+                    elseif($page == 'admin_landing') $topbar_title = 'Pengaturan Web Profil';
+                    elseif($page == 'admin_users') $topbar_title = 'Akses Pengguna';
+                    elseif($page == 'admin_wa_gateway') $topbar_title = 'Manajemen Perangkat WhatsApp';
+                    elseif($page == 'admin_settings') $topbar_title = 'Pengaturan Perusahaan';
+                    elseif($page == 'admin_backup') $topbar_title = 'Backup & Restore Database';
+                    elseif($page == 'collector') $topbar_title = 'Dashboard Penagih';
+                    elseif($page == 'partner') $topbar_title = 'Dashboard Mitra';
+                    elseif($page == 'partner_settings') $topbar_title = 'Pengaturan Profil Mitra';
+                ?>
+                <?php if(!empty($topbar_title)): ?>
+                <div style="font-weight:600; font-size:18px;"><?= htmlspecialchars($topbar_title) ?></div>
+                <?php endif; ?>
                 <div class="user-profile">
                     <!-- Theme Toggle -->
                     <button class="theme-toggle" onclick="toggleTheme()" title="Ganti Tema">
