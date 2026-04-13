@@ -485,6 +485,13 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   margin-bottom: 30px;
 }
 
+/* Ensure topbar and its controls float above glass panels */
+.topbar { position: relative; z-index: 2000; }
+.topbar .user-profile { position: relative; z-index: 2100; }
+.topbar .theme-toggle { position: relative; z-index: 2200; }
+
+.glass-panel { z-index: 1; }
+
 .user-profile {
   display: flex;
   align-items: center;
