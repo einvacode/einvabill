@@ -89,9 +89,12 @@
                     <button type="button" class="btn btn-sm btn-ghost" onclick="clearEditItemRows()">Bersihkan</button>
                 </div>
             </div>
-            <div style="margin-top:12px; display:flex; justify-content:flex-end; gap:8px; align-items:center;">
-                <div style="margin-right:auto; color:var(--text-secondary);">Total Nota: Rp <span id="edit_invoice_total_display">0</span></div>
+            <div style="margin-top:12px; display:flex; justify-content:flex-end; gap:12px; align-items:center;">
                 <a class="btn btn-ghost" href="index.php?page=admin_create_invoice">Batal</a>
+                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px; margin-right:8px;">
+                    <div style="font-size:12px; color:var(--text-secondary);">Total Nota</div>
+                    <div id="edit_invoice_total_display" style="font-size:20px; font-weight:800; color:var(--primary); background: rgba(var(--primary-rgb),0.06); padding:8px 14px; border-radius:12px; box-shadow: 0 8px 30px rgba(var(--primary-rgb),0.08);">0</div>
+                </div>
                 <button class="btn btn-primary" type="submit">Simpan Perubahan</button>
             </div>
         </div>
