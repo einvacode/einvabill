@@ -54,14 +54,18 @@
                 <?php foreach($items as $it): ?>
                 <div style="display:flex; gap:8px; margin-bottom:8px; align-items:center;">
                     <input type="text" name="item_desc[]" class="form-control" value="<?= htmlspecialchars($it['description']) ?>" style="flex:2;">
-                    <input type="number" name="item_qty[]" class="form-control" value="<?= intval($it['qty'] ?? 1) ?>" style="width:80px;">
-                    <input type="number" name="item_unit[]" class="form-control" value="<?= floatval($it['unit_price'] ?? 0) ?>" style="width:140px;">
+                    <input type="number" name="item_qty[]" class="form-control" value="<?= intval($it['qty'] ?? 1) ?>" style="width:80px;" oninput="recalculateRow(this)">
+                    <input type="number" name="item_unit[]" class="form-control" value="<?= floatval($it['unit_price'] ?? 0) ?>" style="width:140px;" oninput="recalculateRow(this)">
                     <input type="number" name="item_amount[]" class="form-control" value="<?= floatval($it['amount']) ?>" style="width:140px;" readonly>
                 </div>
                 <?php endforeach; ?>
             </div>
             <div style="margin-top:8px; display:flex; gap:8px;"><button type="button" class="btn btn-sm btn-primary" onclick="addEditRow()">Tambah Baris</button></div>
-            <div style="margin-top:12px; display:flex; justify-content:flex-end; gap:8px;"><a class="btn btn-ghost" href="index.php?page=admin_create_invoice">Batal</a><button class="btn btn-primary" type="submit">Simpan Perubahan</button></div>
+            <div style="margin-top:12px; display:flex; justify-content:flex-end; gap:8px; align-items:center;">
+                <div style="margin-right:auto; color:var(--text-secondary);">Total Nota: Rp <span id="edit_invoice_total_display">0</span></div>
+                <a class="btn btn-ghost" href="index.php?page=admin_create_invoice">Batal</a>
+                <button class="btn btn-primary" type="submit">Simpan Perubahan</button>
+            </div>
         </div>
     </form>
 </div>
@@ -72,10 +76,37 @@ function addEditRow(){
     const div = document.createElement('div');
     div.style.display='flex'; div.style.gap='8px'; div.style.marginBottom='8px'; div.innerHTML = `
         <input type="text" name="item_desc[]" class="form-control" style="flex:2;">
-        <input type="number" name="item_qty[]" class="form-control" value="1" style="width:80px;">
-        <input type="number" name="item_unit[]" class="form-control" value="0" style="width:140px;">
+        <input type="number" name="item_qty[]" class="form-control" value="1" style="width:80px;" oninput="recalculateRow(this)">
+        <input type="number" name="item_unit[]" class="form-control" value="0" style="width:140px;" oninput="recalculateRow(this)">
         <input type="number" name="item_amount[]" class="form-control" value="0" style="width:140px;" readonly>
     `;
     wrap.appendChild(div);
 }
+
+function recalculateRow(el) {
+    const row = el.closest('div');
+    if (!row) return;
+    const qtyEl = row.querySelector('input[name="item_qty[]"]');
+    const unitEl = row.querySelector('input[name="item_unit[]"]');
+    const amountEl = row.querySelector('input[name="item_amount[]"]');
+    const qty = parseInt(qtyEl.value) || 0;
+    const unit = parseFloat(unitEl.value) || 0;
+    const line = qty * unit;
+    amountEl.value = Math.round(line);
+    updateEditGrandTotal();
+}
+
+function updateEditGrandTotal() {
+    const amounts = Array.from(document.querySelectorAll('input[name="item_amount[]"]'));
+    let total = 0;
+    amounts.forEach(a => total += parseFloat(a.value) || 0);
+    // display if needed (non-intrusive): set document.title for quick debug or add a small display
+    const el = document.getElementById('edit_invoice_total_display');
+    if (el) el.innerText = new Intl.NumberFormat('id-ID').format(Math.round(total));
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('input[name="item_qty[]"]').forEach(i => recalculateRow(i));
+    updateEditGrandTotal();
+});
 </script>
