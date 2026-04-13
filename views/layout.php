@@ -135,7 +135,7 @@ if (!empty($__layout_settings['company_logo'])) {
                         }
                     }
                 ?>
-                <div class="sidebar-header" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 20px 10px 30px;">
+                <div class="sidebar-header" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 20px 10px 30px; position:relative;">
                     <?php if(!empty($logo_src)): ?>
                         <div class="brand-logo-wrapper sidebar-logo-box">
                             <img src="<?= htmlspecialchars($logo_src) ?>" alt="Logo" loading="eager">
@@ -146,6 +146,10 @@ if (!empty($__layout_settings['company_logo'])) {
                         </div>
                     <?php endif; ?>
                     <h2 style="font-size: 16px; margin: 0; line-height: 1.3; word-break: break-word; text-align: center; font-weight: 700; color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);"><?= htmlspecialchars(strtoupper($site_settings['company_name'])) ?></h2>
+                    <button class="theme-toggle" onclick="toggleTheme()" title="Ganti Tema" style="position:absolute; top:14px; right:12px;">
+                        <i class="fas fa-sun theme-icon-dark"></i>
+                        <i class="fas fa-moon theme-icon-light"></i>
+                    </button>
                 </div>
                 <div class="nav-links">
                     <?php if($_SESSION['user_role'] === 'admin'): ?>
@@ -267,20 +271,12 @@ if (!empty($__layout_settings['company_logo'])) {
                 <div style="font-weight:600; font-size:18px;"><?= htmlspecialchars($topbar_title) ?></div>
                 <?php endif; ?>
                 <div class="user-profile">
-                    <!-- Theme Toggle -->
-                    <button class="theme-toggle" onclick="toggleTheme()" title="Ganti Tema">
-                        <i class="fas fa-sun theme-icon-dark"></i>
-                        <i class="fas fa-moon theme-icon-light"></i>
-                    </button>
                     <?php if(($_SESSION['user_role'] ?? '') !== 'partner'): ?>
                     <div style="text-align:right">
                         <div style="font-size:14px; font-weight:600;"><?= htmlspecialchars($_SESSION['user_name']) ?></div>
                         <div style="font-size:12px; color:var(--text-secondary); text-transform:capitalize;"><?= htmlspecialchars($_SESSION['user_role']) ?></div>
                     </div>
                     <?php endif; ?>
-                    <div class="user-avatar">
-                        <?= strtoupper(substr($_SESSION['user_name'], 0, 1)) ?>
-                    </div>
                 </div>
             </div>
             <?php endif; ?>
