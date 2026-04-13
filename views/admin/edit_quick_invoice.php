@@ -32,22 +32,28 @@
     #editItemsTable .form-control { width:100% !important; padding:10px 12px !important; height:44px !important; box-sizing:border-box; font-size:15px; }
     #editItemsTable td { vertical-align: middle; }
     #editItemsTable thead th { padding:12px 8px; color:var(--text-secondary); font-weight:700; }
-    /* Ensure predictable column sizes and larger qty/unit inputs */
-    #editItemsTable { table-layout: fixed; }
+    /* Make table responsive and align with left column: equal two-column layout */
+    #editItemsTable { table-layout: fixed; width:100%; }
     #editItemsTable tbody td { padding: 10px 8px; }
-    #editItemsTable tbody td:first-child { width: 55%; }
-    #editItemsTable tbody td:nth-child(2) input { width: 72px !important; min-width:60px; text-align:center; }
-    #editItemsTable tbody td:nth-child(3) input,
-    #editItemsTable tbody td:nth-child(4) input { width: 130px !important; min-width:100px; text-align:right; }
-    /* Prevent delete button overlapping amount: reserve fixed width for action column */
-    #editItemsTable tbody td:nth-child(5) { width:64px; text-align:center; }
-    /* Make amount input leave space and avoid full-bleed under button */
-    #editItemsTable tbody td:nth-child(4) input { box-sizing: border-box; padding-right:14px !important; }
+    /* Column widths: desc 60%, qty 10%, unit 15%, total 15%, action fixed */
+    #editItemsTable tbody td:first-child { width: 60%; }
+    #editItemsTable tbody td:nth-child(2) { width: 10%; }
+    #editItemsTable tbody td:nth-child(3) { width: 15%; }
+    #editItemsTable tbody td:nth-child(4) { width: 15%; }
+    #editItemsTable tbody td:nth-child(5) { width: 64px; text-align:center; }
+    /* Inputs should fill their cells */
+    #editItemsTable tbody td input[name="item_desc[]"] { width:100%; }
+    #editItemsTable tbody td input[name="item_qty[]"],
+    #editItemsTable tbody td input[name="item_unit[]"],
+    #editItemsTable tbody td input[name="item_amount[]"] { width:100%; box-sizing:border-box; }
+    #editItemsTable tbody td input[name="item_qty[]"] { text-align:center; }
+    #editItemsTable tbody td input[name="item_unit[]"],
+    #editItemsTable tbody td input[name="item_amount[]"] { text-align:right; }
     /* Make delete button compact and consistent */
     #editItemsTable .btn-ghost { width:42px; height:42px; padding:0; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.06); }
     #editItemsTable .btn-ghost i { color:var(--text-secondary); }
     </style>
-    <form method="POST" action="index.php?page=admin_assets&action=invoice_update" style="display:grid; grid-template-columns: 1fr 560px; gap:16px;">
+    <form method="POST" action="index.php?page=admin_assets&action=invoice_update" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
         <input type="hidden" name="invoice_id" value="<?= intval($invoice['id']) ?>">
         <div>
             <label>Nama Penerima</label>
