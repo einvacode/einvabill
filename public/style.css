@@ -909,7 +909,7 @@ tbody tr:hover {
 
   /* BURGER MENU STYLES */
   .mobile-header {
-    display: flex !important;
+    display: none;
     align-items: center;
     justify-content: space-between;
     padding: 15px 20px;
