@@ -490,6 +490,7 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
         </a>
         <div class="nav-menu">
             <a href="#about">Tentang Kami</a>
+            <a href="http://fibernodeinternet.com:3001/status/server" target="_blank"><i class="fas fa-server"></i> Server Status</a>
             <a href="#services">Layanan</a>
             <a href="https://wa.me/<?= $wa_contact ?>" target="_blank"><i class="fab fa-whatsapp" style="color:#25D366; font-size:18px;"></i> Hubungi Kami</a>
             <button class="theme-toggle" onclick="toggleTheme()" title="Ganti Tema">
@@ -508,6 +509,7 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
     <div class="mobile-menu-overlay" onclick="toggleMobileMenu()"></div>
     <div class="mobile-menu" id="mobileMenu">
         <a href="#about" onclick="toggleMobileMenu()">Tentang Kami</a>
+        <a href="http://fibernodeinternet.com:3001/status/server" target="_blank" onclick="toggleMobileMenu()"><i class="fas fa-server"></i> Server Status</a>
         <a href="#services" onclick="toggleMobileMenu()">Layanan</a>
         <a href="index.php?page=customer_portal" onclick="toggleMobileMenu()" style="color:var(--success);"><i class="fas fa-receipt"></i> Cek Tagihan</a>
         <a href="index.php?page=login&role=partner" onclick="toggleMobileMenu()" style="color:var(--primary);"><i class="fas fa-handshake"></i> Portal Partner</a>
