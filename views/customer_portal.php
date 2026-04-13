@@ -64,7 +64,7 @@ $active_banners = $db->query("SELECT * FROM banners WHERE is_active = 1 AND targ
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cek Tagihan - <?= htmlspecialchars($comp_name) ?></title>
-    <link rel="stylesheet" href="public/neumorphism.css">
+    <link rel="stylesheet" href="public/style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
     <script>(function(){const t=localStorage.getItem('billing_theme')||'dark';document.documentElement.setAttribute('data-theme',t);})()</script>
     <style>
