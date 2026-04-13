@@ -299,6 +299,30 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   color: #fff;
 }
 
+/* Compact topbar controls: make theme toggle and WA status badge less boxy */
+.theme-toggle {
+  background: transparent;
+  border: none;
+  padding: 6px;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.theme-toggle i { font-size: 14px; color: var(--text-secondary); }
+.theme-toggle:hover { background: rgba(255,255,255,0.03); }
+
+.wa-status-sidebar-badge {
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  display: inline-block !important;
+  margin-left: 8px;
+}
+
 .btn-primary:active {
   transform: translateY(0) scale(0.98);
 }
