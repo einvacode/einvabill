@@ -50,17 +50,39 @@
                 <option value="Lunas" <?= ($invoice['status'] ?? '') === 'Lunas' ? 'selected' : '' ?>>Lunas</option>
             </select>
             <div style="margin-top:12px; font-weight:700;">Item Nota</div>
-            <div id="editItems">
-                <?php foreach($items as $it): ?>
-                <div style="display:flex; gap:8px; margin-bottom:8px; align-items:center;">
-                    <input type="text" name="item_desc[]" class="form-control" value="<?= htmlspecialchars($it['description']) ?>" style="flex:2;">
-                    <input type="number" name="item_qty[]" class="form-control" value="<?= intval($it['qty'] ?? 1) ?>" style="width:80px;" oninput="recalculateRow(this)">
-                    <input type="number" name="item_unit[]" class="form-control" value="<?= floatval($it['unit_price'] ?? 0) ?>" style="width:140px;" oninput="recalculateRow(this)">
-                    <input type="number" name="item_amount[]" class="form-control" value="<?= floatval($it['amount']) ?>" style="width:140px;" readonly>
+            <div style="background:transparent; padding:8px; border-radius:8px;">
+                <table id="editItemsTable" style="width:100%; border-collapse:collapse;">
+                    <thead>
+                        <tr style="background:transparent;">
+                            <th style="padding:8px; text-align:left; width:55%">Deskripsi</th>
+                            <th style="padding:8px; text-align:center; width:12%">Jumlah</th>
+                            <th style="padding:8px; text-align:right; width:16%">Harga Satuan (Rp)</th>
+                            <th style="padding:8px; text-align:right; width:12%">Total (Rp)</th>
+                            <th style="padding:8px; text-align:center; width:5%">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach($items as $it):
+                            $qty = intval($it['qty'] ?? 1);
+                            $unit = floatval($it['unit_price'] ?? 0);
+                            $amt = floatval($it['amount'] ?? ($qty * $unit));
+                        ?>
+                        <tr>
+                            <td style="padding:8px;"><input type="text" name="item_desc[]" class="form-control" value="<?= htmlspecialchars($it['description']) ?>" required></td>
+                            <td style="padding:8px; text-align:center;"><input type="number" name="item_qty[]" class="form-control" value="<?= $qty ?>" min="1" oninput="recalculateEditRow(this)"></td>
+                            <td style="padding:8px; text-align:right;"><input type="number" name="item_unit[]" class="form-control" value="<?= $unit ?>" oninput="recalculateEditRow(this)"></td>
+                            <td style="padding:8px; text-align:right;"><input type="number" name="item_amount[]" class="form-control" value="<?= $amt ?>" readonly></td>
+                            <td style="padding:8px; text-align:center;"><button type="button" class="btn btn-ghost" onclick="removeEditRow(this)"><i class="fas fa-trash"></i></button></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+
+                <div style="margin-top:10px; display:flex; gap:10px;">
+                    <button type="button" class="btn btn-sm btn-primary" onclick="addEditRow()"><i class="fas fa-plus"></i> Tambah Baris</button>
+                    <button type="button" class="btn btn-sm btn-ghost" onclick="clearEditItemRows()">Bersihkan</button>
                 </div>
-                <?php endforeach; ?>
             </div>
-            <div style="margin-top:8px; display:flex; gap:8px;"><button type="button" class="btn btn-sm btn-primary" onclick="addEditRow()">Tambah Baris</button></div>
             <div style="margin-top:12px; display:flex; justify-content:flex-end; gap:8px; align-items:center;">
                 <div style="margin-right:auto; color:var(--text-secondary);">Total Nota: Rp <span id="edit_invoice_total_display">0</span></div>
                 <a class="btn btn-ghost" href="index.php?page=admin_create_invoice">Batal</a>
@@ -72,23 +94,35 @@
 
 <script>
 function addEditRow(){
-    const wrap = document.getElementById('editItems');
-    const div = document.createElement('div');
-    div.style.display='flex'; div.style.gap='8px'; div.style.marginBottom='8px'; div.innerHTML = `
-        <input type="text" name="item_desc[]" class="form-control" style="flex:2;">
-        <input type="number" name="item_qty[]" class="form-control" value="1" style="width:80px;" oninput="recalculateRow(this)">
-        <input type="number" name="item_unit[]" class="form-control" value="0" style="width:140px;" oninput="recalculateRow(this)">
-        <input type="number" name="item_amount[]" class="form-control" value="0" style="width:140px;" readonly>
+    const tb = document.getElementById('editItemsTable').querySelector('tbody');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td style="padding:8px;"><input type="text" name="item_desc[]" class="form-control" required></td>
+        <td style="padding:8px; text-align:center;"><input type="number" name="item_qty[]" class="form-control" value="1" min="1" oninput="recalculateEditRow(this)"></td>
+        <td style="padding:8px; text-align:right;"><input type="number" name="item_unit[]" class="form-control" value="0" oninput="recalculateEditRow(this)"></td>
+        <td style="padding:8px; text-align:right;"><input type="number" name="item_amount[]" class="form-control" value="0" readonly></td>
+        <td style="padding:8px; text-align:center;"><button type="button" class="btn btn-ghost" onclick="removeEditRow(this)"><i class="fas fa-trash"></i></button></td>
     `;
-    wrap.appendChild(div);
+    tb.appendChild(tr);
 }
 
-function recalculateRow(el) {
-    const row = el.closest('div');
-    if (!row) return;
-    const qtyEl = row.querySelector('input[name="item_qty[]"]');
-    const unitEl = row.querySelector('input[name="item_unit[]"]');
-    const amountEl = row.querySelector('input[name="item_amount[]"]');
+function removeEditRow(btn) {
+    const tr = btn.closest('tr'); if (tr) tr.remove(); updateEditGrandTotal();
+}
+
+function clearEditItemRows(){
+    const tb = document.getElementById('editItemsTable').querySelector('tbody');
+    tb.innerHTML = '';
+    addEditRow();
+    updateEditGrandTotal();
+}
+
+function recalculateEditRow(el) {
+    const tr = el.closest('tr');
+    if (!tr) return;
+    const qtyEl = tr.querySelector('input[name="item_qty[]"]');
+    const unitEl = tr.querySelector('input[name="item_unit[]"]');
+    const amountEl = tr.querySelector('input[name="item_amount[]"]');
     const qty = parseInt(qtyEl.value) || 0;
     const unit = parseFloat(unitEl.value) || 0;
     const line = qty * unit;
@@ -100,13 +134,12 @@ function updateEditGrandTotal() {
     const amounts = Array.from(document.querySelectorAll('input[name="item_amount[]"]'));
     let total = 0;
     amounts.forEach(a => total += parseFloat(a.value) || 0);
-    // display if needed (non-intrusive): set document.title for quick debug or add a small display
     const el = document.getElementById('edit_invoice_total_display');
     if (el) el.innerText = new Intl.NumberFormat('id-ID').format(Math.round(total));
 }
 
 document.addEventListener('DOMContentLoaded', function(){
-    document.querySelectorAll('input[name="item_qty[]"]').forEach(i => recalculateRow(i));
+    document.querySelectorAll('#editItemsTable input[name="item_qty[]"]').forEach(i => recalculateEditRow(i));
     updateEditGrandTotal();
 });
 </script>
