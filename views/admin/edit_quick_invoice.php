@@ -32,6 +32,16 @@
     #editItemsTable .form-control { width:100% !important; padding:10px 12px !important; height:44px !important; box-sizing:border-box; font-size:15px; }
     #editItemsTable td { vertical-align: middle; }
     #editItemsTable thead th { padding:12px 8px; color:var(--text-secondary); font-weight:700; }
+    /* Ensure predictable column sizes and larger qty/unit inputs */
+    #editItemsTable { table-layout: fixed; }
+    #editItemsTable tbody td { padding: 10px 8px; }
+    #editItemsTable tbody td:first-child { width: 55%; }
+    #editItemsTable tbody td:nth-child(2) input { width: 72px !important; min-width:60px; text-align:center; }
+    #editItemsTable tbody td:nth-child(3) input,
+    #editItemsTable tbody td:nth-child(4) input { width: 130px !important; min-width:100px; text-align:right; }
+    /* Make delete button compact and consistent */
+    #editItemsTable .btn-ghost { width:42px; height:42px; padding:0; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.06); }
+    #editItemsTable .btn-ghost i { color:var(--text-secondary); }
     </style>
     <form method="POST" action="index.php?page=admin_assets&action=invoice_update" style="display:grid; grid-template-columns: 1fr 560px; gap:16px;">
         <input type="hidden" name="invoice_id" value="<?= intval($invoice['id']) ?>">
