@@ -27,7 +27,13 @@
  ?>
 <div class="glass-panel" style="width:100%; margin:20px 0; padding:20px;">
     <h3>Edit Invoice <?= strtoupper($created_via ?: 'Cepat') ?> - INV-<?= str_pad($invoice['id'],5,'0',STR_PAD_LEFT) ?></h3>
-    <form method="POST" action="index.php?page=admin_assets&action=invoice_update" style="display:grid; grid-template-columns: 1fr 420px; gap:16px;">
+    <style>
+    /* Make edit items inputs easier to use and more visible */
+    #editItemsTable .form-control { width:100% !important; padding:10px 12px !important; height:44px !important; box-sizing:border-box; font-size:15px; }
+    #editItemsTable td { vertical-align: middle; }
+    #editItemsTable thead th { padding:12px 8px; color:var(--text-secondary); font-weight:700; }
+    </style>
+    <form method="POST" action="index.php?page=admin_assets&action=invoice_update" style="display:grid; grid-template-columns: 1fr 560px; gap:16px;">
         <input type="hidden" name="invoice_id" value="<?= intval($invoice['id']) ?>">
         <div>
             <label>Nama Penerima</label>
