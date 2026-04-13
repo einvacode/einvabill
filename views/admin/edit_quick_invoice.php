@@ -14,10 +14,11 @@
 
  if (!$invoice) { echo "<div class='glass-panel' style='padding:20px;'>Invoice tidak ditemukan.</div>"; return; }
 
- // Ensure this is a quick invoice (safety)
+ // Ensure this is a quick or external invoice (safety)
  $cols = $db->query("PRAGMA table_info(invoices)")->fetchAll(PDO::FETCH_COLUMN,1);
- if (!in_array('created_via', $cols) || ($invoice['created_via'] ?? '') !== 'quick') {
-     echo "<div class='glass-panel' style='padding:20px;'>Invoice ini bukan invoice cepat.</div>"; return;
+ $created_via = $invoice['created_via'] ?? '';
+ if (!in_array('created_via', $cols) || !in_array($created_via, ['quick', 'external'])) {
+     echo "<div class='glass-panel' style='padding:20px;'>Invoice ini bukan invoice cepat atau eksternal.</div>"; return;
  }
 
  // fetch items
@@ -25,7 +26,7 @@
 
  ?>
 <div class="glass-panel" style="max-width:900px; margin:20px auto; padding:20px;">
-    <h3>Edit Invoice Cepat - INV-<?= str_pad($invoice['id'],5,'0',STR_PAD_LEFT) ?></h3>
+    <h3>Edit Invoice <?= strtoupper($created_via ?: 'Cepat') ?> - INV-<?= str_pad($invoice['id'],5,'0',STR_PAD_LEFT) ?></h3>
     <form method="POST" action="index.php?page=admin_assets&action=invoice_update" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
         <input type="hidden" name="invoice_id" value="<?= intval($invoice['id']) ?>">
         <div>
