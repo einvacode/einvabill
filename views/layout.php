@@ -272,10 +272,12 @@ if (!empty($__layout_settings['company_logo'])) {
                         <i class="fas fa-sun theme-icon-dark"></i>
                         <i class="fas fa-moon theme-icon-light"></i>
                     </button>
+                    <?php if(($_SESSION['user_role'] ?? '') !== 'partner'): ?>
                     <div style="text-align:right">
                         <div style="font-size:14px; font-weight:600;"><?= htmlspecialchars($_SESSION['user_name']) ?></div>
                         <div style="font-size:12px; color:var(--text-secondary); text-transform:capitalize;"><?= htmlspecialchars($_SESSION['user_role']) ?></div>
                     </div>
+                    <?php endif; ?>
                     <div class="user-avatar">
                         <?= strtoupper(substr($_SESSION['user_name'], 0, 1)) ?>
                     </div>
