@@ -138,17 +138,17 @@ try {
                                 <tbody>
                                     <tr>
                                         <td style="padding:8px;"><input type="text" name="item_desc[]" class="form-control" placeholder="Contoh: Router Model X" required></td>
-                                        <td style="padding:8px; text-align:center;"><input type="number" name="item_qty[]" class="form-control" value="1" min="1" required oninput="recalculateRow(this)"></td>
-                                        <td style="padding:8px;"><input type="number" name="item_unit[]" class="form-control" value="0" required oninput="recalculateRow(this)"></td>
+                                        <td style="padding:8px; text-align:center;"><input type="number" name="item_qty[]" class="form-control" value="1" min="1" required oninput="CreateInvoice.recalculateRow(this)"></td>
+                                        <td style="padding:8px;"><input type="number" name="item_unit[]" class="form-control" value="0" required oninput="CreateInvoice.recalculateRow(this)"></td>
                                         <td style="padding:8px;"><input type="number" name="item_amount[]" class="form-control" value="0" readonly></td>
-                                        <td style="padding:8px; text-align:center;"><button type="button" class="btn btn-ghost" onclick="removeItemRow(this)"><i class="fas fa-trash"></i></button></td>
+                                        <td style="padding:8px; text-align:center;"><button type="button" class="btn btn-ghost" onclick="CreateInvoice.removeItemRow(this)"><i class="fas fa-trash"></i></button></td>
                                     </tr>
                                 </tbody>
                             </table>
 
                             <div style="margin-top:10px; display:flex; gap:10px;">
-                                <button type="button" class="btn btn-sm btn-primary" onclick="addItemRow()"><i class="fas fa-plus"></i> Tambah Baris</button>
-                                <button type="button" class="btn btn-sm btn-ghost" onclick="clearItemRows()">Bersihkan</button>
+                                <button type="button" class="btn btn-sm btn-primary" onclick="CreateInvoice.addItemRow()"><i class="fas fa-plus"></i> Tambah Baris</button>
+                                <button type="button" class="btn btn-sm btn-ghost" onclick="CreateInvoice.clearItemRows()">Bersihkan</button>
                             </div>
                         </div>
                     </div>
@@ -290,55 +290,58 @@ try {
     <!-- Pendapatan tab removed: payments go to main reports/dashboard -->
 
     <script>
-function addItemRow() {
-    const tb = document.getElementById('invoiceItemsTable').querySelector('tbody');
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-        <td style="padding:8px;"><input type="text" name="item_desc[]" class="form-control" placeholder="Deskripsi item" required></td>
-        <td style="padding:8px; text-align:center;"><input type="number" name="item_qty[]" class="form-control" value="1" min="1" required oninput="recalculateRow(this)"></td>
-        <td style="padding:8px;"><input type="number" name="item_unit[]" class="form-control" value="0" required oninput="recalculateRow(this)"></td>
-        <td style="padding:8px;"><input type="number" name="item_amount[]" class="form-control" value="0" readonly></td>
-        <td style="padding:8px; text-align:center;"><button type="button" class="btn btn-ghost" onclick="removeItemRow(this)"><i class="fas fa-trash"></i></button></td>
-    `;
-    tb.appendChild(tr);
-}
-function removeItemRow(btn) {
-    const tr = btn.closest('tr');
-    if (tr) tr.remove();
-}
-function clearItemRows() {
-    const tb = document.getElementById('invoiceItemsTable').querySelector('tbody');
-    tb.innerHTML = '';
-    addItemRow();
-}
+window.CreateInvoice = (function(){
+    function addItemRow() {
+        const tb = document.getElementById('invoiceItemsTable').querySelector('tbody');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="padding:8px;"><input type="text" name="item_desc[]" class="form-control" placeholder="Deskripsi item" required></td>
+            <td style="padding:8px; text-align:center;"><input type="number" name="item_qty[]" class="form-control" value="1" min="1" required oninput="CreateInvoice.recalculateRow(this)"></td>
+            <td style="padding:8px;"><input type="number" name="item_unit[]" class="form-control" value="0" required oninput="CreateInvoice.recalculateRow(this)"></td>
+            <td style="padding:8px;"><input type="number" name="item_amount[]" class="form-control" value="0" readonly></td>
+            <td style="padding:8px; text-align:center;"><button type="button" class="btn btn-ghost" onclick="CreateInvoice.removeItemRow(this)"><i class="fas fa-trash"></i></button></td>
+        `;
+        tb.appendChild(tr);
+    }
+    function removeItemRow(btn) {
+        const tr = btn.closest('tr');
+        if (tr) tr.remove();
+    }
+    function clearItemRows() {
+        const tb = document.getElementById('invoiceItemsTable').querySelector('tbody');
+        tb.innerHTML = '';
+        addItemRow();
+    }
+    function recalculateRow(el) {
+        const tr = el.closest('tr');
+        if (!tr) return;
+        const qtyEl = tr.querySelector('input[name="item_qty[]"]');
+        const unitEl = tr.querySelector('input[name="item_unit[]"]');
+        const amountEl = tr.querySelector('input[name="item_amount[]"]');
+        const qty = parseInt(qtyEl.value) || 0;
+        const unit = parseFloat(unitEl.value) || 0;
+        const line = qty * unit;
+        amountEl.value = Math.round(line);
+        updateGrandTotal();
+    }
+    function updateGrandTotal() {
+        const amounts = Array.from(document.querySelectorAll('input[name="item_amount[]"]'));
+        let total = 0;
+        amounts.forEach(a => total += parseFloat(a.value) || 0);
+        const invTotalEl = document.getElementById('invoice_total');
+        if (invTotalEl) invTotalEl.value = Math.round(total);
+        const disp = document.getElementById('invoice_total_display');
+        if (disp) disp.innerText = new Intl.NumberFormat('id-ID').format(Math.round(total));
+    }
+        function init() {
+            document.querySelectorAll('input[name="item_qty[]"]').forEach(i => CreateInvoice.recalculateRow(i));
+            CreateInvoice.updateGrandTotal();
+    }
+    return { addItemRow, removeItemRow, clearItemRows, recalculateRow, updateGrandTotal, init };
+})();
 
-function recalculateRow(el) {
-    const tr = el.closest('tr');
-    if (!tr) return;
-    const qtyEl = tr.querySelector('input[name="item_qty[]"]');
-    const unitEl = tr.querySelector('input[name="item_unit[]"]');
-    const amountEl = tr.querySelector('input[name="item_amount[]"]');
-    const qty = parseInt(qtyEl.value) || 0;
-    const unit = parseFloat(unitEl.value) || 0;
-    const line = qty * unit;
-    amountEl.value = Math.round(line);
-    updateGrandTotal();
-}
-
-function updateGrandTotal() {
-    const amounts = Array.from(document.querySelectorAll('input[name="item_amount[]"]'));
-    let total = 0;
-    amounts.forEach(a => total += parseFloat(a.value) || 0);
-    document.getElementById('invoice_total').value = Math.round(total);
-    document.getElementById('invoice_total_display').innerText = new Intl.NumberFormat('id-ID').format(Math.round(total));
-}
-
-// initialize totals on load
-document.addEventListener('DOMContentLoaded', function(){
-    // trigger recalc for existing rows
-    document.querySelectorAll('input[name="item_qty[]"]').forEach(i => recalculateRow(i));
-    updateGrandTotal();
-});
+// initialize
+document.addEventListener('DOMContentLoaded', function(){ try{ if(window.CreateInvoice) window.CreateInvoice.init(); }catch(e){} });
 
 function showTab(name) {
     document.getElementById('createSection').style.display = (name === 'create') ? 'block' : 'none';
@@ -377,7 +380,7 @@ function useTempCustomer(id) {
     // focus first item desc
     const firstDesc = document.querySelector('input[name="item_desc[]"]');
     if (firstDesc) firstDesc.focus();
-    updateGrandTotal();
+    if (window.CreateInvoice) CreateInvoice.updateGrandTotal();
 }
 </script>
 <script>

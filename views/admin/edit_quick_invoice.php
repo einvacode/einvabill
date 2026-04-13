@@ -95,18 +95,18 @@
                         ?>
                         <tr>
                             <td style="padding:8px;"><input type="text" name="item_desc[]" class="form-control" value="<?= htmlspecialchars($it['description']) ?>" required></td>
-                            <td style="padding:8px; text-align:center;"><input type="number" name="item_qty[]" class="form-control" value="<?= $qty ?>" min="1" oninput="recalculateEditRow(this)"></td>
-                            <td style="padding:8px; text-align:right;"><input type="number" name="item_unit[]" class="form-control" value="<?= $unit ?>" oninput="recalculateEditRow(this)"></td>
+                            <td style="padding:8px; text-align:center;"><input type="number" name="item_qty[]" class="form-control" value="<?= $qty ?>" min="1" oninput="EditInvoice.recalculateEditRow(this)"></td>
+                            <td style="padding:8px; text-align:right;"><input type="number" name="item_unit[]" class="form-control" value="<?= $unit ?>" oninput="EditInvoice.recalculateEditRow(this)"></td>
                             <td style="padding:8px; text-align:right;"><input type="number" name="item_amount[]" class="form-control" value="<?= $amt ?>" readonly></td>
-                            <td style="padding:8px; text-align:center;"><button type="button" class="btn btn-ghost" onclick="removeEditRow(this)"><i class="fas fa-trash"></i></button></td>
+                            <td style="padding:8px; text-align:center;"><button type="button" class="btn btn-ghost" onclick="EditInvoice.removeEditRow(this)"><i class="fas fa-trash"></i></button></td>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
 
                 <div style="margin-top:10px; display:flex; gap:10px;">
-                    <button type="button" class="btn btn-sm btn-primary" onclick="addEditRow()"><i class="fas fa-plus"></i> Tambah Baris</button>
-                    <button type="button" class="btn btn-sm btn-ghost" onclick="clearEditItemRows()">Bersihkan</button>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="EditInvoice.addEditRow()"><i class="fas fa-plus"></i> Tambah Baris</button>
+                    <button type="button" class="btn btn-sm btn-ghost" onclick="EditInvoice.clearEditItemRows()">Bersihkan</button>
                 </div>
             </div>
             <div style="margin-top:12px; display:flex; justify-content:flex-end; gap:12px; align-items:center;">
@@ -122,53 +122,40 @@
 </div>
 
 <script>
-function addEditRow(){
-    const tb = document.getElementById('editItemsTable').querySelector('tbody');
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-        <td style="padding:8px;"><input type="text" name="item_desc[]" class="form-control" required></td>
-        <td style="padding:8px; text-align:center;"><input type="number" name="item_qty[]" class="form-control" value="1" min="1" oninput="recalculateEditRow(this)"></td>
-        <td style="padding:8px; text-align:right;"><input type="number" name="item_unit[]" class="form-control" value="0" oninput="recalculateEditRow(this)"></td>
-        <td style="padding:8px; text-align:right;"><input type="number" name="item_amount[]" class="form-control" value="0" readonly></td>
-        <td style="padding:8px; text-align:center;"><button type="button" class="btn btn-ghost" onclick="removeEditRow(this)"><i class="fas fa-trash"></i></button></td>
-    `;
-    tb.appendChild(tr);
-}
+window.EditInvoice = (function(){
+    function addEditRow(){
+        const tb = document.getElementById('editItemsTable').querySelector('tbody');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="padding:8px;"><input type="text" name="item_desc[]" class="form-control" required></td>
+            <td style="padding:8px; text-align:center;"><input type="number" name="item_qty[]" class="form-control" value="1" min="1" oninput="EditInvoice.recalculateEditRow(this)"></td>
+            <td style="padding:8px; text-align:right;"><input type="number" name="item_unit[]" class="form-control" value="0" oninput="EditInvoice.recalculateEditRow(this)"></td>
+            <td style="padding:8px; text-align:right;"><input type="number" name="item_amount[]" class="form-control" value="0" readonly></td>
+            <td style="padding:8px; text-align:center;"><button type="button" class="btn btn-ghost" onclick="EditInvoice.removeEditRow(this)"><i class="fas fa-trash"></i></button></td>
+        `;
+        tb.appendChild(tr);
+    }
+    function removeEditRow(btn) { const tr = btn.closest('tr'); if (tr) tr.remove(); updateEditGrandTotal(); }
+    function clearEditItemRows(){ const tb = document.getElementById('editItemsTable').querySelector('tbody'); tb.innerHTML = ''; addEditRow(); updateEditGrandTotal(); }
+    function recalculateEditRow(el) {
+        const tr = el.closest('tr'); if (!tr) return;
+        const qtyEl = tr.querySelector('input[name="item_qty[]"]');
+        const unitEl = tr.querySelector('input[name="item_unit[]"]');
+        const amountEl = tr.querySelector('input[name="item_amount[]"]');
+        const qty = parseInt(qtyEl.value) || 0;
+        const unit = parseFloat(unitEl.value) || 0;
+        const line = qty * unit;
+        amountEl.value = Math.round(line);
+        updateEditGrandTotal();
+    }
+    function updateEditGrandTotal() {
+        const amounts = Array.from(document.querySelectorAll('input[name="item_amount[]"]'));
+        let total = 0; amounts.forEach(a => total += parseFloat(a.value) || 0);
+        const el = document.getElementById('edit_invoice_total_display'); if (el) el.innerText = new Intl.NumberFormat('id-ID').format(Math.round(total));
+    }
+    function init(){ document.querySelectorAll('#editItemsTable input[name="item_qty[]"]').forEach(i => recalculateEditRow(i)); updateEditGrandTotal(); }
+    return { addEditRow, removeEditRow, clearEditItemRows, recalculateEditRow, updateEditGrandTotal, init };
+})();
 
-function removeEditRow(btn) {
-    const tr = btn.closest('tr'); if (tr) tr.remove(); updateEditGrandTotal();
-}
-
-function clearEditItemRows(){
-    const tb = document.getElementById('editItemsTable').querySelector('tbody');
-    tb.innerHTML = '';
-    addEditRow();
-    updateEditGrandTotal();
-}
-
-function recalculateEditRow(el) {
-    const tr = el.closest('tr');
-    if (!tr) return;
-    const qtyEl = tr.querySelector('input[name="item_qty[]"]');
-    const unitEl = tr.querySelector('input[name="item_unit[]"]');
-    const amountEl = tr.querySelector('input[name="item_amount[]"]');
-    const qty = parseInt(qtyEl.value) || 0;
-    const unit = parseFloat(unitEl.value) || 0;
-    const line = qty * unit;
-    amountEl.value = Math.round(line);
-    updateEditGrandTotal();
-}
-
-function updateEditGrandTotal() {
-    const amounts = Array.from(document.querySelectorAll('input[name="item_amount[]"]'));
-    let total = 0;
-    amounts.forEach(a => total += parseFloat(a.value) || 0);
-    const el = document.getElementById('edit_invoice_total_display');
-    if (el) el.innerText = new Intl.NumberFormat('id-ID').format(Math.round(total));
-}
-
-document.addEventListener('DOMContentLoaded', function(){
-    document.querySelectorAll('#editItemsTable input[name="item_qty[]"]').forEach(i => recalculateEditRow(i));
-    updateEditGrandTotal();
-});
+document.addEventListener('DOMContentLoaded', function(){ try{ if(window.EditInvoice) window.EditInvoice.init(); }catch(e){} });
 </script>
