@@ -604,6 +604,20 @@ tbody tr:hover {
   transform: scale(1.05);
 }
 
+/* Partner: slim, text-only topbar */
+.partner-topbar {
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  margin-bottom: 18px;
+}
+.partner-topbar .partner-topbar-title {
+  font-size: 14px;
+  font-weight:700;
+  color: var(--text-primary);
+}
+
 /* Hide icon based on theme */
 [data-theme="dark"] .theme-icon-dark,
 [data-theme="light"] .theme-icon-light {

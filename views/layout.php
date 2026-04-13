@@ -246,39 +246,43 @@ if (!empty($__layout_settings['company_logo'])) {
         <main class="main-content">
             <!-- Topbar (Hidden for Collector as requested) -->
             <?php if($page !== 'collector'): ?>
-            <div class="topbar glass-panel <?= ($_SESSION['user_role'] === 'partner') ? 'hide-mobile' : '' ?>" style="padding:15px 24px;">
-                <?php
-                    $topbar_title = '';
-                    if($page == 'admin_dashboard') $topbar_title = 'Dashboard Admin';
-                    elseif($page == 'admin_customers') $topbar_title = 'Manajemen Pelanggan';
-                    elseif($page == 'admin_assets') $topbar_title = 'Manajemen Aset (OLT/ODP)';
-                    elseif($page == 'admin_map') $topbar_title = 'Peta Sebaran Jaringan';
-                    elseif($page == 'admin_invoices') $topbar_title = 'Manajemen Tagihan';
-                    elseif($page == 'admin_expenses') $topbar_title = 'Manajemen Pengeluaran';
-                    elseif($page == 'admin_reports') $topbar_title = 'Laporan Keuangan';
-                    elseif($page == 'admin_report_assets') $topbar_title = 'Laporan Inventaris Aset';
-                    elseif($page == 'admin_banners') $topbar_title = 'Manajemen Banner Informasi';
-                    elseif($page == 'admin_landing') $topbar_title = 'Pengaturan Web Profil';
-                    elseif($page == 'admin_users') $topbar_title = 'Akses Pengguna';
-                    elseif($page == 'admin_wa_gateway') $topbar_title = 'Manajemen Perangkat WhatsApp';
-                    elseif($page == 'admin_settings') $topbar_title = 'Pengaturan Perusahaan';
-                    elseif($page == 'admin_backup') $topbar_title = 'Backup & Restore Database';
-                    elseif($page == 'collector') $topbar_title = 'Dashboard Penagih';
-                    elseif($page == 'partner') $topbar_title = 'Dashboard Mitra';
-                    elseif($page == 'partner_settings') $topbar_title = 'Pengaturan Profil Mitra';
-                ?>
-                <?php if(!empty($topbar_title)): ?>
-                <div style="font-weight:600; font-size:18px;"><?= htmlspecialchars($topbar_title) ?></div>
-                <?php endif; ?>
-                <div class="user-profile">
-                    <?php if(($_SESSION['user_role'] ?? '') !== 'partner'): ?>
-                    <div style="text-align:right">
-                        <div style="font-size:14px; font-weight:600;"><?= htmlspecialchars($_SESSION['user_name']) ?></div>
-                        <div style="font-size:12px; color:var(--text-secondary); text-transform:capitalize;"><?= htmlspecialchars($_SESSION['user_role']) ?></div>
-                    </div>
-                    <?php endif; ?>
+            <?php
+                $topbar_title = '';
+                if($page == 'admin_dashboard') $topbar_title = 'Dashboard Admin';
+                elseif($page == 'admin_customers') $topbar_title = 'Manajemen Pelanggan';
+                elseif($page == 'admin_assets') $topbar_title = 'Manajemen Aset (OLT/ODP)';
+                elseif($page == 'admin_map') $topbar_title = 'Peta Sebaran Jaringan';
+                elseif($page == 'admin_invoices') $topbar_title = 'Manajemen Tagihan';
+                elseif($page == 'admin_expenses') $topbar_title = 'Manajemen Pengeluaran';
+                elseif($page == 'admin_reports') $topbar_title = 'Laporan Keuangan';
+                elseif($page == 'admin_report_assets') $topbar_title = 'Laporan Inventaris Aset';
+                elseif($page == 'admin_banners') $topbar_title = 'Manajemen Banner Informasi';
+                elseif($page == 'admin_landing') $topbar_title = 'Pengaturan Web Profil';
+                elseif($page == 'admin_users') $topbar_title = 'Akses Pengguna';
+                elseif($page == 'admin_wa_gateway') $topbar_title = 'Manajemen Perangkat WhatsApp';
+                elseif($page == 'admin_settings') $topbar_title = 'Pengaturan Perusahaan';
+                elseif($page == 'admin_backup') $topbar_title = 'Backup & Restore Database';
+                elseif($page == 'collector') $topbar_title = 'Dashboard Penagih';
+                elseif($page == 'partner') $topbar_title = 'Dashboard Mitra';
+                elseif($page == 'partner_settings') $topbar_title = 'Pengaturan Profil Mitra';
+            ?>
+            <?php if(($_SESSION['user_role'] ?? '') === 'partner'): ?>
+                <div class="topbar partner-topbar">
+                    <?php if(!empty($topbar_title)): ?><div class="partner-topbar-title"><?= htmlspecialchars($topbar_title) ?></div><?php endif; ?>
                 </div>
-            </div>
+            <?php else: ?>
+                <div class="topbar glass-panel" style="padding:15px 24px;">
+                    <?php if(!empty($topbar_title)): ?>
+                    <div style="font-weight:600; font-size:18px;"><?= htmlspecialchars($topbar_title) ?></div>
+                    <?php endif; ?>
+                    <div class="user-profile">
+                        <div style="text-align:right">
+                            <div style="font-size:14px; font-weight:600;"><?= htmlspecialchars($_SESSION['user_name']) ?></div>
+                            <div style="font-size:12px; color:var(--text-secondary); text-transform:capitalize;"><?= htmlspecialchars($_SESSION['user_role']) ?></div>
+                        </div>
+                    </div>
+                </div>
+            <?php endif; ?>
             <?php endif; ?>
 
             <!-- Page Content -->
