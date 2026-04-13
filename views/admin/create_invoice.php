@@ -72,7 +72,18 @@ try {
 
             <form method="POST" action="index.php?page=admin_assets&action=invoice_create">
                 <input type="hidden" name="created_via" value="quick">
-                <div style="display:grid; grid-template-columns: 1fr 320px; gap:16px; align-items:start;">
+                <style>
+                /* Grid alignment for create-invoice to match edit layout */
+                #invoiceItemsTable { table-layout: fixed; width:100%; }
+                #invoiceItemsTable tbody td { padding:10px 8px; }
+                #invoiceItemsTable tbody td:first-child { width:60%; }
+                #invoiceItemsTable tbody td:nth-child(2) { width:10%; }
+                #invoiceItemsTable tbody td:nth-child(3) { width:15%; }
+                #invoiceItemsTable tbody td:nth-child(4) { width:15%; }
+                #invoiceItemsTable tbody td input { width:100%; box-sizing:border-box; }
+                #invoiceItemsTable .btn-ghost { width:42px; height:42px; padding:0; border-radius:10px; }
+                </style>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; align-items:start;">
                     <div>
                         <label>Nama Penerima</label>
                         <input type="text" name="recipient_name" class="form-control" placeholder="Nama orang/mitra" required>
