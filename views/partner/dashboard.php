@@ -341,8 +341,7 @@ $packages_all = $db->query("SELECT * FROM packages WHERE created_by = $user_id O
                     <div style="font-size:10px; font-weight:800; color:var(--text-secondary); text-transform:uppercase;">Jatuh Tempo Hari Ini</div>
                     <div style="font-size:20px; font-weight:900;"><?= $due_today ?></div>
                 </div>
-            </div>
-    </div> <!-- end .scroll-container -->
+                </div>
 
     <!-- PERSISTENT BOTTOM SUMMARY BAR (Quick Check) -->
     <div class="static-summary-bar">
