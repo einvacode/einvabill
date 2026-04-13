@@ -39,6 +39,10 @@
     #editItemsTable tbody td:nth-child(2) input { width: 72px !important; min-width:60px; text-align:center; }
     #editItemsTable tbody td:nth-child(3) input,
     #editItemsTable tbody td:nth-child(4) input { width: 130px !important; min-width:100px; text-align:right; }
+    /* Prevent delete button overlapping amount: reserve fixed width for action column */
+    #editItemsTable tbody td:nth-child(5) { width:64px; text-align:center; }
+    /* Make amount input leave space and avoid full-bleed under button */
+    #editItemsTable tbody td:nth-child(4) input { box-sizing: border-box; padding-right:14px !important; }
     /* Make delete button compact and consistent */
     #editItemsTable .btn-ghost { width:42px; height:42px; padding:0; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.06); }
     #editItemsTable .btn-ghost i { color:var(--text-secondary); }
