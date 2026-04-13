@@ -88,7 +88,7 @@ if ($page === 'home') {
 $permissions = [
     'admin' => '*', // Full access
     'collector' => ['collector', 'admin_customers', 'admin_invoices', 'invoice_print', 'router_data', 'admin_areas', 'admin_map', 'admin_wa_gateway', 'collector_settings'],
-    'partner' => ['partner', 'partner_collection', 'admin_invoices', 'invoice_print', 'admin_customers', 'admin_packages', 'admin_reports', 'admin_expenses', 'admin_map', 'admin_router', 'partner_settings', 'partner_isp_invoices', 'admin_wa_gateway', 'admin_create_invoice'] // Added 'admin_router' for sync, 'partner_settings' for branding, 'partner_isp_invoices' for billing
+    'partner' => ['partner', 'partner_collection', 'partner_settings', 'partner_isp_invoices'] // Partner portal limited to partner-specific pages only
 ];
 
 $user_role = $_SESSION['user_role'] ?? 'guest';
