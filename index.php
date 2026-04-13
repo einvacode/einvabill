@@ -17,20 +17,30 @@ if ($page === 'logout') {
 if ($page === 'login_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'] ?? '';
     $password = $_POST['password'] ?? '';
+    $requested_role = $_POST['requested_role'] ?? 'partner';
     
     $stmt = $db->prepare("SELECT * FROM users WHERE username = ?");
     $stmt->execute([$username]);
     $user = $stmt->fetch();
     
     if ($user && password_verify($password, $user['password'])) {
-        // Automatically set session and redirect to the CORRECT page based on real role
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['user_role'] = $user['role'];
-        $_SESSION['user_name'] = $user['name'];
-        
-        session_write_close();
-        header("Location: index.php");
-        exit;
+        // Enforce that login portal matches the user's real role
+        if ($requested_role === 'partner' && $user['role'] !== 'partner') {
+            $error = 'Akun ini bukan akun mitra. Silakan gunakan Portal Staff untuk akses Admin/Tagih.';
+            $page = 'login';
+        } elseif ($requested_role === 'staff' && !in_array($user['role'], ['admin', 'collector'])) {
+            $error = 'Hanya Staff atau Admin yang boleh masuk melalui Portal Staff.';
+            $page = 'login';
+        } else {
+            // Automatically set session and redirect to the CORRECT page based on real role
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['user_role'] = $user['role'];
+            $_SESSION['user_name'] = $user['name'];
+            
+            session_write_close();
+            header("Location: index.php");
+            exit;
+        }
     } else {
         $error = "Username atau password salah!";
         $page = 'login';
