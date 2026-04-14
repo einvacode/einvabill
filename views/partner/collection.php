@@ -155,7 +155,7 @@ $recent_paid = $db->query("
     JOIN customers c ON i.customer_id = c.id 
     JOIN payments p ON p.invoice_id = i.id
     LEFT JOIN users u ON p.received_by = u.id
-    WHERE i.status = 'Lunas' 
+    WHERE i.status = 'Lunas' AND i.tenant_id = $tenant_id
     AND p.payment_date BETWEEN '$sql_date_from' AND '$sql_date_to'
     $partner_filter
     ORDER BY p.id DESC
@@ -169,7 +169,7 @@ $total_cust_pages = ceil($total_customers / $items_per_page);
 
 $cust_query = "
     SELECT c.*, 
-    (SELECT COUNT(*) FROM invoices WHERE customer_id = c.id AND status = 'Belum Lunas') as unpaid_count
+    (SELECT COUNT(*) FROM invoices WHERE customer_id = c.id AND status = 'Belum Lunas' AND tenant_id = c.tenant_id) as unpaid_count
     FROM customers c 
     WHERE 1=1 $partner_filter $where_search_cust 
     ORDER BY c.id DESC LIMIT $items_per_page OFFSET $off_cust
@@ -177,7 +177,7 @@ $cust_query = "
 $area_customers = $db->query($cust_query)->fetchAll();
 
 // Settings & Banners
-$settings = $db->query("SELECT * FROM settings WHERE id = 1")->fetch();
+$settings = $db->query("SELECT * FROM settings WHERE tenant_id = $tenant_id")->fetch() ?: $db->query("SELECT * FROM settings WHERE id = 1")->fetch();
 $base_url = !empty($settings['site_url']) ? $settings['site_url'] : get_app_url();
 $banners = $db->query("SELECT * FROM banners WHERE is_active = 1 AND target_role IN ('all', 'partner') ORDER BY created_at DESC")->fetchAll();
 
@@ -191,13 +191,14 @@ $rekening_receipt = (!empty($p_stg['brand_bank'])) ? $p_stg['brand_bank'] . " " 
 $success_data = null;
 if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'])) {
     $sid = intval($_GET['cust_id']);
-    $success_data = $db->query("SELECT id, name, contact, customer_code, package_name, monthly_fee FROM customers WHERE id = $sid")->fetch();
+    $success_data = $db->query("SELECT id, name, contact, customer_code, package_name, monthly_fee FROM customers WHERE id = $sid AND tenant_id = $tenant_id")->fetch();
+
     if ($success_data) {
         $wa_num_paid = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $success_data['contact']));
         $months_paid = intval($_GET['months'] ?? 1);
         $total_paid = floatval($_GET['total'] ?? 0);
         $total_display = 'Rp ' . number_format($total_paid, 0, ',', '.');
-        $tunggakan_val = $db->query("SELECT COALESCE(SUM(amount - discount), 0) FROM invoices WHERE customer_id = $sid AND status = 'Belum Lunas'")->fetchColumn() ?: 0;
+        $tunggakan_val = $db->query("SELECT COALESCE(SUM(amount - discount), 0) FROM invoices WHERE customer_id = $sid AND status = 'Belum Lunas' AND tenant_id = $tenant_id")->fetchColumn() ?: 0;
         $tunggakan_display = 'Rp ' . number_format($tunggakan_val, 0, ',', '.');
         
         $status_wa = ($tunggakan_val > 0) ? "LUNAS SEBAGIAN (Masih ada sisa tunggakan)" : "LUNAS SEPENUHNYA";
@@ -795,7 +796,16 @@ if (!window.PartnerPage) window.PartnerPage = {};
             (data.history||[]).forEach(item => {
                 const isPaid = item.status === 'Lunas';
                 const color = isPaid ? 'var(--success)' : 'var(--danger)';
-                historyHtml += `\n                <div class="glass-panel" style="padding:12px; border-left:4px solid ${color}; background:rgba(255,255,255,0.02); margin-bottom:8px;">\n                    <div style="display:flex; justify-content:space-between; align-items:center;">\n                        <div>\n                            <div style="font-size:12px; font-weight:800; color:${color};">${item.status}</div>\n                            <div style="font-size:10px; color:var(--text-secondary);">${item.due_date}</div>\n                        </div>\n                        <div style="font-weight:800;">Rp${new Intl.NumberFormat('id-ID').format(item.invoice_amount)}</div>\n                    </div>\n                </div>`;
+                historyHtml += `
+                <div class="glass-panel" style="padding:12px; border-left:4px solid ${color}; background:rgba(255,255,255,0.02); margin-bottom:8px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-size:12px; font-weight:800; color:${color};">${item.status}</div>
+                            <div style="font-size:10px; color:var(--text-secondary);">${item.due_date}</div>
+                        </div>
+                        <div style="font-weight:800;">Rp${new Intl.NumberFormat('id-ID').format(item.invoice_amount)}</div>
+                    </div>
+                </div>`;
             });
             if(histEl) histEl.innerHTML = historyHtml;
         } catch (e) {
