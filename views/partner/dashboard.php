@@ -301,6 +301,16 @@ $current_month_str = date('Y-m');
 $total_unpaid_val = $db->query("SELECT COALESCE(SUM(amount - discount), 0) FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE c.created_by = $user_id AND i.status = 'Belum Lunas'")->fetchColumn();
 $total_paid_val = $db->query("SELECT COALESCE(SUM(p.amount), 0) FROM payments p JOIN invoices i ON p.invoice_id = i.id JOIN customers c ON i.customer_id = c.id WHERE c.created_by = $user_id AND p.payment_date LIKE '$current_month_str%'")->fetchColumn();
 
+// NEW: Fetch all customers managed by this partner
+$my_customers = $db->query("
+    SELECT c.*, 
+    (SELECT COUNT(*) FROM invoices WHERE customer_id = c.id AND status = 'Belum Lunas') as unpaid_count,
+    (SELECT SUM(amount - discount) FROM invoices WHERE customer_id = c.id AND status = 'Belum Lunas') as total_unpaid
+    FROM customers c 
+    WHERE c.created_by = $user_id 
+    ORDER BY c.name ASC
+")->fetchAll();
+
 // Calculate Net Profit (Collection - Bills to ISP)
 $my_bills_to_isp_paid = $db->query("SELECT COALESCE(SUM(amount - discount), 0) FROM invoices WHERE customer_id = $partner_cid AND status = 'Lunas' AND strftime('%Y-%m', due_date) = '$current_month_str'")->fetchColumn();
 $my_net_profit = $total_paid_val - $my_bills_to_isp_paid;
@@ -550,54 +560,162 @@ function switchImportTab(t){
     </div>
 </div>
 
-            <!-- REVENUE OVERVIEW -->
-            <div class="glass-panel" style="padding: 20px; margin-bottom:20px; border-bottom:4px solid var(--success); background:linear-gradient(135deg, rgba(16, 185, 129, 0.05), transparent);">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                    <h3 style="font-size:15px; font-weight:800; margin:0;"><i class="fas fa-wallet text-success"></i> Pendapatan Saya (Bulan Ini)</h3>
-                    <span style="font-size:11px; font-weight:700; color:var(--text-secondary);"><?= date('F Y') ?></span>
-                </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
-                    <div>
-                        <div style="font-size:10px; color:var(--text-secondary); font-weight:800; text-transform:uppercase;">Diterima</div>
-                        <div style="font-size:18px; font-weight:900; color:var(--success);">Rp<?= number_format($total_paid_val, 0, ',', '.') ?></div>
+<?php else: // ACTION: list (Default) ?>
+    <div class="scroll-container">
+        <!-- Dashboard Home Contents -->
+        
+        <div style="display:grid; grid-template-columns: 1fr; gap:20px;">
+            <!-- LEFT/TOP: Stats and Recent Revenue -->
+            <div>
+                <!-- REVENUE OVERVIEW -->
+                <div class="glass-panel" style="padding: 20px; border-bottom:4px solid var(--success); background:linear-gradient(135deg, rgba(16, 185, 129, 0.05), transparent);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                        <h3 style="font-size:15px; font-weight:800; margin:0;"><i class="fas fa-wallet text-success"></i> Pendapatan Saya (Bulan Ini)</h3>
+                        <span style="font-size:11px; font-weight:700; color:var(--text-secondary);"><?= date('F Y') ?></span>
                     </div>
-                    <div>
-                        <div style="font-size:10px; color:var(--text-secondary); font-weight:800; text-transform:uppercase;">Estimasi Bersih</div>
-                        <div style="font-size:18px; font-weight:900; color:var(--primary);">Rp<?= number_format($my_net_profit, 0, ',', '.') ?></div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                        <div>
+                            <div style="font-size:10px; color:var(--text-secondary); font-weight:800; text-transform:uppercase;">Diterima</div>
+                            <div style="font-size:18px; font-weight:900; color:var(--success);">Rp<?= number_format($total_paid_val, 0, ',', '.') ?></div>
+                        </div>
+                        <div>
+                            <div style="font-size:10px; color:var(--text-secondary); font-weight:800; text-transform:uppercase;">Estimasi Bersih</div>
+                            <div style="font-size:18px; font-weight:900; color:var(--primary);">Rp<?= number_format($my_net_profit, 0, ',', '.') ?></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- QUICK STATS -->
+                <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:12px; margin-top:15px;">
+                    <div class="glass-panel" style="padding:15px; border-radius:16px;">
+                        <div style="font-size:10px; font-weight:800; color:var(--text-secondary); text-transform:uppercase;">Total Pelanggan</div>
+                        <div style="font-size:20px; font-weight:900;"><?= number_format($my_cust_count) ?></div>
+                    </div>
+                    <div class="glass-panel" style="padding:15px; border-radius:16px;">
+                        <div style="font-size:10px; font-weight:800; color:var(--text-secondary); text-transform:uppercase;">Jatuh Tempo Hari Ini</div>
+                        <div style="font-size:20px; font-weight:900;"><?= $due_today ?></div>
                     </div>
                 </div>
             </div>
 
-            <!-- QUICK STATS -->
-            <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:12px; margin-bottom:25px;">
-                <div class="glass-panel" style="padding:15px; border-radius:16px;">
-                    <div style="font-size:10px; font-weight:800; color:var(--text-secondary); text-transform:uppercase;">Total Pelanggan</div>
-                    <div style="font-size:20px; font-weight:900;"><?= number_format($my_cust_count) ?></div>
-                </div>
-                <div class="glass-panel" style="padding:15px; border-radius:16px;">
-                    <div style="font-size:10px; font-weight:800; color:var(--text-secondary); text-transform:uppercase;">Jatuh Tempo Hari Ini</div>
-                    <div style="font-size:20px; font-weight:900;"><?= $due_today ?></div>
-                </div>
+            <!-- MAIN LISTS -->
+            <div>
+                <!-- 1. MY CUSTOMERS LIST -->
+                <div class="glass-panel" style="padding:20px; margin-bottom:20px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                        <h3 style="margin:0; font-size:16px; font-weight:800;"><i class="fas fa-users text-primary"></i> Daftar Pelanggan Saya</h3>
+                        <span class="badge" style="background:var(--primary); color:white;"><?= count($my_customers) ?></span>
+                    </div>
+                    
+                    <div class="table-container">
+                        <table style="width:100%; font-size:13px;">
+                            <thead>
+                                <tr>
+                                    <th>Pelanggan</th>
+                                    <th>Layanan</th>
+                                    <th class="hide-mobile">Kontak</th>
+                                    <th>Tunggakan</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if(empty($my_customers)): ?>
+                                    <tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-secondary);">Belum ada pelanggan. Klik "Tambah Pelanggan" untuk memulai.</td></tr>
+                                <?php endif; ?>
+                                <?php foreach($my_customers as $cust): ?>
+                                    <tr>
+                                        <td>
+                                            <div style="font-weight:700;"><?= htmlspecialchars($cust['name']) ?></div>
+                                            <div style="font-size:11px; color:var(--text-secondary);"><?= $cust['customer_code'] ?></div>
+                                        </td>
+                                        <td>
+                                            <div style="font-weight:600;"><?= htmlspecialchars($cust['package_name']) ?></div>
+                                            <div style="font-size:11px; color:var(--text-secondary);">Rp<?= number_format($cust['monthly_fee'],0,',','.') ?></div>
+                                        </td>
+                                        <td class="hide-mobile">
+                                            <div style="font-size:12px;"><?= $cust['contact'] ?></div>
+                                            <div style="font-size:10px; color:var(--text-secondary);"><?= htmlspecialchars($cust['area']) ?></div>
+                                        </td>
+                                        <td>
+                                            <?php if($cust['unpaid_count'] > 0): ?>
+                                                <span style="color:var(--danger); font-weight:800;">Rp<?= number_format($cust['total_unpaid'], 0, ',', '.') ?></span>
+                                                <div style="font-size:9px; color:var(--danger);"><?= $cust['unpaid_count'] ?> Bulan</div>
+                                            <?php else: ?>
+                                                <span style="color:var(--success); font-weight:800;">LUNAS</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <div style="display:flex; gap:5px;">
+                                                <?php if($cust['unpaid_count'] > 0): ?>
+                                                    <button onclick="PartnerPage.quickPay(<?= $cust['id'] ?>, '<?= addslashes($cust['name']) ?>', <?= $cust['unpaid_count'] ?>, <?= $cust['total_unpaid'] ?>)" class="btn btn-sm" style="background:var(--success); color:white; padding:5px 8px;" title="Bayar Kilat"><i class="fas fa-check"></i></button>
+                                                <?php endif; ?>
+                                                <a href="https://api.whatsapp.com/send?phone=<?= preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $cust['contact'])) ?>" target="_blank" class="btn btn-sm" style="background:#25D366; color:white; padding:5px 8px;"><i class="fab fa-whatsapp"></i></a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
-    <!-- PERSISTENT BOTTOM SUMMARY BAR (Quick Check) -->
-    <div class="static-summary-bar">
-        <div class="glass-panel" style="padding:15px 20px; border-left:4px solid var(--success); background:linear-gradient(to right, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05)); backdrop-filter:blur(15px); display:flex; justify-content:space-between; align-items:center; border-radius:18px; box-shadow:0 -10px 25px rgba(0,0,0,0.1);">
-            <div style="display:flex; align-items:center; gap:12px;">
-                <div style="width:40px; height:40px; border-radius:12px; background:var(--success); color:white; display:flex; align-items:center; justify-content:center; font-size:20px; box-shadow:0 4px 10px rgba(16, 185, 129, 0.3); flex-shrink:0;">
-                    <i class="fas fa-coins"></i>
+                <!-- 2. MY BILLS TO ISP -->
+                <?php if(!empty($partner_invoices)): ?>
+                <div class="glass-panel" style="padding:20px; border-left:4px solid var(--danger);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                        <h3 style="margin:0; font-size:16px; font-weight:800; color:var(--danger);"><i class="fas fa-file-invoice-dollar"></i> Tagihan Saya ke ISP</h3>
+                        <span class="badge" style="background:var(--danger); color:white; font-size:10px;">PRIBADI</span>
+                    </div>
+                    <div class="table-container">
+                        <table style="width:100%; font-size:13px;">
+                            <thead>
+                                <tr>
+                                    <th>Nominal</th><th>Jatuh Tempo</th><th>Status</th><th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach($partner_invoices as $inv): ?>
+                                    <tr>
+                                        <td style="font-weight:700;">Rp<?= number_format($inv['amount'],0,',','.') ?></td>
+                                        <td><?= date('d/m/Y', strtotime($inv['due_date'])) ?></td>
+                                        <td>
+                                            <span style="padding:3px 8px; border-radius:20px; font-size:10px; font-weight:800; background:<?= ($inv['status'] === 'Lunas' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)') ?>; color:<?= ($inv['status'] === 'Lunas' ? 'var(--success)' : 'var(--danger)') ?>;">
+                                                <?= strtoupper($inv['status']) ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <a href="index.php?page=invoice_print&id=<?= $inv['id'] ?>" target="_blank" class="btn btn-sm btn-ghost" style="padding:5px 8px;"><i class="fas fa-print"></i></a>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-                <div>
-                    <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:800;">Laba Bersih SAYA</div>
-                    <div style="font-size:18px; font-weight:900; color:var(--text-primary); line-height:1.2;">Rp<?= number_format($my_net_profit, 0, ',', '.') ?></div>
-                </div>
+                <?php endif; ?>
             </div>
-            <div style="text-align:right;">
-                <div style="font-size:10px; color:var(--text-secondary); font-weight:800; text-transform:uppercase;">Tunggakan Aktif</div>
-                <div style="font-size:18px; font-weight:900; color:var(--danger); line-height:1.2;">Rp<?= number_format($total_unpaid_val, 0, ',', '.') ?></div>
+        </div>
+
+        <!-- PERSISTENT BOTTOM SUMMARY BAR -->
+        <div class="static-summary-bar">
+            <div class="glass-panel" style="padding:15px 20px; border-left:4px solid var(--success); background:linear-gradient(to right, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05)); backdrop-filter:blur(15px); display:flex; justify-content:space-between; align-items:center; border-radius:18px; box-shadow:0 -10px 25px rgba(0,0,0,0.1);">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div style="width:40px; height:40px; border-radius:12px; background:var(--success); color:white; display:flex; align-items:center; justify-content:center; font-size:20px; box-shadow:0 4px 10px rgba(16, 185, 129, 0.3); flex-shrink:0;">
+                        <i class="fas fa-coins"></i>
+                    </div>
+                    <div>
+                        <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:800;">Laba Bersih SAYA</div>
+                        <div style="font-size:18px; font-weight:900; color:var(--text-primary); line-height:1.2;">Rp<?= number_format($my_net_profit, 0, ',', '.') ?></div>
+                    </div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:10px; color:var(--text-secondary); font-weight:800; text-transform:uppercase;">Piutang Aktif</div>
+                    <div style="font-size:18px; font-weight:900; color:var(--danger); line-height:1.2;">Rp<?= number_format($total_unpaid_val, 0, ',', '.') ?></div>
+                </div>
             </div>
         </div>
     </div>
+<?php endif; ?>
 </div> <!-- end .tab-flex-container -->
 
 <!-- Hidden Form for Quick Pay -->
