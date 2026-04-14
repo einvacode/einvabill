@@ -192,6 +192,34 @@ if ($action === 'download_template') {
     exit;
 }
 
+if ($action === 'export_csv') {
+    $customers_export = $db->query("SELECT * FROM customers WHERE created_by = $user_id ORDER BY name ASC")->fetchAll();
+    
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="Data_Pelanggan_Mitra_' . date('Y-m-d') . '.csv"');
+    $output = fopen('php://output', 'w');
+    fputs($output, chr(0xEF) . chr(0xBB) . chr(0xBF)); // BOM for Excel
+    
+    fputcsv($output, ['Kode', 'Nama', 'Alamat', 'Kontak', 'Paket', 'Biaya Bulanan', 'IP Address', 'Tgl Daftar', 'Tgl Tagihan', 'Area']);
+    
+    foreach ($customers_export as $row) {
+        fputcsv($output, [
+            $row['customer_code'],
+            $row['name'],
+            $row['address'],
+            $row['contact'],
+            $row['package_name'],
+            $row['monthly_fee'],
+            $row['ip_address'],
+            $row['registration_date'],
+            $row['billing_date'],
+            $row['area']
+        ]);
+    }
+    fclose($output);
+    exit;
+}
+
 function detectImportMapping($row) {
     $map = ['type' => 0, 'name' => 0, 'address' => 1, 'contact' => 2, 'package' => 3, 'fee' => 4, 'ip' => 5, 'reg_date' => 6, 'bill_date' => 7, 'area' => 8];
     $found = false;
@@ -433,7 +461,8 @@ $packages_all = $db->query("SELECT * FROM packages WHERE created_by = $user_id O
                 <p style="margin:0; font-size:12px; color:var(--text-secondary);"><?= $_SESSION['user_name'] ?> | ID: <?= $partner_cid ?: 'N/A' ?></p>
             </div>
             <div class="btn-group">
-                <a href="index.php?page=partner&action=import_view" class="btn btn-sm btn-ghost" style="color:var(--success); border-radius:10px 0 0 10px; border:1px solid var(--glass-border); padding:0 15px;"><i class="fas fa-file-import"></i> <span class="hide-mobile">Import CSV</span></a>
+                <a href="index.php?page=partner&action=import_view" class="btn btn-sm btn-ghost" style="color:var(--success); border-radius:10px 0 0 10px; border:1px solid var(--glass-border); padding:0 15px;"><i class="fas fa-file-import"></i> <span class="hide-mobile">Import</span></a>
+                <a href="index.php?page=partner&action=export_csv" class="btn btn-sm btn-ghost" style="color:var(--primary); border-radius:0; border:1px solid var(--glass-border); border-left:none; padding:0 15px;"><i class="fas fa-file-export"></i> <span class="hide-mobile">Export</span></a>
                 <button onclick="PartnerPage.showAddCustomerModal()" class="btn btn-sm btn-primary" style="height:38px; border-radius:0 10px 10px 0; font-weight:700;"><i class="fas fa-user-plus"></i> <span class="hide-mobile">Tambah Pelanggan</span></button>
             </div>
         </div>
