@@ -1,9 +1,10 @@
 <?php
 // Penagihan Lapangan for Partner (Synchronized with Collector Dashboard)
 $user_id = intval($_SESSION['user_id']);
+$tenant_id = $_SESSION['tenant_id'] ?? 1;
 
 // Base filter: customers created by this partner
-$partner_filter = " AND c.created_by = $user_id ";
+$partner_filter = " AND c.created_by = $user_id AND c.tenant_id = $tenant_id ";
 
 // Billing date filter (Siklus Tagih)
 $filter_billing_date = $_GET['filter_billing_date'] ?? 'all'; // Default to ALL
@@ -87,7 +88,7 @@ $paid_count_range = $db->query("
 ")->fetchColumn();
 
 // Net Revenue logic (Collected - Bills paid to ISP in same month)
-$partner_cid = $db->query("SELECT customer_id FROM users WHERE id = $user_id")->fetchColumn() ?: 0;
+$partner_cid = $db->query("SELECT customer_id FROM users WHERE id = $user_id AND tenant_id = $tenant_id")->fetchColumn() ?: 0;
 $bills_to_isp_paid = $db->query("
     SELECT COALESCE(SUM(amount - discount), 0) FROM invoices 
     WHERE customer_id = $partner_cid 
@@ -107,12 +108,15 @@ $new_customers_range = $db->query("
 $expenses_range = $db->query("
     SELECT COALESCE(SUM(amount), 0) FROM expenses 
     WHERE date BETWEEN '$date_from' AND '$date_to'
-    AND created_by = $user_id
+    AND created_by = $user_id AND tenant_id = $tenant_id
 ")->fetchColumn();
 
 // Fetch current user brand/settings
-$me = $db->query("SELECT * FROM users WHERE id = $user_id")->fetch();
-$settings = $db->query("SELECT company_name, wa_template, wa_template_paid, site_url, bank_account FROM settings WHERE id = 1")->fetch();
+$me = $db->query("SELECT * FROM users WHERE id = $user_id AND tenant_id = $tenant_id")->fetch();
+$settings = $db->query("SELECT company_name, wa_template, wa_template_paid, site_url, bank_account FROM settings WHERE tenant_id = $tenant_id")->fetch();
+if (!$settings) {
+    $settings = $db->query("SELECT company_name, wa_template, wa_template_paid, site_url, bank_account FROM settings WHERE id = 1")->fetch();
+}
 
 $base_url = !empty($settings['site_url']) ? $settings['site_url'] : get_app_url();
 
@@ -137,7 +141,7 @@ $query_unpaid = "
         MIN(i.due_date) as oldest_due_date
     FROM invoices i 
     JOIN customers c ON i.customer_id = c.id 
-    WHERE i.status = 'Belum Lunas' $partner_filter $billing_where $where_search_tugas
+    WHERE i.status = 'Belum Lunas' AND i.tenant_id = $tenant_id $partner_filter $billing_where $where_search_tugas
     GROUP BY c.id
     ORDER BY c.billing_date ASC, oldest_due_date ASC
 ";
@@ -146,7 +150,7 @@ $unpaid_invoices = $db->query($query_unpaid)->fetchAll();
 // 2. Sudah Lunas (History)
 $recent_paid = $db->query("
     SELECT i.*, c.name, c.contact, c.customer_code, c.package_name, p.payment_date, p.amount as paid_amount, u.name as admin_name,
-    (SELECT COALESCE(SUM(amount - COALESCE(discount, 0)), 0) FROM invoices WHERE customer_id = i.customer_id AND status = 'Belum Lunas') as total_tunggakan
+    (SELECT COALESCE(SUM(amount - COALESCE(discount, 0)), 0) FROM invoices WHERE customer_id = i.customer_id AND status = 'Belum Lunas' AND tenant_id = i.tenant_id) as total_tunggakan
     FROM invoices i 
     JOIN customers c ON i.customer_id = c.id 
     JOIN payments p ON p.invoice_id = i.id

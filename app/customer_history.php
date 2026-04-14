@@ -11,6 +11,7 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id = $_SESSION['user_id'];
 $user_role = $_SESSION['user_role'];
+$tenant_id = $_SESSION['tenant_id'] ?? 1;
 $customer_id = intval($_GET['id'] ?? 0);
 
 if (!$customer_id) {
@@ -21,8 +22,8 @@ if (!$customer_id) {
 header('Content-Type: application/json');
 
 // 1. Fetch Customer Info with Role-based Security
-$customer_query = "SELECT * FROM customers WHERE id = ?";
-$params = [$customer_id];
+$customer_query = "SELECT * FROM customers WHERE id = ? AND tenant_id = ?";
+$params = [$customer_id, $tenant_id];
 
 // If partner, restrict to their own customers
 if ($user_role === 'partner') {
@@ -57,7 +58,7 @@ $query = "
     FROM invoices i
     LEFT JOIN payments p ON p.invoice_id = i.id
     LEFT JOIN users u ON p.received_by = u.id
-    WHERE i.customer_id = ?
+    WHERE i.customer_id = ? AND i.tenant_id = ?
     ORDER BY i.due_date DESC
     LIMIT 12
 ";

@@ -1,13 +1,17 @@
 <?php
 // Partner view
 $user_id = intval($_SESSION['user_id']);
+$tenant_id = $_SESSION['tenant_id'] ?? 1;
 $action = $_GET['action'] ?? 'list';
-$stmt_u = $db->prepare("SELECT customer_id FROM users WHERE id = ?");
-$stmt_u->execute([$user_id]);
+$stmt_u = $db->prepare("SELECT customer_id FROM users WHERE id = ? AND tenant_id = ?");
+$stmt_u->execute([$user_id, $tenant_id]);
 $u = $stmt_u->fetch();
 $partner_cid = $u['customer_id'] ?? 0;
 
-$company_wa = $db->query("SELECT company_contact FROM settings WHERE id=1")->fetchColumn();
+$company_wa = $db->query("SELECT company_contact FROM settings WHERE tenant_id = $tenant_id")->fetchColumn();
+if (!$company_wa) {
+    $company_wa = $db->query("SELECT company_contact FROM settings WHERE id=1")->fetchColumn();
+}
 
 // Date filter
 $date_from = $_GET['date_from'] ?? '';
@@ -16,8 +20,11 @@ $filter_status = $_GET['filter_status'] ?? 'belum';
 $sort_date = $_GET['sort_date'] ?? 'desc';
 
 // Fetch current user brand/settings
-$me = $db->query("SELECT * FROM users WHERE id = $user_id")->fetch();
-$settings = $db->query("SELECT company_name, wa_template, wa_template_paid, site_url, bank_account FROM settings WHERE id = 1")->fetch();
+$me = $db->query("SELECT * FROM users WHERE id = $user_id AND tenant_id = $tenant_id")->fetch();
+$settings = $db->query("SELECT company_name, wa_template, wa_template_paid, site_url, bank_account FROM settings WHERE tenant_id = $tenant_id")->fetch();
+if (!$settings) {
+    $settings = $db->query("SELECT company_name, wa_template, wa_template_paid, site_url, bank_account FROM settings WHERE id = 1")->fetch();
+}
 
 $base_url = !empty($settings['site_url']) ? $settings['site_url'] : get_app_url();
 
@@ -39,22 +46,22 @@ if (isset($_GET['action']) && $_GET['action'] === 'add_customer' && $_SERVER['RE
     $area = $_POST['area'] ?? '';
     
     // Auto-generate unique random customer code
-    $stmt_check = $db->prepare("SELECT COUNT(*) FROM customers WHERE customer_code = ?");
+    $stmt_check = $db->prepare("SELECT COUNT(*) FROM customers WHERE customer_code = ? AND tenant_id = ?");
     do {
         $customer_code = 'CUST-' . str_pad(mt_rand(100000, 999999), 6, '0', STR_PAD_LEFT);
-        $stmt_check->execute([$customer_code]);
+        $stmt_check->execute([$customer_code, $tenant_id]);
     } while ($stmt_check->fetchColumn() > 0);
     
     $db->beginTransaction();
     try {
-        $stmt = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, package_name, monthly_fee, type, registration_date, billing_date, area, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$customer_code, $name, $address, $contact, $package_name, $monthly_fee, $type, $registration_date, $billing_date, $area, $user_id]);
+        $stmt = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, package_name, monthly_fee, type, registration_date, billing_date, area, created_by, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$customer_code, $name, $address, $contact, $package_name, $monthly_fee, $type, $registration_date, $billing_date, $area, $user_id, $tenant_id]);
         $new_id = $db->lastInsertId();
 
         // Initial Invoice for current month
         if ($monthly_fee > 0) {
-            $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Belum Lunas', ?)");
-            $stmt_inv->execute([$new_id, $monthly_fee, $registration_date, date('Y-m-d H:i:s')]);
+            $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at, tenant_id) VALUES (?, ?, ?, 'Belum Lunas', ?, ?)");
+            $stmt_inv->execute([$new_id, $monthly_fee, $registration_date, date('Y-m-d H:i:s'), $tenant_id]);
         }
         $db->commit();
     } catch (Exception $e) {

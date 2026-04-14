@@ -1,19 +1,20 @@
 <?php
 // Data collector
 $user_id = $_SESSION['user_id'];
+$tenant_id = $_SESSION['tenant_id'] ?? 1;
 // Base filter: assigned collector id
 $collector_id = $_SESSION['user_id'];
 
 // Get collector area assignment
-$collector_area = $db->query("SELECT area FROM users WHERE id = " . intval($collector_id))->fetchColumn() ?: '';
+$collector_area = $db->query("SELECT area FROM users WHERE id = " . intval($collector_id) . " AND tenant_id = $tenant_id")->fetchColumn() ?: '';
 
 $collector_area_val = trim($collector_area);
 // --- DYNAMIC AREA FILTER ---
 $filter_area = $_GET['filter_area'] ?? $collector_area_val;
-$areas = $db->query("SELECT * FROM areas ORDER BY name ASC")->fetchAll();
+$areas = $db->query("SELECT * FROM areas WHERE tenant_id = $tenant_id ORDER BY name ASC")->fetchAll();
 
 // Base filter: ALWAYS restricted to assigned collector ID as requested by user
-$base_scope = " AND c.collector_id = " . intval($collector_id);
+$base_scope = " AND c.collector_id = " . intval($collector_id) . " AND c.tenant_id = $tenant_id ";
 
 if (!empty($filter_area)) {
     $area_filter = $base_scope . " AND c.area = " . $db->quote($filter_area);
@@ -114,6 +115,7 @@ $expenses_range = $db->query("
     SELECT COALESCE(SUM(amount), 0) FROM expenses 
     WHERE date BETWEEN '$date_from' AND '$date_to'
     AND created_by = " . intval($collector_id) . "
+    AND tenant_id = $tenant_id
 ")->fetchColumn();
 
 // List of Expenses for the period
@@ -121,6 +123,7 @@ $recent_expenses = $db->query("
     SELECT * FROM expenses 
     WHERE date BETWEEN '$date_from' AND '$date_to'
     AND created_by = " . intval($collector_id) . "
+    AND tenant_id = $tenant_id
     ORDER BY date DESC, id DESC
 ")->fetchAll();
 
@@ -173,8 +176,11 @@ $recent_paid = $db->query("
 $coll_tab = $_GET['tab'] ?? 'tugas';
 
 // Fetch current user brand/settings
-$me = $db->query("SELECT * FROM users WHERE id = " . intval($_SESSION['user_id']))->fetch();
-$settings = $db->query("SELECT company_name, wa_template, wa_template_paid, site_url, bank_account FROM settings WHERE id = 1")->fetch();
+$me = $db->query("SELECT * FROM users WHERE id = " . intval($_SESSION['user_id']) . " AND tenant_id = $tenant_id")->fetch();
+$settings = $db->query("SELECT company_name, wa_template, wa_template_paid, site_url, bank_account FROM settings WHERE tenant_id = $tenant_id")->fetch();
+if (!$settings) {
+    $settings = $db->query("SELECT company_name, wa_template, wa_template_paid, site_url, bank_account FROM settings WHERE id = 1")->fetch();
+}
 
 $base_url = !empty($settings['site_url']) ? $settings['site_url'] : get_app_url();
 
@@ -184,20 +190,20 @@ $wa_tpl_paid = !empty($me['wa_template_paid']) ? $me['wa_template_paid'] : ($set
 $my_bank_info = !empty($me['brand_bank']) ? ($me['brand_bank'] . " " . $me['brand_rekening']) : ($settings['bank_account'] ?? 'Hubungi CS');
 
 // Fetch Banners for Collector
-$banners = $db->query("SELECT * FROM banners WHERE is_active = 1 AND target_role IN ('all', 'collector') ORDER BY created_at DESC")->fetchAll();
+$banners = $db->query("SELECT * FROM banners WHERE is_active = 1 AND target_role IN ('all', 'collector') AND tenant_id = $tenant_id ORDER BY created_at DESC")->fetchAll();
 
 // Success Modal Data for Collector
 $success_data = null;
 if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'])) {
     $sid = intval($_GET['cust_id']);
-    $success_data = $db->query("SELECT id, name, contact, customer_code, package_name, monthly_fee FROM customers WHERE id = $sid")->fetch();
+    $success_data = $db->query("SELECT id, name, contact, customer_code, package_name, monthly_fee FROM customers WHERE id = $sid AND tenant_id = $tenant_id")->fetch();
     if ($success_data) {
         $wa_num_paid = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $success_data['contact']));
         $months_paid = intval($_GET['months'] ?? 1);
         $total_paid = floatval($_GET['total'] ?? 0);
         $total_display = 'Rp ' . number_format($total_paid, 0, ',', '.');
         
-        $tunggakan_val = $db->query("SELECT COALESCE(SUM(amount - discount), 0) FROM invoices WHERE customer_id = $sid AND status = 'Belum Lunas'")->fetchColumn() ?: 0;
+        $tunggakan_val = $db->query("SELECT COALESCE(SUM(amount - discount), 0) FROM invoices WHERE customer_id = $sid AND status = 'Belum Lunas' AND tenant_id = $tenant_id")->fetchColumn() ?: 0;
         $tunggakan_display = 'Rp ' . number_format($tunggakan_val, 0, ',', '.');
         $status_wa = ($tunggakan_val > 0) ? "LUNAS SEBAGIAN (Masih ada sisa tunggakan)" : "LUNAS SEPENUHNYA";
         
