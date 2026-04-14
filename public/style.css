@@ -3,82 +3,82 @@
 /* ===== DARK THEME (Sophisticated Deep Teal) ===== */
 :root, [data-theme="dark"] {
   color-scheme: dark;
-  --bg-color: #021a1d;
-  --bg-gradient-1: hsla(184, 100%, 4%, 1);
-  --bg-gradient-2: hsla(184, 72%, 15%, 0.4);
-  --bg-gradient-3: hsla(184, 60%, 10%, 0.2);
-  --text-primary: #f1f5f9;
+  --bg-color: #0f172a; /* Midnight Slate 900 */
+  --bg-gradient-1: #0f172a;
+  --bg-gradient-2: #1e293b; /* Slate 800 */
+  --bg-gradient-3: #0f172a;
+  --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
-  --primary: #23CED9; /* Standardized to the iconic turquoise */
+  --primary: #23CED9;
   --primary-rgb: 35, 206, 217;
   --primary-hover: #1db4bd;
   --success: #10b981;
   --danger: #ef4444;
   --warning: #f59e0b;
-  --glass-bg: rgba(6, 28, 30, 0.75);
+  --glass-bg: rgba(30, 41, 59, 0.7);
   --glass-border: rgba(35, 206, 217, 0.12);
-  --glass-shadow: 0 12px 60px rgba(0, 0, 0, 0.9);
+  --glass-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
   --card-radius: 20px;
-  --sidebar-bg: #031113;
-  --input-bg: rgba(0, 5, 6, 0.6);
-  --input-color: #fff;
+  --sidebar-bg: #0f172a;
+  --input-bg: #1e293b;
+  --input-color: #f8fafc;
   --hover-bg: rgba(35, 206, 217, 0.08);
-  --table-header-bg: rgba(35, 206, 217, 0.03);
+  --table-header-bg: rgba(30, 41, 59, 0.8);
   --nav-active-bg: rgba(35, 206, 217, 0.15);
-  --nav-active-color: #fff;
-  --stat-value-color: #fff;
-  --badge-danger-bg: rgba(239, 68, 68, 0.15);
+  --nav-active-color: #23CED9;
+  --stat-value-color: #ffffff;
+  --badge-danger-bg: rgba(239, 68, 68, 0.1);
   --badge-danger-border: rgba(239, 68, 68, 0.3);
-  --gradient-text-from: #ffffff;
+  --gradient-text-from: #f8fafc;
   --gradient-text-to: #23CED9;
   /* Dark theme specific button colors */
-  --btn-ghost-bg: rgba(255, 255, 255, 0.05);
+  --btn-ghost-bg: rgba(30, 41, 59, 0.5);
   --btn-ghost-color: #94a3b8;
-  --btn-ghost-border: rgba(255, 255, 255, 0.1);
-  --btn-ghost-hover-bg: rgba(255, 255, 255, 0.12);
-  --modal-cancel-bg: rgba(255, 255, 255, 0.08);
-  --modal-cancel-color: #cbd5e1;
-  --progress-bg: rgba(0,0,0,0.4);
+  --btn-ghost-border: rgba(148, 163, 184, 0.2);
+  --btn-ghost-hover-bg: rgba(30, 41, 59, 0.8);
+  --modal-cancel-bg: rgba(255, 255, 255, 0.05);
+  --modal-cancel-color: #94a3b8;
+  --progress-bg: rgba(30, 41, 59, 1);
 }
 
 /* ===== LIGHT THEME ===== */
 [data-theme="light"] {
   color-scheme: light;
-  --bg-color: #e6fafd;
-  --bg-gradient-1: hsla(184, 40%, 94%, 1);
-  --bg-gradient-2: hsla(184, 72%, 85%, 0.4);
-  --bg-gradient-3: hsla(184, 60%, 88%, 0.3);
-  --text-primary: #0f172a;
-  --text-secondary: #334155;
-  --primary: #23CED9;
-  --primary-rgb: 35, 206, 217;
-  --primary-hover: #1db4bd;
+  --bg-color: #f1f5f9; /* Soft Slate 100 */
+  --bg-gradient-1: #f8fafc; /* Slate 50 */
+  --bg-gradient-2: #e2e8f0; /* Slate 200 */
+  --bg-gradient-3: #f1f5f9;
+  --text-primary: #0f172a; /* Deep Slate 900 */
+  --text-secondary: #475569; /* Slate 600 */
+  --primary: #14b8a6; /* Professional Teal */
+  --primary-rgb: 20, 184, 166;
+  --primary-hover: #0d9488;
   --success: #059669;
   --danger: #dc2626;
   --warning: #d97706;
-  --glass-bg: rgba(240, 253, 254, 0.9);
-  --glass-border: rgba(35, 206, 217, 0.15);
-  --glass-shadow: 0 4px 30px rgba(35, 206, 217, 0.08);
-  --sidebar-bg: rgba(224, 247, 250, 0.85);
-  --input-bg: rgba(255, 255, 255, 0.8);
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(20, 184, 166, 0.12);
+  --glass-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+  --sidebar-bg: #ffffff;
+  --input-bg: #ffffff;
   --input-color: #0f172a;
-  --hover-bg: rgba(35, 206, 217, 0.05);
-  --table-header-bg: rgba(35, 206, 217, 0.04);
-  --nav-active-bg: rgba(var(--primary-rgb), 0.1);
-  --nav-active-color: #14787f;
+  --hover-bg: rgba(20, 184, 166, 0.05);
+  --table-header-bg: #f8fafc;
+  --nav-active-bg: rgba(20, 184, 166, 0.08);
+  --nav-active-color: #0d9488;
   --stat-value-color: #0f172a;
-  --badge-danger-bg: rgba(220, 38, 38, 0.1);
-  --badge-danger-border: rgba(220, 38, 38, 0.3);
-  --gradient-text-from: #0f172a;
-  --gradient-text-to: #0f172a;
+  --badge-danger-bg: rgba(220, 38, 38, 0.05);
+  --badge-danger-border: rgba(220, 38, 38, 0.15);
+  --gradient-text-from: #1e293b;
+  --gradient-text-to: #14b8a6;
   /* Light theme specific button colors */
-  --btn-ghost-bg: rgba(35, 206, 217, 0.08);
-  --btn-ghost-color: #334155;
-  --btn-ghost-border: rgba(35, 206, 217, 0.2);
-  --btn-ghost-hover-bg: rgba(35, 206, 217, 0.15);
-  --modal-cancel-bg: rgba(0, 0, 0, 0.06);
-  --modal-cancel-color: #334155;
-  --progress-bg: rgba(35, 206, 217, 0.12);
+  --btn-ghost-bg: #f8fafc;
+  --btn-ghost-color: #475569;
+  --btn-ghost-border: #e2e8f0;
+  --btn-ghost-hover-bg: #f1f5f9;
+  --modal-cancel-bg: #f1f5f9;
+  --modal-cancel-color: #475569;
+  --progress-bg: #e2e8f0;
 }
 
 * {
