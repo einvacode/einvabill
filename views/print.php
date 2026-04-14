@@ -7,13 +7,15 @@ if (($invoice['created_by'] ?? 0) != 0) {
     $partner_id = intval($invoice['created_by']);
     $partner_brand = $db->query("SELECT brand_name, brand_logo, brand_qris, brand_address, brand_contact, brand_bank, brand_rekening FROM users WHERE id = $partner_id")->fetch();
     
-    if ($partner_brand && !empty($partner_brand['brand_name'])) {
-        $company['company_name'] = $partner_brand['brand_name'];
-        if (!empty($partner_brand['brand_address'])) $company['company_address'] = $partner_brand['brand_address'];
-        if (!empty($partner_brand['brand_contact'])) $company['company_contact'] = $partner_brand['brand_contact'];
-        if (!empty($partner_brand['brand_qris'])) $company['company_qris'] = $partner_brand['brand_qris'];
-        if (!empty($partner_brand['brand_bank'])) $company['company_bank'] = $partner_brand['brand_bank'];
-        if (!empty($partner_brand['brand_rekening'])) $company['company_rekening'] = $partner_brand['brand_rekening'];
+    if ($partner_brand) {
+        $company['company_name'] = !empty($partner_brand['brand_name']) ? $partner_brand['brand_name'] : '';
+        $company['company_address'] = !empty($partner_brand['brand_address']) ? $partner_brand['brand_address'] : '';
+        $company['company_contact'] = !empty($partner_brand['brand_contact']) ? $partner_brand['brand_contact'] : '';
+        $company['company_qris'] = !empty($partner_brand['brand_qris']) ? $partner_brand['brand_qris'] : '';
+        $company['company_bank'] = !empty($partner_brand['brand_bank']) ? $partner_brand['brand_bank'] : '';
+        $company['company_rekening'] = !empty($partner_brand['brand_rekening']) ? $partner_brand['brand_rekening'] : '';
+        
+        // Brand logo is excluded from override (must follow Admin logo as per policy)
         
         // Ensure we don't fallback to Admin's general bank_account text for Partner receipts
         $company['bank_account'] = ''; 
