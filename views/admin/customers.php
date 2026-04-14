@@ -3,6 +3,8 @@ $action = $_GET['action'] ?? 'list';
 
 // Success Modal for Admin Customers
 $success_data = null;
+if (isset($_GET['sid'])) {
+    $sid = intval($_GET['sid']);
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
     $success_data = $db->query("SELECT id, name, contact, customer_code, package_name, monthly_fee FROM customers WHERE id = $sid AND tenant_id = $tenant_id")->fetch();
     $settings = $db->query("SELECT company_name, wa_template_paid, site_url FROM settings WHERE tenant_id = $tenant_id")->fetch();
@@ -44,6 +46,7 @@ $success_data = null;
     </div>
 </div>
 <?php endif; ?>
+<?php
 // Fetch all packages for dropdowns (Scoped by Tenant)
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
     $u_id = $_SESSION['user_id'];

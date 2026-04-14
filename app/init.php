@@ -93,7 +93,7 @@ $db->exec("PRAGMA cache_size = -10000;"); // 10MB Cache
 $db->exec("PRAGMA temp_store = MEMORY;");
 
 // --- VERSIONED SCHEMA MANAGEMENT ---
-define('APP_DB_VERSION', 20); // Sync with database_setup.php
+define('APP_DB_VERSION', 21); // Sync with database_setup.php
 define('APP_VERSION', '2.34.1-1');
 
 $current_db_ver = 0;

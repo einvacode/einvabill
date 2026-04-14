@@ -239,9 +239,9 @@ function run_database_setup($db) {
     $check_settings = $db->query("SELECT COUNT(*) FROM settings")->fetchColumn();
     if ($check_settings == 0) {
         $db->exec("INSERT INTO settings (id, company_name, company_tagline, company_address, wa_template, landing_hero_title, landing_hero_text, db_version) 
-                  VALUES (1, 'EinvaBill ISP', 'Internet Cepat & Layanan Prima', 'Alamat Perusahaan Anda', 'Halo {nama}, tagihan Anda sebesar {tagihan} sudah terbit.', 'Koneksi Super Cepat & Stabil', 'Solusi internet dan IT untuk kebutuhan personal dan korporasi.', 20)");
+                  VALUES (1, 'EinvaBill ISP', 'Internet Cepat & Layanan Prima', 'Alamat Perusahaan Anda', 'Halo {nama}, tagihan Anda sebesar {tagihan} sudah terbit.', 'Koneksi Super Cepat & Stabil', 'Solusi internet dan IT untuk kebutuhan personal dan korporasi.', 21)");
     } else {
-        $db->exec("UPDATE settings SET db_version = 20 WHERE id = 1");
+        $db->exec("UPDATE settings SET db_version = 21 WHERE id = 1");
     }
 
     // Default Users

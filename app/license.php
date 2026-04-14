@@ -6,9 +6,19 @@
 
 function verify_license(PDO $db) {
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
-    $stmt = $db->prepare("SELECT license_key, license_expiry, installation_date FROM settings WHERE tenant_id = ?");
-    $stmt->execute([$tenant_id]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    $row = null;
+    try {
+        $stmt = $db->prepare("SELECT license_key, license_expiry, installation_date FROM settings WHERE tenant_id = ?");
+        $stmt->execute([$tenant_id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        // Fallback for migration period or missing column
+        try {
+            $row = $db->query("SELECT license_key, license_expiry, installation_date FROM settings LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e2) {
+            $row = [];
+        }
+    }
     if (!$row) $row = [];
 
     $key = $row['license_key'] ?? '';
