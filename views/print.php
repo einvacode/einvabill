@@ -11,7 +11,6 @@ if (($invoice['created_by'] ?? 0) != 0) {
         $company['company_name'] = $partner_brand['brand_name'];
         if (!empty($partner_brand['brand_address'])) $company['company_address'] = $partner_brand['brand_address'];
         if (!empty($partner_brand['brand_contact'])) $company['company_contact'] = $partner_brand['brand_contact'];
-        if (!empty($partner_brand['brand_logo'])) $company['company_logo'] = $partner_brand['brand_logo'];
         if (!empty($partner_brand['brand_qris'])) $company['company_qris'] = $partner_brand['brand_qris'];
         if (!empty($partner_brand['brand_bank'])) $company['company_bank'] = $partner_brand['brand_bank'];
         if (!empty($partner_brand['brand_rekening'])) $company['company_rekening'] = $partner_brand['brand_rekening'];

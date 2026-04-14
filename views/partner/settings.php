@@ -27,15 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $logo_path = $user['brand_logo'];
     $qris_path = $user['brand_qris'];
     
-    // Handle Logo Upload
-    if (!empty($_FILES['brand_logo']['name'])) {
-        $ext = pathinfo($_FILES['brand_logo']['name'], PATHINFO_EXTENSION);
-        $logo_filename = 'logo_' . $u_id . '_' . time() . '.' . $ext;
-        $new_logo_fs = $fs_upload_dir . $logo_filename;
-        if (move_uploaded_file($_FILES['brand_logo']['tmp_name'], $new_logo_fs)) {
-            $logo_path = $web_upload_dir . $logo_filename;
-        }
-    }
+    // Logo Upload Disabled (Policy)
     
     // Handle QRIS Upload
     if (!empty($_FILES['brand_qris']['name'])) {
@@ -118,24 +110,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <!-- Upload Fields -->
             <div style="display: flex; flex-direction: column; gap: 20px;">
-                <div class="form-group">
-                    <label style="font-weight: 700; font-size: 13px; margin-bottom: 8px; display: block;">Logo Bisnis</label>
-                    <div style="background: rgba(255,255,255,0.02); border: 2px dashed var(--glass-border); border-radius: 12px; padding: 15px; text-align: center;">
-                        <?php
-                            $logo_src = '';
-                            if (!empty($user['brand_logo'])) {
-                                $logo_src = preg_match('/^http/', $user['brand_logo']) ? $user['brand_logo'] : '/' . str_replace(' ', '%20', $user['brand_logo']);
-                            }
-                        ?>
-                        <?php if(!empty($logo_src)): ?>
-                            <img src="<?= htmlspecialchars($logo_src) ?>" style="max-height: 60px; margin-bottom: 15px; border-radius: 5px;">
-                        <?php else: ?>
-                            <div style="font-size: 24px; opacity: 0.2; margin-bottom: 10px;"><i class="fas fa-image"></i></div>
-                        <?php endif; ?>
-                        <input type="file" name="brand_logo" accept="image/*" class="form-control" style="font-size: 12px;">
-                        <p style="font-size: 11px; color: var(--text-secondary); margin-top: 8px;">Format: JPG, PNG. Maks 2MB.</p>
+            <div class="form-group">
+                <label style="font-weight: 700; font-size: 13px; margin-bottom: 8px; display: block;">Logo Bisnis (ISP Pusat)</label>
+                <div style="background: rgba(var(--primary-rgb),0.02); border: 2px solid var(--glass-border); border-radius: 12px; padding: 15px; text-align: center;">
+                    <?php
+                        // Fetch Admin Logo for preview
+                        $tenant_id_p = $_SESSION['tenant_id'] ?? 1;
+                        $admin_logo = $db->query("SELECT company_logo FROM settings WHERE tenant_id = $tenant_id_p OR id = 1 LIMIT 1")->fetchColumn();
+                        $logo_src = '';
+                        if (!empty($admin_logo)) {
+                            $logo_src = preg_match('/^http/', $admin_logo) ? $admin_logo : '/' . str_replace(' ', '%20', $admin_logo);
+                        }
+                    ?>
+                    <?php if(!empty($logo_src)): ?>
+                        <img src="<?= htmlspecialchars($logo_src) ?>" style="max-height: 60px; margin-bottom: 10px; border-radius: 5px;">
+                    <?php endif; ?>
+                    <div style="padding: 8px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; color: var(--primary); font-size: 11px; font-weight: 700;">
+                        <i class="fas fa-lock"></i> Logo dikelola oleh ISP Pusat
                     </div>
                 </div>
+            </div>
 
                 <div class="form-group">
                     <label style="font-weight: 700; font-size: 13px; margin-bottom: 8px; display: block;">File QRIS Pembayaran</label>
