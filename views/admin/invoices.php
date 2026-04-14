@@ -292,7 +292,6 @@ if ($action === 'create_auto_bulk' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $p_list = !empty($p_ids) ? implode(',', $p_ids) : '0';
             $scope_sql .= " AND (created_by NOT IN ($p_list) OR created_by = 0 OR created_by IS NULL) ";
         }
-    }
     $type_sql = " AND type = " . $db->quote($filter_type);
 
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
