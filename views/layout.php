@@ -338,7 +338,7 @@ if (!empty($__layout_settings['company_logo'])) {
             <a href="index.php?page=partner_collection" class="nav-link <?= $page == 'partner_collection' ? 'active' : '' ?>">
                 <i class="fas fa-motorcycle"></i><span>Penagihan</span>
             </a>
-            <a href="index.php?page=admin_customers" class="nav-link <?= $page == 'admin_customers' ? 'active' : '' ?>">
+            <a href="index.php?page=partner_collection&tab=pelanggan" class="nav-link <?= ($page == 'partner_collection' && ($_GET['tab'] ?? '') == 'pelanggan') ? 'active' : '' ?>">
                 <i class="fas fa-users"></i><span>Pelanggan</span>
             </a>
             <a href="index.php?page=partner_isp_invoices" class="nav-link <?= $page == 'partner_isp_invoices' ? 'active' : '' ?>">
