@@ -246,7 +246,7 @@ switch ($page) {
         // Prepare invoice data for print view
         $inv_id = intval($_GET['id'] ?? 0);
         $tenant_id = $_SESSION['tenant_id'] ?? 1;
-        $invoice = $db->query("SELECT i.*, c.name, c.address, c.contact, c.package_name, c.customer_code FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.id = $inv_id AND i.tenant_id = $tenant_id")->fetch();
+        $invoice = $db->query("SELECT i.*, c.name, c.address, c.contact, c.package_name, c.customer_code, c.created_by as customer_owner FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.id = $inv_id AND i.tenant_id = $tenant_id")->fetch();
         if (!$invoice) {
             echo "<div class='glass-panel p-5 text-center'><h1>Invoice Tidak Ditemukan</h1></div>";
         } else {

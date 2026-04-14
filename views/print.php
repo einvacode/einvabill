@@ -2,10 +2,27 @@
 // Ambil profil perusahaan dari DB
 $company = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
 
-// Branding Override for Partners
-if (($invoice['created_by'] ?? 0) != 0) {
-    $partner_id = intval($invoice['created_by']);
-    $partner_brand = $db->query("SELECT brand_name, brand_logo, brand_qris, brand_address, brand_contact, brand_bank, brand_rekening FROM users WHERE id = $partner_id")->fetch();
+// 1. Defensive: if invoice doesn't already include customer fields, try to populate them
+// We do this BEFORE branding override so we know who the owner (created_by) is.
+if (empty($invoice['name']) && !empty($invoice['customer_id'])) {
+    try {
+        $cstmt = $db->prepare("SELECT id, name, address, contact, package_name, type, created_by FROM customers WHERE id = ? LIMIT 1");
+        $cstmt->execute([intval($invoice['customer_id'])]);
+        $custRow = $cstmt->fetch();
+        if ($custRow) {
+            foreach (['name','address','contact','package_name','type','created_by'] as $k) {
+                if (empty($invoice[$k]) && isset($custRow[$k])) $invoice[$k] = $custRow[$k];
+            }
+        }
+    } catch (Exception $e) { /* ignore */ }
+}
+
+// 2. Branding Override for Partners
+// Check created_by (invoice level) or customer_owner (passed from index.php) or created_by from customer (padded above)
+$effective_owner_id = intval($invoice['created_by'] ?? ($invoice['customer_owner'] ?? 0));
+
+if ($effective_owner_id != 0) {
+    $partner_brand = $db->query("SELECT brand_name, brand_logo, brand_qris, brand_address, brand_contact, brand_bank, brand_rekening FROM users WHERE id = $effective_owner_id")->fetch();
     
     if ($partner_brand) {
         $company['company_name'] = !empty($partner_brand['brand_name']) ? $partner_brand['brand_name'] : '';
@@ -23,38 +40,6 @@ if (($invoice['created_by'] ?? 0) != 0) {
 }
 
 $format = $_GET['format'] ?? 'thermal'; // thermal or a4
-
-// Cek waktu pelunasan jika lunas
-$payment_info = null;
-if ($invoice['status'] === 'Lunas') {
-    $payment_info = $db->query("SELECT payment_date FROM payments WHERE invoice_id = " . intval($invoice['id']) . " ORDER BY id DESC LIMIT 1")->fetch();
-}
-
-// Cek apakah ada tunggakan global (Semua Invoice yang belum lunas)
-$tunggakan = $db->query("SELECT SUM(amount - discount) FROM invoices WHERE customer_id = " . intval($invoice['customer_id']) . " AND status = 'Belum Lunas' AND id != " . intval($invoice['id']))->fetchColumn() ?: 0;
-$tunggakan_bulan = $db->query("SELECT COUNT(*) FROM invoices WHERE customer_id = " . intval($invoice['customer_id']) . " AND status = 'Belum Lunas' AND id != " . intval($invoice['id']))->fetchColumn() ?: 0;
-
-$bulan_bayar = "Tagihan Bulan " . (!empty($invoice['due_date']) ? date('m/Y', strtotime($invoice['due_date'])) : date('m/Y', strtotime($invoice['created_at'] ?? 'now')));
-
-// Fetch items for itemized billing
-$invoice_items = $db->query("SELECT * FROM invoice_items WHERE invoice_id = " . intval($invoice['id']))->fetchAll();
-
-// Defensive: if invoice doesn't already include customer fields, try to populate them
-if (empty($invoice['name']) && !empty($invoice['customer_id'])) {
-    try {
-        $cstmt = $db->prepare("SELECT id, name, address, contact, package_name, type, created_by FROM customers WHERE id = ? LIMIT 1");
-        $cstmt->execute([intval($invoice['customer_id'])]);
-        $custRow = $cstmt->fetch();
-        if ($custRow) {
-            // only set fields that are empty to avoid overwriting provider-specific branding set earlier
-            foreach (['name','address','contact','package_name','type','created_by'] as $k) {
-                if (empty($invoice[$k]) && isset($custRow[$k])) $invoice[$k] = $custRow[$k];
-            }
-        }
-    } catch (Exception $e) {
-        // ignore
-    }
-}
 
 // Detect if this invoice was created via the quick-invoice flow:
 // - customer_id absent (0) OR customers.type == 'note' (temporary note customer)
