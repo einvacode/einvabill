@@ -39,11 +39,11 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $tenant_id = intval($_POST['target_tenant_id']);
     }
 
-    // Role safety
+    // Role safety: Only Super Admin can promote someone to Admin
     if ($role === 'admin' && $_SESSION['user_id'] != 1) {
-        // Prevent normal admin from promoting anyone
-        $old_role = $db->query("SELECT role FROM users WHERE id = $id")->fetchColumn();
-        $role = $old_role;
+        $old_role_stmt = $db->prepare("SELECT role FROM users WHERE id = ? AND tenant_id = ?");
+        $old_role_stmt->execute([$id, $_SESSION['tenant_id']]);
+        $role = $old_role_stmt->fetchColumn() ?: 'collector';
     }
 
     if (!empty($_POST['password'])) {
@@ -60,9 +60,10 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if ($action === 'delete') {
+    $id = intval($_GET['id']);
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
     // Prevent deleting self or primary admin (id=1)
-    if ($id != 1 && $id != $_SESSION['user_id']) {
+    if ($id > 1 && $id != $_SESSION['user_id']) {
         $db->prepare("DELETE FROM users WHERE id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
     }
     header("Location: index.php?page=admin_users");

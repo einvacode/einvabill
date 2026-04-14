@@ -53,10 +53,10 @@ if ($action === 'bulk_delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $ids = $_POST['ids'] ?? [];
     if (!empty($ids)) {
         $id_placeholders = implode(',', array_fill(0, count($ids), '?'));
-        // Ownership Check & Filter
-        $scope_cond = ($u_role === 'admin') ? "(created_by = ? OR created_by = 0 OR created_by IS NULL)" : "created_by = ?";
+        $tenant_id = $_SESSION['tenant_id'] ?? 1;
+        $scope_cond = ($u_role === 'admin') ? "(created_by = ? OR created_by = 0 OR created_by IS NULL) AND tenant_id = ?" : "created_by = ? AND tenant_id = ?";
         $stmt = $db->prepare("DELETE FROM packages WHERE id IN ($id_placeholders) AND $scope_cond");
-        $params = array_merge($ids, [$u_id]);
+        $params = array_merge($ids, [$u_id, $tenant_id]);
         $stmt->execute($params);
         
         header("Location: index.php?page=admin_packages&msg=bulk_deleted");

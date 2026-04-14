@@ -57,8 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quick_action'])) {
                 }
             }
 
-            header("Location: index.php?page=admin_map&success=customer"); exit;
-        }
+        header("Location: index.php?page=admin_map&success=customer"); exit;
     }
     
     // Position Updates (AJAX)

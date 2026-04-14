@@ -67,10 +67,10 @@ $sql_lunas_tepat = "
     WHERE p.payment_date BETWEEN ? AND ?
     AND datetime(p.payment_date) <= datetime(i.due_date)
     $scope_with_external
+    $scope_where
 ";
-$params_lunas_tepat = [$sql_date_from, $sql_date_to];
 if ($filter_user !== 'all' && $u_role === 'admin') {
-    $sql_lunas_tepat = str_replace("$scope_where", "AND p.received_by = ? $scope_with_external", $sql_lunas_tepat);
+    $sql_lunas_tepat = str_replace("$scope_where", "AND p.received_by = ?", $sql_lunas_tepat);
     $params_lunas_tepat[] = $filter_user;
 }
 $q_lunas_tepat = $db->prepare($sql_lunas_tepat);
@@ -85,10 +85,11 @@ $sql_tunggakan_dibayar = "
     WHERE p.payment_date BETWEEN ? AND ?
     AND datetime(p.payment_date) > datetime(i.due_date)
     $scope_with_external
+    $scope_where
 ";
 $params_tunggakan_dibayar = [$sql_date_from, $sql_date_to];
 if ($filter_user !== 'all' && $u_role === 'admin') {
-    $sql_tunggakan_dibayar = str_replace("$scope_where", "AND p.received_by = ? $scope_with_external", $sql_tunggakan_dibayar);
+    $sql_tunggakan_dibayar = str_replace("$scope_where", "AND p.received_by = ?", $sql_tunggakan_dibayar);
     $params_tunggakan_dibayar[] = $filter_user;
 }
 $q_tunggakan_dibayar = $db->prepare($sql_tunggakan_dibayar);

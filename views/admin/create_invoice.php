@@ -5,10 +5,11 @@ if (!in_array($u_role, ['admin','partner'])) {
     echo "<div class='glass-panel' style='padding:40px; text-align:center;'><h2>Akses Ditolak</h2></div>"; return;
 }
 
-// Normalize existing temporary customers so they don't appear in kemitraan lists
+// Normalize existing temporary customers so they don't appear in kemitraan lists (Tenant Scoped)
 if ($u_role === 'admin') {
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
     try {
-        $db->exec("UPDATE customers SET created_by = 0 WHERE type IN ('note','temp') AND (created_by IS NULL OR created_by <> 0)");
+        $db->exec("UPDATE customers SET created_by = 0 WHERE type IN ('note','temp') AND (created_by IS NULL OR created_by <> 0) AND tenant_id = $tenant_id");
     } catch (Exception $e) { /* ignore migration errors */ }
 }
 ?>

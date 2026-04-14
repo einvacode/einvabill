@@ -35,7 +35,11 @@ if ($page === 'admin_license_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if ($page === 'admin_license_generate' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $MASTER_KEY = getenv('MASTER_KEY') ?: "EB-ULTIMATE-2026";
+    // SECURITY: Only Super Admin (ID 1) can generate new license codes
+    if (($_SESSION['user_id'] ?? 0) != 1) {
+        $msg_error = "Hanya Super Admin yang dapat membuat kode lisensi baru.";
+    } else {
+        $MASTER_KEY = getenv('MASTER_KEY') ?: "EB-ULTIMATE-2026";
     $salt = getenv('EINVABILL_SALT') ?: "EINVABILL_SECRET";
     $type = $_POST['gen_type'] ?? 'trial';
 
@@ -54,6 +58,7 @@ if ($page === 'admin_license_generate' && $_SERVER['REQUEST_METHOD'] === 'POST')
         $crc = strtoupper(substr(md5($date_str . $salt), 0, 4));
         $generated_code = "EXP-{$date_str}-{$crc}";
         $msg_status = "License EXP dibuat untuk kedaluwarsa: {$expiry}";
+    }
     }
 }
 

@@ -26,9 +26,9 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $date = $_POST['date'];
     
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
-    // Ownership Check
-    $check = $db->query("SELECT tenant_id FROM expenses WHERE id = $id")->fetchColumn();
-    $is_owner = ($u_role === 'admin') ? ($check == $tenant_id) : (/* restricted */ false);
+    // Ownership Check: Admin can manage all in tenant, others only their own
+    $check = $db->query("SELECT tenant_id, created_by FROM expenses WHERE id = $id")->fetch();
+    $is_owner = ($u_role === 'admin') ? ($check['tenant_id'] == $tenant_id) : ($check['created_by'] == $u_id);
     
     if ($is_owner) {
         $stmt = $db->prepare("UPDATE expenses SET category=?, amount=?, description=?, date=? WHERE id=? AND tenant_id=?");
@@ -46,8 +46,8 @@ if ($action === 'delete') {
     
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
     // Ownership Check
-    $check = $db->query("SELECT tenant_id FROM expenses WHERE id = $id")->fetchColumn();
-    $is_owner = ($u_role === 'admin') ? ($check == $tenant_id) : (/* restricted */ false);
+    $check = $db->query("SELECT tenant_id, created_by FROM expenses WHERE id = $id")->fetch();
+    $is_owner = ($u_role === 'admin') ? ($check['tenant_id'] == $tenant_id) : ($check['created_by'] == $u_id);
     
     if ($is_owner) {
         $db->prepare("DELETE FROM expenses WHERE id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
@@ -60,12 +60,12 @@ if ($action === 'delete') {
 
 // Scoping Logic
 $tenant_id = $_SESSION['tenant_id'] ?? 1;
-$scope_where = "WHERE tenant_id = $tenant_id";
+$scope_where = ($u_role === 'admin') ? "WHERE e.tenant_id = $tenant_id" : "WHERE e.tenant_id = $tenant_id AND e.created_by = $u_id";
 
 // Fetch Stats for current month
 $start_month = date('Y-m-01');
 $end_month = date('Y-m-t');
-$total_expense_month = $db->query("SELECT SUM(amount) FROM expenses $scope_where AND date BETWEEN '$start_month' AND '$end_month'")->fetchColumn() ?: 0;
+$total_expense_month = $db->query("SELECT SUM(amount) FROM expenses e $scope_where AND e.date BETWEEN '$start_month' AND '$end_month'")->fetchColumn() ?: 0;
 ?>
 
 <div class="glass-panel" style="padding: 24px;">

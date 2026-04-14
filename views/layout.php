@@ -1,6 +1,10 @@
 <?php
 // Fetch minimal settings early so we can set favicon in <head>
-$__layout_settings = $db->query("SELECT company_name, company_logo, site_url FROM settings WHERE id=1")->fetch();
+$tenant_id_layout_head = $_SESSION['tenant_id'] ?? 1;
+$__layout_settings = $db->query("SELECT company_name, company_logo, site_url FROM settings WHERE tenant_id = $tenant_id_layout_head")->fetch();
+if (!$__layout_settings) {
+    $__layout_settings = $db->query("SELECT company_name, company_logo, site_url FROM settings WHERE id=1")->fetch();
+}
 $__favicon_src = '';
 if (!empty($__layout_settings['company_logo'])) {
     if (preg_match('/^https?:\/\//', $__layout_settings['company_logo'])) {
@@ -31,7 +35,7 @@ if (!empty($__layout_settings['company_logo'])) {
         })();
 
         // Global WhatsApp API Constants (Available to all sub-views)
-        window.WAGatewayCID = '<?= ($_SESSION["user_role"] === "admin") ? "admin" : "u_" . ($_SESSION["user_id"] ?? "guest") ?>';
+        window.WAGatewayCID = '<?= ($_SESSION["user_role"] === "admin") ? "admin_" . ($_SESSION["tenant_id"] ?? 1) : "u_" . ($_SESSION["user_id"] ?? "guest") ?>';
         window.WAApiProxy = 'wa_proxy.php?path=';
     </script>
 </head>
@@ -124,7 +128,11 @@ if (!empty($__layout_settings['company_logo'])) {
         <aside class="sidebar">
             <div>
                 <?php
-                    $site_settings = $db->query("SELECT company_name, company_logo, site_url FROM settings WHERE id=1")->fetch();
+                    $tenant_id_layout = $_SESSION['tenant_id'] ?? 1;
+                    $site_settings = $db->query("SELECT company_name, company_logo, site_url FROM settings WHERE tenant_id = $tenant_id_layout")->fetch();
+                    if (!$site_settings) {
+                        $site_settings = $db->query("SELECT company_name, company_logo, site_url FROM settings WHERE id=1")->fetch();
+                    }
                     $app_base_url = rtrim($site_settings['site_url'] ?? '', '/');
                     $logo_src = '';
                     if (!empty($site_settings['company_logo'])) {
@@ -153,14 +161,16 @@ if (!empty($__layout_settings['company_logo'])) {
                 </div>
                 <div class="nav-links">
                     <?php if($_SESSION['user_role'] === 'admin'): ?>
-                        <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">MENU UTAMA</div>
+                        <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">OPERASIONAL</div>
                         <a href="index.php?page=admin_dashboard" class="nav-link <?= $page == 'admin_dashboard' ? 'active' : '' ?>"><i class="fas fa-home"></i> Dashboard</a>
                         <a href="index.php?page=admin_customers&filter_type=customer" class="nav-link <?= $page == 'admin_customers' && ($_GET['filter_type'] ?? '') == 'customer' ? 'active' : '' ?>"><i class="fas fa-users"></i> Pelanggan Rumahan</a>
                         <a href="index.php?page=admin_customers&filter_type=partner" class="nav-link <?= $page == 'admin_customers' && ($_GET['filter_type'] ?? '') == 'partner' ? 'active' : '' ?>"><i class="fas fa-handshake"></i> Kemitraan (B2B)</a>
+                        
+                        <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">KEUANGAN</div>
                         <a href="index.php?page=admin_invoices&filter_type=customer" class="nav-link <?= $page == 'admin_invoices' && ($_GET['filter_type'] ?? '') == 'customer' && ($filter_status ?? '') != 'belum' ? 'active' : '' ?>"><i class="fas fa-file-invoice-dollar"></i> Tagihan Pelanggan</a>
                         <a href="index.php?page=admin_invoices&filter_type=partner" class="nav-link <?= $page == 'admin_invoices' && ($_GET['filter_type'] ?? '') == 'partner' ? 'active' : '' ?>"><i class="fas fa-handshake" style="color:var(--primary);"></i> Tagihan Kemitraan</a>
-                            <a href="index.php?page=admin_create_invoice" class="nav-link <?= $page == 'admin_create_invoice' ? 'active' : '' ?>"><i class="fas fa-plus-circle" style="color:#06b6d4;"></i> Buat Invoice</a>
-                        <a href="index.php?page=admin_expenses" class="nav-link <?= $page == 'admin_expenses' ? 'active' : '' ?>"><i class="fas fa-wallet" style="color:var(--warning);"></i> Pengeluaran</a>
+                        <a href="index.php?page=admin_create_invoice" class="nav-link <?= $page == 'admin_create_invoice' ? 'active' : '' ?>"><i class="fas fa-plus-circle" style="color:#06b6d4;"></i> Buat Invoice Baru</a>
+                        <a href="index.php?page=admin_expenses" class="nav-link <?= $page == 'admin_expenses' ? 'active' : '' ?>"><i class="fas fa-wallet" style="color:var(--warning);"></i> Pengeluaran / Biaya</a>
                         
                         <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">INFRASTRUKTUR</div>
                         <a href="index.php?page=admin_router" class="nav-link <?= $page == 'admin_router' ? 'active' : '' ?>"><i class="fas fa-network-wired"></i> Router</a>
@@ -226,13 +236,14 @@ if (!empty($__layout_settings['company_logo'])) {
                         <a href="index.php?page=partner_collection&tab=pelanggan" class="nav-link <?= ($page == 'partner_collection' && ($_GET['tab'] ?? '') == 'pelanggan') ? 'active' : '' ?>"><i class="fas fa-users" style="color:#60a5fa;"></i> Pelanggan Saya</a>
                         
                         <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">KEUANGAN & TOOLS</div>
-                        <div class="nav-dropdown <?= in_array($page, ['partner_isp_invoices']) ? 'open' : '' ?>">
+                        <div class="nav-dropdown <?= in_array($page, ['partner_isp_invoices', 'admin_expenses']) ? 'open' : '' ?>">
                             <div class="nav-link dropdown-toggle" onclick="toggleDropdown(this)">
                                 <span><i class="fas fa-wallet" style="color:#10b981;"></i> Administrasi Keuangan</span>
                                 <i class="fas fa-chevron-down"></i>
                             </div>
                             <div class="dropdown-content">
                                 <a href="index.php?page=partner_isp_invoices" class="nav-link dropdown-link <?= $page == 'partner_isp_invoices' ? 'active' : '' ?>"><i class="fas fa-receipt" style="color:#ef4444;"></i> Tagihan Ke ISP</a>
+                                <a href="index.php?page=admin_expenses" class="nav-link dropdown-link <?= $page == 'admin_expenses' ? 'active' : '' ?>"><i class="fas fa-wallet" style="color:var(--warning);"></i> Catat Pengeluaran</a>
                             </div>
                         </div>
 

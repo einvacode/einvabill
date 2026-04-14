@@ -181,10 +181,12 @@ if ($action === 'edit_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if ($action === 'mark_paid') {
-    $id = intval($_GET['id']);
-    $stmt = $db->prepare("SELECT amount, discount FROM invoices WHERE id = ?");
-    $stmt->execute([$id]);
-    $inv = $stmt->fetch();
+    if ($id > 0) {
+        $tenant_id_check = $_SESSION['tenant_id'] ?? 1;
+        $stmt = $db->prepare("SELECT amount, discount FROM invoices WHERE id = ? AND tenant_id = ?");
+        $stmt->execute([$id, $tenant_id_check]);
+        $inv = $stmt->fetch();
+    }
     
     if ($inv) {
         // Multi-Tenancy Authorization Check
@@ -432,8 +434,9 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
     <!-- Partner Tabs -->
     <?php if ($u_role === 'partner'): ?>
     <?php 
-        $partner_cid = $db->query("SELECT customer_id FROM users WHERE id = $u_id")->fetchColumn() ?: 0;
-        $unpaid_personal = $db->query("SELECT COUNT(*) FROM invoices WHERE customer_id = $partner_cid AND status = 'Belum Lunas'")->fetchColumn();
+        $tenant_id_p = $_SESSION['tenant_id'] ?? 1;
+        $partner_cid = $db->query("SELECT customer_id FROM users WHERE id = $u_id AND tenant_id = $tenant_id_p")->fetchColumn() ?: 0;
+        $unpaid_personal = $db->query("SELECT COUNT(*) FROM invoices WHERE customer_id = $partner_cid AND status = 'Belum Lunas' AND tenant_id = $tenant_id_p")->fetchColumn();
     ?>
     <div style="display:flex; gap:10px; margin-bottom:20px; border-bottom:1px solid var(--glass-border); padding-bottom:10px;">
         <a href="index.php?page=admin_invoices&view_mode=customers" style="text-decoration:none; padding:8px 16px; border-radius:8px; font-size:14px; font-weight:700; transition:all 0.3s; <?= $view_mode === 'customers' ? 'background:var(--primary); color:white;' : 'color:var(--text-secondary);' ?>">

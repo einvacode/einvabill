@@ -105,7 +105,7 @@ if ($page === 'home') {
 $permissions = [
     'admin' => '*', // Full access
     'collector' => ['collector', 'admin_customers', 'admin_invoices', 'invoice_print', 'router_data', 'admin_areas', 'admin_map', 'admin_wa_gateway', 'collector_settings'],
-    'partner' => ['partner', 'partner_collection', 'partner_settings', 'partner_isp_invoices'] // Partner portal limited to partner-specific pages only
+    'partner' => ['partner', 'partner_collection', 'partner_settings', 'partner_isp_invoices', 'admin_expenses']
 ];
 
 $user_role = $_SESSION['user_role'] ?? 'guest';
