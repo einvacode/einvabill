@@ -39,8 +39,8 @@ if (!empty($__layout_settings['company_logo'])) {
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
     <header class="mobile-header">
         <div style="display: flex; align-items: center; gap: 12px;">
-            <button class="menu-btn" aria-label="Open menu">Menu</button>
-            <span style="font-weight: 800; font-size: 16px; letter-spacing: 0.5px;"><?= htmlspecialchars($site_settings['company_name'] ?? 'BILLING') ?></span>
+            <button class="burger-btn menu-btn" aria-label="Open menu"><i class="fas fa-bars"></i></button>
+            <span style="font-weight: 800; font-size: 16px; letter-spacing: 0.5px;"><?= htmlspecialchars($__layout_settings['company_name'] ?? 'BILLING') ?></span>
         </div>
         <div onclick="toggleTheme()" style="cursor: pointer; opacity: 0.8;"><i class="fas fa-moon"></i></div>
     </header>

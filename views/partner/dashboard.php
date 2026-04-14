@@ -1,6 +1,7 @@
 <?php
 // Partner view
 $user_id = intval($_SESSION['user_id']);
+$action = $_GET['action'] ?? 'list';
 $stmt_u = $db->prepare("SELECT customer_id FROM users WHERE id = ?");
 $stmt_u->execute([$user_id]);
 $u = $stmt_u->fetch();
@@ -64,6 +65,150 @@ if (isset($_GET['action']) && $_GET['action'] === 'add_customer' && $_SERVER['RE
     
     header("Location: index.php?page=partner&msg=added&t=" . time());
     exit;
+}
+
+// ACTION: Import Actions (Adapted from Admin)
+if ($action === 'import_file' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
+    $file = $_FILES['csv_file']['tmp_name'];
+    if (!empty($file) && is_uploaded_file($file)) {
+        $handle = fopen($file, "r");
+        $firstLine = fgets($handle);
+        $delimiters = [',', ';', "\t"];
+        $delimiter = ','; $maxCount = 0;
+        foreach ($delimiters as $d) {
+            $count = substr_count($firstLine, $d);
+            if ($count > $maxCount) { $maxCount = $count; $delimiter = $d; }
+        }
+        rewind($handle);
+        $pending = [];
+        $mapping = null;
+        $isFirst = true;
+        while (($row = fgetcsv($handle, 1000, $delimiter)) !== FALSE) {
+            if (empty($row) || count($row) < 3) continue;
+            $row[0] = preg_replace('/^\xEF\xBB\xBF/', '', $row[0]);
+            if ($isFirst) {
+                $mapping = detectImportMapping($row);
+                $isFirst = false;
+                if ($mapping) continue; 
+            }
+            if (trim($row[$mapping['name'] ?? 1] ?? '') == '') continue;
+            $pending[] = $row;
+        }
+        fclose($handle);
+        $_SESSION['pending_import_partner'] = $pending;
+        $_SESSION['pending_mapping_partner'] = $mapping;
+        header("Location: index.php?page=partner&action=import_preview");
+        exit;
+    }
+}
+
+if ($action === 'import_paste' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $data = $_POST['paste_data'];
+    $lines = explode("\n", trim($data));
+    $pending = [];
+    $mapping = null;
+    $isFirst = true;
+    foreach ($lines as $line) {
+        if (trim($line) === '') continue;
+        $row = explode("\t", trim($line)); 
+        if (count($row) < 5) $row = explode(";", trim($line));
+        if (count($row) < 5) $row = str_getcsv(trim($line));
+        if (count($row) >= 3) {
+            if ($isFirst) {
+                $mapping = detectImportMapping($row);
+                $isFirst = false;
+                if ($mapping) continue;
+            }
+            if (trim($row[$mapping['name'] ?? 1] ?? '') == '') continue;
+            $pending[] = $row;
+        }
+    }
+    $_SESSION['pending_import_partner'] = $pending;
+    $_SESSION['pending_mapping_partner'] = $mapping;
+    header("Location: index.php?page=partner&action=import_preview");
+    exit;
+}
+
+if ($action === 'import_confirm' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $pending = $_SESSION['pending_import_partner'] ?? [];
+    $map = $_SESSION['pending_mapping_partner'] ?? ['type' => 0, 'name' => 1, 'address' => 2, 'contact' => 3, 'package' => 4, 'fee' => 5, 'ip' => 6, 'reg_date' => 7, 'bill_date' => 8, 'area' => 9];
+    if (empty($pending)) { header("Location: index.php?page=partner"); exit; }
+
+    $stmt = $db->prepare("INSERT INTO customers (name, address, contact, package_name, monthly_fee, ip_address, type, registration_date, billing_date, area, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt_chk = $db->prepare("SELECT COUNT(*) FROM customers WHERE customer_code = ?");
+    $count = 0;
+    $db->beginTransaction();
+    try {
+        foreach ($pending as $row) {
+            $name = trim($row[$map['name']] ?? '');
+            if (empty($name)) continue;
+            $pkg_name = trim($row[$map['package']] ?? 'Standar');
+            $pkg_fee = (float)preg_replace('/[^0-9]/', '', $row[$map['fee']] ?? 0);
+            
+            $stmt->execute([
+                $name, trim($row[$map['address']] ?? ''), trim($row[$map['contact']] ?? ''), $pkg_name, $pkg_fee,
+                trim($row[$map['ip']] ?? ''), 'customer', 
+                trim($row[$map['reg_date']] ?? date('Y-m-d')), (int)trim($row[$map['bill_date']] ?? 1), trim($row[$map['area']] ?? ''), $user_id
+            ]);
+            $count++;
+            $imp_id = $db->lastInsertId();
+            do {
+                $imp_code = 'CUST-' . str_pad(mt_rand(100000, 999999), 6, '0', STR_PAD_LEFT);
+                $stmt_chk->execute([$imp_code]);
+            } while ($stmt_chk->fetchColumn() > 0);
+            $db->prepare("UPDATE customers SET customer_code = ? WHERE id = ?")->execute([$imp_code, $imp_id]);
+            
+            // Initial Invoice
+            if ($pkg_fee > 0) {
+                $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Belum Lunas', ?)")
+                   ->execute([$imp_id, $pkg_fee, trim($row[$map['reg_date']] ?? date('Y-m-d')), date('Y-m-d H:i:s')]);
+            }
+        }
+        $db->commit();
+    } catch (Exception $e) {
+        $db->rollBack();
+        header("Location: index.php?page=partner&msg=error&err=" . urlencode($e->getMessage()));
+        exit;
+    }
+    unset($_SESSION['pending_import_partner']);
+    unset($_SESSION['pending_mapping_partner']);
+    header("Location: index.php?page=partner&msg=import_success&count=" . $count);
+    exit;
+}
+
+if ($action === 'import_cancel') {
+    unset($_SESSION['pending_import_partner']);
+    header("Location: index.php?page=partner");
+    exit;
+}
+
+if ($action === 'download_template') {
+    header('Content-Type: text/csv');
+    header('Content-Disposition: attachment; filename="template_import_mitra.csv"');
+    $output = fopen('php://output', 'w');
+    fputcsv($output, ['Nama Pelanggan', 'Alamat', 'WhatsApp', 'Nama Paket', 'Biaya', 'IP Address', 'Tgl Daftar (YYYY-MM-DD)', 'Tgl Tagihan (1-28)', 'Area']);
+    fputcsv($output, ['Contoh Pelanggan', 'Jl. Contoh 123', '08123456789', '10Mbps', '150000', '192.168.1.50', date('Y-m-d'), '10', 'Area A']);
+    fclose($output);
+    exit;
+}
+
+function detectImportMapping($row) {
+    $map = ['type' => 0, 'name' => 0, 'address' => 1, 'contact' => 2, 'package' => 3, 'fee' => 4, 'ip' => 5, 'reg_date' => 6, 'bill_date' => 7, 'area' => 8];
+    $found = false;
+    foreach ($row as $idx => $val) {
+        $val = strtolower(trim($val));
+        if (empty($val)) continue;
+        if (strpos($val, 'paket') !== false || strpos($val, 'package') !== false) { $map['package'] = $idx; $found = true; }
+        elseif (strpos($val, 'biaya') !== false || strpos($val, 'fee') !== false || strpos($val, 'harga') !== false) { $map['fee'] = $idx; $found = true; }
+        elseif (strpos($val, 'registrasi') !== false || strpos($val, 'daftar') !== false) { $map['reg_date'] = $idx; $found = true; }
+        elseif (strpos($val, 'tagihan') !== false || strpos($val, 'billing') !== false || strpos($val, 'tempo') !== false) { $map['bill_date'] = $idx; $found = true; }
+        elseif (strpos($val, 'area') !== false || strpos($val, 'wilayah') !== false) { $map['area'] = $idx; $found = true; }
+        elseif (strpos($val, 'nama') !== false || strpos($val, 'name') !== false) { $map['name'] = $idx; $found = true; }
+        elseif (strpos($val, 'alamat') !== false || strpos($val, 'address') !== false) { $map['address'] = $idx; $found = true; }
+        elseif (strpos($val, 'kontak') !== false || strpos($val, 'wa') !== false || strpos($val, 'phone') !== false) { $map['contact'] = $idx; $found = true; }
+        elseif (strpos($val, 'ip') !== false) { $map['ip'] = $idx; $found = true; }
+    }
+    return $found ? $map : null;
 }
 
 $params = [$partner_cid];
@@ -277,7 +422,10 @@ $packages_all = $db->query("SELECT * FROM packages WHERE created_by = $user_id O
                 <h2 style="margin:0; font-size:20px; font-weight:800; color:var(--text-primary);">Dashboard Mitra</h2>
                 <p style="margin:0; font-size:12px; color:var(--text-secondary);"><?= $_SESSION['user_name'] ?> | ID: <?= $partner_cid ?: 'N/A' ?></p>
             </div>
-            <button onclick="PartnerPage.showAddCustomerModal()" class="btn btn-sm btn-primary" style="height:38px; border-radius:10px; font-weight:700;"><i class="fas fa-user-plus"></i> <span class="hide-mobile">Tambah Pelanggan</span></button>
+            <div class="btn-group">
+                <a href="index.php?page=partner&action=import_view" class="btn btn-sm btn-ghost" style="color:var(--success); border-radius:10px 0 0 10px; border:1px solid var(--glass-border); padding:0 15px;"><i class="fas fa-file-import"></i> <span class="hide-mobile">Import CSV</span></a>
+                <button onclick="PartnerPage.showAddCustomerModal()" class="btn btn-sm btn-primary" style="height:38px; border-radius:0 10px 10px 0; font-weight:700;"><i class="fas fa-user-plus"></i> <span class="hide-mobile">Tambah Pelanggan</span></button>
+            </div>
         </div>
     </div>
 
@@ -308,10 +456,99 @@ $packages_all = $db->query("SELECT * FROM packages WHERE created_by = $user_id O
         <div style="font-weight: 700; color: var(--success); font-size: 14px;">
             <?php 
                 if($_GET['msg'] == 'added') echo 'Pelanggan baru berhasil didaftarkan!';
+                if($_GET['msg'] == 'import_success') echo 'Berhasil mengimpor ' . intval($_GET['count'] ?? 0) . ' data pelanggan ke akun Anda.';
             ?>
         </div>
     </div>
 <?php endif; ?>
+
+<?php if ($action === 'import_view'): ?>
+<div class="glass-panel" style="padding: 24px; max-width:800px; margin:0 auto 30px;">
+    <h3 style="font-size:20px; margin-bottom:20px;"><i class="fas fa-file-import text-success"></i> Import Data Pelanggan</h3>
+    <div style="background:var(--hover-bg); padding:15px; border-radius:12px; margin-bottom:25px; font-size:13px; line-height:1.6; border-left:4px solid var(--success);">
+        <strong>Petunjuk Impor:</strong><br>
+        1. Gunakan file format <strong>.csv</strong> atau Paste dari Excel.<br>
+        2. Pastikan kolom Nama, Alamat, dan WhatsApp terisi.<br>
+        3. <a href="index.php?page=partner&action=download_template" style="color:var(--primary); font-weight:700; text-decoration:none;"><i class="fas fa-download"></i> Download Template CSV</a>
+    </div>
+
+    <div class="import-tabs" style="display:flex; gap:10px; margin-bottom:20px;">
+        <button class="tab-btn active" id="btn-file" onclick="switchImportTab('file')" style="flex:1; padding:12px; border-radius:10px; background:var(--nav-active-bg); border:none; color:var(--primary); font-weight:700; cursor:pointer;"><i class="fas fa-file-csv"></i> File CSV</button>
+        <button class="tab-btn" id="btn-paste" onclick="switchImportTab('paste')" style="flex:1; padding:12px; border-radius:10px; background:transparent; border:1px solid var(--glass-border); color:var(--text-secondary); font-weight:700; cursor:pointer;"><i class="fas fa-paste"></i> Paste Excel</button>
+    </div>
+
+    <div id="import-file" class="import-section">
+        <form action="index.php?page=partner&action=import_file" method="POST" enctype="multipart/form-data">
+            <div style="border: 2px dashed var(--glass-border); padding: 40px; border-radius: 15px; text-align: center; background: rgba(255,255,255,0.02);">
+                <i class="fas fa-cloud-upload-alt" style="font-size: 40px; color: var(--primary); opacity: 0.5; margin-bottom: 15px;"></i>
+                <input type="file" name="csv_file" id="csv_input" accept=".csv" required style="display: none;" onchange="this.nextElementSibling.innerText = this.files[0].name">
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('csv_input').click()">Pilih File CSV</button>
+                <div style="margin-top: 10px; font-size: 12px; color: var(--text-secondary);">Belum ada file terpilih</div>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                <a href="index.php?page=partner" class="btn btn-ghost">Batal</a>
+                <button type="submit" class="btn btn-primary">Upload & Preview</button>
+            </div>
+        </form>
+    </div>
+
+    <div id="import-paste" class="import-section" style="display:none;">
+        <form action="index.php?page=partner&action=import_paste" method="POST">
+            <div class="form-group">
+                <textarea name="paste_data" class="form-control" rows="8" placeholder="Nama [Tab] Alamat [Tab] WhatsApp..." required style="font-family:monospace; font-size:12px; background:rgba(0,0,0,0.2);"></textarea>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                <a href="index.php?page=partner" class="btn btn-ghost">Batal</a>
+                <button type="submit" class="btn btn-primary">Proses Data</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+function switchImportTab(t){
+    document.querySelectorAll('.import-section').forEach(s => s.style.display='none');
+    document.getElementById('import-'+t).style.display='block';
+    document.querySelectorAll('.tab-btn').forEach(b => {
+        b.style.background='transparent'; b.style.color='var(--text-secondary)'; b.style.border='1px solid var(--glass-border)';
+    });
+    const active = document.getElementById('btn-'+t);
+    active.style.background='var(--nav-active-bg)'; active.style.color='var(--primary)'; active.style.border='none';
+}
+</script>
+
+<?php elseif ($action === 'import_preview'): 
+    $pending = $_SESSION['pending_import_partner'] ?? [];
+    $map = $_SESSION['pending_mapping_partner'] ?? ['type' => 0, 'name' => 0, 'address' => 1, 'contact' => 2, 'package' => 3, 'fee' => 4, 'ip' => 5, 'reg_date' => 6, 'bill_date' => 7, 'area' => 8];
+?>
+<div class="glass-panel" style="padding: 24px; max-width:1000px; margin:0 auto 30px;">
+    <h3 style="margin-bottom:20px;"><i class="fas fa-eye text-primary"></i> Preview Data (<?= count($pending) ?> Pelanggan)</h3>
+    <div class="table-container" style="max-height: 400px; overflow-y:auto; border:1px solid var(--glass-border); border-radius:12px; margin-bottom:20px;">
+        <table style="width:100%; font-size:12px;">
+            <thead>
+                <tr>
+                    <th>Nama</th><th>Alamat</th><th>WhatsApp</th><th>Paket</th><th>Biaya</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach($pending as $row): ?>
+                <tr>
+                    <td><?= htmlspecialchars($row[$map['name']] ?? '-') ?></td>
+                    <td><?= htmlspecialchars($row[$map['address']] ?? '-') ?></td>
+                    <td><?= htmlspecialchars($row[$map['contact']] ?? '-') ?></td>
+                    <td><?= htmlspecialchars($row[$map['package']] ?? '-') ?></td>
+                    <td>Rp<?= number_format(floatval(preg_replace('/[^0-9]/', '', $row[$map['fee']] ?? 0)), 0, ',', '.') ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:10px;">
+        <a href="index.php?page=partner&action=import_cancel" class="btn btn-ghost">Batalkan</a>
+        <form action="index.php?page=partner&action=import_confirm" method="POST">
+            <button type="submit" class="btn btn-primary" style="background:var(--success); border-color:var(--success);"><i class="fas fa-check"></i> Konfirmasi & Impor</button>
+        </form>
+    </div>
+</div>
 
             <!-- REVENUE OVERVIEW -->
             <div class="glass-panel" style="padding: 20px; margin-bottom:20px; border-bottom:4px solid var(--success); background:linear-gradient(135deg, rgba(16, 185, 129, 0.05), transparent);">
