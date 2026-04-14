@@ -28,9 +28,10 @@ if (empty($invoice['name']) && !empty($invoice['customer_id'])) {
 $effective_owner_id = intval($invoice['created_by'] ?? ($invoice['customer_owner'] ?? 0));
 
 if ($effective_owner_id != 0) {
-    $partner_brand = $db->query("SELECT brand_name, brand_logo, brand_qris, brand_address, brand_contact, brand_bank, brand_rekening FROM users WHERE id = $effective_owner_id")->fetch();
+    // Only apply branding override if the owner is a PARTNER
+    $partner_brand = $db->query("SELECT role, brand_name, brand_logo, brand_qris, brand_address, brand_contact, brand_bank, brand_rekening FROM users WHERE id = $effective_owner_id")->fetch();
     
-    if ($partner_brand) {
+    if ($partner_brand && $partner_brand['role'] === 'partner') {
         $company['company_name'] = !empty($partner_brand['brand_name']) ? $partner_brand['brand_name'] : '';
         $company['company_address'] = !empty($partner_brand['brand_address']) ? $partner_brand['brand_address'] : '';
         $company['company_contact'] = !empty($partner_brand['brand_contact']) ? $partner_brand['brand_contact'] : '';
