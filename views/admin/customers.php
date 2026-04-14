@@ -51,10 +51,19 @@ if (isset($_GET['sid'])) {
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
     $u_id = $_SESSION['user_id'];
     $u_role = $_SESSION['user_role'] ?? 'admin';
-    $scope_where = ($u_role === 'admin' || $u_role === 'collector') ? " AND (created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL) " : " AND (created_by = $u_id) ";
-$pkg_scope = ($u_role === 'admin' || $u_role === 'collector') ? "WHERE tenant_id = $tenant_id AND (created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL)" : "WHERE tenant_id = $tenant_id AND created_by = $u_id";
-$packages_all = $db->query("SELECT * FROM packages $pkg_scope ORDER BY name ASC")->fetchAll();
-$packages_json = json_encode($packages_all);
+    
+    // Dynamic logic to identify partners in this tenant
+    $partner_ids = $db->query("SELECT id FROM users WHERE role = 'partner' AND tenant_id = $tenant_id")->fetchAll(PDO::FETCH_COLUMN);
+    $partner_list = !empty($partner_ids) ? implode(',', $partner_ids) : '0';
+
+    $scope_where = ($u_role === 'admin' || $u_role === 'collector') 
+        ? " AND (created_by NOT IN ($partner_list) OR created_by = 0 OR created_by IS NULL) " 
+        : " AND (created_by = $u_id) ";
+    $pkg_scope = ($u_role === 'admin' || $u_role === 'collector') 
+        ? "WHERE tenant_id = $tenant_id AND (created_by NOT IN ($partner_list) OR created_by = 0 OR created_by IS NULL)" 
+        : "WHERE tenant_id = $tenant_id AND created_by = $u_id";
+    $packages_all = $db->query("SELECT * FROM packages $pkg_scope ORDER BY name ASC")->fetchAll();
+    $packages_json = json_encode($packages_all);
 
 // Fetch all areas for dropdowns (Scoped: Hidden for Partner)
 $areas_all = ($u_role === 'admin' || $u_role === 'collector') ? $db->query("SELECT * FROM areas WHERE tenant_id = $tenant_id ORDER BY name ASC")->fetchAll() : [];
@@ -668,12 +677,17 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $current_page = isset($_GET['p']) ? max(1, intval($_GET['p'])) : 1;
     $offset = ($current_page - 1) * $items_per_page;
     
-    // Scoping Logic (Multi-tenancy)
+    // Scoping Logic (Multi-tenancy & Hierarchical Isolation)
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
     $scope_where = " AND tenant_id = $tenant_id ";
     
+    // Partner exclusion for Admin/Collector
+    if ($u_role === 'admin' || $u_role === 'collector') {
+        $scope_where .= " AND (created_by NOT IN ($partner_list) OR created_by = 0 OR created_by IS NULL) ";
+    }
+    
     // Additional restriction for collectors (only their assigned area/customers)
-    if ($_SESSION['user_role'] === 'collector') {
+    if ($u_role === 'collector') {
         $scope_where .= " AND collector_id = " . intval($_SESSION['user_id']);
     }
 

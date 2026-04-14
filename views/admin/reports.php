@@ -33,15 +33,30 @@ $filter_month = $_GET['month'] ?? date('m');
 $filter_year = $_GET['year'] ?? date('Y');
 $filter_user = $_GET['user_id'] ?? 'all';
 
-// Scoping Logic
+// Scoping Logic (Multi-tenancy & Hierarchical Isolation)
 $tenant_id = $_SESSION['tenant_id'] ?? 1;
+
+// Identify partners in this tenant (to exclude their customers from Admin view)
+$partner_ids = $db->query("SELECT id FROM users WHERE role = 'partner' AND tenant_id = $tenant_id")->fetchAll(PDO::FETCH_COLUMN);
+$partner_list = !empty($partner_ids) ? implode(',', $partner_ids) : '0';
+
 $scope_inner = " c.tenant_id = $tenant_id ";
 $scope_where = " AND " . $scope_inner . " ";
+
+// Apply hierarchical isolation for Admin/Collector
+if ($u_role === 'admin' || $u_role === 'collector') {
+    $scope_where .= " AND (c.created_by NOT IN ($partner_list) OR c.created_by = 0 OR c.created_by IS NULL) ";
+} elseif ($u_role === 'partner') {
+    $scope_where .= " AND c.created_by = $u_id ";
+}
 
 // For admin include external/temporary invoices; for partners/collectors only their own customers
 $scope_with_external = " AND i.tenant_id = $tenant_id ";
 
 $exp_scope = " AND tenant_id = $tenant_id ";
+if ($u_role === 'partner') {
+    $exp_scope .= " AND created_by = $u_id ";
+}
 
 // Date range filters
 $date_from = $_GET['date_from'] ?? date('Y-m-01');

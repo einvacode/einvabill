@@ -484,7 +484,7 @@ $packages_all = $db->query("SELECT * FROM packages WHERE created_by = $user_id O
             <i class="fab fa-whatsapp"></i> Kirim Notifikasi WA
         </a>
         <a href="index.php?page=invoice_print&id=<?= intval($_GET['last_id'] ?? 0) ?>&format=thermal" target="_blank" class="btn btn-ghost" style="flex:1; min-width:150px; padding:12px; font-weight:700; border-radius:10px; text-align:center; text-decoration:none; border:1px solid var(--glass-border);">
-            <i class="fas fa-print"></i> Cetak Struk
+            <i class="fas fa-print"></i> Cetak Kuitansi
         </a>
     </div>
 </div>
@@ -630,8 +630,42 @@ function switchImportTab(t){
 
             <!-- MAIN LISTS -->
             <div>
+                <!-- 0. TRANSAKSI TERBARU -->
+                <?php if(!empty($recent_revenue)): ?>
+                <div class="glass-panel" style="padding:20px; border-left:4px solid var(--success); margin-bottom:20px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                        <h3 style="margin:0; font-size:16px; font-weight:800; color:var(--success);"><i class="fas fa-history"></i> Transaksi Pelanggan Terbaru</h3>
+                        <a href="index.php?page=partner_reports" style="font-size:11px; font-weight:700; color:var(--primary); text-decoration:none;">Lihat Laporan <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                    <div class="table-container">
+                        <table style="width:100%; font-size:13px;">
+                            <thead>
+                                <tr style="text-align:left; border-bottom:1px solid var(--glass-border);">
+                                    <th style="padding:10px 5px;">Pelanggan</th>
+                                    <th style="padding:10px 5px;">Tanggal</th>
+                                    <th style="padding:10px 5px; text-align:right;">Total</th>
+                                    <th style="padding:10px 5px; text-align:center;">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach($recent_revenue as $tr): ?>
+                                    <tr style="border-bottom:1px dotted var(--glass-border);">
+                                        <td style="padding:10px 5px;"><strong><?= htmlspecialchars($tr['customer_name']) ?></strong></td>
+                                        <td style="padding:10px 5px; color:var(--text-secondary);"><?= date('d/m/y H:i', strtotime($tr['payment_date'])) ?></td>
+                                        <td style="padding:10px 5px; text-align:right; font-weight:700; color:var(--success);">Rp<?= number_format($tr['paid_amount'], 0, ',', '.') ?></td>
+                                        <td style="padding:10px 5px; text-align:center;">
+                                            <a href="index.php?page=invoice_print&id=<?= $tr['id'] ?>&format=thermal" target="_blank" class="btn btn-sm btn-ghost" style="padding:4px 8px; border:1px solid rgba(var(--primary-rgb), 0.2);" title="Cetak Kuitansi"><i class="fas fa-print"></i></a>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <?php endif; ?>
+
                 <!-- 1. MY CUSTOMERS LIST -->
-                <div class="glass-panel" style="padding:20px; margin-bottom:20px;">
+                <div class="glass-panel" style="padding:20px; border-left:4px solid var(--primary); margin-bottom:20px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                         <h3 style="margin:0; font-size:16px; font-weight:800;"><i class="fas fa-users text-primary"></i> Daftar Pelanggan Saya</h3>
                         <span class="badge" style="background:var(--primary); color:white;"><?= count($my_customers) ?></span>

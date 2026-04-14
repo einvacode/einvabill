@@ -236,12 +236,13 @@ if (!empty($__layout_settings['company_logo'])) {
                         <a href="index.php?page=partner_collection&tab=pelanggan" class="nav-link <?= ($page == 'partner_collection' && ($_GET['tab'] ?? '') == 'pelanggan') ? 'active' : '' ?>"><i class="fas fa-users" style="color:#60a5fa;"></i> Pelanggan Saya</a>
                         
                         <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">KEUANGAN & TOOLS</div>
-                        <div class="nav-dropdown <?= in_array($page, ['partner_isp_invoices', 'admin_expenses']) ? 'open' : '' ?>">
+                        <div class="nav-dropdown <?= in_array($page, ['partner_isp_invoices', 'partner_reports', 'admin_expenses']) ? 'open' : '' ?>">
                             <div class="nav-link dropdown-toggle" onclick="toggleDropdown(this)">
                                 <span><i class="fas fa-wallet" style="color:#10b981;"></i> Administrasi Keuangan</span>
                                 <i class="fas fa-chevron-down"></i>
                             </div>
                             <div class="dropdown-content">
+                                <a href="index.php?page=partner_reports" class="nav-link dropdown-link <?= $page == 'partner_reports' ? 'active' : '' ?>"><i class="fas fa-chart-line" style="color:var(--primary);"></i> Laporan Keuangan</a>
                                 <a href="index.php?page=partner_isp_invoices" class="nav-link dropdown-link <?= $page == 'partner_isp_invoices' ? 'active' : '' ?>"><i class="fas fa-receipt" style="color:#ef4444;"></i> Tagihan Ke ISP</a>
                                 <a href="index.php?page=admin_expenses" class="nav-link dropdown-link <?= $page == 'admin_expenses' ? 'active' : '' ?>"><i class="fas fa-wallet" style="color:var(--warning);"></i> Catat Pengeluaran</a>
                             </div>

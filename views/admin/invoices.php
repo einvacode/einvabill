@@ -411,10 +411,14 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
     // Partner-specific view mode (Tab selection)
     $view_mode = $_GET['view_mode'] ?? 'customers'; 
 
-    // Scoping Logic for Invoices (Multi-tenancy)
+    // Scoping Logic for Invoices (Multi-tenancy & Hierarchical Isolation)
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
     $scope_where = " AND c.tenant_id = $tenant_id";
     
+    // Dynamic logic to identify partners in this tenant (to exclude their customers from Admin view)
+    $partner_ids = $db->query("SELECT id FROM users WHERE role = 'partner' AND tenant_id = $tenant_id")->fetchAll(PDO::FETCH_COLUMN);
+    $partner_list = !empty($partner_ids) ? implode(',', $partner_ids) : '0';
+
     if ($u_role === 'collector') {
         $scope_where .= " AND (c.collector_id = $u_id) ";
     } elseif ($u_role === 'partner') {
@@ -426,6 +430,9 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
             // View ONLY own customers
             $scope_where .= " AND c.created_by = $u_id";
         }
+    } else {
+        // Admin: Exclude Partner-managed customers
+        $scope_where .= " AND (c.created_by NOT IN ($partner_list) OR c.created_by = 0 OR c.created_by IS NULL) ";
     }
 
     $collectors = $db->query("SELECT id, name FROM users WHERE role = 'collector' AND tenant_id = $tenant_id ORDER BY name ASC")->fetchAll();

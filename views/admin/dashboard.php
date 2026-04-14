@@ -5,12 +5,13 @@
  */
 $u_id = $_SESSION['user_id'];
 $u_role = $_SESSION['user_role'] ?? 'admin';
+$tenant_id = $_SESSION['tenant_id'] ?? 1;
+
 // --- SCOPE OPTIMIZATION ---
 // Pre-calculate scoped user IDs to avoid repeated subqueries in SQLite
-$partner_user_ids = $db->query("SELECT id FROM users WHERE role = 'partner'")->fetchAll(PDO::FETCH_COLUMN);
+$partner_user_ids = $db->query("SELECT id FROM users WHERE role = 'partner' AND tenant_id = $tenant_id")->fetchAll(PDO::FETCH_COLUMN);
 $partner_list_str = !empty($partner_user_ids) ? implode(',', $partner_user_ids) : '0';
 
-$tenant_id = $_SESSION['tenant_id'] ?? 1;
 $scope_where = ($u_role === 'admin') ? " AND (created_by NOT IN ($partner_list_str) OR created_by = 0 OR created_by IS NULL) " : " AND (created_by = $u_id) ";
 $c_scope = ($u_role === 'admin') ? " AND (c.created_by NOT IN ($partner_list_str) OR c.created_by = 0 OR c.created_by IS NULL) " : " AND (c.created_by = $u_id) ";
 

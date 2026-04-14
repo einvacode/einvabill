@@ -105,7 +105,7 @@ if ($page === 'home') {
 $permissions = [
     'admin' => '*', // Full access
     'collector' => ['collector', 'admin_customers', 'admin_invoices', 'invoice_print', 'router_data', 'admin_areas', 'admin_map', 'admin_wa_gateway', 'collector_settings'],
-    'partner' => ['partner', 'partner_collection', 'partner_settings', 'partner_isp_invoices', 'admin_expenses']
+    'partner' => ['partner', 'partner_collection', 'partner_settings', 'partner_isp_invoices', 'partner_reports', 'admin_expenses', 'invoice_print']
 ];
 
 $user_role = $_SESSION['user_role'] ?? 'guest';
@@ -239,6 +239,20 @@ switch ($page) {
     case 'partner_isp_invoices':
         require __DIR__ . '/views/partner/isp_invoices.php';
         break;
+    case 'partner_reports':
+        require __DIR__ . '/views/partner/reports.php';
+        break;
+    case 'invoice_print':
+        // Prepare invoice data for print view
+        $inv_id = intval($_GET['id'] ?? 0);
+        $tenant_id = $_SESSION['tenant_id'] ?? 1;
+        $invoice = $db->query("SELECT i.*, c.name, c.address, c.contact, c.package_name, c.customer_code FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.id = $inv_id AND i.tenant_id = $tenant_id")->fetch();
+        if (!$invoice) {
+            echo "<div class='glass-panel p-5 text-center'><h1>Invoice Tidak Ditemukan</h1></div>";
+        } else {
+            require __DIR__ . '/views/print.php';
+        }
+        exit;
     default:
         if ($page !== 'login') {
             echo "<div class='glass-panel p-5 text-center'><h1>404 Not Found</h1></div>";
@@ -249,7 +263,7 @@ switch ($page) {
 $content = ob_get_clean();
 
 // Print / Modal actions don't need layout if we want, but let's just wrap everything in layout except login
-if ($page === 'login' || $page === 'landing' || $page === 'customer_portal') {
+if ($page === 'login' || $page === 'landing' || $page === 'customer_portal' || $page === 'invoice_print') {
     echo $content;
 } else {
     require __DIR__ . '/views/layout.php';
