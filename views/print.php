@@ -14,6 +14,9 @@ if (($invoice['created_by'] ?? 0) != 0) {
         if (!empty($partner_brand['brand_qris'])) $company['company_qris'] = $partner_brand['brand_qris'];
         if (!empty($partner_brand['brand_bank'])) $company['company_bank'] = $partner_brand['brand_bank'];
         if (!empty($partner_brand['brand_rekening'])) $company['company_rekening'] = $partner_brand['brand_rekening'];
+        
+        // Ensure we don't fallback to Admin's general bank_account text for Partner receipts
+        $company['bank_account'] = ''; 
     }
 }
 

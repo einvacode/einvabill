@@ -154,10 +154,6 @@ if (!empty($__layout_settings['company_logo'])) {
                         </div>
                     <?php endif; ?>
                     <h2 style="font-size: 16px; margin: 0; line-height: 1.3; word-break: break-word; text-align: center; font-weight: 700; color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);"><?= htmlspecialchars(strtoupper($site_settings['company_name'])) ?></h2>
-                    <button class="theme-toggle" onclick="toggleTheme()" title="Ganti Tema" style="position:absolute; top:14px; right:12px;">
-                        <i class="fas fa-sun theme-icon-dark"></i>
-                        <i class="fas fa-moon theme-icon-light"></i>
-                    </button>
                 </div>
                 <div class="nav-links">
                     <?php if($_SESSION['user_role'] === 'admin'): ?>
@@ -279,18 +275,28 @@ if (!empty($__layout_settings['company_logo'])) {
                 elseif($page == 'partner_settings') $topbar_title = 'Pengaturan Profil Mitra';
             ?>
             <?php if(($_SESSION['user_role'] ?? '') === 'partner'): ?>
-                <div class="topbar partner-topbar">
+                <div class="topbar partner-topbar" style="display:flex; justify-content:space-between; align-items:center;">
                     <?php if(!empty($topbar_title)): ?><div class="partner-topbar-title"><?= htmlspecialchars($topbar_title) ?></div><?php endif; ?>
+                    <button class="theme-toggle" onclick="toggleTheme()" title="Ganti Tema">
+                        <i class="fas fa-sun theme-icon-dark"></i>
+                        <i class="fas fa-moon theme-icon-light"></i>
+                    </button>
                 </div>
             <?php else: ?>
                 <div class="topbar glass-panel" style="padding:15px 24px;">
                     <?php if(!empty($topbar_title)): ?>
                     <div style="font-weight:600; font-size:18px;"><?= htmlspecialchars($topbar_title) ?></div>
                     <?php endif; ?>
-                    <div class="user-profile">
-                        <div style="text-align:right">
-                            <div style="font-size:14px; font-weight:600;"><?= htmlspecialchars($_SESSION['user_name']) ?></div>
-                            <div style="font-size:12px; color:var(--text-secondary); text-transform:capitalize;"><?= htmlspecialchars($_SESSION['user_role']) ?></div>
+                    <div style="display:flex; align-items:center; gap:15px;">
+                        <button class="theme-toggle" onclick="toggleTheme()" title="Ganti Tema">
+                            <i class="fas fa-sun theme-icon-dark"></i>
+                            <i class="fas fa-moon theme-icon-light"></i>
+                        </button>
+                        <div class="user-profile">
+                            <div style="text-align:right">
+                                <div style="font-size:14px; font-weight:600;"><?= htmlspecialchars($_SESSION['user_name']) ?></div>
+                                <div style="font-size:12px; color:var(--text-secondary); text-transform:capitalize;"><?= htmlspecialchars($_SESSION['user_role']) ?></div>
+                            </div>
                         </div>
                     </div>
                 </div>
