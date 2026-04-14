@@ -242,6 +242,41 @@ if ($action === 'bulk_move' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+if ($action === 'bulk_assign_partner' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $u_role = $_SESSION['user_role'] ?? '';
+    if ($u_role !== 'admin') {
+        header("Location: index.php?page=admin_customers&msg=forbidden");
+        exit;
+    }
+
+    $ids_raw = $_POST['ids'] ?? [];
+    $ids = array_values(array_filter(array_map('intval', $ids_raw), function ($v) { return $v > 0; }));
+    $target_partner = intval($_POST['target_partner_id'] ?? 0);
+
+    if (empty($ids) || $target_partner <= 0) {
+        header("Location: index.php?page=admin_customers&msg=bulk_partner_failed");
+        exit;
+    }
+
+    $partner_exists = $db->prepare("SELECT COUNT(*) FROM users WHERE id = ? AND role = 'partner'");
+    $partner_exists->execute([$target_partner]);
+    if (!$partner_exists->fetchColumn()) {
+        header("Location: index.php?page=admin_customers&msg=bulk_partner_failed");
+        exit;
+    }
+
+    $id_placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $params = array_merge([$target_partner], $ids);
+
+    // Safety: only move regular customers, never partner profile rows.
+    $stmt = $db->prepare("UPDATE customers SET created_by = ? WHERE id IN ($id_placeholders) AND type = 'customer'");
+    $stmt->execute($params);
+    $moved = intval($stmt->rowCount());
+
+    header("Location: index.php?page=admin_customers&msg=bulk_partner_assigned&count=$moved");
+    exit;
+}
+
 if ($action === 'export') {
     $filter_type = $_GET['filter_type'] ?? '';
     $filter_collector = $_GET['filter_collector'] ?? '';
@@ -579,6 +614,9 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php
                 if($_GET['msg'] == 'added') echo "Berhasil menambah pelanggan.";
                 if($_GET['msg'] == 'import_success') echo "Berhasil mengimpor " . intval($_GET['count'] ?? 0) . " data pelanggan ke akun Anda.";
+                if($_GET['msg'] == 'bulk_moved') echo "Berhasil memindahkan penagih untuk pelanggan terpilih.";
+                if($_GET['msg'] == 'bulk_partner_assigned') echo "Berhasil memindahkan " . intval($_GET['count'] ?? 0) . " pelanggan ke akun mitra terpilih.";
+                if($_GET['msg'] == 'bulk_partner_failed') echo "Gagal memindahkan pelanggan ke mitra. Pastikan mitra tujuan valid.";
                 ?>
             </div>
         </div>
@@ -618,6 +656,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $collectors = $db->query("SELECT id, name FROM users WHERE role = 'collector' ORDER BY name ASC")->fetchAll();
+    $partners = ($u_role === 'admin') ? $db->query("SELECT id, name FROM users WHERE role = 'partner' ORDER BY name ASC")->fetchAll() : [];
 
     // Pagination Logic
     $items_per_page = 50;
@@ -901,8 +940,22 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 <button class="btn btn-sm btn-ghost" onclick="toggleMoveBox(false)">Batal</button>
             </div>
 
+            <div id="assign-partner-box" style="display:none; align-items:center; gap:8px; background:var(--hover-bg); padding:5px 10px; border-radius:8px; border:1px solid var(--glass-border);">
+                <span style="font-size:12px; font-weight:600;">Mitra:</span>
+                <select id="bulk-target-partner" class="form-control" style="width:170px; padding:5px;">
+                    <option value="">-- Pilih Mitra --</option>
+                    <?php foreach($partners as $p) echo "<option value='{$p['id']}'>" . htmlspecialchars($p['name']) . "</option>"; ?>
+                </select>
+                <button class="btn btn-sm btn-primary" onclick="submitBulkAssignPartner()">Simpan</button>
+                <button class="btn btn-sm btn-ghost" onclick="togglePartnerBox(false)">Batal</button>
+            </div>
+
             <button class="btn btn-sm btn-ghost" id="btn-move-trigger" onclick="toggleMoveBox(true)" style="color:var(--primary); font-weight:700;">
                 <i class="fas fa-exchange-alt"></i> Pindah Penagih
+            </button>
+
+            <button class="btn btn-sm btn-ghost" id="btn-assign-partner-trigger" onclick="togglePartnerBox(true)" style="color:#60a5fa; font-weight:700;">
+                <i class="fas fa-user-tag"></i> Pindah Mitra
             </button>
             <?php endif; ?>
             
@@ -916,6 +969,9 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     <form id="bulk-form-delete" action="index.php?page=admin_customers&action=bulk_delete" method="POST" style="display:none;"></form>
     <form id="bulk-form-move" action="index.php?page=admin_customers&action=bulk_move" method="POST" style="display:none;">
         <input type="hidden" name="target_collector_id" id="hidden-target-collector">
+    </form>
+    <form id="bulk-form-assign-partner" action="index.php?page=admin_customers&action=bulk_assign_partner" method="POST" style="display:none;">
+        <input type="hidden" name="target_partner_id" id="hidden-target-partner">
     </form>
 
     <script>
@@ -933,6 +989,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 bulkBar.style.display = 'none';
                 toggleMoveBox(false);
+                togglePartnerBox(false);
             }
         }
 
@@ -959,8 +1016,21 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     });
 
     function toggleMoveBox(show) {
-        document.getElementById('move-collector-box').style.display = show ? 'flex' : 'none';
-        document.getElementById('btn-move-trigger').style.display = show ? 'none' : 'inline-block';
+        const box = document.getElementById('move-collector-box');
+        const btn = document.getElementById('btn-move-trigger');
+        if (!box || !btn) return;
+        if (show) togglePartnerBox(false);
+        box.style.display = show ? 'flex' : 'none';
+        btn.style.display = show ? 'none' : 'inline-block';
+    }
+
+    function togglePartnerBox(show) {
+        const box = document.getElementById('assign-partner-box');
+        const btn = document.getElementById('btn-assign-partner-trigger');
+        if (!box || !btn) return;
+        if (show) toggleMoveBox(false);
+        box.style.display = show ? 'flex' : 'none';
+        btn.style.display = show ? 'none' : 'inline-block';
     }
 
     function submitBulkDelete() {
@@ -999,6 +1069,37 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             targetInput.type = 'hidden';
             targetInput.name = 'target_collector_id';
             targetInput.value = targetColl;
+            form.appendChild(targetInput);
+
+            selected.forEach(cb => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'ids[]';
+                input.value = cb.value;
+                form.appendChild(input);
+            });
+            form.submit();
+        }
+    }
+
+    function submitBulkAssignPartner() {
+        const selected = document.querySelectorAll('.cust-checkbox:checked');
+        const targetPartner = document.getElementById('bulk-target-partner').value;
+
+        if (selected.length === 0) return;
+        if (!targetPartner) {
+            alert('Silakan pilih mitra tujuan.');
+            return;
+        }
+
+        if (confirm(`Pindahkan ${selected.length} pelanggan terpilih ke akun mitra ini?`)) {
+            const form = document.getElementById('bulk-form-assign-partner');
+            form.innerHTML = '';
+
+            const targetInput = document.createElement('input');
+            targetInput.type = 'hidden';
+            targetInput.name = 'target_partner_id';
+            targetInput.value = targetPartner;
             form.appendChild(targetInput);
 
             selected.forEach(cb => {
