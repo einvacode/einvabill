@@ -1,6 +1,12 @@
 <?php
-// Ambil profil perusahaan dari DB
-$company = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
+// Ambil profil perusahaan berdasarkan Tenant dari Invoice
+$t_id = intval($invoice['tenant_id'] ?? 1);
+$company = $db->query("SELECT * FROM settings WHERE tenant_id = $t_id")->fetch();
+
+// Fallback jika settings tenant tidak ditemukan
+if (!$company) {
+    $company = $db->query("SELECT * FROM settings WHERE id = 1")->fetch();
+}
 
 // 1. Defensive: if invoice doesn't already include customer fields, try to populate them
 // We do this BEFORE branding override so we know who the owner (created_by) is.
