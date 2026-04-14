@@ -3,18 +3,17 @@ $action = $_GET['action'] ?? 'list';
 
 // Success Modal for Admin Customers
 $success_data = null;
-if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['id'])) {
-    $sid = intval($_GET['id']);
-    $success_data = $db->query("SELECT id, name, contact, customer_code, package_name, monthly_fee FROM customers WHERE id = $sid")->fetch();
-    $settings = $db->query("SELECT company_name, wa_template_paid, site_url FROM settings WHERE id=1")->fetch();
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $success_data = $db->query("SELECT id, name, contact, customer_code, package_name, monthly_fee FROM customers WHERE id = $sid AND tenant_id = $tenant_id")->fetch();
+    $settings = $db->query("SELECT company_name, wa_template_paid, site_url FROM settings WHERE tenant_id = $tenant_id")->fetch();
     if ($success_data) {
         $wa_num_paid = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $success_data['contact'] ?? ''));
         $months_paid = intval($_GET['months'] ?? 1);
-        $tunggakan_val = $db->query("SELECT COALESCE(SUM(amount - discount), 0) FROM invoices WHERE customer_id = $sid AND status = 'Belum Lunas'")->fetchColumn() ?: 0;
+        $tunggakan_val = $db->query("SELECT COALESCE(SUM(amount - discount), 0) FROM invoices WHERE customer_id = $sid AND status = 'Belum Lunas' AND tenant_id = $tenant_id")->fetchColumn() ?: 0;
         $tunggakan_display = 'Rp ' . number_format($tunggakan_val, 0, ',', '.');
         $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . ($success_data['customer_code'] ?: $success_data['id']);
-        $me = $db->query("SELECT * FROM users WHERE id = " . $_SESSION['user_id'])->fetch();
-        $wa_tpl_paid = !empty($me['wa_template_paid']) ? $me['wa_template_paid'] : ($settings['wa_template_paid'] ?: "Halo {nama}, pembayaran {tagihan} LUNAS. Cek nota: {link_tagihan}");
+        $me = $db->query("SELECT * FROM users WHERE id = $_SESSION[user_id]")->fetch();
+        $wa_tpl_paid = !empty($me['wa_template_paid']) ? $me['wa_template_paid'] : ($settings['wa_template_paid'] ?? "Halo {nama}, pembayaran {tagihan} LUNAS. Cek nota: {link_tagihan}");
         
         $receipt_msg = parse_wa_template($wa_tpl_paid, [
             'name' => $success_data['name'],
@@ -45,17 +44,17 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['id'])) {
     </div>
 </div>
 <?php endif; ?>
-<?php
-// Fetch all packages for dropdowns (Scoped)
+// Fetch all packages for dropdowns (Scoped by Tenant)
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
     $u_id = $_SESSION['user_id'];
     $u_role = $_SESSION['user_role'] ?? 'admin';
     $scope_where = ($u_role === 'admin' || $u_role === 'collector') ? " AND (created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL) " : " AND (created_by = $u_id) ";
-$pkg_scope = ($u_role === 'admin' || $u_role === 'collector') ? "WHERE created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL" : "WHERE created_by = $u_id";
+$pkg_scope = ($u_role === 'admin' || $u_role === 'collector') ? "WHERE tenant_id = $tenant_id AND (created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL)" : "WHERE tenant_id = $tenant_id AND created_by = $u_id";
 $packages_all = $db->query("SELECT * FROM packages $pkg_scope ORDER BY name ASC")->fetchAll();
 $packages_json = json_encode($packages_all);
 
 // Fetch all areas for dropdowns (Scoped: Hidden for Partner)
-$areas_all = ($u_role === 'admin' || $u_role === 'collector') ? $db->query("SELECT * FROM areas ORDER BY name ASC")->fetchAll() : [];
+$areas_all = ($u_role === 'admin' || $u_role === 'collector') ? $db->query("SELECT * FROM areas WHERE tenant_id = $tenant_id ORDER BY name ASC")->fetchAll() : [];
 
 if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = $_POST['name'];
@@ -83,26 +82,27 @@ if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt_check->execute([$customer_code]);
     } while ($stmt_check->fetchColumn() > 0);
     
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
     $created_by = $_SESSION['user_id'];
     
-    $stmt = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, package_name, monthly_fee, ip_address, type, registration_date, billing_date, area, router_id, pppoe_name, collector_id, lat, lng, odp_id, odp_port, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$customer_code, $name, $address, $contact, $package_name, $monthly_fee, $ip_address, $type, $registration_date, $billing_date, $area, $router_id, $pppoe_name, $collector_id, $lat, $lng, $odp_id, $odp_port, $created_by]);
+    $stmt = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, package_name, monthly_fee, ip_address, type, registration_date, billing_date, area, router_id, pppoe_name, collector_id, lat, lng, odp_id, odp_port, created_by, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$customer_code, $name, $address, $contact, $package_name, $monthly_fee, $ip_address, $type, $registration_date, $billing_date, $area, $router_id, $pppoe_name, $collector_id, $lat, $lng, $odp_id, $odp_port, $created_by, $tenant_id]);
     $id = $db->lastInsertId();
 
     // SELECTIVE AUTOMATIC PAYMENT ON REGISTRATION
     if ($monthly_fee > 0) {
         if ($type === 'customer') {
             // RUMAHAN: Tagihan Terbit di Hari Registrasi (Belum Lunas - perlu konfirmasi manual)
-            $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Belum Lunas', ?)");
-            $stmt_inv->execute([$id, $monthly_fee, $registration_date, date('Y-m-d H:i:s')]);
+            $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at, tenant_id) VALUES (?, ?, ?, 'Belum Lunas', ?, ?)");
+            $stmt_inv->execute([$id, $monthly_fee, $registration_date, date('Y-m-d H:i:s'), $tenant_id]);
         } else {
             // MITRA: Bayar Setelah 30 Hari / Sesuai Tanggal Tagihan Bulan Depan (Belum Lunas)
             $next_month = date('Y-m', strtotime("+1 month"));
             $bday = str_pad($billing_date, 2, '0', STR_PAD_LEFT);
             $due_date = "{$next_month}-{$bday}";
             
-            $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Belum Lunas', ?)");
-            $stmt_inv->execute([$id, $monthly_fee, $due_date, date('Y-m-d H:i:s')]);
+            $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at, tenant_id) VALUES (?, ?, ?, 'Belum Lunas', ?, ?)");
+            $stmt_inv->execute([$id, $monthly_fee, $due_date, date('Y-m-d H:i:s'), $tenant_id]);
         }
     }
     
@@ -112,11 +112,11 @@ if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($arrears_amount <= 0) $arrears_amount = $monthly_fee;
     
     if ($arrears_months > 0 && $arrears_amount > 0) {
-        $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Belum Lunas', ?)");
+        $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at, tenant_id) VALUES (?, ?, ?, 'Belum Lunas', ?, ?)");
         for ($m = $arrears_months; $m >= 1; $m--) {
             $due = date('Y-m-d', strtotime("-{$m} months", strtotime(date('Y') . '-' . date('m') . '-' . str_pad($billing_date, 2, '0', STR_PAD_LEFT))));
             $created = $due;
-            $stmt_inv->execute([$id, $arrears_amount, $due, $created]);
+            $stmt_inv->execute([$id, $arrears_amount, $due, $created, $tenant_id]);
         }
     }
     
@@ -144,29 +144,28 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $odp_id = intval($_POST['odp_id'] ?? 0);
     $odp_port = intval($_POST['odp_port'] ?? 0);
     
-    // Ownership Check
-    $u_id = $_SESSION['user_id'];
-    $u_role = $_SESSION['user_role'];
-    $check = $db->query("SELECT created_by FROM customers WHERE id = $id")->fetchColumn();
-    $is_owner = ($u_role === 'admin') ? true : (($u_role === 'collector') ? ($check == $u_id || $check == 0 || $check === NULL) : ($check == $u_id));
+    // Multi-Tenancy Ownership Check
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $check = $db->query("SELECT id FROM customers WHERE id = $id AND tenant_id = $tenant_id")->fetchColumn();
     
-    if (!$is_owner) {
+    if (!$check) {
         header("Location: index.php?page=admin_customers&msg=forbidden");
         exit;
     }
     
-    $stmt = $db->prepare("UPDATE customers SET name=?, address=?, contact=?, package_name=?, monthly_fee=?, ip_address=?, type=?, registration_date=?, billing_date=?, area=?, router_id=?, pppoe_name=?, collector_id=?, lat=?, lng=?, odp_id=?, odp_port=? WHERE id=?");
-    $stmt->execute([$name, $address, $contact, $package_name, $monthly_fee, $ip_address, $type, $registration_date, $billing_date, $area, $router_id, $pppoe_name, $collector_id, $lat, $lng, $odp_id, $odp_port, $id]);
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $stmt = $db->prepare("UPDATE customers SET name=?, address=?, contact=?, package_name=?, monthly_fee=?, ip_address=?, type=?, registration_date=?, billing_date=?, area=?, router_id=?, pppoe_name=?, collector_id=?, lat=?, lng=?, odp_id=?, odp_port=? WHERE id=? AND tenant_id=?");
+    $stmt->execute([$name, $address, $contact, $package_name, $monthly_fee, $ip_address, $type, $registration_date, $billing_date, $area, $router_id, $pppoe_name, $collector_id, $lat, $lng, $odp_id, $odp_port, $id, $tenant_id]);
 
     // OPTIMIZATION: Sync existing unpaid invoices with the new monthly fee
-    $db->prepare("UPDATE invoices SET amount = ? WHERE customer_id = ? AND status = 'Belum Lunas'")->execute([$monthly_fee, $id]);
+    $db->prepare("UPDATE invoices SET amount = ? WHERE customer_id = ? AND status = 'Belum Lunas' AND tenant_id = ?")->execute([$monthly_fee, $id, $tenant_id]);
     
     // Process additional arrears if any during update
     $arrears_months = intval($_POST['arrears_months'] ?? 0);
     $arrears_amount = floatval($_POST['arrears_amount'] ?? 0);
     if ($arrears_months > 0 && $arrears_amount > 0) {
-        $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Belum Lunas', ?)");
-        $check_stmt = $db->prepare("SELECT id FROM invoices WHERE customer_id = ? AND strftime('%Y-%m', due_date) = ?");
+        $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at, tenant_id) VALUES (?, ?, ?, 'Belum Lunas', ?, ?)");
+        $check_stmt = $db->prepare("SELECT id FROM invoices WHERE customer_id = ? AND strftime('%Y-%m', due_date) = ? AND tenant_id = ?");
         for ($m = $arrears_months; $m >= 1; $m--) {
             $due = date('Y-m-d', strtotime("-{$m} months", strtotime(date('Y') . '-' . date('m') . '-' . str_pad($billing_date, 2, '0', STR_PAD_LEFT))));
             $due_month = date('Y-m', strtotime($due));
@@ -175,7 +174,7 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $check_stmt->execute([$id, $due_month]);
             if (!$check_stmt->fetchColumn()) {
                 $created = $due;
-                $stmt_inv->execute([$id, $arrears_amount, $due, $created]);
+                $stmt_inv->execute([$id, $arrears_amount, $due, $created, $tenant_id]);
             }
         }
     }
@@ -187,22 +186,20 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 if ($action === 'delete') {
     $id = intval($_GET['id']);
     
-    // Ownership Check
-    $u_id = $_SESSION['user_id'];
-    $u_role = $_SESSION['user_role'];
-    $check = $db->query("SELECT created_by FROM customers WHERE id = $id")->fetchColumn();
-    $is_owner = ($u_role === 'admin') ? true : ($check == $u_id);
+    // Multi-Tenancy Ownership Check
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $check = $db->query("SELECT id FROM customers WHERE id = $id AND tenant_id = $tenant_id")->fetchColumn();
     
-    if (!$is_owner) {
+    if (!$check) {
         header("Location: index.php?page=admin_customers&msg=forbidden");
         exit;
     }
 
     // Cascade Delete
-    $db->prepare("DELETE FROM payments WHERE invoice_id IN (SELECT id FROM invoices WHERE customer_id = ?)")->execute([$id]);
-    $db->prepare("DELETE FROM invoice_items WHERE invoice_id IN (SELECT id FROM invoices WHERE customer_id = ?)")->execute([$id]);
-    $db->prepare("DELETE FROM invoices WHERE customer_id = ?")->execute([$id]);
-    $db->prepare("DELETE FROM customers WHERE id = ?")->execute([$id]);
+    $db->prepare("DELETE FROM payments WHERE invoice_id IN (SELECT id FROM invoices WHERE customer_id = ? AND tenant_id = ?) AND tenant_id = ?")->execute([$id, $tenant_id, $tenant_id]);
+    $db->prepare("DELETE FROM invoice_items WHERE invoice_id IN (SELECT id FROM invoices WHERE customer_id = ? AND tenant_id = ?)")->execute([$id, $tenant_id]);
+    $db->prepare("DELETE FROM invoices WHERE customer_id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
+    $db->prepare("DELETE FROM customers WHERE id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
     
     header("Location: index.php?page=admin_customers&msg=deleted");
     exit;
@@ -211,13 +208,15 @@ if ($action === 'delete') {
 if ($action === 'bulk_delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $ids = $_POST['ids'] ?? [];
     if (!empty($ids)) {
+        $tenant_id = $_SESSION['tenant_id'] ?? 1;
         $id_placeholders = implode(',', array_fill(0, count($ids), '?'));
         
         // Clean up everything related to these customers
-        $db->prepare("DELETE FROM invoice_items WHERE invoice_id IN (SELECT id FROM invoices WHERE customer_id IN ($id_placeholders))")->execute($ids);
-        $db->prepare("DELETE FROM payments WHERE invoice_id IN (SELECT id FROM invoices WHERE customer_id IN ($id_placeholders))")->execute($ids);
-        $db->prepare("DELETE FROM invoices WHERE customer_id IN ($id_placeholders)")->execute($ids);
-        $db->prepare("DELETE FROM customers WHERE id IN ($id_placeholders)")->execute($ids);
+        $params = array_merge($ids, [$tenant_id, $tenant_id]);
+        $db->prepare("DELETE FROM invoice_items WHERE invoice_id IN (SELECT id FROM invoices WHERE customer_id IN ($id_placeholders) AND tenant_id = ?)")->execute(array_merge($ids, [$tenant_id]));
+        $db->prepare("DELETE FROM payments WHERE invoice_id IN (SELECT id FROM invoices WHERE customer_id IN ($id_placeholders) AND tenant_id = ?) AND tenant_id = ?")->execute($params);
+        $db->prepare("DELETE FROM invoices WHERE customer_id IN ($id_placeholders) AND tenant_id = ?")->execute(array_merge($ids, [$tenant_id]));
+        $db->prepare("DELETE FROM customers WHERE id IN ($id_placeholders) AND tenant_id = ?")->execute(array_merge($ids, [$tenant_id]));
         
         header("Location: index.php?page=admin_customers&msg=bulk_deleted");
         exit;
@@ -231,9 +230,10 @@ if ($action === 'bulk_move' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $ids = $_POST['ids'] ?? [];
     $target_collector = intval($_POST['target_collector_id'] ?? 0);
     if (!empty($ids) && $target_collector > 0) {
+        $tenant_id = $_SESSION['tenant_id'] ?? 1;
         $id_placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $params = array_merge([$target_collector], $ids);
-        $db->prepare("UPDATE customers SET collector_id = ? WHERE id IN ($id_placeholders)")->execute($params);
+        $params = array_merge([$target_collector], $ids, [$tenant_id]);
+        $db->prepare("UPDATE customers SET collector_id = ? WHERE id IN ($id_placeholders) AND tenant_id = ?")->execute($params);
         header("Location: index.php?page=admin_customers&msg=bulk_moved");
         exit;
     } else {
@@ -266,10 +266,11 @@ if ($action === 'bulk_assign_partner' && $_SERVER['REQUEST_METHOD'] === 'POST') 
     }
 
     $id_placeholders = implode(',', array_fill(0, count($ids), '?'));
-    $params = array_merge([$target_partner], $ids);
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $params = array_merge([$target_partner], $ids, [$tenant_id]);
 
     // Safety: only move regular customers, never partner profile rows.
-    $stmt = $db->prepare("UPDATE customers SET created_by = ? WHERE id IN ($id_placeholders) AND type = 'customer'");
+    $stmt = $db->prepare("UPDATE customers SET created_by = ? WHERE id IN ($id_placeholders) AND type = 'customer' AND tenant_id = ?");
     $stmt->execute($params);
     $moved = intval($stmt->rowCount());
 
@@ -290,14 +291,10 @@ if ($action === 'export') {
         }
     }
 
-    $u_id = $_SESSION['user_id'];
-    $u_role = $_SESSION['user_role'];
-    $scope_where_exp = " AND (created_by = $u_id) ";
-    if ($u_role === 'admin' || $u_role === 'collector') {
-        $scope_where_exp = " AND (created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL) ";
-    }
-
-    $customers_export = $db->query("SELECT * FROM customers $where $scope_where_exp ORDER BY name ASC")->fetchAll();
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $where .= " AND tenant_id = $tenant_id ";
+    
+    $customers_export = $db->query("SELECT * FROM customers $where ORDER BY name ASC")->fetchAll();
     
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="Data_Pelanggan_' . date('Y-m-d') . '.csv"');
@@ -437,8 +434,9 @@ if ($action === 'import_confirm' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $collector_id = $_SESSION['pending_collector_id'] ?? 0;
     if (empty($pending)) { header("Location: index.php?page=admin_customers"); exit; }
 
-    $stmt = $db->prepare("INSERT INTO customers (name, address, contact, package_name, monthly_fee, ip_address, type, registration_date, billing_date, area, created_by, collector_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt_chk = $db->prepare("SELECT COUNT(*) FROM customers WHERE customer_code = ?");
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $stmt = $db->prepare("INSERT INTO customers (name, address, contact, package_name, monthly_fee, ip_address, type, registration_date, billing_date, area, created_by, collector_id, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt_chk = $db->prepare("SELECT COUNT(*) FROM customers WHERE customer_code = ? AND tenant_id = ?");
     $count = 0;
     $u_id_import = $_SESSION['user_id'];
 
@@ -466,22 +464,22 @@ if ($action === 'import_confirm' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $pkg_name = trim($row[$map['package']] ?? 'Standar');
             $pkg_fee = (float)preg_replace('/[^0-9]/', '', $row[$map['fee']] ?? 0);
 
-            // Smart Sync: Package (Optimize: maybe use a cache array for large imports)
+            // Smart Sync: Package
             if (!empty($pkg_name)) {
-                $pkg_exist = $db->prepare("SELECT id FROM packages WHERE name = ?");
-                $pkg_exist->execute([$pkg_name]);
+                $pkg_exist = $db->prepare("SELECT id FROM packages WHERE name = ? AND tenant_id = ?");
+                $pkg_exist->execute([$pkg_name, $tenant_id]);
                 if (!$pkg_exist->fetch()) {
-                    $db->prepare("INSERT INTO packages (name, fee) VALUES (?, ?)")->execute([$pkg_name, $pkg_fee]);
+                    $db->prepare("INSERT INTO packages (name, fee, tenant_id) VALUES (?, ?, ?)")->execute([$pkg_name, $pkg_fee, $tenant_id]);
                 }
             }
 
             // Smart Sync: Area
             $cust_area = isset($row[$map['area']]) ? trim($row[$map['area']]) : '';
             if (!empty($cust_area)) {
-                $area_exist = $db->prepare("SELECT id FROM areas WHERE name = ?");
-                $area_exist->execute([$cust_area]);
+                $area_exist = $db->prepare("SELECT id FROM areas WHERE name = ? AND tenant_id = ?");
+                $area_exist->execute([$cust_area, $tenant_id]);
                 if (!$area_exist->fetch()) {
-                    $db->prepare("INSERT INTO areas (name) VALUES (?)")->execute([$cust_area]);
+                    $db->prepare("INSERT INTO areas (name, tenant_id) VALUES (?, ?)")->execute([$cust_area, $tenant_id]);
                 }
             }
 
@@ -497,7 +495,7 @@ if ($action === 'import_confirm' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([
                 $name, trim($row[$map['address']] ?? ''), trim($row[$map['contact']] ?? ''), $pkg_name, $pkg_fee,
                 trim($row[$map['ip']] ?? ''), strtolower(trim($row[$map['type']] ?? '')) == 'partner' ? 'partner' : 'customer', 
-                trim($row[$map['reg_date']] ?? date('Y-m-d')), (int)trim($row[$map['bill_date']] ?? 1), $cust_area, $u_id_import, $row_collector_id
+                trim($row[$map['reg_date']] ?? date('Y-m-d')), (int)trim($row[$map['bill_date']] ?? 1), $cust_area, $u_id_import, $row_collector_id, $tenant_id
             ]);
             $count++;
             
@@ -505,9 +503,9 @@ if ($action === 'import_confirm' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             // Generate Code (Fast enough within transaction, but we can improve later if needed)
             do {
                 $imp_code = 'CUST-' . str_pad(mt_rand(100000, 999999), 6, '0', STR_PAD_LEFT);
-                $stmt_chk->execute([$imp_code]);
+                $stmt_chk->execute([$imp_code, $tenant_id]);
             } while ($stmt_chk->fetchColumn() > 0);
-            $db->prepare("UPDATE customers SET customer_code = ? WHERE id = ?")->execute([$imp_code, $imp_id]);
+            $db->prepare("UPDATE customers SET customer_code = ? WHERE id = ? AND tenant_id = ?")->execute([$imp_code, $imp_id, $tenant_id]);
         }
         $db->commit();
     } catch (Exception $e) {
@@ -546,11 +544,13 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $amount_per_month = floatval($_POST['amount_per_month']);
     $receiver_id = $_SESSION['user_id'];
     
-    $c = $db->query("SELECT billing_date FROM customers WHERE id = $customer_id")->fetch();
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $c = $db->query("SELECT billing_date FROM customers WHERE id = $customer_id AND tenant_id = $tenant_id")->fetch();
+    if (!$c) { header("Location: index.php?page=admin_customers&msg=forbidden"); exit; }
     $bday = str_pad($c['billing_date'] ?: 1, 2, '0', STR_PAD_LEFT);
     
     // Find the latest invoice due date to start from
-    $last_due = $db->query("SELECT due_date FROM invoices WHERE customer_id = $customer_id ORDER BY due_date DESC LIMIT 1")->fetchColumn();
+    $last_due = $db->query("SELECT due_date FROM invoices WHERE customer_id = $customer_id AND tenant_id = $tenant_id ORDER BY due_date DESC LIMIT 1")->fetchColumn();
     
     $start_time = $last_due ? strtotime($last_due) : strtotime(date('Y-m-') . $bday);
     if(!$last_due) $start_time = strtotime("-1 month", $start_time); // Start from previous to make current first
@@ -559,21 +559,21 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $next_due = date('Y-m-d', strtotime("+$i months", $start_time));
         
         // Check if invoice exists for this date
-        $exist = $db->query("SELECT id, status FROM invoices WHERE customer_id = $customer_id AND due_date = '$next_due'")->fetch();
+        $exist = $db->query("SELECT id, status FROM invoices WHERE customer_id = $customer_id AND due_date = '$next_due' AND tenant_id = $tenant_id")->fetch();
         
         if ($exist) {
             if ($exist['status'] !== 'Lunas') {
                 $inv_id = $exist['id'];
-                $db->prepare("UPDATE invoices SET status = 'Lunas' WHERE id = ?")->execute([$inv_id]);
-                $db->prepare("INSERT INTO payments (invoice_id, amount, received_by, payment_date) VALUES (?, ?, ?, ?)")
-                   ->execute([$inv_id, $amount_per_month, $receiver_id, date('Y-m-d H:i:s')]);
+                $db->prepare("UPDATE invoices SET status = 'Lunas' WHERE id = ? AND tenant_id = ?")->execute([$inv_id, $tenant_id]);
+                $db->prepare("INSERT INTO payments (invoice_id, amount, received_by, payment_date, tenant_id) VALUES (?, ?, ?, ?, ?)")
+                   ->execute([$inv_id, $amount_per_month, $receiver_id, date('Y-m-d H:i:s'), $tenant_id]);
             }
         } else {
-            $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status) VALUES (?, ?, ?, 'Lunas')")
-               ->execute([$customer_id, $amount_per_month, $next_due]);
+            $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, tenant_id) VALUES (?, ?, ?, 'Lunas', ?)")
+               ->execute([$customer_id, $amount_per_month, $next_due, $tenant_id]);
             $inv_id = $db->lastInsertId();
-            $db->prepare("INSERT INTO payments (invoice_id, amount, received_by, payment_date) VALUES (?, ?, ?, ?)")
-               ->execute([$inv_id, $amount_per_month, $receiver_id, date('Y-m-d H:i:s')]);
+            $db->prepare("INSERT INTO payments (invoice_id, amount, received_by, payment_date, tenant_id) VALUES (?, ?, ?, ?, ?)")
+               ->execute([$inv_id, $amount_per_month, $receiver_id, date('Y-m-d H:i:s'), $tenant_id]);
         }
     }
     
@@ -638,7 +638,9 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     
     $where_collector = "";
     if ($filter_collector) {
-        $coll_area = $db->query("SELECT area FROM users WHERE id = " . intval($filter_collector))->fetchColumn();
+        $stmt_coll = $db->prepare("SELECT area FROM users WHERE id = ? AND tenant_id = ?");
+        $stmt_coll->execute([intval($filter_collector), $tenant_id]);
+        $coll_area = $stmt_coll->fetchColumn();
         if ($coll_area && trim($coll_area) != '') {
             $where_collector = " AND area = " . $db->quote(trim($coll_area));
         }
@@ -664,12 +666,12 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $offset = ($current_page - 1) * $items_per_page;
     
     // Scoping Logic (Multi-tenancy)
-    $u_id = $_SESSION['user_id'];
-    $u_role = $_SESSION['user_role'];
-    if ($u_role === 'admin') {
-        $scope_where = " AND (created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL) ";
-    } elseif ($u_role === 'collector') {
-        $scope_where = " AND (collector_id = $u_id) ";
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $scope_where = " AND tenant_id = $tenant_id ";
+    
+    // Additional restriction for collectors (only their assigned area/customers)
+    if ($_SESSION['user_role'] === 'collector') {
+        $scope_where .= " AND collector_id = " . intval($_SESSION['user_id']);
     }
 
     // Count total rows for this filter
@@ -685,7 +687,8 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             <div style="font-size:24px; font-weight:800; color:var(--primary);"><?= number_format($total_rows) ?></div>
         </div>
         <?php
-        $stats_q = "SELECT SUM(monthly_fee) as total_mrr, AVG(monthly_fee) as avg_fee FROM customers WHERE 1=1 $where_type $where_collector $where_search $scope_where";
+        $tenant_id = $_SESSION['tenant_id'] ?? 1;
+        $stats_q = "SELECT SUM(monthly_fee) as total_mrr, AVG(monthly_fee) as avg_fee FROM customers WHERE tenant_id = $tenant_id $where_type $where_collector $where_search $scope_where";
         $stats_data = $db->query($stats_q)->fetch();
         ?>
         <div class="glass-panel" style="padding:15px; border-left:4px solid var(--success); background:linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));">
@@ -750,9 +753,9 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         <!-- Mobile Card View (Hidden on Desktop) -->
         <div class="customers-mobile-container" style="display:none;">
         <?php
-        $rt_scope = ($u_role === 'admin') ? "WHERE (created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL)" : "WHERE created_by = $u_id";
+        $tenant_id = $_SESSION['tenant_id'] ?? 1;
         $routers = [];
-        try { $routers = $db->query("SELECT * FROM routers $rt_scope")->fetchAll(); } catch(Exception $e) {}
+        try { $routers = $db->query("SELECT * FROM routers WHERE tenant_id = $tenant_id")->fetchAll(); } catch(Exception $e) {}
         $customers = $db->query("SELECT * FROM customers WHERE 1=1 $where_type $where_collector $where_search $scope_where ORDER BY id DESC LIMIT $items_per_page OFFSET $offset")->fetchAll();
         
         foreach($customers as $c):
@@ -1179,14 +1182,14 @@ document.addEventListener("DOMContentLoaded", function() {
 <?php elseif ($action === 'create' || $action === 'edit'): 
     if($action === 'edit') {
         $id = intval($_GET['id']);
-        $c = $db->query("SELECT * FROM customers WHERE id = $id")->fetch();
+        $tenant_id = $_SESSION['tenant_id'] ?? 1;
+        $c = $db->query("SELECT * FROM customers WHERE id = $id AND tenant_id = $tenant_id")->fetch();
         
         // Ownership Check
         if ($c) {
             $u_id = $_SESSION['user_id'];
             $u_role = $_SESSION['user_role'];
-            $is_owner = ($u_role === 'admin') ? true : (($c['created_by'] == $u_id || $c['created_by'] == 0 || $c['created_by'] === NULL) && $_SESSION['user_role'] === 'collector' ? true : ($c['created_by'] == $u_id));
-            if (!$is_owner) {
+            if (!$c) {
                 echo "<div class='glass-panel p-5 text-center'><h3>Akses Ditolak</h3><p>Anda tidak berwenang mengedit data ini.</p><a href='index.php?page=admin_customers' class='btn btn-primary'>Kembali</a></div>";
                 return;
             }
@@ -1264,8 +1267,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 <select name="router_id" id="sel_router_id" class="form-control" onchange="loadPPPoE(this.value)">
                     <option value="0">-- Akses Manual --</option>
                     <?php
-                    $rt_scope = ($u_role === 'admin') ? "WHERE created_by = $u_id OR created_by = 0 OR created_by IS NULL" : "WHERE created_by = $u_id";
-                    $routers = []; try { $routers = $db->query("SELECT * FROM routers $rt_scope")->fetchAll(); } catch(Exception $e) {}
+                    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+                    $routers = []; try { $routers = $db->query("SELECT * FROM routers WHERE tenant_id = $tenant_id")->fetchAll(); } catch(Exception $e) {}
                     foreach($routers as $r):
                     ?>
                     <option value="<?= $r['id'] ?>" <?= ($c['router_id'] ?? 0) == $r['id'] ? 'selected' : '' ?>><?= htmlspecialchars($r['name']) ?></option>
@@ -1284,7 +1287,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 <select name="collector_id" class="form-control">
                     <option value="0">-- Pilih Penagih --</option>
                     <?php
-                    $colls = $db->query("SELECT id, name FROM users WHERE role = 'collector' ORDER BY name ASC")->fetchAll();
+                    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+                    $colls = $db->query("SELECT id, name FROM users WHERE role = 'collector' AND tenant_id = $tenant_id ORDER BY name ASC")->fetchAll();
                     foreach($colls as $coll):
                     ?>
                     <option value="<?= $coll['id'] ?>" <?= ($c['collector_id'] ?? 0) == $coll['id'] ? 'selected' : '' ?>><?= htmlspecialchars($coll['name']) ?></option>
@@ -1333,8 +1337,9 @@ document.addEventListener("DOMContentLoaded", function() {
                         <?php 
                         $all_assets = $db->query("SELECT id, name, type, total_ports FROM infrastructure_assets ORDER BY type DESC, name ASC")->fetchAll();
                         foreach($all_assets as $o):
-                            $used = $db->prepare("SELECT COUNT(*) FROM customers WHERE odp_id = ? AND id != ?");
-                            $used->execute([$o['id'], $c['id'] ?? 0]);
+                            $tenant_id = $_SESSION['tenant_id'] ?? 1;
+                            $used = $db->prepare("SELECT COUNT(*) FROM customers WHERE odp_id = ? AND id != ? AND tenant_id = ?");
+                            $used->execute([$o['id'], $c['id'] ?? 0, $tenant_id]);
                             $count = $used->fetchColumn();
                         ?>
                         <option value="<?= $o['id'] ?>" <?= ($c['odp_id'] ?? 0) == $o['id'] ? 'selected' : '' ?>>
@@ -1532,7 +1537,10 @@ document.addEventListener("DOMContentLoaded", () => {
     <div class="collector-assign-box">
         <i class="fas fa-user-tie text-primary" style="font-size: 20px;"></i>
         <label>Tugaskan Data Impor ke Penagih (Opsional):</label>
-        <?php $colls_import = $db->query("SELECT id, name FROM users WHERE role = 'collector' ORDER BY name ASC")->fetchAll(); ?>
+        <?php 
+        $tenant_id = $_SESSION['tenant_id'] ?? 1;
+        $colls_import = $db->query("SELECT id, name FROM users WHERE role = 'collector' AND tenant_id = $tenant_id ORDER BY name ASC")->fetchAll(); 
+        ?>
         <select id="common_collector_id" class="form-control" onchange="syncCollector(this.value)">
             <option value="0">-- Biarkan Tanpa Penagih --</option>
             <?php foreach($colls_import as $cl): ?>
@@ -1689,16 +1697,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
 <?php elseif ($action === 'details'): 
     $id = intval($_GET['id']);
-    $c = $db->query("SELECT * FROM customers WHERE id = $id")->fetch();
-    if(!$c) { echo "Pelanggan tidak ditemukan."; return; }
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $c = $db->query("SELECT * FROM customers WHERE id = $id AND tenant_id = $tenant_id")->fetch();
     
-    // Ownership Check
-    $u_id = $_SESSION['user_id'];
-    $u_role = $_SESSION['user_role'];
-    $is_owner = ($u_role === 'admin') ? true : (($c['created_by'] == $u_id || $c['created_by'] == 0 || $c['created_by'] === NULL) && $_SESSION['user_role'] === 'collector' ? true : ($c['created_by'] == $u_id));
-    if (!$is_owner) {
-        echo "<div class='glass-panel p-5 text-center'><h3>Akses Ditolak</h3><p>Anda tidak berwenang melihat data ini.</p><a href='index.php?page=admin_customers' class='btn btn-primary'>Kembali</a></div>";
-        return;
+    if(!$c) { 
+        echo "<div class='glass-panel p-5 text-center'><h3>Akses Ditolak</h3><p>Data tidak ditemukan atau Anda tidak berwenang melihat data ini.</p><a href='index.php?page=admin_customers' class='btn btn-primary'>Kembali</a></div>";
+        return; 
     }
     
     // Riwayat Pembayaran (Lunas)
@@ -1707,19 +1711,19 @@ document.addEventListener("DOMContentLoaded", () => {
         FROM payments p 
         JOIN invoices i ON p.invoice_id = i.id 
         LEFT JOIN users u ON p.received_by = u.id
-        WHERE i.customer_id = $id 
+        WHERE i.customer_id = $id AND p.tenant_id = $tenant_id
         ORDER BY p.payment_date DESC
     ")->fetchAll();
 
     // Tagihan Belum Lunas
     $unpaid_invoices = $db->query("
         SELECT * FROM invoices 
-        WHERE customer_id = $id AND status = 'Belum Lunas' 
+        WHERE customer_id = $id AND status = 'Belum Lunas' AND tenant_id = $tenant_id
         ORDER BY due_date DESC
     ")->fetchAll();
 
     // Total Tunggakan / Kekurangan
-    $unpaid_total = $db->query("SELECT SUM(amount) FROM invoices WHERE customer_id = $id AND status = 'Belum Lunas'")->fetchColumn() ?: 0;
+    $unpaid_total = $db->query("SELECT SUM(amount) FROM invoices WHERE customer_id = $id AND status = 'Belum Lunas' AND tenant_id = $tenant_id")->fetchColumn() ?: 0;
     
     // Alerts/Messages
     $msg = $_GET['msg'] ?? '';
@@ -1811,14 +1815,13 @@ document.addEventListener("DOMContentLoaded", () => {
                                     <td style="text-align:right;">
                                         <div style="display:flex; justify-content:flex-end; gap:6px;">
                                             <?php 
-                                                // Fetch template settings (if not already fetched)
+                                                // Fetch template settings (Tenant Aware)
                                                 if (!isset($wa_tpl)) {
                                                     $u_id_me = $_SESSION['user_id'];
                                                     $me_user = $db->query("SELECT wa_template, wa_template_paid FROM users WHERE id = $u_id_me")->fetch();
-                                                    $sets_me = $db->query("SELECT wa_template, wa_template_paid, site_url, bank_account FROM settings WHERE id=1")->fetch();
-                                                    $wa_tpl = !empty($me_user['wa_template']) ? $me_user['wa_template'] : ($sets_me['wa_template'] ?? "Halo {nama}, tagihan {tagihan} ({bulan}) jatuh tempo pada {jatuh_tempo}.");
-                                                    $base_url_me = !empty($sets_me['site_url']) ? $sets_me['site_url'] : get_app_url();
-                                                    $bank_acc_me = $sets_me['bank_account'] ?? '';
+                                                    $wa_tpl = !empty($me_user['wa_template']) ? $me_user['wa_template'] : ($site_settings['wa_template'] ?? "Halo {nama}, tagihan {tagihan} ({bulan}) jatuh tempo pada {jatuh_tempo}.");
+                                                    $base_url_me = !empty($site_settings['site_url']) ? $site_settings['site_url'] : get_app_url();
+                                                    $bank_acc_me = $site_settings['bank_account'] ?? '';
                                                 }
 
                                                 $wa_raw = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $c['contact']));

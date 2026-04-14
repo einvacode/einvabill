@@ -3,7 +3,8 @@ $action = $_GET['action'] ?? 'list';
 
 if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = $_POST['name'];
-    $db->prepare("INSERT INTO areas (name) VALUES (?)")->execute([$name]);
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $db->prepare("INSERT INTO areas (name, tenant_id) VALUES (?, ?)")->execute([$name, $tenant_id]);
     header("Location: index.php?page=admin_areas");
     exit;
 }
@@ -11,14 +12,16 @@ if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $id = $_POST['id'];
     $name = $_POST['name'];
-    $db->prepare("UPDATE areas SET name=? WHERE id=?")->execute([$name, $id]);
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $db->prepare("UPDATE areas SET name=? WHERE id=? AND tenant_id=?")->execute([$name, $id, $tenant_id]);
     header("Location: index.php?page=admin_areas");
     exit;
 }
 
 if ($action === 'delete') {
     $id = $_GET['id'];
-    $db->prepare("DELETE FROM areas WHERE id = ?")->execute([$id]);
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $db->prepare("DELETE FROM areas WHERE id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
     header("Location: index.php?page=admin_areas");
     exit;
 }
@@ -42,9 +45,11 @@ if ($action === 'delete') {
             </thead>
             <tbody>
                 <?php
+                $tenant_id = $_SESSION['tenant_id'] ?? 1;
                 $areas = $db->query("
-                    SELECT a.*, (SELECT COUNT(*) FROM customers WHERE area = a.name) as total_customers 
+                    SELECT a.*, (SELECT COUNT(*) FROM customers WHERE area = a.name AND tenant_id = $tenant_id) as total_customers 
                     FROM areas a 
+                    WHERE a.tenant_id = $tenant_id
                     ORDER BY a.name ASC
                 ")->fetchAll();
                 foreach($areas as $a):

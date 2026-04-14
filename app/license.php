@@ -5,10 +5,15 @@
  */
 
 function verify_license(PDO $db) {
-    $row = $db->query("SELECT license_key, license_expiry, installation_date FROM settings WHERE id=1")->fetch(PDO::FETCH_ASSOC);
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $stmt = $db->prepare("SELECT license_key, license_expiry, installation_date FROM settings WHERE tenant_id = ?");
+    $stmt->execute([$tenant_id]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row) $row = [];
+
     $key = $row['license_key'] ?? '';
     $expiry_db = $row['license_expiry'] ?? '';
-    $install_date = $row['installation_date'] ?: date('Y-m-d');
+    $install_date = ($row['installation_date'] ?? null) ?: date('Y-m-d');
 
     $MASTER = getenv('MASTER_KEY') ?: 'EB-ULTIMATE-2026';
     $SALT = getenv('EINVABILL_SALT') ?: 'EINVABILL_SECRET';

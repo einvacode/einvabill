@@ -6,7 +6,8 @@ $u_role = $_SESSION['user_role'] ?? 'admin';
 if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = $_POST['name'];
     $fee = $_POST['fee'];
-    $db->prepare("INSERT INTO packages (name, fee, created_by) VALUES (?, ?, ?)")->execute([$name, $fee, $u_id]);
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $db->prepare("INSERT INTO packages (name, fee, created_by, tenant_id) VALUES (?, ?, ?, ?)")->execute([$name, $fee, $u_id, $tenant_id]);
     header("Location: index.php?page=admin_packages");
     exit;
 }
@@ -16,18 +17,19 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = $_POST['name'];
     $fee = $_POST['fee'];
     
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
     // Ownership Check & Get Old Data
-    $old_pkg = $db->query("SELECT name, created_by FROM packages WHERE id = $id")->fetch();
-    $is_owner = ($u_role === 'admin') ? ($old_pkg['created_by'] == $u_id || $old_pkg['created_by'] == 0 || $old_pkg['created_by'] === NULL) : ($old_pkg['created_by'] == $u_id);
+    $old_pkg = $db->query("SELECT name, created_by, tenant_id FROM packages WHERE id = $id AND tenant_id = $tenant_id")->fetch();
+    $is_owner = ($u_role === 'admin') ? ($old_pkg['tenant_id'] == $tenant_id) : ($old_pkg['created_by'] == $u_id);
     
     if ($is_owner && $old_pkg) {
         $old_name = $old_pkg['name'];
         // Update package
-        $db->prepare("UPDATE packages SET name=?, fee=? WHERE id=?")->execute([$name, $fee, $id]);
+        $db->prepare("UPDATE packages SET name=?, fee=? WHERE id=? AND tenant_id=?")->execute([$name, $fee, $id, $tenant_id]);
         
         // SYNC CUSTOMERS: Update all customers using this package name
-        $db->prepare("UPDATE customers SET package_name = ?, monthly_fee = ? WHERE package_name = ? AND (created_by = ? OR created_by = 0 OR created_by IS NULL)")
-           ->execute([$name, $fee, $old_name, $u_id]);
+        $db->prepare("UPDATE customers SET package_name = ?, monthly_fee = ? WHERE package_name = ? AND tenant_id = ?")
+           ->execute([$name, $fee, $old_name, $tenant_id]);
     }
     header("Location: index.php?page=admin_packages&msg=updated_sync");
     exit;
@@ -36,11 +38,12 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 if ($action === 'delete') {
     $id = $_GET['id'];
     
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
     // Ownership Check
-    $check = $db->query("SELECT created_by FROM packages WHERE id = $id")->fetchColumn();
-    $is_owner = ($u_role === 'admin') ? ($check == $u_id || $check == 0 || $check === NULL) : ($check == $u_id);
+    $check = $db->query("SELECT tenant_id FROM packages WHERE id = $id")->fetchColumn();
+    $is_owner = ($u_role === 'admin') ? ($check == $tenant_id) : (/* restricted */ false);
     if ($is_owner) {
-        $db->prepare("DELETE FROM packages WHERE id = ?")->execute([$id]);
+        $db->prepare("DELETE FROM packages WHERE id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
     }
     header("Location: index.php?page=admin_packages");
     exit;
@@ -64,12 +67,13 @@ if ($action === 'bulk_delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if ($action === 'sync_all') {
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
     // Ownership Check
-    $packages = $db->query("SELECT name, fee FROM packages WHERE created_by = $u_id OR created_by = 0 OR created_by IS NULL")->fetchAll();
+    $packages = $db->query("SELECT name, fee FROM packages WHERE tenant_id = $tenant_id")->fetchAll();
     $count = 0;
     foreach($packages as $p) {
-        $stmt = $db->prepare("UPDATE customers SET monthly_fee = ? WHERE package_name = ? AND (created_by = ? OR created_by = 0 OR created_by IS NULL)");
-        $stmt->execute([$p['fee'], $p['name'], $u_id]);
+        $stmt = $db->prepare("UPDATE customers SET monthly_fee = ? WHERE package_name = ? AND tenant_id = ?");
+        $stmt->execute([$p['fee'], $p['name'], $tenant_id]);
         $count += $stmt->rowCount();
     }
     header("Location: index.php?page=admin_packages&msg=all_synced&count=$count");
@@ -119,7 +123,8 @@ if ($action === 'sync_all') {
             </thead>
             <tbody>
                 <?php
-                $scope_where = ($u_role === 'admin') ? "WHERE created_by = $u_id OR created_by = 0 OR created_by IS NULL" : "WHERE created_by = $u_id";
+                $tenant_id = $_SESSION['tenant_id'] ?? 1;
+                $scope_where = "WHERE tenant_id = $tenant_id";
                 $packages = $db->query("SELECT * FROM packages $scope_where ORDER BY fee ASC")->fetchAll();
                 foreach($packages as $p):
                 ?>

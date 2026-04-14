@@ -63,13 +63,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    $stmt = $db->prepare("UPDATE settings SET company_name=?, company_tagline=?, company_contact=?, company_address=?, site_url=?, company_logo=?, company_qris=?, wa_template=?, wa_template_paid=?, bank_account=?, router_ip=?, router_user=?, router_pass=?, router_port=?, acs_url=?, acs_user=?, acs_pass=? WHERE id=1");
-    $stmt->execute([$company_name, $company_tagline, $company_contact, $company_address, $site_url, $company_logo, $company_qris, $wa_template, $wa_template_paid, $bank_account, $router_ip, $router_user, $router_pass, $router_port, $acs_url, $acs_user, $acs_pass]);
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $stmt = $db->prepare("UPDATE settings SET company_name=?, company_tagline=?, company_contact=?, company_address=?, site_url=?, company_logo=?, company_qris=?, wa_template=?, wa_template_paid=?, bank_account=?, router_ip=?, router_user=?, router_pass=?, router_port=?, acs_url=?, acs_user=?, acs_pass=? WHERE tenant_id=?");
+    $stmt->execute([$company_name, $company_tagline, $company_contact, $company_address, $site_url, $company_logo, $company_qris, $wa_template, $wa_template_paid, $bank_account, $router_ip, $router_user, $router_pass, $router_port, $acs_url, $acs_user, $acs_pass, $tenant_id]);
     
     $success = "Pengaturan berhasil disimpan.";
 }
 
-$settings = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
+$tenant_id = $_SESSION['tenant_id'] ?? 1;
+$settings = $db->query("SELECT * FROM settings WHERE tenant_id = $tenant_id")->fetch();
+if (!$settings) {
+    // Should not happen due to init.php auto-insert, but for robustness:
+    $db->prepare("INSERT INTO settings (company_name, tenant_id) VALUES (?, ?)")->execute(['Perusahaan Baru', $tenant_id]);
+    $settings = $db->query("SELECT * FROM settings WHERE tenant_id = $tenant_id")->fetch();
+}
 ?>
 
 <div class="glass-panel" style="padding: 24px; max-width:700px; margin:0 auto; margin-bottom:40px;">

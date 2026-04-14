@@ -3,7 +3,8 @@
 $action = $_GET['action'] ?? 'list';
 $u_id = $_SESSION['user_id'];
 $u_role = $_SESSION['user_role'] ?? 'admin';
-$scope_where = ($u_role === 'admin') ? " AND (a.created_by = $u_id OR a.created_by = 0 OR a.created_by IS NULL) " : " AND (a.created_by = $u_id) ";
+$tenant_id = $_SESSION['tenant_id'] ?? 1;
+$scope_where = " AND (a.tenant_id = $tenant_id) ";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'add' || $action === 'edit') {
@@ -20,17 +21,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $installation_date = $_POST['installation_date'] ?? date('Y-m-d');
 
         if ($action === 'add') {
-            $stmt = $db->prepare("INSERT INTO infrastructure_assets (name, type, parent_id, lat, lng, total_ports, brand, description, price, status, installation_date, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$name, $type, $parent_id, $lat, $lng, $total_ports, $brand, $description, $price, $status, $installation_date, $u_id]);
+            $tenant_id = $_SESSION['tenant_id'] ?? 1;
+            $stmt = $db->prepare("INSERT INTO infrastructure_assets (name, type, parent_id, lat, lng, total_ports, brand, description, price, status, installation_date, created_by, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$name, $type, $parent_id, $lat, $lng, $total_ports, $brand, $description, $price, $status, $installation_date, $u_id, $tenant_id]);
             $success = "Aset berhasil ditambahkan.";
         } else {
             $id = $_POST['id'];
+            $tenant_id = $_SESSION['tenant_id'] ?? 1;
             // Ownership Check
-            $check = $db->query("SELECT created_by FROM infrastructure_assets WHERE id = $id")->fetchColumn();
-            $is_owner = ($u_role === 'admin') ? ($check == $u_id || $check == 0 || $check === NULL) : ($check == $u_id);
+            $check = $db->query("SELECT tenant_id FROM infrastructure_assets WHERE id = $id")->fetchColumn();
+            $is_owner = ($u_role === 'admin') ? ($check == $tenant_id) : (/* restricted */ false);
             if ($is_owner) {
-                $stmt = $db->prepare("UPDATE infrastructure_assets SET name=?, type=?, parent_id=?, lat=?, lng=?, total_ports=?, brand=?, description=?, price=?, status=?, installation_date=? WHERE id=?");
-                $stmt->execute([$name, $type, $parent_id, $lat, $lng, $total_ports, $brand, $description, $price, $status, $installation_date, $id]);
+                $stmt = $db->prepare("UPDATE infrastructure_assets SET name=?, type=?, parent_id=?, lat=?, lng=?, total_ports=?, brand=?, description=?, price=?, status=?, installation_date=? WHERE id=? AND tenant_id=?");
+                $stmt->execute([$name, $type, $parent_id, $lat, $lng, $total_ports, $brand, $description, $price, $status, $installation_date, $id, $tenant_id]);
                 $success = "Aset berhasil diperbarui.";
             }
         }
@@ -60,11 +63,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // If no customer selected but recipient name provided, create a temporary customer record so invoice history can reference it
             if ($customer_id <= 0 && !empty($recipient_name)) {
                 try {
-                    // Create a temporary customer record but do NOT attribute it to the current user/partner
-                    // to avoid it appearing in partner/mitra lists. Use created_by = 0 (system).
-                    $stmt_c = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, type, created_by, registration_date) VALUES (?, ?, ?, ?, 'note', ?, datetime('now'))");
+                    // Create a temporary customer record
+                    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+                    $stmt_c = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, type, created_by, registration_date, tenant_id) VALUES (?, ?, ?, ?, 'note', ?, datetime('now'), ?)");
                     $cust_code = null;
-                    $stmt_c->execute([$cust_code, $recipient_name, $billing_address, $billing_phone, 0]);
+                    $stmt_c->execute([$cust_code, $recipient_name, $billing_address, $billing_phone, 0, $tenant_id]);
                     $customer_id = $db->lastInsertId();
                 } catch (Exception $e) {
                     // fallback: leave customer_id as 0
@@ -105,22 +108,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $has_created_via = is_array($inv_cols) && in_array('created_via', $inv_cols);
             } catch (Exception $e) { $has_created_via = false; }
 
+            $tenant_id = $_SESSION['tenant_id'] ?? 1;
             if ($has_extra_cols) {
                 if ($has_created_via) {
-                    $stmt = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, created_at, status, discount, billing_address, billing_phone, billing_email, issued_by_id, issued_by_name, created_via) VALUES (?, ?, ?, ?, 'Belum Lunas', 0, ?, ?, ?, ?, ?, ?)");
-                    $stmt->execute([$customer_id, $amount, $due_date, $created_at, $billing_address, $billing_phone, $billing_email, $issued_by_id, $issued_by_name, ($_POST['created_via'] ?? '')]);
+                    $stmt = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, created_at, status, discount, billing_address, billing_phone, billing_email, issued_by_id, issued_by_name, created_via, tenant_id) VALUES (?, ?, ?, ?, 'Belum Lunas', 0, ?, ?, ?, ?, ?, ?, ?)");
+                    $stmt->execute([$customer_id, $amount, $due_date, $created_at, $billing_address, $billing_phone, $billing_email, $issued_by_id, $issued_by_name, ($_POST['created_via'] ?? ''), $tenant_id]);
                 } else {
-                    $stmt = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, created_at, status, discount, billing_address, billing_phone, billing_email, issued_by_id, issued_by_name) VALUES (?, ?, ?, ?, 'Belum Lunas', 0, ?, ?, ?, ?, ?)");
-                    $stmt->execute([$customer_id, $amount, $due_date, $created_at, $billing_address, $billing_phone, $billing_email, $issued_by_id, $issued_by_name]);
+                    $stmt = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, created_at, status, discount, billing_address, billing_phone, billing_email, issued_by_id, issued_by_name, tenant_id) VALUES (?, ?, ?, ?, 'Belum Lunas', 0, ?, ?, ?, ?, ?, ?)");
+                    $stmt->execute([$customer_id, $amount, $due_date, $created_at, $billing_address, $billing_phone, $billing_email, $issued_by_id, $issued_by_name, $tenant_id]);
                 }
             } else {
                 // Fallback to legacy insert (DB without new columns)
                 if ($has_created_via) {
-                    $stmt = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, created_at, status, discount, created_via) VALUES (?, ?, ?, ?, 'Belum Lunas', 0, ?)");
-                    $stmt->execute([$customer_id, $amount, $due_date, $created_at, ($_POST['created_via'] ?? '')]);
+                    $stmt = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, created_at, status, discount, created_via, tenant_id) VALUES (?, ?, ?, ?, 'Belum Lunas', 0, ?, ?)");
+                    $stmt->execute([$customer_id, $amount, $due_date, $created_at, ($_POST['created_via'] ?? ''), $tenant_id]);
                 } else {
-                    $stmt = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, created_at, status, discount) VALUES (?, ?, ?, ?, 'Belum Lunas', 0)");
-                    $stmt->execute([$customer_id, $amount, $due_date, $created_at]);
+                    $stmt = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, created_at, status, discount, tenant_id) VALUES (?, ?, ?, ?, 'Belum Lunas', 0, ?)");
+                    $stmt->execute([$customer_id, $amount, $due_date, $created_at, $tenant_id]);
                 }
             }
             $invoice_id = $db->lastInsertId();
@@ -326,12 +330,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 if ($action === 'delete') {
     $id = $_GET['id'];
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
     // Ownership Check
-    $check = $db->query("SELECT created_by FROM infrastructure_assets WHERE id = $id")->fetchColumn();
-    $is_owner = ($u_role === 'admin') ? ($check == $u_id || $check == 0 || $check === NULL) : ($check == $u_id);
+    $check = $db->query("SELECT tenant_id FROM infrastructure_assets WHERE id = $id")->fetchColumn();
+    $is_owner = ($u_role === 'admin') ? ($check == $tenant_id) : (/* restricted */ false);
     
     if ($is_owner) {
-        $db->prepare("DELETE FROM infrastructure_assets WHERE id = ?")->execute([$id]);
+        $db->prepare("DELETE FROM infrastructure_assets WHERE id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
     }
     header("Location: index.php?page=admin_assets");
     exit;
@@ -350,10 +355,11 @@ if ($action === 'invoice_mark_paid') {
         if ($inv) {
             $net_amount = floatval($inv['amount']) - floatval($inv['discount'] ?? 0);
             $receiver_id = $_SESSION['user_id'];
+            $tenant_id = $_SESSION['tenant_id'] ?? 1;
             $payment_date = date('Y-m-d H:i:s');
             try {
-                $db->prepare("UPDATE invoices SET status = 'Lunas' WHERE id = ?")->execute([$id]);
-                $db->prepare("INSERT INTO payments (invoice_id, amount, received_by, payment_date) VALUES (?, ?, ?, ?)")->execute([$id, $net_amount, $receiver_id, $payment_date]);
+                $db->prepare("UPDATE invoices SET status = 'Lunas' WHERE id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
+                $db->prepare("INSERT INTO payments (invoice_id, amount, received_by, payment_date, tenant_id) VALUES (?, ?, ?, ?, ?)")->execute([$id, $net_amount, $receiver_id, $payment_date, $tenant_id]);
             } catch (Exception $e) {}
         }
     }
@@ -367,9 +373,10 @@ if ($action === 'invoice_delete_quick') {
     if ($id > 0) {
         try {
             // remove payments, items, invoice
-            $db->prepare("DELETE FROM payments WHERE invoice_id = ?")->execute([$id]);
+            $tenant_id = $_SESSION['tenant_id'] ?? 1;
+            $db->prepare("DELETE FROM payments WHERE invoice_id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
             $db->prepare("DELETE FROM invoice_items WHERE invoice_id = ?")->execute([$id]);
-            $db->prepare("DELETE FROM invoices WHERE id = ?")->execute([$id]);
+            $db->prepare("DELETE FROM invoices WHERE id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
         } catch (Exception $e) {
             // ignore errors but continue
         }
@@ -414,7 +421,7 @@ function buildNetworkTree($db, $parentId = 0, $scope_where = "") {
 // Enhanced Stats Calculation
 $total_investment = $db->query("SELECT SUM(price) FROM infrastructure_assets a WHERE 1=1 $scope_where")->fetchColumn() ?: 0;
 $total_ports_capacity = $db->query("SELECT SUM(total_ports) FROM infrastructure_assets a WHERE 1=1 $scope_where")->fetchColumn() ?: 0;
-$used_by_customers = $db->query("SELECT COUNT(*) FROM customers c WHERE odp_id > 0 AND (SELECT created_by FROM infrastructure_assets WHERE id = c.odp_id) = " . ($u_role === 'admin' ? "0" : $u_id))->fetchColumn() ?: 0;
+$used_by_customers = $db->query("SELECT COUNT(*) FROM customers c WHERE odp_id > 0 AND tenant_id = $tenant_id")->fetchColumn() ?: 0;
 $used_by_child_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets a WHERE parent_id > 0 $scope_where")->fetchColumn() ?: 0;
 $total_ports_used = $used_by_customers + $used_by_child_assets;
 $idle_ports = $total_ports_capacity - $total_ports_used;
@@ -480,12 +487,13 @@ $utilization_pct = ($total_ports_capacity > 0) ? ($total_ports_used / $total_por
                 $assets = $db->query("SELECT a.*, p.name as parent_name FROM infrastructure_assets a LEFT JOIN infrastructure_assets p ON a.parent_id = p.id WHERE 1=1 $scope_where ORDER BY a.type DESC, a.name ASC")->fetchAll();
                 foreach($assets as $a):
                     // Hitung Penggunaan Port Fisik (Hanya 1 Tingkat / Direct)
-                    $usage_cust = $db->prepare("SELECT COUNT(*) FROM customers WHERE odp_id = ?");
-                    $usage_cust->execute([$a['id']]);
+                    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+                    $usage_cust = $db->prepare("SELECT COUNT(*) FROM customers WHERE odp_id = ? AND tenant_id = ?");
+                    $usage_cust->execute([$a['id'], $tenant_id]);
                     $direct_cust_count = $usage_cust->fetchColumn();
                     
-                    $usage_child = $db->prepare("SELECT COUNT(*) FROM infrastructure_assets WHERE parent_id = ?");
-                    $usage_child->execute([$a['id']]);
+                    $usage_child = $db->prepare("SELECT COUNT(*) FROM infrastructure_assets WHERE parent_id = ? AND tenant_id = ?");
+                    $usage_child->execute([$a['id'], $tenant_id]);
                     $direct_asset_count = $usage_child->fetchColumn();
                     
                     $current_usage = $direct_cust_count + $direct_asset_count;
@@ -546,8 +554,9 @@ $utilization_pct = ($total_ports_capacity > 0) ? ($total_ports_used / $total_por
 
         if (!function_exists('getCustomersForAsset')) {
             function getCustomersForAsset($db, $assetId) {
-                $stmt = $db->prepare("SELECT name, customer_code FROM customers WHERE odp_id = ? ORDER BY name ASC");
-                $stmt->execute([$assetId]);
+                $tenant_id = $_SESSION['tenant_id'] ?? 1;
+                $stmt = $db->prepare("SELECT name, customer_code FROM customers WHERE odp_id = ? AND tenant_id = ? ORDER BY name ASC");
+                $stmt->execute([$assetId, $tenant_id]);
                 return $stmt->fetchAll();
             }
         }
@@ -725,7 +734,8 @@ $utilization_pct = ($total_ports_capacity > 0) ? ($total_ports_used / $total_por
                 <select name="customer_id" id="inv_customer" class="form-control" required>
                     <option value="">-- Pilih Mitra / Pelanggan --</option>
                     <?php
-                        $partners = $db->query("SELECT id, name FROM customers WHERE type = 'partner' ORDER BY name ASC")->fetchAll();
+                        $tenant_id = $_SESSION['tenant_id'] ?? 1;
+                        $partners = $db->query("SELECT id, name FROM customers WHERE type = 'partner' AND tenant_id = $tenant_id ORDER BY name ASC")->fetchAll();
                         foreach($partners as $p) echo "<option value='" . intval($p['id']) . "'>" . htmlspecialchars($p['name']) . "</option>";
                     ?>
                 </select>

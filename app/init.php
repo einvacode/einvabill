@@ -108,8 +108,35 @@ if ($current_db_ver < APP_DB_VERSION) {
     run_database_setup($db);
 }
 
-// Fetch Core Settings
-$site_settings = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
+// --- MULTI-TENANCY CONFIGURATION ---
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
+$tenant_id = $_SESSION['tenant_id'] ?? 1;
+
+// Fetch Tenant Settings
+$site_settings = null;
+try {
+    $stmt_settings = $db->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+    $stmt_settings->execute([$tenant_id]);
+    $site_settings = $stmt_settings->fetch();
+} catch (Exception $e) {
+    // Column might not exist yet during migration
+}
+
+// Auto-initialize settings for new tenants if they don't exist
+if (!$site_settings) {
+    try {
+        $db->prepare("INSERT INTO settings (company_name, company_tagline, company_address, tenant_id) VALUES (?, ?, ?, ?)")
+           ->execute(['Perusahaan Baru', 'Tagline Anda', 'Alamat Anda', $tenant_id]);
+        $site_settings = $db->query("SELECT * FROM settings WHERE tenant_id = $tenant_id")->fetch();
+    } catch (Exception $e) {
+        // Fallback to global if tenant insert fails or column missing
+        try {
+            $site_settings = $db->query("SELECT * FROM settings WHERE id = 1")->fetch();
+        } catch (Exception $e2) {
+             $site_settings = ['company_name' => 'ISP']; // Absolute fallback
+        }
+    }
+}
 
 // Application debug flag (toggle from settings table if available)
 define('APP_DEBUG', !empty($site_settings['debug_mode']));

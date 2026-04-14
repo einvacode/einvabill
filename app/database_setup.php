@@ -193,29 +193,19 @@ function run_database_setup($db) {
 
     // 2. Incremental Schema Migrations (Safety check for existing databases)
     $cols_to_add = [
-        'customers' => ['router_id' => 'INTEGER DEFAULT 0', 'pppoe_name' => 'TEXT', 'customer_code' => 'TEXT', 'area' => 'TEXT', 'created_by' => 'INTEGER DEFAULT 0', 'lat' => 'TEXT', 'lng' => 'TEXT', 'odp_id' => 'INTEGER DEFAULT 0', 'odp_port' => 'INTEGER', 'path_json' => 'TEXT', 'collector_id' => 'INTEGER DEFAULT 0'],
-        'users' => ['area' => 'TEXT', 'customer_id' => 'INTEGER', 'brand_name' => 'TEXT', 'brand_logo' => 'TEXT', 'brand_qris' => 'TEXT', 'brand_address' => 'TEXT', 'brand_contact' => 'TEXT', 'brand_bank' => 'TEXT', 'brand_rekening' => 'TEXT', 'wa_template' => 'TEXT', 'wa_template_paid' => 'TEXT'],
-        'invoices' => ['discount' => 'REAL DEFAULT 0'],
-        'routers' => ['created_by' => 'INTEGER DEFAULT 0'],
-        'packages' => ['created_by' => 'INTEGER DEFAULT 0'],
-        'expenses' => ['created_by' => 'INTEGER DEFAULT 0'],
-        'infrastructure_assets' => ['price' => 'REAL DEFAULT 0', 'status' => "TEXT DEFAULT 'Deployed'", 'installation_date' => 'TEXT', 'created_by' => 'INTEGER DEFAULT 0', 'path_json' => 'TEXT'],
-        'invoices' => [
-            'discount' => 'REAL DEFAULT 0',
-            'issued_by_id' => 'INTEGER DEFAULT 0',
-            'issued_by_name' => "TEXT",
-            'billing_address' => 'TEXT',
-            'billing_phone' => 'TEXT',
-            'billing_email' => 'TEXT'
-        ],
-        // Mark invoices created via quick standalone invoice tool
-        'invoices_meta' => [
-            'created_via' => "TEXT"
-        ],
-        'invoices_extra' => [
-            'payment_instructions' => 'TEXT'
-        ],
-        'settings' => ['license_key' => 'TEXT', 'license_expiry' => 'TEXT', 'license_type' => 'TEXT', 'installation_date' => 'TEXT', 'site_url' => "TEXT DEFAULT 'http://fibernodeinternet.com'", 'acs_url' => 'TEXT', 'acs_user' => 'TEXT', 'acs_pass' => 'TEXT', 'landing_hero_title' => 'TEXT', 'landing_hero_text' => 'TEXT', 'landing_about_us' => 'TEXT', 'db_version' => 'INTEGER DEFAULT 0']
+        'customers' => ['router_id' => 'INTEGER DEFAULT 0', 'pppoe_name' => 'TEXT', 'customer_code' => 'TEXT', 'area' => 'TEXT', 'created_by' => 'INTEGER DEFAULT 0', 'lat' => 'TEXT', 'lng' => 'TEXT', 'odp_id' => 'INTEGER DEFAULT 0', 'odp_port' => 'INTEGER', 'path_json' => 'TEXT', 'collector_id' => 'INTEGER DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1'],
+        'users' => ['area' => 'TEXT', 'customer_id' => 'INTEGER', 'brand_name' => 'TEXT', 'brand_logo' => 'TEXT', 'brand_qris' => 'TEXT', 'brand_address' => 'TEXT', 'brand_contact' => 'TEXT', 'brand_bank' => 'TEXT', 'brand_rekening' => 'TEXT', 'wa_template' => 'TEXT', 'wa_template_paid' => 'TEXT', 'tenant_id' => 'INTEGER DEFAULT 1'],
+        'invoices' => ['discount' => 'REAL DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1'],
+        'routers' => ['created_by' => 'INTEGER DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1'],
+        'packages' => ['created_by' => 'INTEGER DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1'],
+        'expenses' => ['created_by' => 'INTEGER DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1'],
+        'infrastructure_assets' => ['price' => 'REAL DEFAULT 0', 'status' => "TEXT DEFAULT 'Deployed'", 'installation_date' => 'TEXT', 'created_by' => 'INTEGER DEFAULT 0', 'path_json' => 'TEXT', 'tenant_id' => 'INTEGER DEFAULT 1'],
+        'payments' => ['tenant_id' => 'INTEGER DEFAULT 1'],
+        'areas' => ['tenant_id' => 'INTEGER DEFAULT 1'],
+        'banners' => ['tenant_id' => 'INTEGER DEFAULT 1'],
+        'landing_packages' => ['tenant_id' => 'INTEGER DEFAULT 1'],
+        'landing_logos' => ['tenant_id' => 'INTEGER DEFAULT 1'],
+        'settings' => ['license_key' => 'TEXT', 'license_expiry' => 'TEXT', 'license_type' => 'TEXT', 'installation_date' => 'TEXT', 'site_url' => "TEXT DEFAULT 'http://fibernodeinternet.com'", 'acs_url' => 'TEXT', 'acs_user' => 'TEXT', 'acs_pass' => 'TEXT', 'landing_hero_title' => 'TEXT', 'landing_hero_text' => 'TEXT', 'landing_about_us' => 'TEXT', 'db_version' => 'INTEGER DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1']
     ];
 
     foreach ($cols_to_add as $table => $cols) {
@@ -237,7 +227,12 @@ function run_database_setup($db) {
     $db->exec("CREATE INDEX IF NOT EXISTS idx_customers_created_by ON customers(created_by)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_customers_collector ON customers(collector_id)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date)");
-    $db->exec("CREATE INDEX IF NOT EXISTS idx_invoices_created ON invoices(created_at)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_customers_tenant ON customers(tenant_id)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_invoices_tenant ON invoices(tenant_id)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_payments_tenant ON payments(tenant_id)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_expenses_tenant ON expenses(tenant_id)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_settings_tenant ON settings(tenant_id)");
 
     // 4. Seed Data
     // Default Settings

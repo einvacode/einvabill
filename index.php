@@ -37,6 +37,13 @@ if ($page === 'login_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['user_role'] = $user['role'];
             $_SESSION['user_name'] = $user['name'];
             
+            // Multi-Tenancy: Define tenant_id
+            if ($user['role'] === 'admin') {
+                $_SESSION['tenant_id'] = $user['id'];
+            } else {
+                $_SESSION['tenant_id'] = $user['tenant_id'] ?: 1; // Fallback to 1 for safety
+            }
+            
             session_write_close();
             header("Location: index.php");
             exit;

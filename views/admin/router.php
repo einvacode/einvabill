@@ -13,15 +13,16 @@ if ($action === 'save_router' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'];
     $password = $_POST['password'];
     
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
     if ($id) {
         // Ownership Check
-        $check = $db->query("SELECT created_by FROM routers WHERE id = $id")->fetchColumn();
-        $is_owner = ($u_role === 'admin') ? ($check == $u_id || $check == 0 || $check === NULL) : ($check == $u_id);
+        $check = $db->query("SELECT tenant_id FROM routers WHERE id = $id")->fetchColumn();
+        $is_owner = ($u_role === 'admin') ? ($check == $tenant_id) : (/* restricted */ false);
         if ($is_owner) {
-            $db->prepare("UPDATE routers SET name=?, host=?, port=?, username=?, password=? WHERE id=?")->execute([$name, $host, $port, $username, $password, $id]);
+            $db->prepare("UPDATE routers SET name=?, host=?, port=?, username=?, password=? WHERE id=? AND tenant_id=?")->execute([$name, $host, $port, $username, $password, $id, $tenant_id]);
         }
     } else {
-        $db->prepare("INSERT INTO routers (name, host, port, username, password, created_by) VALUES (?, ?, ?, ?, ?, ?)")->execute([$name, $host, $port, $username, $password, $u_id]);
+        $db->prepare("INSERT INTO routers (name, host, port, username, password, created_by, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?)")->execute([$name, $host, $port, $username, $password, $u_id, $tenant_id]);
     }
     header("Location: index.php?page=admin_router");
     exit;
@@ -29,18 +30,20 @@ if ($action === 'save_router' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 if ($action === 'delete_router') {
     $id = intval($_GET['id']);
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
     // Ownership Check
-    $check = $db->query("SELECT created_by FROM routers WHERE id = $id")->fetchColumn();
-    $is_owner = ($u_role === 'admin') ? ($check == $u_id || $check == 0 || $check === NULL) : ($check == $u_id);
+    $check = $db->query("SELECT tenant_id FROM routers WHERE id = $id")->fetchColumn();
+    $is_owner = ($u_role === 'admin') ? ($check == $tenant_id) : (/* restricted */ false);
     if ($is_owner) {
-        $db->exec("DELETE FROM routers WHERE id=$id");
+        $db->exec("DELETE FROM routers WHERE id=$id AND tenant_id=$tenant_id");
     }
     header("Location: index.php?page=admin_router");
     exit;
 }
 
 // Scoping Logic
-$scope_where = ($u_role === 'admin') ? "WHERE (created_by = $u_id OR created_by = 0 OR created_by IS NULL)" : "WHERE (created_by = $u_id)";
+$tenant_id = $_SESSION['tenant_id'] ?? 1;
+$scope_where = "WHERE tenant_id = $tenant_id";
 
 // Helper formatting inside view
 if (!function_exists('formatBytes')) {
@@ -164,15 +167,16 @@ function editRouter(rt) {
 <?php if ($action === 'view'): ?>
 <?php
     $id = intval($_GET['id']);
-    $router = $db->query("SELECT * FROM routers WHERE id = $id")->fetch();
-
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $router = $db->query("SELECT * FROM routers WHERE id = $id AND tenant_id = $tenant_id")->fetch();
+    
     if (!$router) {
         header("Location: index.php?page=admin_router");
         exit;
     }
 
-    // Ownership Check
-    $is_owner = ($u_role === 'admin') ? ($router['created_by'] == $u_id || $router['created_by'] == 0 || $router['created_by'] === NULL) : ($router['created_by'] == $u_id);
+    // Ownership Check (already implicitly limited by SELECT)
+    $is_owner = ($router) ? true : false;
     if (!$is_owner) {
         header("Location: index.php?page=admin_router");
         exit;

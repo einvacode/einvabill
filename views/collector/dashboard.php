@@ -633,9 +633,12 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
 <!-- Command Center Header -->
 <div class="glass-panel" style="padding:20px; border-radius:24px; margin-bottom:20px; border:1px solid var(--glass-border); background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.08), rgba(var(--primary-rgb), 0.02));">
     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; flex-wrap:wrap; gap:15px;">
-        <div>
-            <h2 style="margin:0; font-size:22px; font-weight:900; color:var(--text-primary); letter-spacing:-0.5px;">Command Center</h2>
-            <p style="margin:3px 0 0; font-size:12px; color:var(--text-secondary);"><?= $_SESSION['user_name'] ?> • <span style="color:var(--primary); font-weight:700;">Collector Hub</span></p>
+        <div style="display:flex; align-items:center; gap:12px;">
+            <button class="burger-btn show-mobile" onclick="toggleSidebar()" style="background:none; border:none; color:var(--text-primary); font-size:22px; cursor:pointer; padding:0; margin-top:-5px;"><i class="fas fa-bars"></i></button>
+            <div>
+                <h2 style="margin:0; font-size:22px; font-weight:900; color:var(--text-primary); letter-spacing:-0.5px;">Command Center</h2>
+                <p style="margin:3px 0 0; font-size:12px; color:var(--text-secondary);"><?= $_SESSION['user_name'] ?> • <span style="color:var(--primary); font-weight:700;">Collector Hub</span></p>
+            </div>
         </div>
                <div style="display:flex; align-items:center; gap:10px; flex:1; max-width:500px;">
             <form method="GET" style="display:flex; flex:1; position:relative;">

@@ -8,7 +8,8 @@ if ($page === 'admin_license_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $MASTER_KEY = getenv('MASTER_KEY') ?: "EB-ULTIMATE-2026";
     
     if ($key === $MASTER_KEY) {
-        $db->prepare("UPDATE settings SET license_key = ?, license_type = 'unlimited' WHERE id = 1")->execute([$key]);
+        $tenant_id = $_SESSION['tenant_id'] ?? 1;
+        $db->prepare("UPDATE settings SET license_key = ?, license_type = 'unlimited' WHERE tenant_id = ?")->execute([$key, $tenant_id]);
         header("Location: index.php?page=admin_license&msg=activated");
         exit;
     } elseif (preg_match('/^EXP-(\d{8})-([A-Z0-9]{4})$/', $key, $matches)) {
@@ -21,7 +22,8 @@ if ($page === 'admin_license_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $expected_crc = strtoupper(substr(md5($date_str . $salt), 0, 4));
         
         if ($crc_str === $expected_crc) {
-            $db->prepare("UPDATE settings SET license_key = ?, license_expiry = ?, license_type = 'annual' WHERE id = 1")->execute([$key, $formatted_date]);
+            $tenant_id = $_SESSION['tenant_id'] ?? 1;
+            $db->prepare("UPDATE settings SET license_key = ?, license_expiry = ?, license_type = 'annual' WHERE tenant_id = ?")->execute([$key, $formatted_date, $tenant_id]);
             header("Location: index.php?page=admin_license&msg=activated");
             exit;
         } else {

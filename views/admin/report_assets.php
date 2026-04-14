@@ -3,17 +3,20 @@
 $is_print = ($_GET['action'] ?? '') === 'print';
 
 // Fetch Asset Stats
-$stats_raw = $db->query("SELECT type, COUNT(*) as count FROM infrastructure_assets GROUP BY type")->fetchAll(PDO::FETCH_KEY_PAIR);
-$total_investment = $db->query("SELECT SUM(price) FROM infrastructure_assets")->fetchColumn() ?: 0;
+$tenant_id = $_SESSION['tenant_id'] ?? 1;
+$stats_raw = $db->query("SELECT type, COUNT(*) as count FROM infrastructure_assets WHERE tenant_id = $tenant_id GROUP BY type")->fetchAll(PDO::FETCH_KEY_PAIR);
+$total_investment = $db->query("SELECT SUM(price) FROM infrastructure_assets WHERE tenant_id = $tenant_id")->fetchColumn() ?: 0;
 
 // Total Port Usage Calculation (Direct approach as requested previously)
-$total_ports_capacity = $db->query("SELECT SUM(total_ports) FROM infrastructure_assets")->fetchColumn() ?: 0;
-$used_by_customers = $db->query("SELECT COUNT(*) FROM customers WHERE odp_id > 0")->fetchColumn() ?: 0;
-$used_by_child_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets WHERE parent_id > 0")->fetchColumn() ?: 0;
+$total_ports_capacity = $db->query("SELECT SUM(total_ports) FROM infrastructure_assets WHERE tenant_id = $tenant_id")->fetchColumn() ?: 0;
+$used_by_customers = $db->query("SELECT COUNT(*) FROM customers WHERE odp_id > 0 AND tenant_id = $tenant_id")->fetchColumn() ?: 0;
+$used_by_child_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets WHERE parent_id > 0 AND tenant_id = $tenant_id")->fetchColumn() ?: 0;
 $total_ports_used = $used_by_customers + $used_by_child_assets;
 
 if ($is_print) {
-    $company = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $company = $db->query("SELECT * FROM settings WHERE tenant_id = $tenant_id")->fetch();
+    if (!$company) $company = ['company_name' => 'ISP', 'company_address' => '', 'company_contact' => '', 'company_logo' => ''];
     $logo_src = '';
     if(!empty($company['company_logo'])) {
         $logo_src = preg_match('/^http/', $company['company_logo']) ? $company['company_logo'] : '/' . str_replace(' ', '%20', $company['company_logo']);
@@ -88,14 +91,15 @@ if ($is_print) {
             </thead>
             <tbody>
                 <?php
-                $assets = $db->query("SELECT a.*, p.name as parent_name FROM infrastructure_assets a LEFT JOIN infrastructure_assets p ON a.parent_id = p.id ORDER BY a.type DESC, a.name ASC")->fetchAll();
+                $tenant_id = $_SESSION['tenant_id'] ?? 1;
+                $assets = $db->query("SELECT a.*, p.name as parent_name FROM infrastructure_assets a LEFT JOIN infrastructure_assets p ON a.parent_id = p.id WHERE a.tenant_id = $tenant_id ORDER BY a.type DESC, a.name ASC")->fetchAll();
                 foreach($assets as $a):
-                    $usage_c = $db->prepare("SELECT COUNT(*) FROM customers WHERE odp_id = ?");
-                    $usage_c->execute([$a['id']]);
+                    $usage_c = $db->prepare("SELECT COUNT(*) FROM customers WHERE odp_id = ? AND tenant_id = ?");
+                    $usage_c->execute([$a['id'], $tenant_id]);
                     $c_count = $usage_c->fetchColumn();
                     
-                    $usage_a = $db->prepare("SELECT COUNT(*) FROM infrastructure_assets WHERE parent_id = ?");
-                    $usage_a->execute([$a['id']]);
+                    $usage_a = $db->prepare("SELECT COUNT(*) FROM infrastructure_assets WHERE parent_id = ? AND tenant_id = ?");
+                    $usage_a->execute([$a['id'], $tenant_id]);
                     $a_count = $usage_a->fetchColumn();
                     
                     $total_u = $c_count + $a_count;
@@ -173,14 +177,15 @@ if ($is_print) {
             </thead>
             <tbody>
                 <?php
-                $assets = $db->query("SELECT a.*, p.name as parent_name FROM infrastructure_assets a LEFT JOIN infrastructure_assets p ON a.parent_id = p.id ORDER BY a.type DESC, a.name ASC")->fetchAll();
+                $tenant_id = $_SESSION['tenant_id'] ?? 1;
+                $assets = $db->query("SELECT a.*, p.name as parent_name FROM infrastructure_assets a LEFT JOIN infrastructure_assets p ON a.parent_id = p.id WHERE a.tenant_id = $tenant_id ORDER BY a.type DESC, a.name ASC")->fetchAll();
                 foreach($assets as $a):
-                    $usage_c = $db->prepare("SELECT COUNT(*) FROM customers WHERE odp_id = ?");
-                    $usage_c->execute([$a['id']]);
+                    $usage_c = $db->prepare("SELECT COUNT(*) FROM customers WHERE odp_id = ? AND tenant_id = ?");
+                    $usage_c->execute([$a['id'], $tenant_id]);
                     $c_count = $usage_c->fetchColumn();
                     
-                    $usage_a = $db->prepare("SELECT COUNT(*) FROM infrastructure_assets WHERE parent_id = ?");
-                    $usage_a->execute([$a['id']]);
+                    $usage_a = $db->prepare("SELECT COUNT(*) FROM infrastructure_assets WHERE parent_id = ? AND tenant_id = ?");
+                    $usage_a->execute([$a['id'], $tenant_id]);
                     $a_count = $usage_a->fetchColumn();
                     
                     $total_u = $c_count + $a_count;

@@ -1,27 +1,30 @@
 <?php
 // Fetch all packages for dropdowns
-$packages_all = $db->query("SELECT * FROM packages ORDER BY name ASC")->fetchAll();
+$tenant_id = $_SESSION['tenant_id'] ?? 1;
+$packages_all = $db->query("SELECT * FROM packages WHERE tenant_id = $tenant_id ORDER BY name ASC")->fetchAll();
 
 // Handle Quick Actions from Map
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quick_action'])) {
     if ($_POST['quick_action'] === 'add_asset') {
-        $stmt = $db->prepare("INSERT INTO infrastructure_assets (name, type, parent_id, lat, lng, total_ports, price, status, installation_date) VALUES (?, ?, ?, ?, ?, ?, ?, 'Deployed', ?)");
-        $stmt->execute([$_POST['name'], $_POST['type'], $_POST['parent_id'] ?? 0, $_POST['lat'], $_POST['lng'], $_POST['ports'], $_POST['price'], date('Y-m-d')]);
+        $tenant_id = $_SESSION['tenant_id'] ?? 1;
+        $stmt = $db->prepare("INSERT INTO infrastructure_assets (name, type, parent_id, lat, lng, total_ports, price, status, installation_date, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?, 'Deployed', ?, ?)");
+        $stmt->execute([$_POST['name'], $_POST['type'], $_POST['parent_id'] ?? 0, $_POST['lat'], $_POST['lng'], $_POST['ports'], $_POST['price'], date('Y-m-d'), $tenant_id]);
         header("Location: index.php?page=admin_map&success=asset"); exit;
     }
-    if ($_POST['quick_action'] === 'add_customer') {
         if (!empty($_POST['customer_id']) && $_POST['customer_id'] > 0) {
+            $tenant_id = $_SESSION['tenant_id'] ?? 1;
             // Update Existing Customer Location
-            $stmt = $db->prepare("UPDATE customers SET lat = ?, lng = ?, odp_id = ? WHERE id = ?");
-            $stmt->execute([$_POST['lat'], $_POST['lng'], $_POST['odp_id'] ?? 0, $_POST['customer_id']]);
+            $stmt = $db->prepare("UPDATE customers SET lat = ?, lng = ?, odp_id = ? WHERE id = ? AND tenant_id = ?");
+            $stmt->execute([$_POST['lat'], $_POST['lng'], $_POST['odp_id'] ?? 0, $_POST['customer_id'], $tenant_id]);
             header("Location: index.php?page=admin_map&success=customer_update"); exit;
         } else {
             // Fetch Package Details
             $pkg_name = 'Manual';
             $pkg_fee = 0;
             if(!empty($_POST['package_id'])) {
-                $pkg = $db->prepare("SELECT name, fee FROM packages WHERE id = ?");
-                $pkg->execute([$_POST['package_id']]);
+                $tenant_id = $_SESSION['tenant_id'] ?? 1;
+                $pkg = $db->prepare("SELECT name, fee FROM packages WHERE id = ? AND tenant_id = ?");
+                $pkg->execute([$_POST['package_id'], $tenant_id]);
                 $p = $pkg->fetch();
                 if($p) {
                     $pkg_name = $p['name'];
@@ -31,24 +34,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quick_action'])) {
             $billing_date = intval($_POST['billing_date'] ?? 1);
             $type = $_POST['type'] ?? 'customer';
 
-            $stmt = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, package_name, monthly_fee, registration_date, billing_date, lat, lng, type, odp_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$customer_code, $_POST['name'], $_POST['address'], $_POST['contact'], $pkg_name, $pkg_fee, date('Y-m-d'), $billing_date, $_POST['lat'], $_POST['lng'], $type, $_POST['odp_id'] ?? 0]);
+            $tenant_id = $_SESSION['tenant_id'] ?? 1;
+            $stmt = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, package_name, monthly_fee, registration_date, billing_date, lat, lng, type, odp_id, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$customer_code, $_POST['name'], $_POST['address'], $_POST['contact'], $pkg_name, $pkg_fee, date('Y-m-d'), $billing_date, $_POST['lat'], $_POST['lng'], $type, $_POST['odp_id'] ?? 0, $tenant_id]);
             $new_cust_id = $db->lastInsertId();
 
             // SELECTIVE AUTOMATIC PAYMENT ON REGISTRATION
             if($pkg_fee > 0) {
+                $tenant_id = $_SESSION['tenant_id'] ?? 1;
                 if($type === 'customer') {
                     // RUMAHAN: Tagihan Terbit di Hari Registrasi (Belum Lunas - perlu konfirmasi manual)
-                    $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Belum Lunas', ?)");
+                    $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at, tenant_id) VALUES (?, ?, ?, 'Belum Lunas', ?, ?)");
                     $reg_date = date('Y-m-d');
-                    $stmt_inv->execute([$new_cust_id, $pkg_fee, $reg_date, date('Y-m-d H:i:s')]);
+                    $stmt_inv->execute([$new_cust_id, $pkg_fee, $reg_date, date('Y-m-d H:i:s'), $tenant_id]);
                 } else {
                     // MITRA: Belum Lunas (Bulan Depan)
                     $next_month = date('Y-m', strtotime("+1 month"));
                     $bday = str_pad($billing_date, 2, '0', STR_PAD_LEFT);
                     $due_date = "{$next_month}-{$bday}";
-                    $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at) VALUES (?, ?, ?, 'Belum Lunas', ?)");
-                    $stmt_inv->execute([$new_cust_id, $pkg_fee, $due_date, date('Y-m-d H:i:s')]);
+                    $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at, tenant_id) VALUES (?, ?, ?, 'Belum Lunas', ?, ?)");
+                    $stmt_inv->execute([$new_cust_id, $pkg_fee, $due_date, date('Y-m-d H:i:s'), $tenant_id]);
                 }
             }
 
@@ -61,13 +66,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quick_action'])) {
         $id = $_POST['id'];
         $lat = $_POST['lat'];
         $lng = $_POST['lng'];
+        $tenant_id = $_SESSION['tenant_id'] ?? 1;
         
         if ($_POST['quick_action'] === 'update_pos_asset') {
-            $stmt = $db->prepare("UPDATE infrastructure_assets SET lat = ?, lng = ? WHERE id = ?");
+            $stmt = $db->prepare("UPDATE infrastructure_assets SET lat = ?, lng = ? WHERE id = ? AND tenant_id = ?");
         } else {
-            $stmt = $db->prepare("UPDATE customers SET lat = ?, lng = ? WHERE id = ?");
+            $stmt = $db->prepare("UPDATE customers SET lat = ?, lng = ? WHERE id = ? AND tenant_id = ?");
         }
-        $stmt->execute([$lat, $lng, $id]);
+        $stmt->execute([$lat, $lng, $id, $tenant_id]);
         
         echo json_encode(['status' => 'success']);
         exit;
@@ -76,13 +82,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quick_action'])) {
     if ($_POST['quick_action'] === 'change_uplink_asset' || $_POST['quick_action'] === 'change_uplink_customer') {
         $id = $_POST['id'];
         $new_parent = $_POST['new_parent'];
+        $tenant_id = $_SESSION['tenant_id'] ?? 1;
         
         if ($_POST['quick_action'] === 'change_uplink_asset') {
-            $stmt = $db->prepare("UPDATE infrastructure_assets SET parent_id = ? WHERE id = ?");
+            $stmt = $db->prepare("UPDATE infrastructure_assets SET parent_id = ? WHERE id = ? AND tenant_id = ?");
         } else {
-            $stmt = $db->prepare("UPDATE customers SET odp_id = ? WHERE id = ?");
+            $stmt = $db->prepare("UPDATE customers SET odp_id = ? WHERE id = ? AND tenant_id = ?");
         }
-        $stmt->execute([$new_parent, $id]);
+        $stmt->execute([$new_parent, $id, $tenant_id]);
         
         echo json_encode(['status' => 'success']);
         exit;
@@ -92,13 +99,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quick_action'])) {
     if ($_POST['quick_action'] === 'update_path_asset' || $_POST['quick_action'] === 'update_path_customer') {
         $id = $_POST['id'];
         $path = $_POST['path_json']; // Expecting JSON string of [lat,lng] arrays
+        $tenant_id = $_SESSION['tenant_id'] ?? 1;
         
         if ($_POST['quick_action'] === 'update_path_asset') {
-            $stmt = $db->prepare("UPDATE infrastructure_assets SET path_json = ? WHERE id = ?");
+            $stmt = $db->prepare("UPDATE infrastructure_assets SET path_json = ? WHERE id = ? AND tenant_id = ?");
         } else {
-            $stmt = $db->prepare("UPDATE customers SET path_json = ? WHERE id = ?");
+            $stmt = $db->prepare("UPDATE customers SET path_json = ? WHERE id = ? AND tenant_id = ?");
         }
-        $stmt->execute([$path, $id]);
+        $stmt->execute([$path, $id, $tenant_id]);
         
         echo json_encode(['status' => 'success']);
         exit;
@@ -106,12 +114,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['quick_action'])) {
 }
 
 // Pre-generate Uplink Options for JS Popups
-$asset_opts_raw = $db->query("SELECT id, name, type FROM infrastructure_assets WHERE type != 'ONU' ORDER BY type DESC, name ASC")->fetchAll();
+$tenant_id = $_SESSION['tenant_id'] ?? 1;
+$asset_opts_raw = $db->query("SELECT id, name, type FROM infrastructure_assets WHERE type != 'ONU' AND tenant_id = $tenant_id ORDER BY type DESC, name ASC")->fetchAll();
 $asset_options_html = "<option value='0'>Pusat / Root</option>";
 foreach($asset_opts_raw as $opt) {
     $asset_options_html .= "<option value='{$opt['id']}'>{$opt['type']}: {$opt['name']}</option>";
 }
-$odp_opts_raw = $db->query("SELECT id, name, type FROM infrastructure_assets WHERE type NOT IN ('ONU') ORDER BY type DESC, name ASC")->fetchAll();
+$odp_opts_raw = $db->query("SELECT id, name, type FROM infrastructure_assets WHERE type NOT IN ('ONU') AND tenant_id = $tenant_id ORDER BY type DESC, name ASC")->fetchAll();
 $odp_options_html = "<option value='0'>Tanpa Jalur Terpusat</option>";
 foreach($odp_opts_raw as $opt) {
     if($opt['type'] == 'ODP') {
@@ -122,9 +131,10 @@ foreach($odp_opts_raw as $opt) {
 }
 $u_id_map = $_SESSION['user_id'];
 $u_role_map = $_SESSION['user_role'] ?? 'admin';
-$scope_where_map = ($u_role_map === 'admin') ? " AND (created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL) " : " AND (created_by = $u_id_map) ";
+$tenant_id_map = $_SESSION['tenant_id'] ?? 1;
+$scope_where_map = " AND tenant_id = $tenant_id_map ";
 
-$assets = $db->query("SELECT * FROM infrastructure_assets WHERE lat IS NOT NULL AND lat != ''")->fetchAll();
+$assets = $db->query("SELECT * FROM infrastructure_assets WHERE lat IS NOT NULL AND lat != '' AND tenant_id = $tenant_id_map")->fetchAll();
 $customers = $db->query("SELECT * FROM customers WHERE lat IS NOT NULL AND lat != '' $scope_where_map")->fetchAll();
 
 // Fetch Registered Customers without Coordinates for the Picker
@@ -205,7 +215,8 @@ $existing_customers = $db->query("SELECT id, name, customer_code FROM customers 
                         <select name="parent_id" class="form-control">
                             <option value="0">Pusat / Root</option>
                             <?php 
-                            $parents = $db->query("SELECT id, name, type FROM infrastructure_assets WHERE type != 'ODP' ORDER BY type DESC, name ASC")->fetchAll();
+                            $tenant_id = $_SESSION['tenant_id'] ?? 1;
+                            $parents = $db->query("SELECT id, name, type FROM infrastructure_assets WHERE type != 'ODP' AND tenant_id = $tenant_id ORDER BY type DESC, name ASC")->fetchAll();
                             foreach($parents as $p) echo "<option value='{$p['id']}'>{$p['type']}: {$p['name']}</option>";
                             ?>
                         </select>
@@ -283,7 +294,8 @@ $existing_customers = $db->query("SELECT id, name, customer_code FROM customers 
                     <select name="odp_id" class="form-control">
                         <option value="0">-- Pilih Sumber --</option>
                         <?php 
-                        $opts = $db->query("SELECT id, name, type FROM infrastructure_assets ORDER BY type DESC, name ASC")->fetchAll();
+                        $tenant_id = $_SESSION['tenant_id'] ?? 1;
+                        $opts = $db->query("SELECT id, name, type FROM infrastructure_assets WHERE tenant_id = $tenant_id ORDER BY type DESC, name ASC")->fetchAll();
                         foreach($opts as $o) echo "<option value='{$o['id']}'>{$o['type']}: {$o['name']}</option>";
                         ?>
                     </select>

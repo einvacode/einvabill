@@ -351,9 +351,10 @@ $base_url = !empty($settings['site_url']) ? $settings['site_url'] : get_app_url(
 
 // Partner Branding & Custom Templates
 $u_id = $_SESSION['user_id'];
-$p_stg = $db->query("SELECT wa_template_paid, brand_bank, brand_rekening FROM users WHERE id = $u_id")->fetch();
+$p_stg = $db->query("SELECT wa_template, wa_template_paid, brand_bank, brand_rekening FROM users WHERE id = $u_id")->fetch();
 
-$wa_tpl_paid = (!empty($p_stg['wa_template_paid'])) ? $p_stg['wa_template_paid'] : ($settings['wa_template_paid'] ?: "Halo {nama}, terima kasih. Pembayaran {tagihan} sebesar {nominal} sudah LUNAS. Terima kasih telah berlangganan.");
+$wa_tpl_unpaid = (!empty($p_stg['wa_template'])) ? $p_stg['wa_template'] : ($settings['wa_template'] ?? "Halo {nama}, tagihan {tagihan} jatuh tempo pada {jatuh_tempo}.");
+$wa_tpl_paid = (!empty($p_stg['wa_template_paid'])) ? $p_stg['wa_template_paid'] : ($settings['wa_template_paid'] ?: "Halo {nama}, terima kasih. Pembayaran {tagihan} sudah LUNAS.");
 $rekening_receipt = (!empty($p_stg['brand_bank'])) ? $p_stg['brand_bank'] . " " . $p_stg['brand_rekening'] : $settings['bank_account'];
 
 // Success Modal Data for Partner Dashboard
@@ -371,31 +372,21 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
         $tunggakan_display = 'Rp ' . number_format($tunggakan_val, 0, ',', '.');
         $status_wa = ($tunggakan_val > 0) ? "LUNAS SEBAGIAN (Masih ada sisa tunggakan)" : "LUNAS SEPENUHNYA";
         
-        $portal_link = $base_url . "/index.php?page=customer_portal&code=" . ($success_data['customer_code'] ?: $success_data['id']);
-        // Replace Tags
-        $receipt_msg = str_replace(
-            [
-                '{nama}', '{id_cust}', '{tagihan}', '{paket}', '{bulan}', 
-                '{tunggakan}', '{waktu_bayar}', '{admin}', '{link_tagihan}', '{rekening}', '{nominal}', '{status_pembayaran}', '{sisa_tunggakan}', '{total_bayar}'
-            ], 
-            [
-                $success_data['name'], 
-                ($success_data['customer_code'] ?: $success_data['id']), 
-                'Rp ' . number_format($success_data['monthly_fee'], 0, ',', '.'),
-                ($success_data['package_name'] ?: '-'),
-                $months_paid . ' Bulan',
-                $tunggakan_display,
-                date('d/m/Y H:i') . ' WIB',
-                $_SESSION['user_name'],
-                $portal_link,
-                $rekening_receipt,
-                $total_display,
-                $status_wa,
-                $tunggakan_display,
-                $total_display
-            ], 
-            $wa_tpl_paid
-        );
+        $receipt_msg = parse_wa_template($wa_tpl_paid, [
+            'name' => $success_data['name'],
+            'id_cust' => ($success_data['customer_code'] ?: $success_data['id']),
+            'package' => ($success_data['package_name'] ?: '-'),
+            'period' => $months_paid . ' Bulan',
+            'tagihan' => $success_data['monthly_fee'],
+            'total_paid' => $total_paid,
+            'tunggakan' => $tunggakan_val,
+            'sisa_tunggakan' => $tunggakan_val,
+            'payment_time' => date('d/m/Y H:i') . ' WIB',
+            'admin_name' => $_SESSION['user_name'],
+            'portal_link' => $portal_link,
+            'rekening' => $rekening_receipt,
+            'payment_status' => $status_wa
+        ]);
         $success_data['wa_link'] = "https://api.whatsapp.com/send?phone=$wa_num_paid&text=" . urlencode($receipt_msg);
     }
 }
@@ -456,9 +447,12 @@ $packages_all = $db->query("SELECT * FROM packages WHERE created_by = $user_id O
     <!-- STATIC HEADER: Title & Banners -->
     <div style="flex-shrink:0; margin-bottom:10px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding:0 5px;">
-            <div>
-                <h2 style="margin:0; font-size:20px; font-weight:800; color:var(--text-primary);">Dashboard Mitra</h2>
-                <p style="margin:0; font-size:12px; color:var(--text-secondary);"><?= $_SESSION['user_name'] ?> | ID: <?= $partner_cid ?: 'N/A' ?></p>
+            <div style="display:flex; align-items:center; gap:12px;">
+                <button class="burger-btn show-mobile" onclick="toggleSidebar()" style="background:none; border:none; color:var(--text-primary); font-size:20px; cursor:pointer; padding:0;"><i class="fas fa-bars"></i></button>
+                <div>
+                    <h2 style="margin:0; font-size:20px; font-weight:800; color:var(--text-primary);">Dashboard Mitra</h2>
+                    <p style="margin:0; font-size:12px; color:var(--text-secondary);"><?= $_SESSION['user_name'] ?> | ID: <?= $partner_cid ?: 'N/A' ?></p>
+                </div>
             </div>
             <div class="btn-group">
                 <a href="index.php?page=partner&action=import_view" class="btn btn-sm btn-ghost" style="color:var(--success); border-radius:10px 0 0 10px; border:1px solid var(--glass-border); padding:0 15px;"><i class="fas fa-file-import"></i> <span class="hide-mobile">Import</span></a>
@@ -678,7 +672,27 @@ function switchImportTab(t){
                                                 <?php if($cust['unpaid_count'] > 0): ?>
                                                     <button onclick="PartnerPage.quickPay(<?= $cust['id'] ?>, '<?= addslashes($cust['name']) ?>', <?= $cust['unpaid_count'] ?>, <?= $cust['total_unpaid'] ?>)" class="btn btn-sm" style="background:var(--success); color:white; padding:5px 8px;" title="Bayar Kilat"><i class="fas fa-check"></i></button>
                                                 <?php endif; ?>
-                                                <a href="https://api.whatsapp.com/send?phone=<?= preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $cust['contact'])) ?>" target="_blank" class="btn btn-sm" style="background:#25D366; color:white; padding:5px 8px;"><i class="fab fa-whatsapp"></i></a>
+                                                <?php 
+                                                    $dash_wa_num = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $cust['contact']));
+                                                    $dash_portal_link = $base_url . "/index.php?page=customer_portal&code=" . ($cust['customer_code'] ?: $cust['id']);
+                                                    // If has arrears, send reminder. Otherwise send generic hello.
+                                                    if ($cust['unpaid_count'] > 0) {
+                                                        $dash_wa_msg = parse_wa_template($wa_tpl_unpaid, [
+                                                            'name' => $cust['name'],
+                                                            'id_cust' => ($cust['customer_code'] ?: $cust['id']),
+                                                            'package' => $cust['package_name'],
+                                                            'tagihan' => $cust['monthly_fee'],
+                                                            'total_payment' => $cust['total_unpaid'],
+                                                            'jatuh_tempo' => 'Tgl ' . ($cust['billing_date'] ?: '1'),
+                                                            'rekening' => $rekening_receipt,
+                                                            'portal_link' => $dash_portal_link
+                                                        ]);
+                                                    } else {
+                                                        $dash_wa_msg = "Halo " . $cust['name'] . ", ada yang bisa kami bantu?";
+                                                    }
+                                                    $dash_wa_link = "https://api.whatsapp.com/send?phone=$dash_wa_num&text=" . urlencode($dash_wa_msg);
+                                                ?>
+                                                <a href="<?= $dash_wa_link ?>" target="_blank" class="btn btn-sm" style="background:#25D366; color:white; padding:5px 8px;"><i class="fab fa-whatsapp"></i></a>
                                             </div>
                                         </td>
                                     </tr>

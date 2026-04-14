@@ -177,10 +177,10 @@ $settings = $db->query("SELECT * FROM settings WHERE id = 1")->fetch();
 $base_url = !empty($settings['site_url']) ? $settings['site_url'] : get_app_url();
 $banners = $db->query("SELECT * FROM banners WHERE is_active = 1 AND target_role IN ('all', 'partner') ORDER BY created_at DESC")->fetchAll();
 
-// WA Templates
+// WA Templates (Partner Specific -> Global Fallback)
 $p_stg = $db->query("SELECT wa_template, wa_template_paid, brand_bank, brand_rekening FROM users WHERE id = $user_id")->fetch();
-$wa_tpl_paid = (!empty($p_stg['wa_template_paid'])) ? $p_stg['wa_template_paid'] : ($settings['wa_template_paid'] ?: "Halo {nama}, terima kasih. Pembayaran {tagihan} sebesar {nominal} sudah LUNAS.");
-$wa_tpl_unpaid = (!empty($p_stg['wa_template'])) ? $p_stg['wa_template'] : ($settings['wa_template'] ?? "Halo {nama}, tagihan internet Anda sebesar {tagihan} jatuh tempo pada {jatuh_tempo}.");
+$wa_tpl_paid = (!empty($p_stg['wa_template_paid'])) ? $p_stg['wa_template_paid'] : ($settings['wa_template_paid'] ?: "Halo {nama}, terima kasih. Pembayaran {tagihan} sudah LUNAS.");
+$wa_tpl_unpaid = (!empty($p_stg['wa_template'])) ? $p_stg['wa_template'] : ($settings['wa_template'] ?? "Halo {nama}, tagihan {tagihan} jatuh tempo pada {jatuh_tempo}.");
 $rekening_receipt = (!empty($p_stg['brand_bank'])) ? $p_stg['brand_bank'] . " " . $p_stg['brand_rekening'] : $settings['bank_account'];
 
 // Success Modal Data
@@ -202,17 +202,17 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
         $receipt_msg = parse_wa_template($wa_tpl_paid, [
             'name' => $success_data['name'],
             'id_cust' => ($success_data['customer_code'] ?: $success_data['id']),
-            'tagihan' => $success_data['monthly_fee'],
             'package' => ($success_data['package_name'] ?: '-'),
             'period' => $months_paid . ' Bulan',
-            'tunggakan' => $tunggakan_val,
+            'tagihan' => $success_data['monthly_fee'],
+            'total_paid' => $total_paid,
+            'tunggakan' => $tunggakan_val, // previous arrears
+            'sisa_tunggakan' => $tunggakan_val, // remaining after this payment
             'payment_time' => date('d/m/Y H:i') . ' WIB',
             'admin_name' => $_SESSION['user_name'],
             'portal_link' => $portal_link,
             'rekening' => $rekening_receipt,
-            'total_paid' => $total_paid,
-            'payment_status' => $status_wa,
-            'sisa_tunggakan' => $tunggakan_val
+            'payment_status' => $status_wa
         ]);
         $success_data['wa_link'] = "https://api.whatsapp.com/send?phone=$wa_num_paid&text=" . urlencode($receipt_msg);
     }
@@ -426,16 +426,17 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
                         $mon_label = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
                         $curr_month = $mon_label[intval(date('m')) - 1] . ' ' . date('Y');
                         $portal_link_rem = $base_url . "/index.php?page=customer_portal&code=" . ($ui['customer_code'] ?: $ui['cust_id']);
-                        $rem_msg = parse_wa_template($wa_tpl, [
+                        $rem_msg = parse_wa_template($wa_tpl_unpaid, [
                             'name' => $ui['name'],
                             'id_cust' => ($ui['customer_code'] ?: $ui['cust_id']),
                             'package' => $ui['package_name'],
                             'period' => $curr_month,
-                            'tagihan' => $ui['total_unpaid'],
+                            'tagihan' => $ui['monthly_fee'], // Current period fee
+                            'tunggakan' => ($ui['total_unpaid'] - $ui['monthly_fee']), // Arrears
+                            'total_payment' => $ui['total_unpaid'], // Total to be paid
                             'jatuh_tempo' => date('d/m/Y', strtotime($ui['oldest_due_date'])),
-                            'rekening' => trim($settings['bank_account']),
-                            'portal_link' => $portal_link_rem,
-                            'total_payment' => $ui['total_unpaid']
+                            'rekening' => $rekening_receipt,
+                            'portal_link' => $portal_link_rem
                         ]);
                         $rem_wa_link = "https://api.whatsapp.com/send?phone=$wa_num&text=" . urlencode($rem_msg);
                     ?>
@@ -517,7 +518,25 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
                     <a href="index.php?page=invoice_print&id=<?= $rp['id'] ?>&format=thermal" target="_blank" style="display:flex; align-items:center; justify-content:center; gap:8px; background:rgba(var(--primary-rgb), 0.1); border:1px solid rgba(var(--primary-rgb), 0.2); color:var(--primary); text-decoration:none; padding:10px; border-radius:12px; font-weight:800; font-size:12px; transition:all 0.2s;">
                         <i class="fas fa-print"></i> CETAK KWITANSI
                     </a>
-                    <button onclick="sendWAGateway('<?= $wa_num ?>', 'Terima kasih atas pembayarannya.', 'https://api.whatsapp.com/send?phone=<?= $wa_num ?>&text=Terima+kasih+atas+pembayarannya.', this)" 
+                    <?php
+                        $hist_portal_link = $base_url . "/index.php?page=customer_portal&code=" . ($rp['customer_code'] ?: $rp['customer_id']);
+                        $hist_receipt_msg = parse_wa_template($wa_tpl_paid, [
+                            'name' => $rp['name'],
+                            'id_cust' => ($rp['customer_code'] ?: $rp['customer_id']),
+                            'package' => ($rp['package_name'] ?: '-'),
+                            'tagihan' => $rp['amount'],
+                            'total_paid' => $rp['paid_amount'],
+                            'tunggakan' => $rp['total_tunggakan'],
+                            'sisa_tunggakan' => $rp['total_tunggakan'],
+                            'payment_time' => date('d/m/Y H:i', strtotime($rp['payment_date'])) . ' WIB',
+                            'admin_name' => ($rp['admin_name'] ?: 'System'),
+                            'portal_link' => $hist_portal_link,
+                            'rekening' => $rekening_receipt,
+                            'payment_status' => 'LUNAS'
+                        ]);
+                        $hist_wa_link = "https://api.whatsapp.com/send?phone=$wa_num&text=" . urlencode($hist_receipt_msg);
+                    ?>
+                    <button onclick="sendWAGateway('<?= $wa_num ?>', <?= htmlspecialchars(json_encode($hist_receipt_msg)) ?>, '<?= $hist_wa_link ?>', this)" 
                         style="display:flex; align-items:center; justify-content:center; background:rgba(37, 211, 102, 0.1); border:1px solid rgba(37, 211, 102, 0.2); color:#25D366; text-decoration:none; border-radius:12px; height:42px; width:42px; cursor:pointer; transition:all 0.2s;">
                         <i class="fab fa-whatsapp" style="font-size:18px;"></i>
                     </button>

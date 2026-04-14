@@ -18,15 +18,16 @@ if ($router_id == 0) {
 $u_id = $_SESSION['user_id'];
 $u_role = $_SESSION['user_role'];
 
-$router = $db->query("SELECT * FROM routers WHERE id = $router_id")->fetch();
+$tenant_id = $_SESSION['tenant_id'] ?? 1;
+$router = $db->query("SELECT * FROM routers WHERE id = $router_id AND tenant_id = $tenant_id")->fetch();
 
 if(!$router) {
-    echo json_encode(['error' => 'Router not found in database']);
+    echo json_encode(['error' => 'Router not found or permission denied']);
     exit;
 }
 
-// Ownership Check
-$is_owner = ($u_role === 'admin') ? ($router['created_by'] == 0 || $router['created_by'] === NULL) : ($router['created_by'] == $u_id);
+// Ownership Check (already implicitly limited by SELECT tenant_id)
+$is_owner = ($router) ? true : false;
 if (!$is_owner) {
     echo json_encode(['error' => 'Permission denied']);
     exit;

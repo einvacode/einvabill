@@ -32,12 +32,13 @@ if ($action === 'save' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
     if ($id) {
-        $db->prepare("UPDATE banners SET title=?, content=?, image_path=?, target_role=?, is_active=? WHERE id=?")
-           ->execute([$title, $content, $image_path, $target_role, $is_active, $id]);
+        $db->prepare("UPDATE banners SET title=?, content=?, image_path=?, target_role=?, is_active=? WHERE id=? AND tenant_id=?")
+           ->execute([$title, $content, $image_path, $target_role, $is_active, $id, $tenant_id]);
     } else {
-        $db->prepare("INSERT INTO banners (title, content, image_path, target_role, is_active) VALUES (?, ?, ?, ?, ?)")
-           ->execute([$title, $content, $image_path, $target_role, $is_active]);
+        $db->prepare("INSERT INTO banners (title, content, image_path, target_role, is_active, tenant_id) VALUES (?, ?, ?, ?, ?, ?)")
+           ->execute([$title, $content, $image_path, $target_role, $is_active, $tenant_id]);
     }
     header("Location: index.php?page=admin_banners&msg=success");
     exit;
@@ -45,26 +46,30 @@ if ($action === 'save' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 if ($action === 'delete') {
     $id = $_GET['id'];
-    $db->prepare("DELETE FROM banners WHERE id=?")->execute([$id]);
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $db->prepare("DELETE FROM banners WHERE id=? AND tenant_id=?")->execute([$id, $tenant_id]);
     header("Location: index.php?page=admin_banners&msg=deleted");
     exit;
 }
 
 if ($action === 'toggle') {
     $id = $_GET['id'];
-    $db->prepare("UPDATE banners SET is_active = NOT is_active WHERE id=?")->execute([$id]);
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $db->prepare("UPDATE banners SET is_active = NOT is_active WHERE id=? AND tenant_id=?")->execute([$id, $tenant_id]);
     header("Location: index.php?page=admin_banners");
     exit;
 }
 
 // Fetch Banners
-$banners = $db->query("SELECT * FROM banners ORDER BY created_at DESC")->fetchAll();
+$tenant_id = $_SESSION['tenant_id'] ?? 1;
+$banners = $db->query("SELECT * FROM banners WHERE tenant_id = $tenant_id ORDER BY created_at DESC")->fetchAll();
 
 $editing = null;
 if ($action === 'edit' && isset($_GET['id'])) {
     $id = $_GET['id'];
-    $stmt = $db->prepare("SELECT * FROM banners WHERE id=?");
-    $stmt->execute([$id]);
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $stmt = $db->prepare("SELECT * FROM banners WHERE id=? AND tenant_id=?");
+    $stmt->execute([$id, $tenant_id]);
     $editing = $stmt->fetch();
 }
 ?>

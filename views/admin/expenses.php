@@ -10,8 +10,9 @@ if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $description = $_POST['description'];
     $date = $_POST['date'];
     
-    $stmt = $db->prepare("INSERT INTO expenses (category, amount, description, date, created_by) VALUES (?, ?, ?, ?, ?)");
-    $stmt->execute([$category, $amount, $description, $date, $u_id]);
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $stmt = $db->prepare("INSERT INTO expenses (category, amount, description, date, created_by, tenant_id) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$category, $amount, $description, $date, $u_id, $tenant_id]);
     header("Location: index.php?page=admin_expenses&msg=added");
     exit;
 }
@@ -24,13 +25,14 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $description = $_POST['description'];
     $date = $_POST['date'];
     
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
     // Ownership Check
-    $check = $db->query("SELECT created_by FROM expenses WHERE id = $id")->fetchColumn();
-    $is_owner = ($u_role === 'admin') ? true : ($check == $u_id);
+    $check = $db->query("SELECT tenant_id FROM expenses WHERE id = $id")->fetchColumn();
+    $is_owner = ($u_role === 'admin') ? ($check == $tenant_id) : (/* restricted */ false);
     
     if ($is_owner) {
-        $stmt = $db->prepare("UPDATE expenses SET category=?, amount=?, description=?, date=? WHERE id=?");
-        $stmt->execute([$category, $amount, $description, $date, $id]);
+        $stmt = $db->prepare("UPDATE expenses SET category=?, amount=?, description=?, date=? WHERE id=? AND tenant_id=?");
+        $stmt->execute([$category, $amount, $description, $date, $id, $tenant_id]);
         header("Location: index.php?page=admin_expenses&msg=updated");
     } else {
         header("Location: index.php?page=admin_expenses&msg=forbidden");
@@ -42,12 +44,13 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 if ($action === 'delete') {
     $id = $_GET['id'];
     
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
     // Ownership Check
-    $check = $db->query("SELECT created_by FROM expenses WHERE id = $id")->fetchColumn();
-    $is_owner = ($u_role === 'admin') ? true : ($check == $u_id);
+    $check = $db->query("SELECT tenant_id FROM expenses WHERE id = $id")->fetchColumn();
+    $is_owner = ($u_role === 'admin') ? ($check == $tenant_id) : (/* restricted */ false);
     
     if ($is_owner) {
-        $db->prepare("DELETE FROM expenses WHERE id = ?")->execute([$id]);
+        $db->prepare("DELETE FROM expenses WHERE id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
         header("Location: index.php?page=admin_expenses&msg=deleted");
     } else {
         header("Location: index.php?page=admin_expenses&msg=forbidden");
@@ -56,7 +59,8 @@ if ($action === 'delete') {
 }
 
 // Scoping Logic
-$scope_where = ($u_role === 'admin') ? "WHERE 1=1" : "WHERE (created_by = $u_id)";
+$tenant_id = $_SESSION['tenant_id'] ?? 1;
+$scope_where = "WHERE tenant_id = $tenant_id";
 
 // Fetch Stats for current month
 $start_month = date('Y-m-01');

@@ -10,8 +10,13 @@ $u_role = $_SESSION['user_role'] ?? 'admin';
 $partner_user_ids = $db->query("SELECT id FROM users WHERE role = 'partner'")->fetchAll(PDO::FETCH_COLUMN);
 $partner_list_str = !empty($partner_user_ids) ? implode(',', $partner_user_ids) : '0';
 
+$tenant_id = $_SESSION['tenant_id'] ?? 1;
 $scope_where = ($u_role === 'admin') ? " AND (created_by NOT IN ($partner_list_str) OR created_by = 0 OR created_by IS NULL) " : " AND (created_by = $u_id) ";
 $c_scope = ($u_role === 'admin') ? " AND (c.created_by NOT IN ($partner_list_str) OR c.created_by = 0 OR c.created_by IS NULL) " : " AND (c.created_by = $u_id) ";
+
+// Add Tenant Scoping to base filters
+$scope_where = " AND tenant_id = $tenant_id " . $scope_where;
+$c_scope = " AND i.tenant_id = $tenant_id " . $c_scope;
 
 // --- CONSOLIDATED STATS ENGINE ---
 function get_dashboard_stats($db, $scope_where, $c_scope) {
@@ -55,7 +60,8 @@ function get_dashboard_stats($db, $scope_where, $c_scope) {
     ")->fetch();
     
         // 4. External Invoices (created via external integrations or quick temp customers)
-        $external_stats = $db->query("SELECT COUNT(*) as ext_count, COALESCE(SUM(i.amount - i.discount),0) as ext_total FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE (i.created_via = 'external' OR c.type IN ('note','temp')) $c_scope")->fetch();
+        $tenant_id = $_SESSION['tenant_id'] ?? 1;
+        $external_stats = $db->query("SELECT COUNT(*) as ext_count, COALESCE(SUM(i.amount - i.discount),0) as ext_total FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.tenant_id = $tenant_id AND (i.created_via = 'external' OR c.type IN ('note','temp')) $c_scope")->fetch();
 
     return array_merge($cust_stats, $unpaid_stats, $cash_stats, $external_stats ?? []);
 }
@@ -115,20 +121,23 @@ $total_received_part = $s['koleksi_m'] ?: 0;
 $cash_monthly_cust = $s['cash_r'] ?: 0;
 $cash_monthly_part = $s['cash_m'] ?: 0;
 
-$settings = $db->query("SELECT company_name, wa_template_paid, site_url FROM settings WHERE id = 1")->fetch();
+$tenant_id = $_SESSION['tenant_id'] ?? 1;
+$settings = $db->query("SELECT company_name, wa_template_paid, site_url FROM settings WHERE tenant_id = $tenant_id")->fetch();
+if (!$settings) $settings = ['company_name' => 'ISP', 'wa_template_paid' => '', 'site_url' => ''];
 $base_url = !empty($settings['site_url']) ? $settings['site_url'] : get_app_url();
 
 // Success Modal for Admin Dashboard
 $success_data = null;
 if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'])) {
     $sid = intval($_GET['cust_id']);
-    $success_data = $db->query("SELECT id, name, contact, customer_code, package_name, monthly_fee FROM customers WHERE id = $sid")->fetch();
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $success_data = $db->query("SELECT id, name, contact, customer_code, package_name, monthly_fee FROM customers WHERE id = $sid AND tenant_id = $tenant_id")->fetch();
     if ($success_data) {
         $wa_num_paid = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $success_data['contact'] ?? ''));
         $months_paid = intval($_GET['months'] ?? 1);
         $total_paid = floatval($_GET['total'] ?? 0);
         $total_display = 'Rp ' . number_format($total_paid, 0, ',', '.');
-        $tunggakan_val = $db->query("SELECT COALESCE(SUM(amount - discount), 0) FROM invoices WHERE customer_id = $sid AND status = 'Belum Lunas'")->fetchColumn() ?: 0;
+        $tunggakan_val = $db->query("SELECT COALESCE(SUM(amount - discount), 0) FROM invoices WHERE customer_id = $sid AND status = 'Belum Lunas' AND tenant_id = $tenant_id")->fetchColumn() ?: 0;
         $tunggakan_display = 'Rp ' . number_format($tunggakan_val, 0, ',', '.');
         $portal_link = $base_url . "/index.php?page=customer_portal&code=" . ($success_data['customer_code'] ?: $success_data['id']);
         $receipt_msg = str_replace(

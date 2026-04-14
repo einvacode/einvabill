@@ -7,17 +7,18 @@ $u_role = $_SESSION['user_role'] ?? 'admin';
 if ($action === 'delete_tx' && ($u_role === 'admin')) {
     $tx = $_GET['tx'] ?? '';
     $del_id = intval($_GET['id'] ?? 0);
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
     if ($del_id > 0) {
         try {
             if ($tx === 'payment') {
-                $db->prepare("DELETE FROM payments WHERE id = ?")->execute([$del_id]);
+                $db->prepare("DELETE FROM payments WHERE id = ? AND tenant_id = ?")->execute([$del_id, $tenant_id]);
             } elseif ($tx === 'invoice') {
                 // cascade delete: payments, items, invoice
-                $db->prepare("DELETE FROM payments WHERE invoice_id = ?")->execute([$del_id]);
+                $db->prepare("DELETE FROM payments WHERE invoice_id = ? AND tenant_id = ?")->execute([$del_id, $tenant_id]);
                 $db->prepare("DELETE FROM invoice_items WHERE invoice_id = ?")->execute([$del_id]);
-                $db->prepare("DELETE FROM invoices WHERE id = ?")->execute([$del_id]);
+                $db->prepare("DELETE FROM invoices WHERE id = ? AND tenant_id = ?")->execute([$del_id, $tenant_id]);
             } elseif ($tx === 'expense') {
-                $db->prepare("DELETE FROM expenses WHERE id = ?")->execute([$del_id]);
+                $db->prepare("DELETE FROM expenses WHERE id = ? AND tenant_id = ?")->execute([$del_id, $tenant_id]);
             }
             header('Location: index.php?page=admin_reports&msg=deleted');
             exit;
@@ -33,15 +34,14 @@ $filter_year = $_GET['year'] ?? date('Y');
 $filter_user = $_GET['user_id'] ?? 'all';
 
 // Scoping Logic
-$scope_inner = ($u_role === 'admin') ? "(c.created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR c.created_by = 0 OR c.created_by IS NULL)" : "(c.created_by = $u_id)";
+$tenant_id = $_SESSION['tenant_id'] ?? 1;
+$scope_inner = " c.tenant_id = $tenant_id ";
 $scope_where = " AND " . $scope_inner . " ";
+
 // For admin include external/temporary invoices; for partners/collectors only their own customers
-if ($u_role === 'admin') {
-    $scope_with_external = " AND (" . $scope_inner . " OR (i.created_via IS NOT NULL AND i.created_via <> '') OR i.created_via IN ('external','quick') OR c.type IN ('note','temp')) ";
-} else {
-    $scope_with_external = " AND " . $scope_inner;
-}
-$exp_scope = ($u_role === 'admin') ? " AND (created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR created_by = 0 OR created_by IS NULL) " : " AND (created_by = $u_id) ";
+$scope_with_external = " AND i.tenant_id = $tenant_id ";
+
+$exp_scope = " AND tenant_id = $tenant_id ";
 
 // Date range filters
 $date_from = $_GET['date_from'] ?? date('Y-m-01');
@@ -54,7 +54,8 @@ $sql_date_to = $date_to . ' 23:59:59';
 // Available users for filter (Admin only)
 $available_users = [];
 if ($u_role === 'admin') {
-    $available_users = $db->query("SELECT id, name, role FROM users WHERE role IN ('admin', 'collector') ORDER BY name ASC")->fetchAll();
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $available_users = $db->query("SELECT id, name, role FROM users WHERE role IN ('admin', 'collector') AND tenant_id = $tenant_id ORDER BY name ASC")->fetchAll();
 }
 
 // Metrics Queries
@@ -286,7 +287,9 @@ if ($action === 'export') {
 }
 
 if ($action === 'print') {
-    $company = $db->query("SELECT * FROM settings WHERE id=1")->fetch();
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $company = $db->query("SELECT * FROM settings WHERE tenant_id = $tenant_id")->fetch();
+    if (!$company) $company = ['company_name' => 'ISP', 'company_address' => '', 'company_contact' => '', 'company_logo' => ''];
     $total_income = $lunas_tepat + $tunggakan_dibayar;
     
     // Expenses for the printed period (scoped: non-admin only sees own expenses)
@@ -743,7 +746,9 @@ if ($action === 'print') {
                         <?= strtoupper($row['status']) ?>
                     </span>
                     <?php if($row['status'] == 'Lunas'): 
-                        $settings = $db->query("SELECT wa_template_paid, company_name, site_url FROM settings WHERE id=1")->fetch();
+                        $tenant_id = $_SESSION['tenant_id'] ?? 1;
+                        $settings = $db->query("SELECT wa_template_paid, company_name, site_url FROM settings WHERE tenant_id = $tenant_id")->fetch();
+                        if (!$settings) $settings = ['wa_template_paid' => '', 'company_name' => 'ISP', 'site_url' => ''];
                         $wa_num = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $row['contact']));
                         $cust_id_display = $row['customer_code'] ?: str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT);
                         $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . $cust_id_display;

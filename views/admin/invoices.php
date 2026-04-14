@@ -4,8 +4,10 @@ $u_id = $_SESSION['user_id'];
 $u_role = $_SESSION['user_role'] ?? 'guest';
 
 // Fetch current user templates and global settings
-$me = $db->query("SELECT wa_template, wa_template_paid FROM users WHERE id = $u_id")->fetch();
-$settings = $db->query("SELECT company_name, wa_template, wa_template_paid, site_url, bank_account FROM settings WHERE id=1")->fetch();
+$tenant_id = $_SESSION['tenant_id'] ?? 1;
+$me = $db->query("SELECT wa_template, wa_template_paid FROM users WHERE id = $u_id AND tenant_id = $tenant_id")->fetch();
+$settings = $db->query("SELECT company_name, wa_template, wa_template_paid, site_url, bank_account FROM settings WHERE tenant_id = $tenant_id")->fetch();
+if (!$settings) $settings = ['company_name' => 'ISP', 'site_url' => get_app_url()];
 
 $base_url = !empty($settings['site_url']) ? $settings['site_url'] : get_app_url();
 $wa_tpl = !empty($me['wa_template']) ? $me['wa_template'] : ($settings['wa_template'] ?? "Halo {nama}, tagihan internet Anda {tagihan} ({bulan}) jatuh tempo pada {jatuh_tempo}. Hubungi admin untuk info pembayaran.");
@@ -15,13 +17,14 @@ $wa_tpl_paid = !empty($me['wa_template_paid']) ? $me['wa_template_paid'] : ($set
 $success_data = null;
 if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'])) {
     $sid = intval($_GET['cust_id']);
-    $success_data = $db->query("SELECT id, name, contact, customer_code, package_name, monthly_fee FROM customers WHERE id = $sid")->fetch();
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $success_data = $db->query("SELECT id, name, contact, customer_code, package_name, monthly_fee FROM customers WHERE id = $sid AND tenant_id = $tenant_id")->fetch();
     if ($success_data) {
         $wa_num_paid = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $success_data['contact']));
         $months_paid = intval($_GET['months'] ?? 1);
         $total_paid = floatval($_GET['total'] ?? 0);
         $total_display = 'Rp ' . number_format($total_paid, 0, ',', '.');
-        $tunggakan_val = $db->query("SELECT COALESCE(SUM(amount - discount), 0) FROM invoices WHERE customer_id = $sid AND status = 'Belum Lunas'")->fetchColumn() ?: 0;
+        $tunggakan_val = $db->query("SELECT COALESCE(SUM(amount - discount), 0) FROM invoices WHERE customer_id = $sid AND status = 'Belum Lunas' AND tenant_id = $tenant_id")->fetchColumn() ?: 0;
         $tunggakan_display = 'Rp ' . number_format($tunggakan_val, 0, ',', '.');
         $status_wa = ($tunggakan_val > 0) ? "LUNAS SEBAGIAN" : "LUNAS SEPENUHNYA";
         
@@ -69,23 +72,14 @@ if ($action === 'create_itemized' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $total_amount = array_sum($amounts);
     $created_at = date('Y-m-d H:i:s');
     
-    // Ownership Check
-    $u_id = $_SESSION['user_id'];
-    $u_role = $_SESSION['user_role'];
-    $check = $db->query("SELECT created_by FROM customers WHERE id = $customer_id")->fetchColumn();
-    $is_owner = false;
-    if ($u_role === 'admin') {
-        if ($check == $u_id || $check == 0 || $check === NULL) $is_owner = true;
-    } elseif ($u_role === 'partner') {
-        if ($check == $u_id) $is_owner = true;
-    } elseif ($u_role === 'collector') {
-        $cid_check = isset($customer_id) ? $customer_id : ($db->query("SELECT customer_id FROM invoices WHERE id = " . intval($id ?? 0))->fetchColumn() ?: 0);
-        if ($db->query("SELECT collector_id FROM customers WHERE id = $cid_check")->fetchColumn() == $u_id) $is_owner = true;
-    }
-    if (!$is_owner) { header("Location: index.php?page=admin_invoices&msg=forbidden"); exit; }
+    // Multi-Tenancy Ownership Check
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $check_c = $db->query("SELECT id FROM customers WHERE id = $customer_id AND tenant_id = $tenant_id")->fetchColumn();
+    if (!$check_c) { header("Location: index.php?page=admin_invoices&msg=forbidden"); exit; }
     
-    $stmt = $db->prepare("INSERT INTO invoices (customer_id, amount, discount, due_date, created_at) VALUES (?, ?, ?, ?, ?)");
-    $stmt->execute([$customer_id, $total_amount, $discount, $due_date, $created_at]);
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $stmt = $db->prepare("INSERT INTO invoices (customer_id, amount, discount, due_date, created_at, tenant_id) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$customer_id, $total_amount, $discount, $due_date, $created_at, $tenant_id]);
     $invoice_id = $db->lastInsertId();
     
     $stmt_item = $db->prepare("INSERT INTO invoice_items (invoice_id, description, amount) VALUES (?, ?, ?)");
@@ -112,30 +106,22 @@ if ($action === 'create_auto' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $due_date = $next_month_period . '-' . $b_day;
     $created_at = date('Y-m-d H:i:s');
     
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
     // [NEW] Duplicate Check: Prevent creating another invoice for the same customer and month
-    $existing = $db->query("SELECT id FROM invoices WHERE customer_id = $customer_id AND strftime('%Y-%m', due_date) = " . $db->quote($next_month_period))->fetchColumn();
+    $existing = $db->query("SELECT id FROM invoices WHERE customer_id = $customer_id AND strftime('%Y-%m', due_date) = " . $db->quote($next_month_period) . " AND tenant_id = $tenant_id")->fetchColumn();
     if ($existing) {
         header("Location: index.php?page=admin_customers&action=details&id=$customer_id&msg=invoice_exists");
         exit;
     }
 
-    // Ownership Check
-    $u_id = $_SESSION['user_id'];
-    $u_role = $_SESSION['user_role'];
-    $check = $db->query("SELECT created_by FROM customers WHERE id = $customer_id")->fetchColumn();
-    $is_owner = false;
-    if ($u_role === 'admin') {
-        if ($check == $u_id || $check == 0 || $check === NULL) $is_owner = true;
-    } elseif ($u_role === 'partner') {
-        if ($check == $u_id) $is_owner = true;
-    } elseif ($u_role === 'collector') {
-        $cid_check = isset($customer_id) ? $customer_id : ($db->query("SELECT customer_id FROM invoices WHERE id = " . intval($id ?? 0))->fetchColumn() ?: 0);
-        if ($db->query("SELECT collector_id FROM customers WHERE id = $cid_check")->fetchColumn() == $u_id) $is_owner = true;
-    }
-    if (!$is_owner) { header("Location: index.php?page=admin_invoices&msg=forbidden"); exit; }
+    // Multi-Tenancy Ownership Check
+    // $tenant_id already defined above
+    $check_c = $db->query("SELECT id FROM customers WHERE id = $customer_id AND tenant_id = $tenant_id")->fetchColumn();
+    if (!$check_c) { header("Location: index.php?page=admin_invoices&msg=forbidden"); exit; }
     
-    $stmt = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, created_at, status, discount) VALUES (?, ?, ?, ?, 'Belum Lunas', 0)");
-    $stmt->execute([$customer_id, $amount, $due_date, $created_at]);
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $stmt = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, created_at, status, discount, tenant_id) VALUES (?, ?, ?, ?, 'Belum Lunas', 0, ?)");
+    $stmt->execute([$customer_id, $amount, $due_date, $created_at, $tenant_id]);
     
     header("Location: index.php?page=admin_customers&action=details&id=$customer_id&msg=invoice_created");
     exit;
@@ -143,28 +129,18 @@ if ($action === 'create_auto' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 if ($action === 'delete') {
     $id = intval($_GET['id']);
-    $invoice = $db->query("SELECT * FROM invoices WHERE id = $id")->fetch();
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $invoice = $db->query("SELECT * FROM invoices WHERE id = $id AND tenant_id = $tenant_id")->fetch();
     
     if ($invoice) {
         $u_id = $_SESSION['user_id'];
         $u_role = $_SESSION['user_role'];
         
-        // Ownership Check
-        $is_owner = ($u_role === 'admin') ? true : false;
-        if (!$is_owner) {
-            $check = $db->query("SELECT created_by FROM customers WHERE id = " . intval($invoice['customer_id']))->fetchColumn();
-            if ($u_role === 'partner' && $check == $u_id) $is_owner = true;
-            elseif ($u_role === 'collector') {
-                $cid_check = isset($customer_id) ? $customer_id : ($db->query("SELECT customer_id FROM invoices WHERE id = " . intval($id ?? 0))->fetchColumn() ?: 0);
-                if ($db->query("SELECT collector_id FROM customers WHERE id = $cid_check")->fetchColumn() == $u_id) $is_owner = true;
-            }
-        }
-        
-        if ($is_owner) {
+        if ($invoice) {
             // Cascade delete manual
-            $db->exec("DELETE FROM payments WHERE invoice_id = $id");
+            $db->exec("DELETE FROM payments WHERE invoice_id = $id AND tenant_id = $tenant_id");
             $db->exec("DELETE FROM invoice_items WHERE invoice_id = $id");
-            $db->exec("DELETE FROM invoices WHERE id = $id");
+            $db->exec("DELETE FROM invoices WHERE id = $id AND tenant_id = $tenant_id");
         }
     }
     $ref = $_GET['ref'] ?? '';
@@ -185,19 +161,14 @@ if ($action === 'edit_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $u_id = $_SESSION['user_id'];
     $u_role = $_SESSION['user_role'];
     
-    // Ownership Check
-    $is_owner = ($u_role === 'admin') ? true : false;
-    if (!$is_owner) {
-        $check = $db->query("SELECT created_by FROM customers WHERE id = (SELECT customer_id FROM invoices WHERE id = $id)")->fetchColumn();
-        if ($u_role === 'partner' && $check == $u_id) $is_owner = true;
-        elseif ($u_role === 'collector') {
-            $cid_check = $db->query("SELECT customer_id FROM invoices WHERE id = $id")->fetchColumn() ?: 0;
-            if ($db->query("SELECT collector_id FROM customers WHERE id = $cid_check")->fetchColumn() == $u_id) $is_owner = true;
-        }
-    }
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $check_i = $db->query("SELECT id FROM invoices WHERE id = $id AND tenant_id = $tenant_id")->fetchColumn();
     
-    if ($is_owner) {
-        $db->prepare("UPDATE invoices SET amount=?, discount=?, due_date=? WHERE id=?")->execute([$amount, $discount, $due_date, $id]);
+    if ($check_i) {
+        $db->prepare("UPDATE invoices SET amount=?, discount=?, due_date=? WHERE id=? AND tenant_id=?")->execute([$amount, $discount, $due_date, $id, $tenant_id]);
+    } else {
+        header("Location: index.php?page=admin_invoices&msg=forbidden");
+        exit;
     }
     
     $ref = $_POST['ref'] ?? '';
@@ -216,25 +187,18 @@ if ($action === 'mark_paid') {
     $inv = $stmt->fetch();
     
     if ($inv) {
-        // Authorization Check
-        $u_id = $_SESSION['user_id'];
-        $u_role = $_SESSION['user_role'];
-        $cust = $db->query("SELECT created_by, collector_id FROM customers WHERE id = (SELECT customer_id FROM invoices WHERE id = $id)")->fetch();
-        $is_auth = ($u_role === 'admin') ? true : false;
-        if (!$is_auth) {
-            if ($u_role === 'partner' && $cust['created_by'] == $u_id) $is_auth = true;
-            if ($cust['created_by'] == $u_id) $is_auth = true;
-        } elseif ($u_role === 'collector') {
-            if ($cust['collector_id'] == $u_id) $is_auth = true;
-        }
-        if (!$is_auth) { header("Location: index.php?page=admin_invoices&msg=forbidden"); exit; }
+        // Multi-Tenancy Authorization Check
+        $tenant_id = $_SESSION['tenant_id'] ?? 1;
+        $check_i = $db->query("SELECT id FROM invoices WHERE id = $id AND tenant_id = $tenant_id")->fetchColumn();
+        if (!$check_i) { header("Location: index.php?page=admin_invoices&msg=forbidden"); exit; }
 
         $net_amount = $inv['amount'] - ($inv['discount'] ?? 0);
         $receiver_id = $_SESSION['user_id'];
         $payment_date = date('Y-m-d H:i:s');
         
-        $db->prepare("UPDATE invoices SET status = 'Lunas' WHERE id = ?")->execute([$id]);
-        $db->prepare("INSERT INTO payments (invoice_id, amount, received_by, payment_date) VALUES (?, ?, ?, ?)")->execute([$id, $net_amount, $receiver_id, $payment_date]);
+        $tenant_id = $_SESSION['tenant_id'] ?? 1;
+        $db->prepare("UPDATE invoices SET status = 'Lunas' WHERE id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
+        $db->prepare("INSERT INTO payments (invoice_id, amount, received_by, payment_date, tenant_id) VALUES (?, ?, ?, ?, ?)")->execute([$id, $net_amount, $receiver_id, $payment_date, $tenant_id]);
     }
     
     $ref = $_GET['ref'] ?? '';
@@ -253,29 +217,19 @@ if ($action === 'mark_paid_bulk' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $payment_date = date('Y-m-d H:i:s');
     $total_paid_accum = 0;
     
-    // Ownership Check
-    $u_id = $_SESSION['user_id'];
-    $u_role = $_SESSION['user_role'];
-    $check = $db->query("SELECT created_by FROM customers WHERE id = $customer_id")->fetchColumn();
-    $is_owner = false;
-    if ($u_role === 'admin') {
-        if ($check == $u_id || $check == 0 || $check === NULL) $is_owner = true;
-    } elseif ($u_role === 'partner') {
-        if ($check == $u_id) $is_owner = true;
-    } elseif ($u_role === 'collector') {
-        $cid_check = isset($customer_id) ? $customer_id : ($db->query("SELECT customer_id FROM invoices WHERE id = " . intval($id ?? 0))->fetchColumn() ?: 0);
-        if ($db->query("SELECT collector_id FROM customers WHERE id = $cid_check")->fetchColumn() == $u_id) $is_owner = true;
-    }
-    if (!$is_owner) { header("Location: index.php?page=admin_invoices&msg=forbidden"); exit; }
+    // Multi-Tenancy Ownership Check
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $check_c = $db->query("SELECT id FROM customers WHERE id = $customer_id AND tenant_id = $tenant_id")->fetchColumn();
+    if (!$check_c) { header("Location: index.php?page=admin_invoices&msg=forbidden"); exit; }
     
     // Fetch oldest N unpaid invoices
-    $unpaid = $db->query("SELECT id, amount, discount FROM invoices WHERE customer_id = $customer_id AND status = 'Belum Lunas' ORDER BY due_date ASC LIMIT $num_months")->fetchAll();
+    $unpaid = $db->query("SELECT id, amount, discount FROM invoices WHERE customer_id = $customer_id AND status = 'Belum Lunas' AND tenant_id = $tenant_id ORDER BY due_date ASC LIMIT $num_months")->fetchAll();
     
     $last_id = 0;
     foreach ($unpaid as $inv) {
         $net_amount = $inv['amount'] - ($inv['discount'] ?? 0);
-        $db->prepare("UPDATE invoices SET status = 'Lunas' WHERE id = ?")->execute([$inv['id']]);
-        $db->prepare("INSERT INTO payments (invoice_id, amount, received_by, payment_date) VALUES (?, ?, ?, ?)")->execute([$inv['id'], $net_amount, $receiver_id, $payment_date]);
+        $db->prepare("UPDATE invoices SET status = 'Lunas' WHERE id = ? AND tenant_id = ?")->execute([$inv['id'], $tenant_id]);
+        $db->prepare("INSERT INTO payments (invoice_id, amount, received_by, payment_date, tenant_id) VALUES (?, ?, ?, ?, ?)")->execute([$inv['id'], $net_amount, $receiver_id, $payment_date, $tenant_id]);
         $last_id = $inv['id'];
         $total_paid_accum += $net_amount;
     }
@@ -290,25 +244,18 @@ if ($action === 'mark_paid_bulk' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 if ($action === 'unpay') {
     $id = intval($_GET['id']);
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
     // Fetch invoice along with customer ownership info
-    $inv = $db->query("SELECT i.*, c.created_by, c.collector_id FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.id = $id")->fetch();
+    $inv = $db->query("SELECT i.*, c.created_by, c.collector_id FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.id = $id AND i.tenant_id = $tenant_id")->fetch();
     
     if ($inv && $inv['status'] === 'Lunas') {
         $u_id = $_SESSION['user_id'];
         $u_role = $_SESSION['user_role'];
         
-        $can_unpay = false;
-        if ($u_role === 'admin') {
-            $can_unpay = true; // Admin can manage all
-        } elseif ($u_role === 'partner') {
-            if ($inv['created_by'] == $u_id) $can_unpay = true;
-        } elseif ($u_role === 'collector') {
-            if ($inv['collector_id'] == $u_id) $can_unpay = true;
-        }
-        
-        if ($can_unpay) {
-            $db->prepare("DELETE FROM payments WHERE invoice_id = ?")->execute([$id]);
-            $db->prepare("UPDATE invoices SET status = 'Belum Lunas' WHERE id = ?")->execute([$id]);
+        // Multi-Tenancy Check: Since query already filters by tenant_id, we just need to confirm if it belongs to this tenant
+        if ($inv) {
+            $db->prepare("DELETE FROM payments WHERE invoice_id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
+            $db->prepare("UPDATE invoices SET status = 'Belum Lunas' WHERE id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
             $msg_type = "unpay_success";
         } else {
             $msg_type = "forbidden";
@@ -329,31 +276,37 @@ if ($action === 'create_auto_bulk' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $u_role = $_SESSION['user_role'];
     $filter_type = $_POST['filter_type'] ?? 'customer';
     
-    // Scope Filter for Admin vs Collectors/Others
-    if ($u_role === 'admin') {
-        $scope_sql = "";
-    } else {
-        $scope_sql = " AND created_by = $u_id";
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    // Scope Filter: Strict tenant isolation
+    $scope_sql = " AND tenant_id = $tenant_id";
+    if ($u_role !== 'admin') {
+        // Additional collector/partner level filtering if needed, but tenant_id is the primary silo
+        if ($u_role === 'collector') {
+            $scope_sql .= " AND collector_id = $u_id";
+        } elseif ($u_role === 'partner') {
+            $scope_sql .= " AND created_by = $u_id";
+        }
     }
     $type_sql = " AND type = " . $db->quote($filter_type);
 
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
     // Fetch all customers that don't have an invoice for this month
     $customers = $db->query("
         SELECT id, monthly_fee FROM customers 
-        WHERE 1=1 $type_sql $scope_sql
+        WHERE tenant_id = $tenant_id $type_sql $scope_sql
         AND id NOT IN (
             SELECT customer_id FROM invoices 
-            WHERE strftime('%Y-%m', due_date) = " . $db->quote($due_month) . "
-            OR strftime('%Y-%m', created_at) = " . $db->quote($due_month) . "
+            WHERE tenant_id = $tenant_id AND (strftime('%Y-%m', due_date) = " . $db->quote($due_month) . "
+            OR strftime('%Y-%m', created_at) = " . $db->quote($due_month) . ")
         )
     ")->fetchAll();
     
     $count = 0;
     $db->beginTransaction();
     try {
-        $stmt = $db->prepare("INSERT INTO invoices (customer_id, amount, status, due_date, created_at, discount) VALUES (?, ?, 'Belum Lunas', ?, CURRENT_TIMESTAMP, 0)");
+        $stmt = $db->prepare("INSERT INTO invoices (customer_id, amount, status, due_date, created_at, discount, tenant_id) VALUES (?, ?, 'Belum Lunas', ?, CURRENT_TIMESTAMP, 0, ?)");
         foreach ($customers as $c) {
-            $stmt->execute([$c['id'], $c['monthly_fee'], $due_date]);
+            $stmt->execute([$c['id'], $c['monthly_fee'], $due_date, $tenant_id]);
             $count++;
         }
         $db->commit();
@@ -369,16 +322,19 @@ if ($action === 'create_auto_bulk' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 if ($action === 'print') {
     $id = intval($_GET['id']);
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
     $stmt = $db->prepare("
         SELECT i.*, c.name, c.address, c.contact, c.package_name, c.type, c.id as customer_id, c.created_by
         FROM invoices i 
         JOIN customers c ON i.customer_id = c.id 
-        WHERE i.id = ?
+        WHERE i.id = ? AND i.tenant_id = ?
     ");
-    $stmt->execute([$id]);
+    $stmt->execute([$id, $tenant_id]);
     $invoice = $stmt->fetch();
 
-    // Security Cross-Check for Partners
+    // Security Cross-Check: User can only see invoices belonging to their tenant
+    // $invoice already filtered by tenant_id in query above.
+    // Additional role-based checks for partners/collectors:
     if ($_SESSION['user_role'] === 'partner') {
         $u_id = $_SESSION['user_id'];
         $partner_cid = $db->query("SELECT customer_id FROM users WHERE id = $u_id")->fetchColumn() ?: 0;
@@ -453,23 +409,24 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
     // Partner-specific view mode (Tab selection)
     $view_mode = $_GET['view_mode'] ?? 'customers'; 
 
-    // Scoping Logic for Invoices
-    if ($u_role === 'admin') {
-        $scope_where = " AND (c.created_by NOT IN (SELECT id FROM users WHERE role = 'partner') OR c.created_by = 0 OR c.created_by IS NULL) ";
-    } elseif ($u_role === 'collector') {
-        $scope_where = " AND (c.collector_id = $u_id) ";
+    // Scoping Logic for Invoices (Multi-tenancy)
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $scope_where = " AND c.tenant_id = $tenant_id";
+    
+    if ($u_role === 'collector') {
+        $scope_where .= " AND (c.collector_id = $u_id) ";
     } elseif ($u_role === 'partner') {
-        $partner_cid = $db->query("SELECT customer_id FROM users WHERE id = $u_id")->fetchColumn() ?: 0;
+        $partner_cid = $db->query("SELECT customer_id FROM users WHERE id = $u_id AND tenant_id = $tenant_id")->fetchColumn() ?: 0;
         if ($view_mode === 'isp_bill') {
             // View ONLY own B2B bill
-            $scope_where = " AND c.id = $partner_cid";
+            $scope_where .= " AND c.id = $partner_cid";
         } else {
             // View ONLY own customers
-            $scope_where = " AND c.created_by = $u_id";
+            $scope_where .= " AND c.created_by = $u_id";
         }
     }
 
-    $collectors = $db->query("SELECT id, name FROM users WHERE role = 'collector' ORDER BY name ASC")->fetchAll();
+    $collectors = $db->query("SELECT id, name FROM users WHERE role = 'collector' AND tenant_id = $tenant_id ORDER BY name ASC")->fetchAll();
 ?>
 <div class="glass-panel" style="padding: 24px;">
     <!-- Partner Tabs -->
@@ -527,13 +484,14 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
 
     <?php
     // Calculate current view statistics
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
     $stat_q = "SELECT 
         COUNT(*) as total, 
         SUM(CASE WHEN i.status='Lunas' THEN 1 ELSE 0 END) as lunas,
         SUM(CASE WHEN i.status='Belum Lunas' THEN 1 ELSE 0 END) as belum,
         COALESCE(SUM(CASE WHEN i.status='Lunas' THEN (i.amount - i.discount) ELSE 0 END), 0) as amt_lunas,
         COALESCE(SUM(CASE WHEN i.status='Belum Lunas' THEN (i.amount - i.discount) ELSE 0 END), 0) as amt_belum
-        FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE 1=1 $date_where $status_where $collector_where $scope_where $type_where";
+        FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.tenant_id = $tenant_id $date_where $status_where $collector_where $scope_where $type_where";
     $stats = $db->query($stat_q)->fetch();
     ?>
 
@@ -611,15 +569,17 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
         // NEW: Check if we should group by customer (only for Unpaid view)
         $is_grouped = ($filter_status === 'belum');
 
+        $tenant_id = $_SESSION['tenant_id'] ?? 1;
         // Hitung total baris untuk filter ini
         if ($is_grouped) {
-            $count_q = "SELECT COUNT(DISTINCT c.id) FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE 1=1 $date_where $status_where $collector_where $scope_where $type_where";
+            $count_q = "SELECT COUNT(DISTINCT c.id) FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.tenant_id = $tenant_id $date_where $status_where $collector_where $scope_where $type_where";
         } else {
-            $count_q = "SELECT COUNT(*) FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE 1=1 $date_where $status_where $collector_where $scope_where $type_where";
+            $count_q = "SELECT COUNT(*) FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.tenant_id = $tenant_id $date_where $status_where $collector_where $scope_where $type_where";
         }
         $total_rows = $db->query($count_q)->fetchColumn();
         $total_pages = ceil($total_rows / $items_per_page);
 
+        $tenant_id = $_SESSION['tenant_id'] ?? 1;
         if ($is_grouped) {
             $invoices = $db->query("
                 SELECT 
@@ -634,7 +594,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                     0 as item_count
                 FROM invoices i
                 JOIN customers c ON i.customer_id = c.id
-                WHERE 1=1 $date_where $status_where $collector_where $scope_where $type_where
+                WHERE i.tenant_id = $tenant_id $date_where $status_where $collector_where $scope_where $type_where
                 GROUP BY c.id
                 ORDER BY due_date ASC
                 LIMIT $items_per_page OFFSET $offset
@@ -645,7 +605,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                 (SELECT COUNT(*) FROM invoice_items WHERE invoice_id = i.id) as item_count
                 FROM invoices i
                 JOIN customers c ON i.customer_id = c.id
-                WHERE 1=1 $date_where $status_where $collector_where $scope_where $type_where
+                WHERE i.tenant_id = $tenant_id $date_where $status_where $collector_where $scope_where $type_where
                 ORDER BY i.id DESC
                 LIMIT $items_per_page OFFSET $offset
             ")->fetchAll();

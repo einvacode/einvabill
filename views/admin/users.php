@@ -9,8 +9,19 @@ if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $area = $_POST['area'] ?? null;
     $customer_id = !empty($_POST['customer_id']) ? $_POST['customer_id'] : null;
 
-    $stmt = $db->prepare("INSERT INTO users (username, password, role, name, area, customer_id) VALUES (?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$username, $password, $role, $name, $area, $customer_id]);
+    // Super Admin (ID 1) can assign specific tenant_id, others use their own session tenant_id
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    if ($_SESSION['user_id'] == 1 && !empty($_POST['target_tenant_id'])) {
+        $tenant_id = intval($_POST['target_tenant_id']);
+    }
+    
+    // Safety: only Super Admin can create Admin role
+    if ($role === 'admin' && $_SESSION['user_id'] != 1) {
+        $role = 'collector';
+    }
+
+    $stmt = $db->prepare("INSERT INTO users (username, password, role, name, area, customer_id, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$username, $password, $role, $name, $area, $customer_id, $tenant_id]);
     header("Location: index.php?page=admin_users");
     exit;
 }
@@ -23,13 +34,25 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $area = $_POST['area'] ?? null;
     $customer_id = !empty($_POST['customer_id']) ? $_POST['customer_id'] : null;
     
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    if ($_SESSION['user_id'] == 1 && !empty($_POST['target_tenant_id'])) {
+        $tenant_id = intval($_POST['target_tenant_id']);
+    }
+
+    // Role safety
+    if ($role === 'admin' && $_SESSION['user_id'] != 1) {
+        // Prevent normal admin from promoting anyone
+        $old_role = $db->query("SELECT role FROM users WHERE id = $id")->fetchColumn();
+        $role = $old_role;
+    }
+
     if (!empty($_POST['password'])) {
         $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
-        $stmt = $db->prepare("UPDATE users SET username=?, password=?, role=?, name=?, area=?, customer_id=? WHERE id=?");
-        $stmt->execute([$username, $password, $role, $name, $area, $customer_id, $id]);
+        $stmt = $db->prepare("UPDATE users SET username=?, password=?, role=?, name=?, area=?, customer_id=?, tenant_id=? WHERE id=? AND (tenant_id=? OR " . ($_SESSION['user_id'] == 1 ? "1=1" : "1=0") . ")");
+        $stmt->execute([$username, $password, $role, $name, $area, $customer_id, $tenant_id, $id, $_SESSION['tenant_id']]);
     } else {
-        $stmt = $db->prepare("UPDATE users SET username=?, role=?, name=?, area=?, customer_id=? WHERE id=?");
-        $stmt->execute([$username, $role, $name, $area, $customer_id, $id]);
+        $stmt = $db->prepare("UPDATE users SET username=?, role=?, name=?, area=?, customer_id=?, tenant_id=? WHERE id=? AND (tenant_id=? OR " . ($_SESSION['user_id'] == 1 ? "1=1" : "1=0") . ")");
+        $stmt->execute([$username, $role, $name, $area, $customer_id, $tenant_id, $id, $_SESSION['tenant_id']]);
     }
     
     header("Location: index.php?page=admin_users");
@@ -37,22 +60,32 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if ($action === 'delete') {
-    $id = $_GET['id'];
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
     // Prevent deleting self or primary admin (id=1)
     if ($id != 1 && $id != $_SESSION['user_id']) {
-        $db->prepare("DELETE FROM users WHERE id = ?")->execute([$id]);
+        $db->prepare("DELETE FROM users WHERE id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
     }
     header("Location: index.php?page=admin_users");
     exit;
 }
 
 // Fetch customers (Rumahan) for linking to Collector accounts
-$customers_list = $db->query("SELECT id, name FROM customers WHERE type='customer' ORDER BY name ASC")->fetchAll();
+$tenant_id = $_SESSION['tenant_id'] ?? 1;
+$customers_list = $db->query("SELECT id, name FROM customers WHERE type='customer' AND tenant_id = $tenant_id ORDER BY name ASC")->fetchAll();
 // Fetch partners (Mitra) for linking to Mitra accounts
-$partners_list = $db->query("SELECT id, name FROM customers WHERE type='partner' ORDER BY name ASC")->fetchAll();
+$partners_list = $db->query("SELECT id, name FROM customers WHERE type='partner' AND tenant_id = $tenant_id ORDER BY name ASC")->fetchAll();
+
+// Fetch all administrative users (tenants) for the Super Admin selector
+if ($_SESSION['user_id'] == 1) {
+    $all_tenants = $db->query("SELECT id, name, (SELECT company_name FROM settings WHERE tenant_id = users.id LIMIT 1) as company_name FROM users WHERE role = 'admin' ORDER BY id ASC")->fetchAll();
+}
 
 // Fetch all areas for dropdown
-$areas_all = $db->query("SELECT * FROM areas ORDER BY name ASC")->fetchAll();
+$areas_all = $db->query("SELECT * FROM areas WHERE tenant_id = $tenant_id ORDER BY name ASC")->fetchAll();
+if ($_SESSION['user_id'] == 1 && $action !== 'list') {
+    // Super admin might need a hybrid or all-area view, for now just show default tenant's areas 
+    // or we could ajax-load them when tenant is changed.
+}
 ?>
 
 <?php if ($action === 'list'): ?>
@@ -69,13 +102,22 @@ $areas_all = $db->query("SELECT * FROM areas ORDER BY name ASC")->fetchAll();
                     <th>Username</th>
                     <th>Nama Pengguna</th>
                     <th>Hak Akses / Role</th>
+                    <?= $_SESSION['user_id'] == 1 ? '<th>Tenant / Organisasi</th>' : '' ?>
                     <th>Area (Penagih) / Link (Mitra)</th>
                     <th>Aksi</th>
                 </tr>
             </thead>
             <tbody>
                 <?php
-                $users = $db->query("SELECT u.*, c.name as partner_name FROM users u LEFT JOIN customers c ON u.customer_id = c.id ORDER BY u.id DESC")->fetchAll();
+                $u_id_session = $_SESSION['user_id'];
+                $tenant_id_session = $_SESSION['tenant_id'] ?? 1;
+                
+                $sql = "SELECT u.*, c.name as partner_name, (SELECT company_name FROM settings s WHERE s.tenant_id = u.tenant_id LIMIT 1) as org_name 
+                        FROM users u 
+                        LEFT JOIN customers c ON u.customer_id = c.id 
+                        WHERE " . ($u_id_session == 1 ? "1=1" : "u.tenant_id = $tenant_id_session") . " 
+                        ORDER BY u.id DESC";
+                $users = $db->query($sql)->fetchAll();
                 foreach($users as $u):
                 ?>
                 <tr>
@@ -90,6 +132,12 @@ $areas_all = $db->query("SELECT * FROM areas ORDER BY name ASC")->fetchAll();
                             <span class="badge badge-success">Mitra</span>
                         <?php endif; ?>
                     </td>
+                    <?php if ($_SESSION['user_id'] == 1): ?>
+                        <td>
+                            <div style="font-weight:700; color:var(--primary);"><?= htmlspecialchars($u['org_name'] ?? 'Default Tenant') ?></div>
+                            <div style="font-size:10px; opacity:0.6;">T-ID: <?= $u['tenant_id'] ?></div>
+                        </td>
+                    <?php endif; ?>
                     <td>
                         <?php if($u['role']=='collector'): ?>
                             <div style="font-size:11px; margin-bottom:4px;"><i class="fas fa-map-marker-alt"></i> Area: <?= htmlspecialchars($u['area'] && trim($u['area']) != '' ? $u['area'] : 'Semua Area') ?></div>
@@ -146,11 +194,25 @@ $areas_all = $db->query("SELECT * FROM areas ORDER BY name ASC")->fetchAll();
         <div class="form-group">
             <label>Hak Akses / Role</label>
             <select name="role" id="roleSelect" class="form-control" required style="background:rgba(15,23,42,0.8);" onchange="toggleRoleFields()">
-                <option value="admin" <?= $current_role=='admin'?'selected':'' ?>>Administrator</option>
+                <?php if ($_SESSION['user_id'] == 1): ?>
+                    <option value="admin" <?= $current_role=='admin'?'selected':'' ?>>Administrator (Tenant Owner)</option>
+                <?php endif; ?>
                 <option value="collector" <?= $current_role=='collector'?'selected':'' ?>>Penagih / Collector</option>
                 <option value="partner" <?= $current_role=='partner'?'selected':'' ?>>Mitra (Akses Mandiri)</option>
             </select>
         </div>
+
+        <?php if ($_SESSION['user_id'] == 1): ?>
+        <div id="field_tenant_select" class="form-group" style="border:1px dashed var(--primary); padding: 15px; border-radius:8px; margin-bottom: 15px;">
+            <label style="color:var(--primary);"><i class="fas fa-building"></i> Penempatan Tenant</label>
+            <select name="target_tenant_id" class="form-control" style="background:rgba(15,23,42,0.8);">
+                <?php foreach($all_tenants as $ten): ?>
+                    <option value="<?= $ten['id'] ?>" <?= ($u['tenant_id'] ?? '') == $ten['id'] ? 'selected' : '' ?>><?= htmlspecialchars($ten['company_name'] ?: ($ten['name'] . ' (Root)')) ?> [ID: <?= $ten['id'] ?>]</option>
+                <?php endforeach; ?>
+            </select>
+            <small style="color:var(--text-secondary); display:block; margin-top:5px;">Pilih organisasi tempat user ini bernaung. Jika user adalah Admin baru, pilih dirinya sendiri atau parent adminnya.</small>
+        </div>
+        <?php endif; ?>
         
         <div id="field_area" class="form-group" style="display:none; border:1px dashed var(--border-color); padding: 15px; border-radius:8px;">
             <label style="color:var(--warning-color);"><i class="fas fa-map-marker-alt"></i> Target Area Penagihan</label>

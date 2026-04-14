@@ -6,10 +6,12 @@ try {
     $db->query("SELECT id FROM landing_logos LIMIT 1");
 } catch (Exception $e) {
     echo "<div style='padding:20px; background:#10b981; color:white; border-radius:12px; margin-bottom:20px;'>Updating system for unlimited logos...</div>";
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
     $db->exec("CREATE TABLE IF NOT EXISTS landing_logos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         image_path TEXT,
         sort_order INTEGER DEFAULT 0,
+        tenant_id INTEGER DEFAULT $tenant_id,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )");
     
@@ -29,8 +31,9 @@ if ($action === 'update_profile' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $text = $_POST['landing_hero_text'] ?? '';
     $about = $_POST['landing_about_us'] ?? '';
     
-    $stmt = $db->prepare("UPDATE settings SET landing_hero_title=?, landing_hero_text=?, landing_about_us=? WHERE id=1");
-    $stmt->execute([$title, $text, $about]);
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $stmt = $db->prepare("UPDATE settings SET landing_hero_title=?, landing_hero_text=?, landing_about_us=? WHERE tenant_id=?");
+    $stmt->execute([$title, $text, $about, $tenant_id]);
     header("Location: index.php?page=admin_landing");
     exit;
 }
@@ -45,12 +48,13 @@ if ($action === 'save_package' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $is_active = $_POST['is_active'] ?? 1;
     $sort_order = $_POST['sort_order'] ?? 0;
     
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
     if($id) {
-        $stmt = $db->prepare("UPDATE landing_packages SET name=?, speed=?, price=?, features=?, is_active=?, sort_order=? WHERE id=?");
-        $stmt->execute([$name, $speed, $price, $features, $is_active, $sort_order, $id]);
+        $stmt = $db->prepare("UPDATE landing_packages SET name=?, speed=?, price=?, features=?, is_active=?, sort_order=? WHERE id=? AND tenant_id=?");
+        $stmt->execute([$name, $speed, $price, $features, $is_active, $sort_order, $id, $tenant_id]);
     } else {
-        $stmt = $db->prepare("INSERT INTO landing_packages (name, speed, price, features, is_active, sort_order) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$name, $speed, $price, $features, $is_active, $sort_order]);
+        $stmt = $db->prepare("INSERT INTO landing_packages (name, speed, price, features, is_active, sort_order, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$name, $speed, $price, $features, $is_active, $sort_order, $tenant_id]);
     }
     header("Location: index.php?page=admin_landing");
     exit;
@@ -59,7 +63,8 @@ if ($action === 'save_package' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 // Handle Delete Package
 if ($action === 'delete_package') {
     $id = $_GET['id'];
-    $db->prepare("DELETE FROM landing_packages WHERE id=?")->execute([$id]);
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $db->prepare("DELETE FROM landing_packages WHERE id=? AND tenant_id=?")->execute([$id, $tenant_id]);
     header("Location: index.php?page=admin_landing");
     exit;
 }
@@ -74,7 +79,8 @@ if ($action === 'add_logo' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $target = $upload_dir . $fname;
         if (move_uploaded_file($_FILES['logo_file']['tmp_name'], $target)) {
             $path = 'public/uploads/' . $fname;
-            $db->prepare("INSERT INTO landing_logos (image_path) VALUES (?)")->execute([$path]);
+            $tenant_id = $_SESSION['tenant_id'] ?? 1;
+            $db->prepare("INSERT INTO landing_logos (image_path, tenant_id) VALUES (?, ?)")->execute([$path, $tenant_id]);
         }
     }
     header("Location: index.php?page=admin_landing&msg=logo_added");
@@ -84,18 +90,20 @@ if ($action === 'add_logo' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 // Handle Powered By Logo Delete (UNLIMITED)
 if ($action === 'delete_logo') {
     $id = intval($_GET['id'] ?? 0);
-    $old = $db->query("SELECT image_path FROM landing_logos WHERE id=$id")->fetchColumn();
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $old = $db->query("SELECT image_path FROM landing_logos WHERE id=$id AND tenant_id = $tenant_id")->fetchColumn();
     if ($old && file_exists(__DIR__ . '/../../' . $old)) {
         @unlink(__DIR__ . '/../../' . $old);
     }
-    $db->prepare("DELETE FROM landing_logos WHERE id=?")->execute([$id]);
+    $db->prepare("DELETE FROM landing_logos WHERE id=? AND tenant_id = ?")->execute([$id, $tenant_id]);
     header("Location: index.php?page=admin_landing&msg=logo_deleted");
     exit;
 }
 
-$site_settings = $db->query("SELECT landing_hero_title, landing_hero_text, landing_about_us FROM settings WHERE id=1")->fetch();
-$packages = $db->query("SELECT * FROM landing_packages ORDER BY sort_order ASC, id ASC")->fetchAll();
-$partner_logos = $db->query("SELECT * FROM landing_logos ORDER BY sort_order ASC, id ASC")->fetchAll();
+$tenant_id = $_SESSION['tenant_id'] ?? 1;
+$site_settings = $db->query("SELECT landing_hero_title, landing_hero_text, landing_about_us FROM settings WHERE tenant_id=$tenant_id")->fetch();
+$packages = $db->query("SELECT * FROM landing_packages WHERE tenant_id=$tenant_id ORDER BY sort_order ASC, id ASC")->fetchAll();
+$partner_logos = $db->query("SELECT * FROM landing_logos WHERE tenant_id=$tenant_id ORDER BY sort_order ASC, id ASC")->fetchAll();
 ?>
 
 <div class="glass-panel" style="padding: 24px; margin-bottom:20px;">
