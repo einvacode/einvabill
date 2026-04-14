@@ -957,20 +957,7 @@ tbody tr:hover {
     display: block !important;
   }
 
-  /* BURGER MENU STYLES */
-  .mobile-header {
-    display: none;
-    align-items: center;
-    justify-content: space-between;
-    padding: 15px 20px;
-    background: var(--sidebar-bg);
-    border-bottom: 1px solid var(--glass-border);
-    position: sticky;
-    top: 0;
-    z-index: 1100;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-  }
+  /* BURGER MENU STYLES handled in main mobile header block */
 
   .sidebar {
     display: flex !important;
@@ -1018,25 +1005,16 @@ tbody tr:hover {
   }
 }
 
+/* Global mobile-header: Hidden on desktop */
 .mobile-header {
   display: none;
 }
 
 /* Extra small screens */
 @media (max-width: 480px) {
-  /* Show mobile header (burger) on small & medium screens */
+  /* Show mobile header (burger) - redundant but ensures specificity */
   .mobile-header {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px;
-    background: var(--sidebar-bg);
-    border-bottom: 1px solid var(--glass-border);
-    position: sticky;
-    top: 0;
-    z-index: 1100;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
   }
 
   .mobile-header .burger-btn { font-size: 22px; }

@@ -39,7 +39,7 @@ if (!empty($__layout_settings['company_logo'])) {
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
     <header class="mobile-header">
         <div style="display: flex; align-items: center; gap: 12px;">
-            <button class="burger-btn menu-btn" aria-label="Open menu"><i class="fas fa-bars"></i></button>
+            <button class="burger-btn menu-btn" onclick="toggleSidebar()" aria-label="Open menu"><i class="fas fa-bars"></i></button>
             <span style="font-weight: 800; font-size: 16px; letter-spacing: 0.5px;"><?= htmlspecialchars($__layout_settings['company_name'] ?? 'BILLING') ?></span>
         </div>
         <div onclick="toggleTheme()" style="cursor: pointer; opacity: 0.8;"><i class="fas fa-moon"></i></div>
@@ -328,6 +328,9 @@ if (!empty($__layout_settings['company_logo'])) {
             <a href="index.php?page=collector&tab=summary&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>" class="<?= $page == 'collector' && ($coll_tab ?? 'summary') == 'summary' ? 'active' : '' ?>">
                 <i class="fas fa-home"></i><span>Home</span>
             </a>
+            <a href="#" onclick="toggleSidebar(); return false;">
+                <i class="fas fa-bars"></i><span>Menu</span>
+            </a>
             <a href="index.php?page=logout" style="color:var(--danger);">
                 <i class="fas fa-sign-out-alt"></i><span>Keluar</span>
             </a>
@@ -343,6 +346,9 @@ if (!empty($__layout_settings['company_logo'])) {
             </a>
             <a href="index.php?page=partner_isp_invoices" class="nav-link <?= $page == 'partner_isp_invoices' ? 'active' : '' ?>">
                 <i class="fas fa-receipt"></i><span>Tagihan ISP</span>
+            </a>
+            <a href="#" onclick="toggleSidebar(); return false;">
+                <i class="fas fa-bars"></i><span>Menu</span>
             </a>
             <a href="index.php?page=logout" style="color:var(--danger);">
                 <i class="fas fa-sign-out-alt"></i><span>Keluar</span>
