@@ -281,12 +281,16 @@ if ($action === 'create_auto_bulk' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
     // Scope Filter: Strict tenant isolation
     $scope_sql = " AND tenant_id = $tenant_id";
-    if ($u_role !== 'admin') {
-        // Additional collector/partner level filtering if needed, but tenant_id is the primary silo
         if ($u_role === 'collector') {
             $scope_sql .= " AND collector_id = $u_id";
         } elseif ($u_role === 'partner') {
             $scope_sql .= " AND created_by = $u_id";
+        } else {
+            // Admin: Exclude Partner-managed customers from mass billing
+            // Dynamic logic to identify partners in this tenant
+            $p_ids = $db->query("SELECT id FROM users WHERE role = 'partner' AND tenant_id = $tenant_id")->fetchAll(PDO::FETCH_COLUMN);
+            $p_list = !empty($p_ids) ? implode(',', $p_ids) : '0';
+            $scope_sql .= " AND (created_by NOT IN ($p_list) OR created_by = 0 OR created_by IS NULL) ";
         }
     }
     $type_sql = " AND type = " . $db->quote($filter_type);
