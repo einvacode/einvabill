@@ -250,6 +250,41 @@ switch ($page) {
         if (!$invoice) {
             echo "<div class='glass-panel p-5 text-center'><h1>Invoice Tidak Ditemukan</h1></div>";
         } else {
+            // Fetch invoice line-items (for external/quick invoices with uraian)
+            $invoice_items = [];
+            try {
+                $stmt_items = $db->prepare("SELECT * FROM invoice_items WHERE invoice_id = ?");
+                $stmt_items->execute([$inv_id]);
+                $invoice_items = $stmt_items->fetchAll();
+            } catch (Exception $e) { $invoice_items = []; }
+
+            // Calculate tunggakan (outstanding arrears from OTHER unpaid invoices)
+            $tunggakan = 0;
+            $tunggakan_bulan = 0;
+            try {
+                $cid = intval($invoice['customer_id'] ?? 0);
+                if ($cid > 0) {
+                    $arrears = $db->prepare("SELECT COUNT(*) as cnt, COALESCE(SUM(amount - COALESCE(discount,0)), 0) as total FROM invoices WHERE customer_id = ? AND id != ? AND status = 'Belum Lunas' AND tenant_id = ?");
+                    $arrears->execute([$cid, $inv_id, $tenant_id]);
+                    $ar = $arrears->fetch();
+                    $tunggakan = floatval($ar['total'] ?? 0);
+                    $tunggakan_bulan = intval($ar['cnt'] ?? 0);
+                }
+            } catch (Exception $e) {}
+
+            // Fetch payment info if invoice is paid
+            $payment_info = null;
+            $bulan_bayar = '';
+            if (($invoice['status'] ?? '') === 'Lunas') {
+                try {
+                    $pstmt = $db->prepare("SELECT payment_date, payment_method, notes FROM payments WHERE invoice_id = ? ORDER BY payment_date DESC LIMIT 1");
+                    $pstmt->execute([$inv_id]);
+                    $payment_info = $pstmt->fetch();
+                } catch (Exception $e) {}
+                // Build bulan_bayar label from invoice period
+                $bulan_bayar = 'Pembayaran ' . (!empty($invoice['created_at']) ? date('F Y', strtotime($invoice['created_at'])) : '-');
+            }
+
             require __DIR__ . '/views/print.php';
         }
         exit;
