@@ -160,7 +160,7 @@ if (($invoice['status'] ?? '') === 'Lunas') {
             <div class="divider"></div>
             
                 <strong>Nama:</strong> <?= htmlspecialchars($invoice['name']) ?><br>
-                <?php if(empty($invoice_items)): ?>
+                <?php if(empty($invoice_items) && !empty($invoice['package_name'])): ?>
                     <strong>Paket:</strong> <?= htmlspecialchars($invoice['package_name']) ?><br>
                 <?php endif; ?>
                 <?php
@@ -378,7 +378,7 @@ if (($invoice['status'] ?? '') === 'Lunas') {
                 <tbody>
                     <?php if(empty($invoice_items)): ?>
                         <tr>
-                            <td style="padding:12px 10px; border-bottom:1px solid #e2e8f0;">Layanan Internet: <strong><?= htmlspecialchars($invoice['package_name']) ?></strong></td>
+                            <td style="padding:12px 10px; border-bottom:1px solid #e2e8f0;"><?= !empty($invoice['package_name']) ? 'Layanan Internet: <strong>' . htmlspecialchars($invoice['package_name']) . '</strong>' : 'Tagihan' ?></td>
                             <td style="padding:12px 10px; border-bottom:1px solid #e2e8f0; text-align:center;">1</td>
                             <td style="padding:12px 10px; border-bottom:1px solid #e2e8f0; text-align:right;">Rp <?= number_format($invoice['amount'], 0, ',', '.') ?></td>
                             <td style="padding:12px 10px; border-bottom:1px solid #e2e8f0; text-align:right; font-weight:bold;">Rp <?= number_format($invoice['amount'], 0, ',', '.') ?></td>

@@ -26,8 +26,8 @@ $invoices = [];
 
     $params = [];
     if ($has_created_via) {
-        // Only show quick invoices in this history
-        $where = "i.created_via = 'quick' AND (";
+        // Only show quick/external invoices in this history\r
+        $where = "i.created_via IN ('quick','external') AND (";\r
         $conds = [];
         if ($has_issued_id) {
             $conds[] = 'i.issued_by_id = ?'; $params[] = $u_id;
