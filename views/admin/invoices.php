@@ -698,7 +698,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                     SUM(i.discount) as discount,
                     MIN(i.due_date) as due_date, 
                     COUNT(i.id) as months_owed,
-                    c.id as cust_id, c.customer_code, c.name as customer_name, c.type as customer_type, c.contact, c.package_name, c.monthly_fee,
+                    c.id as cust_id, c.customer_code, c.name as customer_name, c.type as customer_type, c.contact, c.package_name, c.monthly_fee, c.created_by, c.collector_id,
                     0 as item_count
                 FROM invoices i
                 JOIN customers c ON i.customer_id = c.id
@@ -709,7 +709,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
             ")->fetchAll();
         } else {
             $invoices = $db->query("
-                SELECT i.*, c.id as cust_id, c.customer_code, c.name as customer_name, c.type as customer_type, c.contact, c.package_name, c.monthly_fee,
+                SELECT i.*, c.id as cust_id, c.customer_code, c.name as customer_name, c.type as customer_type, c.contact, c.package_name, c.monthly_fee, c.created_by, c.collector_id,
                 (SELECT COUNT(*) FROM invoice_items WHERE invoice_id = i.id) as item_count
                 FROM invoices i
                 JOIN customers c ON i.customer_id = c.id
@@ -756,7 +756,8 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
 
             foreach($invoices as $inv): 
                 // Security context for actions
-                $check_owner = $db->query("SELECT created_by FROM customers WHERE id = " . intval($inv['customer_id']))->fetchColumn();
+                // Security context for actions (Already pre-fetched in main query)
+                $check_owner = $inv['created_by'] ?? 0;
                 $can_manage_item = ($u_role === 'admin') ? ($check_owner == $u_id || $check_owner == 0 || $check_owner === NULL) : ($check_owner == $u_id);
 
                 $wa_number = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $inv['contact']));
@@ -1051,9 +1052,8 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                                     <i class="fas fa-check-circle"></i> LUNAS
                                 </span>
                                 <?php 
-                                    $inv_meta_desk = $db->query("SELECT created_by, collector_id FROM customers WHERE id = " . intval($inv['customer_id']))->fetch();
-                                    $check_owner_desk = $inv_meta_desk['created_by'];
-                                    $check_coll_desk = $inv_meta_desk['collector_id'];
+                                    $check_owner_desk = $inv['created_by'] ?? 0;
+                                    $check_coll_desk = $inv['collector_id'] ?? 0;
                                     
                                     $can_unpay_desk = false;
                                     if ($u_role === 'admin') $can_unpay_desk = true;

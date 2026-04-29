@@ -773,7 +773,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $tenant_id = $_SESSION['tenant_id'] ?? 1;
         $routers = [];
         try { $routers = $db->query("SELECT * FROM routers WHERE tenant_id = $tenant_id")->fetchAll(); } catch(Exception $e) {}
-        $customers = $db->query("SELECT * FROM customers WHERE 1=1 $where_type $where_collector $where_search $scope_where ORDER BY id DESC LIMIT $items_per_page OFFSET $offset")->fetchAll();
+        $customers = $db->query("SELECT id, customer_code, name, type, contact, address, package_name, monthly_fee, area, router_id, pppoe_name, created_by, collector_id FROM customers WHERE 1=1 $where_type $where_collector $where_search $scope_where ORDER BY id DESC LIMIT $items_per_page OFFSET $offset")->fetchAll();
         
         foreach($customers as $c):
             $rtName = '-';

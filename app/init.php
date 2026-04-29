@@ -89,8 +89,11 @@ $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 // High-Performance Concurrency Settings (WAL Mode)
 $db->exec("PRAGMA journal_mode=WAL;");
 $db->exec("PRAGMA synchronous=NORMAL;");
-$db->exec("PRAGMA cache_size = -10000;"); // 10MB Cache
+$db->exec("PRAGMA cache_size = -20000;"); // 20MB Cache
 $db->exec("PRAGMA temp_store = MEMORY;");
+$db->exec("PRAGMA mmap_size = 30000000000;"); // Use memory mapping for faster reads
+$db->exec("PRAGMA count_changes = OFF;");
+$db->exec("PRAGMA threads = 4;");
 
 // --- VERSIONED SCHEMA MANAGEMENT ---
 define('APP_DB_VERSION', 21); // Sync with database_setup.php
@@ -115,7 +118,7 @@ $tenant_id = $_SESSION['tenant_id'] ?? 1;
 // Fetch Tenant Settings
 $site_settings = null;
 try {
-    $stmt_settings = $db->prepare("SELECT * FROM settings WHERE tenant_id = ?");
+    $stmt_settings = $db->prepare("SELECT company_name, company_tagline, company_address, company_logo, wa_template, wa_template_paid, bank_account, site_url, debug_mode, tenant_id FROM settings WHERE tenant_id = ?");
     $stmt_settings->execute([$tenant_id]);
     $site_settings = $stmt_settings->fetch();
 } catch (Exception $e) {
@@ -127,11 +130,11 @@ if (!$site_settings) {
     try {
         $db->prepare("INSERT INTO settings (company_name, company_tagline, company_address, tenant_id) VALUES (?, ?, ?, ?)")
            ->execute(['Perusahaan Baru', 'Tagline Anda', 'Alamat Anda', $tenant_id]);
-        $site_settings = $db->query("SELECT * FROM settings WHERE tenant_id = $tenant_id")->fetch();
+        $site_settings = $db->query("SELECT company_name, company_tagline, company_address, company_logo, wa_template, wa_template_paid, bank_account, site_url, debug_mode, tenant_id FROM settings WHERE tenant_id = $tenant_id")->fetch();
     } catch (Exception $e) {
         // Fallback to global if tenant insert fails or column missing
         try {
-            $site_settings = $db->query("SELECT * FROM settings WHERE id = 1")->fetch();
+            $site_settings = $db->query("SELECT company_name, company_tagline, company_address, company_logo, wa_template, wa_template_paid, bank_account, site_url, debug_mode, tenant_id FROM settings WHERE id = 1")->fetch();
         } catch (Exception $e2) {
              $site_settings = ['company_name' => 'ISP']; // Absolute fallback
         }
