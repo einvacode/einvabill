@@ -245,6 +245,10 @@ if (!empty($__layout_settings['company_logo'])) {
                         </div>
 
                         <a href="index.php?page=partner_settings" class="nav-link <?= $page == 'partner_settings' ? 'active' : '' ?>"><i class="fas fa-cog" style="color:var(--text-secondary);"></i> Profil & Branding</a>
+                        <a href="index.php?page=admin_wa_gateway" class="nav-link <?= $page == 'admin_wa_gateway' ? 'active' : '' ?>">
+                            <i class="fab fa-whatsapp" style="color:#25D366;"></i> WA Perangkat
+                            <span class="wa-status-sidebar-badge" style="margin-left:auto;"></span>
+                        </a>
                     <?php endif; ?>
                 </div>
             </div>

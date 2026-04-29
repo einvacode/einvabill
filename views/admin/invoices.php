@@ -29,6 +29,8 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
         $status_wa = ($tunggakan_val > 0) ? "LUNAS SEBAGIAN" : "LUNAS SEPENUHNYA";
         
         $portal_link = $base_url . "/index.php?page=customer_portal&code=" . ($success_data['customer_code'] ?: $success_data['id']);
+        $nota_link = $portal_link . "&action=print&id=" . intval($_GET['last_id'] ?? 0);
+        
         $receipt_msg = parse_wa_template($wa_tpl_paid, [
             'name' => $success_data['name'],
             'id_cust' => ($success_data['customer_code'] ?: $success_data['id']),
@@ -40,6 +42,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
             'admin_name' => $_SESSION['user_name'],
             'company_name' => $settings['company_name'],
             'portal_link' => $portal_link,
+            'nota_link' => $nota_link,
             'payment_status' => $status_wa,
             'sisa_tunggakan' => $tunggakan_val, // or should it be $tunggakan_val? In this context it is the same.
             'total_paid' => $total_paid

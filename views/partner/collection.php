@@ -204,6 +204,8 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
         $status_wa = ($tunggakan_val > 0) ? "LUNAS SEBAGIAN (Masih ada sisa tunggakan)" : "LUNAS SEPENUHNYA";
 
         $portal_link = $base_url . "/index.php?page=customer_portal&code=" . ($success_data['customer_code'] ?: $success_data['id']);
+        $nota_link = $portal_link . "&action=print&id=" . intval($_GET['last_id'] ?? 0);
+
         $receipt_msg = parse_wa_template($wa_tpl_paid, [
             'name' => $success_data['name'],
             'id_cust' => ($success_data['customer_code'] ?: $success_data['id']),
@@ -216,6 +218,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
             'payment_time' => date('d/m/Y H:i') . ' WIB',
             'admin_name' => $_SESSION['user_name'],
             'portal_link' => $portal_link,
+            'nota_link' => $nota_link,
             'rekening' => $rekening_receipt,
             'payment_status' => $status_wa
         ]);
@@ -525,6 +528,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
                     </a>
                     <?php
                         $hist_portal_link = $base_url . "/index.php?page=customer_portal&code=" . ($rp['customer_code'] ?: $rp['customer_id']);
+                        $hist_nota_link = $hist_portal_link . "&action=print&id=" . $rp['id'];
                         $hist_receipt_msg = parse_wa_template($wa_tpl_paid, [
                             'name' => $rp['name'],
                             'id_cust' => ($rp['customer_code'] ?: $rp['customer_id']),
@@ -536,6 +540,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
                             'payment_time' => date('d/m/Y H:i', strtotime($rp['payment_date'])) . ' WIB',
                             'admin_name' => ($rp['admin_name'] ?: 'System'),
                             'portal_link' => $hist_portal_link,
+                            'nota_link' => $hist_nota_link,
                             'rekening' => $rekening_receipt,
                             'payment_status' => 'LUNAS'
                         ]);

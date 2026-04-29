@@ -165,12 +165,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="form-group">
                     <label style="font-weight: 700; font-size: 13px; margin-bottom: 8px; display: block;">Template Pengingat (Belum Lunas)</label>
                     <textarea name="wa_template" class="form-control" style="height: 120px; font-size: 13px;" placeholder="Gunakan: {nama}, {tagihan}, {jatuh_tempo}, {rekening}, {link_tagihan}"><?= htmlspecialchars($user['wa_template'] ?? '') ?></textarea>
-                    <small style="color:var(--text-secondary); margin-top:5px; display:block; font-size:11px;">Variabel: {nama}, {id_cust}, {paket}, {bulan}, {tagihan}, {jatuh_tempo}, {rekening}, {tunggakan}, {total_harus}, {link_tagihan}</small>
+                    <small style="color:var(--text-secondary); margin-top:5px; display:block; font-size:11px;">Variabel: {nama}, {id_cust}, {paket}, {bulan}, {tagihan}, {jatuh_tempo}, {rekening}, {tunggakan}, {total_harus}, {link_tagihan}, {link_nota}</small>
                 </div>
                 <div class="form-group">
                     <label style="font-weight: 700; font-size: 13px; margin-bottom: 8px; display: block;">Template Kuitansi (Lunas/Sudah Bayar)</label>
                     <textarea name="wa_template_paid" class="form-control" style="height: 120px; font-size: 13px;" placeholder="Gunakan: {nama}, {tagihan}, {id_cust}, {link_tagihan}"><?= htmlspecialchars($user['wa_template_paid'] ?? '') ?></textarea>
-                    <small style="color:var(--text-secondary); margin-top:5px; display:block; font-size:11px;">Variabel: {nama}, {id_cust}, {paket}, {bulan}, {tagihan}, {total_bayar}, {tunggakan}, {sisa_tunggakan}, {status_pembayaran}, {waktu_bayar}, {admin}, {link_tagihan}</small>
+                    <small style="color:var(--text-secondary); margin-top:5px; display:block; font-size:11px;">Variabel: {nama}, {id_cust}, {paket}, {bulan}, {tagihan}, {total_bayar}, {tunggakan}, {sisa_tunggakan}, {status_pembayaran}, {waktu_bayar}, {admin}, {link_tagihan}, {link_nota}</small>
                 </div>
             </div>
             <div style="background: rgba(var(--primary-rgb), 0.05); border-radius: 10px; padding: 15px; margin-top: 15px; border: 1px solid rgba(var(--primary-rgb), 0.1); display: flex; align-items: flex-start; gap: 10px;">

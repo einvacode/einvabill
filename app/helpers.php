@@ -27,6 +27,7 @@ if (!function_exists('parse_wa_template')) {
             '{total_bayar}'       => is_numeric($data['total_paid'] ?? '') ? $format_rp($data['total_paid']) : ($data['total_paid'] ?? 'Rp 0'),
             '{sisa_tunggakan}'    => is_numeric($data['sisa_tunggakan'] ?? '') ? $format_rp($data['sisa_tunggakan']) : ($data['sisa_tunggakan'] ?? 'Rp 0'),
             '{link_tagihan}'      => $data['portal_link'] ?? '',
+            '{link_nota}'         => $data['nota_link'] ?? '',
             '{admin}'             => $data['admin_name'] ?? 'Admin',
             '{perusahaan}'        => $data['company_name'] ?? 'BILLING',
             '{waktu_bayar}'       => $data['payment_time'] ?? date('d/m/Y H:i') . ' WIB',
