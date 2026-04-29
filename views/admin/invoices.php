@@ -74,7 +74,13 @@ if ($action === 'create_itemized' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Multi-Tenancy Ownership Check
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
-    $check_c = $db->query("SELECT id FROM customers WHERE id = $customer_id AND tenant_id = $tenant_id")->fetchColumn();
+    $scope_check = "";
+    if ($_SESSION['user_role'] === 'partner') {
+        $scope_check = " AND created_by = $u_id";
+    } elseif ($_SESSION['user_role'] === 'collector') {
+        $scope_check = " AND collector_id = $u_id";
+    }
+    $check_c = $db->query("SELECT id FROM customers WHERE id = $customer_id AND tenant_id = $tenant_id $scope_check")->fetchColumn();
     if (!$check_c) { header("Location: index.php?page=admin_invoices&msg=forbidden"); exit; }
     
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
@@ -115,8 +121,13 @@ if ($action === 'create_auto' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Multi-Tenancy Ownership Check
-    // $tenant_id already defined above
-    $check_c = $db->query("SELECT id FROM customers WHERE id = $customer_id AND tenant_id = $tenant_id")->fetchColumn();
+    $scope_check = "";
+    if ($_SESSION['user_role'] === 'partner') {
+        $scope_check = " AND created_by = $u_id";
+    } elseif ($_SESSION['user_role'] === 'collector') {
+        $scope_check = " AND collector_id = $u_id";
+    }
+    $check_c = $db->query("SELECT id FROM customers WHERE id = $customer_id AND tenant_id = $tenant_id $scope_check")->fetchColumn();
     if (!$check_c) { header("Location: index.php?page=admin_invoices&msg=forbidden"); exit; }
     
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
@@ -136,11 +147,21 @@ if ($action === 'delete') {
         $u_id = $_SESSION['user_id'];
         $u_role = $_SESSION['user_role'];
         
-        if ($invoice) {
+        $is_allowed = true;
+        if ($u_role === 'partner' || $u_role === 'collector') {
+            $scope_check = ($u_role === 'partner') ? "created_by = $u_id" : "collector_id = $u_id";
+            $c_owner = $db->query("SELECT id FROM customers WHERE id = " . $invoice['customer_id'] . " AND $scope_check")->fetchColumn();
+            if (!$c_owner) $is_allowed = false;
+        }
+        
+        if ($is_allowed) {
             // Cascade delete manual
             $db->exec("DELETE FROM payments WHERE invoice_id = $id AND tenant_id = $tenant_id");
             $db->exec("DELETE FROM invoice_items WHERE invoice_id = $id");
             $db->exec("DELETE FROM invoices WHERE id = $id AND tenant_id = $tenant_id");
+        } else {
+            header("Location: index.php?page=admin_invoices&msg=forbidden");
+            exit;
         }
     }
     $ref = $_GET['ref'] ?? '';
@@ -162,7 +183,14 @@ if ($action === 'edit_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $u_role = $_SESSION['user_role'];
     
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
-    $check_i = $db->query("SELECT id FROM invoices WHERE id = $id AND tenant_id = $tenant_id")->fetchColumn();
+    $scope_check = "";
+    if ($_SESSION['user_role'] === 'partner') {
+        $scope_check = " AND (SELECT created_by FROM customers WHERE id = invoices.customer_id) = $u_id";
+    } elseif ($_SESSION['user_role'] === 'collector') {
+        $scope_check = " AND (SELECT collector_id FROM customers WHERE id = invoices.customer_id) = $u_id";
+    }
+    
+    $check_i = $db->query("SELECT id FROM invoices WHERE id = $id AND tenant_id = $tenant_id $scope_check")->fetchColumn();
     
     if ($check_i) {
         $db->prepare("UPDATE invoices SET amount=?, discount=?, due_date=? WHERE id=? AND tenant_id=?")->execute([$amount, $discount, $due_date, $id, $tenant_id]);
@@ -191,7 +219,14 @@ if ($action === 'mark_paid') {
     if ($inv) {
         // Multi-Tenancy Authorization Check
         $tenant_id = $_SESSION['tenant_id'] ?? 1;
-        $check_i = $db->query("SELECT id FROM invoices WHERE id = $id AND tenant_id = $tenant_id")->fetchColumn();
+        $scope_check = "";
+        if ($_SESSION['user_role'] === 'partner') {
+            $scope_check = " AND (SELECT created_by FROM customers WHERE id = invoices.customer_id) = $u_id";
+        } elseif ($_SESSION['user_role'] === 'collector') {
+            $scope_check = " AND (SELECT collector_id FROM customers WHERE id = invoices.customer_id) = $u_id";
+        }
+        
+        $check_i = $db->query("SELECT id FROM invoices WHERE id = $id AND tenant_id = $tenant_id $scope_check")->fetchColumn();
         if (!$check_i) { header("Location: index.php?page=admin_invoices&msg=forbidden"); exit; }
 
         $net_amount = $inv['amount'] - ($inv['discount'] ?? 0);
@@ -221,7 +256,14 @@ if ($action === 'mark_paid_bulk' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Multi-Tenancy Ownership Check
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
-    $check_c = $db->query("SELECT id FROM customers WHERE id = $customer_id AND tenant_id = $tenant_id")->fetchColumn();
+    $scope_check = "";
+    if ($_SESSION['user_role'] === 'partner') {
+        $scope_check = " AND created_by = $receiver_id";
+    } elseif ($_SESSION['user_role'] === 'collector') {
+        $scope_check = " AND collector_id = $receiver_id";
+    }
+    
+    $check_c = $db->query("SELECT id FROM customers WHERE id = $customer_id AND tenant_id = $tenant_id $scope_check")->fetchColumn();
     if (!$check_c) { header("Location: index.php?page=admin_invoices&msg=forbidden"); exit; }
     
     // Fetch oldest N unpaid invoices
@@ -256,6 +298,18 @@ if ($action === 'unpay') {
         
         // Multi-Tenancy Check: Since query already filters by tenant_id, we just need to confirm if it belongs to this tenant
         if ($inv) {
+            $is_allowed = true;
+            if ($u_role === 'partner' && $inv['created_by'] != $u_id) {
+                $is_allowed = false;
+            } elseif ($u_role === 'collector' && $inv['collector_id'] != $u_id) {
+                $is_allowed = false;
+            }
+            
+            if (!$is_allowed) {
+                header("Location: index.php?page=admin_invoices&msg=forbidden");
+                exit;
+            }
+            
             $db->prepare("DELETE FROM payments WHERE invoice_id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
             $db->prepare("UPDATE invoices SET status = 'Belum Lunas' WHERE id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
             $msg_type = "unpay_success";
@@ -329,7 +383,7 @@ if ($action === 'print') {
     $id = intval($_GET['id']);
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
     $stmt = $db->prepare("
-        SELECT i.*, c.name, c.address, c.contact, c.package_name, c.type, c.id as customer_id, c.created_by
+        SELECT i.*, c.name, c.address, c.contact, c.package_name, c.type, c.id as customer_id, c.created_by, c.collector_id
         FROM invoices i 
         JOIN customers c ON i.customer_id = c.id 
         WHERE i.id = ? AND i.tenant_id = ?
@@ -340,14 +394,19 @@ if ($action === 'print') {
     // Security Cross-Check: User can only see invoices belonging to their tenant
     // $invoice already filtered by tenant_id in query above.
     // Additional role-based checks for partners/collectors:
-    if ($_SESSION['user_role'] === 'partner') {
+    if ($_SESSION['user_role'] === 'partner' || $_SESSION['user_role'] === 'collector') {
         $u_id = $_SESSION['user_id'];
-        $partner_cid = $db->query("SELECT customer_id FROM users WHERE id = $u_id")->fetchColumn() ?: 0;
+        $u_role = $_SESSION['user_role'];
         
-        $is_own_customer = ($invoice['created_by'] == $u_id);
-        $is_invoice_for_me = ($invoice['customer_id'] == $partner_cid);
+        $is_allowed = false;
+        if ($u_role === 'partner') {
+            $partner_cid = $db->query("SELECT customer_id FROM users WHERE id = $u_id")->fetchColumn() ?: 0;
+            if ($invoice['created_by'] == $u_id || $invoice['customer_id'] == $partner_cid) $is_allowed = true;
+        } elseif ($u_role === 'collector') {
+            if ($invoice['collector_id'] == $u_id) $is_allowed = true;
+        }
         
-        if (!$is_own_customer && !$is_invoice_for_me) {
+        if (!$is_allowed) {
             echo "<div class='glass-panel' style='padding:40px; text-align:center;'>
                     <h1 style='color:#ef4444;'>Akses Ditolak</h1>
                     <p>Anda hanya diperbolehkan mencetak nota untuk pelanggan Anda sendiri atau tagihan untuk Anda sendiri.</p>

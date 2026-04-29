@@ -105,7 +105,7 @@ if ($page === 'home') {
 $permissions = [
     'admin' => '*', // Full access
     'collector' => ['collector', 'admin_customers', 'admin_invoices', 'invoice_print', 'router_data', 'admin_areas', 'admin_map', 'admin_wa_gateway', 'collector_settings'],
-    'partner' => ['partner', 'partner_collection', 'partner_settings', 'partner_isp_invoices', 'partner_reports', 'admin_expenses', 'invoice_print']
+    'partner' => ['partner', 'partner_collection', 'partner_settings', 'partner_isp_invoices', 'partner_reports', 'admin_expenses', 'invoice_print', 'admin_invoices']
 ];
 
 $user_role = $_SESSION['user_role'] ?? 'guest';
@@ -246,10 +246,31 @@ switch ($page) {
         // Prepare invoice data for print view
         $inv_id = intval($_GET['id'] ?? 0);
         $tenant_id = $_SESSION['tenant_id'] ?? 1;
-        $invoice = $db->query("SELECT i.*, c.name, c.address, c.contact, c.package_name, c.customer_code, c.created_by as customer_owner FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.id = $inv_id AND i.tenant_id = $tenant_id")->fetch();
+        $invoice = $db->query("SELECT i.*, c.name, c.address, c.contact, c.package_name, c.customer_code, c.created_by as customer_owner, c.collector_id FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.id = $inv_id AND i.tenant_id = $tenant_id")->fetch();
         if (!$invoice) {
             echo "<div class='glass-panel p-5 text-center'><h1>Invoice Tidak Ditemukan</h1></div>";
         } else {
+            // Role-based Access Control for Print
+            $u_id = $_SESSION['user_id'] ?? 0;
+            $u_role = $_SESSION['user_role'] ?? 'guest';
+            
+            if ($u_role === 'partner' || $u_role === 'collector') {
+                $is_allowed = false;
+                if ($u_role === 'partner') {
+                    $partner_cid = $db->query("SELECT customer_id FROM users WHERE id = $u_id")->fetchColumn() ?: 0;
+                    if ($invoice['customer_owner'] == $u_id || $invoice['customer_id'] == $partner_cid) $is_allowed = true;
+                } elseif ($u_role === 'collector') {
+                    if ($invoice['collector_id'] == $u_id) $is_allowed = true;
+                }
+                
+                if (!$is_allowed) {
+                    echo "<div class='glass-panel' style='padding:40px; text-align:center;'>
+                            <h1 style='color:#ef4444;'>Akses Ditolak</h1>
+                            <p>Anda hanya diperbolehkan mencetak nota untuk pelanggan Anda sendiri.</p>
+                          </div>";
+                    exit;
+                }
+            }
             // Fetch invoice line-items (for external/quick invoices with uraian)
             $invoice_items = [];
             try {
