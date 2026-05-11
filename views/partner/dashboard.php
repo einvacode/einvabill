@@ -74,6 +74,55 @@ if (isset($_GET['action']) && $_GET['action'] === 'add_customer' && $_SERVER['RE
     exit;
 }
 
+// Handle Edit Customer by partner
+if (isset($_GET['action']) && $_GET['action'] === 'edit_customer' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $id = intval($_POST['id']);
+    $name = $_POST['name'];
+    $address = $_POST['address'];
+    $contact = $_POST['contact'];
+    $package_name = $_POST['package_name'];
+    $monthly_fee = floatval($_POST['monthly_fee']);
+    $billing_date = intval($_POST['billing_date'] ?: 1);
+    $area = $_POST['area'] ?? '';
+    
+    // Ownership Check: Only allow editing own customers
+    $check = $db->query("SELECT id FROM customers WHERE id = $id AND created_by = $user_id AND tenant_id = $tenant_id")->fetchColumn();
+    if (!$check) {
+        header("Location: index.php?page=partner&msg=forbidden");
+        exit;
+    }
+    
+    $stmt = $db->prepare("UPDATE customers SET name=?, address=?, contact=?, package_name=?, monthly_fee=?, billing_date=?, area=? WHERE id=? AND created_by=? AND tenant_id=?");
+    $stmt->execute([$name, $address, $contact, $package_name, $monthly_fee, $billing_date, $area, $id, $user_id, $tenant_id]);
+    
+    // Sync existing unpaid invoices with the new monthly fee
+    $db->prepare("UPDATE invoices SET amount = ? WHERE customer_id = ? AND status = 'Belum Lunas' AND tenant_id = ?")->execute([$monthly_fee, $id, $tenant_id]);
+    
+    header("Location: index.php?page=partner&msg=updated&t=" . time());
+    exit;
+}
+
+// Handle Delete Customer by partner
+if (isset($_GET['action']) && $_GET['action'] === 'delete_customer' && isset($_GET['id'])) {
+    $id = intval($_GET['id']);
+    
+    // Ownership Check: Only allow deleting own customers
+    $check = $db->query("SELECT id FROM customers WHERE id = $id AND created_by = $user_id AND tenant_id = $tenant_id")->fetchColumn();
+    if (!$check) {
+        header("Location: index.php?page=partner&msg=forbidden");
+        exit;
+    }
+    
+    // Cascade Delete: Payments -> Invoice Items -> Invoices -> Customer
+    $db->prepare("DELETE FROM payments WHERE invoice_id IN (SELECT id FROM invoices WHERE customer_id = ? AND tenant_id = ?) AND tenant_id = ?")->execute([$id, $tenant_id, $tenant_id]);
+    $db->prepare("DELETE FROM invoice_items WHERE invoice_id IN (SELECT id FROM invoices WHERE customer_id = ? AND tenant_id = ?)")->execute([$id, $tenant_id]);
+    $db->prepare("DELETE FROM invoices WHERE customer_id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
+    $db->prepare("DELETE FROM customers WHERE id = ? AND created_by = ? AND tenant_id = ?")->execute([$id, $user_id, $tenant_id]);
+    
+    header("Location: index.php?page=partner&msg=deleted&t=" . time());
+    exit;
+}
+
 // ACTION: Import Actions (Adapted from Admin)
 if ($action === 'import_file' && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
     $file = $_FILES['csv_file']['tmp_name'];
@@ -496,7 +545,10 @@ $packages_all = $db->query("SELECT * FROM packages WHERE created_by = $user_id O
         <div style="font-weight: 700; color: var(--success); font-size: 14px;">
             <?php 
                 if($_GET['msg'] == 'added') echo 'Pelanggan baru berhasil didaftarkan!';
+                if($_GET['msg'] == 'updated') echo 'Data pelanggan berhasil diperbarui!';
+                if($_GET['msg'] == 'deleted') echo 'Pelanggan berhasil dihapus beserta seluruh tagihan dan pembayarannya.';
                 if($_GET['msg'] == 'import_success') echo 'Berhasil mengimpor ' . intval($_GET['count'] ?? 0) . ' data pelanggan ke akun Anda.';
+                if($_GET['msg'] == 'forbidden') echo '<span style="color:var(--danger)">Akses ditolak. Anda hanya bisa mengelola pelanggan milik Anda sendiri.</span>';
             ?>
         </div>
     </div>
@@ -709,10 +761,21 @@ function switchImportTab(t){
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <div style="display:flex; gap:5px;">
+                                            <div style="display:flex; gap:5px; flex-wrap:wrap;">
                                                 <?php if($cust['unpaid_count'] > 0): ?>
                                                     <button onclick="PartnerPage.quickPay(<?= $cust['id'] ?>, '<?= addslashes($cust['name']) ?>', <?= $cust['unpaid_count'] ?>, <?= $cust['total_unpaid'] ?>)" class="btn btn-sm" style="background:var(--success); color:white; padding:5px 8px;" title="Bayar Kilat"><i class="fas fa-check"></i></button>
                                                 <?php endif; ?>
+                                                <button onclick='PartnerPage.editCustomer(<?= json_encode([
+                                                    "id" => $cust["id"],
+                                                    "name" => $cust["name"],
+                                                    "address" => $cust["address"],
+                                                    "contact" => $cust["contact"],
+                                                    "package_name" => $cust["package_name"],
+                                                    "monthly_fee" => $cust["monthly_fee"],
+                                                    "billing_date" => $cust["billing_date"],
+                                                    "area" => $cust["area"]
+                                                ], JSON_HEX_APOS | JSON_HEX_QUOT) ?>)' class="btn btn-sm" style="background:rgba(var(--primary-rgb), 0.1); color:var(--primary); padding:5px 8px;" title="Edit Pelanggan"><i class="fas fa-pen"></i></button>
+                                                <button onclick="PartnerPage.deleteCustomer(<?= $cust['id'] ?>, '<?= addslashes($cust['name']) ?>')" class="btn btn-sm" style="background:rgba(239,68,68,0.1); color:var(--danger); padding:5px 8px;" title="Hapus Pelanggan"><i class="fas fa-trash"></i></button>
                                                 <?php 
                                                     $dash_wa_num = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $cust['contact']));
                                                     $dash_portal_link = $base_url . "/index.php?page=customer_portal&code=" . ($cust['customer_code'] ?: $cust['id']);
@@ -820,7 +883,27 @@ window.PartnerPage = (function(){
     }
     function showAddCustomerModal(){ const m = document.getElementById('addCustomerModal'); if(m) m.style.display = 'flex'; }
     function syncAddPrice(select){ const fee = select.options[select.selectedIndex].getAttribute('data-fee'); if(fee){ const el = document.getElementById('add_monthly_fee'); if(el) el.value = fee; } }
-    return { quickPay, showAddCustomerModal, syncAddPrice };
+    
+    function editCustomer(data) {
+        document.getElementById('edit_cust_id').value = data.id;
+        document.getElementById('edit_name').value = data.name || '';
+        document.getElementById('edit_address').value = data.address || '';
+        document.getElementById('edit_contact').value = data.contact || '';
+        document.getElementById('edit_package_name').value = data.package_name || '';
+        document.getElementById('edit_monthly_fee').value = data.monthly_fee || 0;
+        document.getElementById('edit_billing_date').value = data.billing_date || 1;
+        document.getElementById('edit_area').value = data.area || '';
+        document.getElementById('editCustomerModal').style.display = 'flex';
+    }
+    function syncEditPrice(select){ const fee = select.options[select.selectedIndex].getAttribute('data-fee'); if(fee){ document.getElementById('edit_monthly_fee').value = fee; } }
+    
+    function deleteCustomer(id, name) {
+        if (confirm(`HAPUS PELANGGAN: ${name}?\n\nSeluruh data tagihan dan pembayaran pelanggan ini akan dihapus permanen.\n\nTindakan ini TIDAK BISA dibatalkan!`)) {
+            window.location.href = `index.php?page=partner&action=delete_customer&id=${id}`;
+        }
+    }
+    
+    return { quickPay, showAddCustomerModal, syncAddPrice, editCustomer, syncEditPrice, deleteCustomer };
 })();
 </script>
 
@@ -900,6 +983,90 @@ window.PartnerPage = (function(){
                 <button type="button" class="btn btn-ghost" onclick="document.getElementById('addCustomerModal').style.display='none'" style="padding:12px 24px; border-radius:12px; font-weight:600; font-size:14px;">Batal</button>
                 <button type="submit" class="btn btn-primary" style="padding:12px 30px; border-radius:12px; font-weight:800; font-size:14px; box-shadow: 0 4px 15px rgba(var(--primary-rgb), 0.3);">
                     <i class="fas fa-save" style="margin-right:8px;"></i> Simpan Pelanggan
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Edit Pelanggan -->
+<div id="editCustomerModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:9999; backdrop-filter: blur(10px); padding:15px;">
+    <div class="glass-panel" style="width:100%; max-width:550px; padding:0; border-radius:24px; border:1px solid rgba(255,255,255,0.1); box-shadow: 0 25px 50px rgba(0,0,0,0.4); overflow:hidden;">
+        <!-- Header -->
+        <div style="padding:24px; background:linear-gradient(to right, #f59e0b, #d97706); color:white; display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:45px; height:45px; border-radius:14px; background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; font-size:20px;">
+                    <i class="fas fa-user-edit"></i>
+                </div>
+                <div>
+                    <h3 style="margin:0; font-size:18px; font-weight:800;">Edit Pelanggan</h3>
+                    <p style="margin:2px 0 0; font-size:12px; opacity:0.8;">Perbarui data pelanggan Anda</p>
+                </div>
+            </div>
+            <button onclick="document.getElementById('editCustomerModal').style.display='none'" style="background:none; border:none; color:white; cursor:pointer; font-size:24px; padding:10px; opacity:0.7;">&times;</button>
+        </div>
+        
+        <form action="index.php?page=partner&action=edit_customer" method="POST" style="padding:24px; max-height:70vh; overflow-y:auto;" onsubmit="return confirm('Simpan perubahan data pelanggan ini?')">
+            <input type="hidden" name="id" id="edit_cust_id">
+            
+            <!-- Section 1: Data Diri -->
+            <div style="margin-bottom:24px;">
+                <div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#f59e0b; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-id-card"></i> Identitas Pelanggan
+                </div>
+                <div class="form-group" style="margin-bottom:15px;">
+                    <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Nama Lengkap / Instansi</label>
+                    <input type="text" name="name" id="edit_name" class="form-control" required style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;">
+                </div>
+                <div class="form-group" style="margin-bottom:15px;">
+                    <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">No. WhatsApp (Aktif)</label>
+                    <input type="text" name="contact" id="edit_contact" class="form-control" required style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;">
+                </div>
+            </div>
+
+            <!-- Section 2: Layanan -->
+            <div style="margin-bottom:24px;">
+                <div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#f59e0b; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-wifi"></i> Paket & Lokasi
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:18px;">
+                    <div class="form-group">
+                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Paket Internet</label>
+                        <select name="package_name" id="edit_package_name" class="form-control" onchange="PartnerPage.syncEditPrice(this)" style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;">
+                            <option value="">-- Custom --</option>
+                            <?php foreach($packages_all as $pkg): ?>
+                                <option value="<?= htmlspecialchars($pkg['name']) ?>" data-fee="<?= $pkg['fee'] ?>"><?= htmlspecialchars($pkg['name']) ?> (Rp<?= number_format($pkg['fee'],0,',','.') ?>)</option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Biaya Bulanan (Rp)</label>
+                        <input type="number" name="monthly_fee" id="edit_monthly_fee" class="form-control" required style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%; font-weight:700;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Tanggal Tagih</label>
+                        <select name="billing_date" id="edit_billing_date" class="form-control" style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;">
+                            <?php for($d=1;$d<=28;$d++): ?>
+                                <option value="<?= $d ?>">Tanggal <?= $d ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Area</label>
+                        <input type="text" name="area" id="edit_area" class="form-control" placeholder="Area/Wilayah" style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;">
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Alamat Lengkap</label>
+                        <textarea name="address" id="edit_address" class="form-control" rows="3" style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer: Actions -->
+            <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:10px; padding-top:24px; border-top:1px solid var(--glass-border);">
+                <button type="button" class="btn btn-ghost" onclick="document.getElementById('editCustomerModal').style.display='none'" style="padding:12px 24px; border-radius:12px; font-weight:600; font-size:14px;">Batal</button>
+                <button type="submit" class="btn" style="padding:12px 30px; border-radius:12px; font-weight:800; font-size:14px; background:#f59e0b; color:white; border:none; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);">
+                    <i class="fas fa-save" style="margin-right:8px;"></i> Simpan Perubahan
                 </button>
             </div>
         </form>

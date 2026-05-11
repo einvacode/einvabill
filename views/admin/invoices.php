@@ -170,6 +170,8 @@ if ($action === 'delete') {
     $ref = $_GET['ref'] ?? '';
     if ($ref === 'customer_details' && isset($_GET['cust_id'])) {
         header("Location: index.php?page=admin_customers&action=details&id=" . intval($_GET['cust_id']) . "&msg=deleted");
+    } elseif ($ref === 'partner_collection') {
+        header("Location: index.php?page=partner_collection&msg=deleted");
     } else {
         header("Location: index.php?page=admin_invoices&msg=deleted");
     }
