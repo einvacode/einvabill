@@ -179,7 +179,7 @@ if (!empty($__layout_settings['company_logo'])) {
                         <a href="index.php?page=admin_users" class="nav-link <?= $page == 'admin_users' ? 'active' : '' ?>"><i class="fas fa-user-shield"></i> Akses Pengguna</a>
 
                         <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">SISTEM & TOOLS</div>
-                        
+                        <a href="index.php?page=admin_updater" class="nav-link <?= in_array($page, ['admin_updater', 'admin_updater_run']) ? 'active' : '' ?>"><i class="fas fa-arrows-rotate" style="color:#38bdf8;"></i> Update System</a>
                         <a href="index.php?page=admin_license" class="nav-link <?= $page == 'admin_license' ? 'active' : '' ?>"><i class="fas fa-key" style="color:#f59e0b;"></i> Lisensi</a>
                         <a href="index.php?page=admin_data_validation" class="nav-link <?= $page == 'admin_data_validation' ? 'active' : '' ?>"><i class="fas fa-shield-check" style="color:#10b981;"></i> Validasi Data</a>
                         
@@ -269,6 +269,7 @@ if (!empty($__layout_settings['company_logo'])) {
                 elseif($page == 'admin_expenses') $topbar_title = 'Manajemen Pengeluaran';
                 elseif($page == 'admin_reports') $topbar_title = 'Laporan Keuangan';
                 elseif($page == 'admin_report_assets') $topbar_title = 'Laporan Inventaris Aset';
+                elseif($page == 'admin_updater' || $page == 'admin_updater_run') $topbar_title = 'Update System';
                 elseif($page == 'admin_banners') $topbar_title = 'Manajemen Banner Informasi';
                 elseif($page == 'admin_landing') $topbar_title = 'Pengaturan Web Profil';
                 elseif($page == 'admin_users') $topbar_title = 'Akses Pengguna';
