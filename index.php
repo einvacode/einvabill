@@ -170,9 +170,6 @@ switch ($page) {
     case 'admin_data_validation':
         require __DIR__ . '/views/admin/data_validation.php';
         break;
-    case 'admin_master':
-        require __DIR__ . '/views/admin/master.php';
-        break;
     case 'admin_reports':
         require __DIR__ . '/views/admin/reports.php';
         break;
