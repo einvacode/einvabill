@@ -33,6 +33,16 @@ $filter_month = $_GET['month'] ?? date('m');
 $filter_year = $_GET['year'] ?? date('Y');
 $filter_user = $_GET['user_id'] ?? 'all';
 
+// Default to a full year when the user selects a year and doesn't provide explicit dates.
+$has_date_filter = !empty($_GET['date_from']) || !empty($_GET['date_to']);
+if ($filter_year && !$has_date_filter) {
+    $date_from = $filter_year . '-01-01';
+    $date_to = $filter_year . '-12-31';
+} else {
+    $date_from = $_GET['date_from'] ?? date('Y-m-01');
+    $date_to = $_GET['date_to'] ?? date('Y-m-d');
+}
+
 // Scoping Logic (Multi-tenancy & Hierarchical Isolation)
 $tenant_id = $_SESSION['tenant_id'] ?? 1;
 
@@ -59,8 +69,6 @@ if ($u_role === 'partner') {
 }
 
 // Date range filters
-$date_from = $_GET['date_from'] ?? date('Y-m-01');
-$date_to = $_GET['date_to'] ?? date('Y-m-d');
 $period_display = date('d/m/Y', strtotime($date_from)) . ' - ' . date('d/m/Y', strtotime($date_to));
 
 $sql_date_from = $date_from . ' 00:00:00';
@@ -292,6 +300,246 @@ if ($action === 'export') {
         }
     }
     fclose($output);
+    exit;
+}
+
+if ($action === 'print_spt') {
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $company = $db->query("SELECT * FROM settings WHERE tenant_id = $tenant_id")->fetch();
+    if (!$company) $company = ['company_name' => 'ISP', 'company_address' => '', 'company_contact' => '', 'company_logo' => ''];
+    $total_income = $lunas_tepat + $tunggakan_dibayar;
+
+    $exp_scope_print = ($u_role === 'admin') ? "" : " AND e.created_by = " . intval($u_id);
+    $q_expenses_print = $db->prepare("
+        SELECT e.*, u.name as creator_name, u.role as creator_role 
+        FROM expenses e
+        LEFT JOIN users u ON e.created_by = u.id
+        WHERE e.date BETWEEN ? AND ? $exp_scope_print
+        ORDER BY e.date ASC
+    ");
+    $q_expenses_print->execute([$date_from, $date_to]);
+    $expenses_list = $q_expenses_print->fetchAll();
+    $total_expenses_print = 0;
+    $expense_summary = [];
+    foreach ($expenses_list as $e) {
+        $total_expenses_print += floatval($e['amount']);
+        $cat = trim($e['category'] ?: 'Lainnya');
+        if (!isset($expense_summary[$cat])) $expense_summary[$cat] = 0;
+        $expense_summary[$cat] += floatval($e['amount']);
+    }
+
+    $profit = $total_income - $total_expenses_print;
+    $year_label = $filter_year ?: date('Y');
+    $logo_src = '';
+    if (!empty($company['company_logo'])) {
+        $logo_src = preg_match('/^http/', $company['company_logo']) ? $company['company_logo'] : '/' . str_replace(' ', '%20', $company['company_logo']);
+    }
+    ?>
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+        <meta charset="UTF-8">
+        <title>Laporan Akuntansi SPT Tahunan - <?= htmlspecialchars($year_label) ?></title>
+        <style>
+            body { font-family: Arial, sans-serif; color: #111827; margin: 0; padding: 32px; background: #fff; }
+            .header { border-bottom: 3px solid #0f172a; padding-bottom: 16px; margin-bottom: 24px; }
+            .header h1 { margin: 0 0 6px; font-size: 24px; text-transform: uppercase; }
+            .muted { color: #64748b; font-size: 12px; }
+            .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
+            .box { border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; background: #f8fafc; }
+            .box h3 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; color: #64748b; }
+            .box .value { font-size: 18px; font-weight: 700; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; }
+            th { background: #f1f5f9; text-align: left; padding: 8px 10px; border-bottom: 2px solid #cbd5e1; }
+            td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
+            .section-title { font-size: 15px; font-weight: 700; margin: 24px 0 10px; text-transform: uppercase; }
+            .footer { margin-top: 30px; font-size: 11px; color: #64748b; }
+            @media print { body { padding: 12px; } }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>Laporan Akuntansi SPT Tahunan</h1>
+            <div class="muted">Perusahaan: <?= htmlspecialchars($company['company_name']) ?></div>
+            <div class="muted">Periode: <?= htmlspecialchars($period_display) ?></div>
+        </div>
+
+        <div class="grid">
+            <div class="box">
+                <h3>Total Pendapatan</h3>
+                <div class="value">Rp <?= number_format($total_income, 0, ',', '.') ?></div>
+            </div>
+            <div class="box">
+                <h3>Total Pengeluaran</h3>
+                <div class="value">Rp <?= number_format($total_expenses_print, 0, ',', '.') ?></div>
+            </div>
+            <div class="box">
+                <h3>Laba / Rugi</h3>
+                <div class="value">Rp <?= number_format($profit, 0, ',', '.') ?></div>
+            </div>
+        </div>
+
+        <div class="section-title">Ringkasan Pendapatan</div>
+        <table>
+            <tr><th>Jenis</th><th>Nominal</th></tr>
+            <tr><td>Pembayaran Tepat Waktu</td><td>Rp <?= number_format($lunas_tepat, 0, ',', '.') ?></td></tr>
+            <tr><td>Pembayaran Tunggakan</td><td>Rp <?= number_format($tunggakan_dibayar, 0, ',', '.') ?></td></tr>
+            <tr><td><strong>Total Pendapatan</strong></td><td><strong>Rp <?= number_format($total_income, 0, ',', '.') ?></strong></td></tr>
+        </table>
+
+        <div class="section-title">Ringkasan Pengeluaran</div>
+        <table>
+            <tr><th>Kategori</th><th>Nominal</th></tr>
+            <?php if (!empty($expense_summary)): foreach ($expense_summary as $cat => $amount): ?>
+                <tr><td><?= htmlspecialchars($cat) ?></td><td>Rp <?= number_format($amount, 0, ',', '.') ?></td></tr>
+            <?php endforeach; else: ?>
+                <tr><td colspan="2" class="muted">Tidak ada pengeluaran dalam periode ini.</td></tr>
+            <?php endif; ?>
+            <tr><td><strong>Total Pengeluaran</strong></td><td><strong>Rp <?= number_format($total_expenses_print, 0, ',', '.') ?></strong></td></tr>
+        </table>
+
+        <div class="section-title">Daftar Transaksi</div>
+        <table>
+            <tr><th>Tanggal</th><th>Jenis</th><th>Nama</th><th>Nominal</th><th>Status</th></tr>
+            <?php foreach ($report_data as $row): ?>
+                <tr>
+                    <td><?= date('d/m/Y', strtotime($row['activity_date'])) ?></td>
+                    <td><?= htmlspecialchars($row['activity_type']) ?></td>
+                    <td><?= htmlspecialchars($row['customer_name']) ?></td>
+                    <td>Rp <?= number_format($row['amount'], 0, ',', '.') ?></td>
+                    <td><?= htmlspecialchars($row['status']) ?></td>
+                </tr>
+            <?php endforeach; ?>
+        </table>
+
+        <div class="footer">
+            <div>Dicetak oleh: <?= htmlspecialchars($_SESSION['user_name'] ?? 'System') ?></div>
+            <div>Waktu cetak: <?= date('d/m/Y H:i:s') ?> WIB</div>
+        </div>
+        <script>window.onload = function() { window.print(); }</script>
+    </body>
+    </html>
+    <?php
+    exit;
+}
+
+if ($action === 'print_spt') {
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $company = $db->query("SELECT * FROM settings WHERE tenant_id = $tenant_id")->fetch();
+    if (!$company) $company = ['company_name' => 'ISP', 'company_address' => '', 'company_contact' => '', 'company_logo' => ''];
+    $total_income = $lunas_tepat + $tunggakan_dibayar;
+
+    $exp_scope_print = ($u_role === 'admin') ? "" : " AND e.created_by = " . intval($u_id);
+    $q_expenses_print = $db->prepare("
+        SELECT e.*, u.name as creator_name, u.role as creator_role 
+        FROM expenses e
+        LEFT JOIN users u ON e.created_by = u.id
+        WHERE e.date BETWEEN ? AND ? $exp_scope_print
+        ORDER BY e.date ASC
+    ");
+    $q_expenses_print->execute([$date_from, $date_to]);
+    $expenses_list = $q_expenses_print->fetchAll();
+    $total_expenses_print = 0;
+    $expense_summary = [];
+    foreach ($expenses_list as $e) {
+        $total_expenses_print += floatval($e['amount']);
+        $cat = trim($e['category'] ?: 'Lainnya');
+        if (!isset($expense_summary[$cat])) $expense_summary[$cat] = 0;
+        $expense_summary[$cat] += floatval($e['amount']);
+    }
+
+    $profit = $total_income - $total_expenses_print;
+    $year_label = $filter_year ?: date('Y');
+    $logo_src = '';
+    if (!empty($company['company_logo'])) {
+        $logo_src = preg_match('/^http/', $company['company_logo']) ? $company['company_logo'] : '/' . str_replace(' ', '%20', $company['company_logo']);
+    }
+    ?>
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+        <meta charset="UTF-8">
+        <title>Laporan Akuntansi SPT Tahunan - <?= htmlspecialchars($year_label) ?></title>
+        <style>
+            body { font-family: Arial, sans-serif; color: #111827; margin: 0; padding: 32px; background: #fff; }
+            .header { border-bottom: 3px solid #0f172a; padding-bottom: 16px; margin-bottom: 24px; }
+            .header h1 { margin: 0 0 6px; font-size: 24px; text-transform: uppercase; }
+            .muted { color: #64748b; font-size: 12px; }
+            .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
+            .box { border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; background: #f8fafc; }
+            .box h3 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; color: #64748b; }
+            .box .value { font-size: 18px; font-weight: 700; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; }
+            th { background: #f1f5f9; text-align: left; padding: 8px 10px; border-bottom: 2px solid #cbd5e1; }
+            td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
+            .section-title { font-size: 15px; font-weight: 700; margin: 24px 0 10px; text-transform: uppercase; }
+            .footer { margin-top: 30px; font-size: 11px; color: #64748b; }
+            @media print { body { padding: 12px; } }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>Laporan Akuntansi SPT Tahunan</h1>
+            <div class="muted">Perusahaan: <?= htmlspecialchars($company['company_name']) ?></div>
+            <div class="muted">Periode: <?= htmlspecialchars($period_display) ?></div>
+        </div>
+
+        <div class="grid">
+            <div class="box">
+                <h3>Total Pendapatan</h3>
+                <div class="value">Rp <?= number_format($total_income, 0, ',', '.') ?></div>
+            </div>
+            <div class="box">
+                <h3>Total Pengeluaran</h3>
+                <div class="value">Rp <?= number_format($total_expenses_print, 0, ',', '.') ?></div>
+            </div>
+            <div class="box">
+                <h3>Laba / Rugi</h3>
+                <div class="value">Rp <?= number_format($profit, 0, ',', '.') ?></div>
+            </div>
+        </div>
+
+        <div class="section-title">Ringkasan Pendapatan</div>
+        <table>
+            <tr><th>Jenis</th><th>Nominal</th></tr>
+            <tr><td>Pembayaran Tepat Waktu</td><td>Rp <?= number_format($lunas_tepat, 0, ',', '.') ?></td></tr>
+            <tr><td>Pembayaran Tunggakan</td><td>Rp <?= number_format($tunggakan_dibayar, 0, ',', '.') ?></td></tr>
+            <tr><td><strong>Total Pendapatan</strong></td><td><strong>Rp <?= number_format($total_income, 0, ',', '.') ?></strong></td></tr>
+        </table>
+
+        <div class="section-title">Ringkasan Pengeluaran</div>
+        <table>
+            <tr><th>Kategori</th><th>Nominal</th></tr>
+            <?php if (!empty($expense_summary)): foreach ($expense_summary as $cat => $amount): ?>
+                <tr><td><?= htmlspecialchars($cat) ?></td><td>Rp <?= number_format($amount, 0, ',', '.') ?></td></tr>
+            <?php endforeach; else: ?>
+                <tr><td colspan="2" class="muted">Tidak ada pengeluaran dalam periode ini.</td></tr>
+            <?php endif; ?>
+            <tr><td><strong>Total Pengeluaran</strong></td><td><strong>Rp <?= number_format($total_expenses_print, 0, ',', '.') ?></strong></td></tr>
+        </table>
+
+        <div class="section-title">Daftar Transaksi</div>
+        <table>
+            <tr><th>Tanggal</th><th>Jenis</th><th>Nama</th><th>Nominal</th><th>Status</th></tr>
+            <?php foreach ($report_data as $row): ?>
+                <tr>
+                    <td><?= date('d/m/Y', strtotime($row['activity_date'])) ?></td>
+                    <td><?= htmlspecialchars($row['activity_type']) ?></td>
+                    <td><?= htmlspecialchars($row['customer_name']) ?></td>
+                    <td>Rp <?= number_format($row['amount'], 0, ',', '.') ?></td>
+                    <td><?= htmlspecialchars($row['status']) ?></td>
+                </tr>
+            <?php endforeach; ?>
+        </table>
+
+        <div class="footer">
+            <div>Dicetak oleh: <?= htmlspecialchars($_SESSION['user_name'] ?? 'System') ?></div>
+            <div>Waktu cetak: <?= date('d/m/Y H:i:s') ?> WIB</div>
+        </div>
+        <script>window.onload = function() { window.print(); }</script>
+    </body>
+    </html>
+    <?php
     exit;
 }
 
@@ -628,6 +876,9 @@ if ($action === 'print') {
                 <a href="index.php?page=admin_reports&action=print&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&user_id=<?= $filter_user ?>" target="_blank" class="btn btn-sm btn-primary">
                     <i class="fas fa-print"></i> <span>Cetak</span>
                 </a>
+                <a href="index.php?page=admin_reports&action=print_spt&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&user_id=<?= $filter_user ?>&year=<?= $filter_year ?>" target="_blank" class="btn btn-sm btn-warning" style="background:#f59e0b; border:none; color:white;">
+                    <i class="fas fa-file-contract"></i> <span>SPT Tahunan</span>
+                </a>
                 <a href="index.php?page=admin_reports&action=export&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&user_id=<?= $filter_user ?>" class="btn btn-sm btn-success" style="background:#10b981; border:none; color:white;">
                     <i class="fas fa-file-excel"></i> <span>Export</span>
                 </a>
@@ -659,6 +910,15 @@ if ($action === 'print') {
                     <i class="fas fa-calendar" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); opacity:0.5; font-size:12px;"></i>
                     <input type="date" name="date_to" class="form-control" value="<?= $date_to ?>" style="padding-left:35px; font-size:13px;">
                 </div>
+            </div>
+
+            <div class="filter-group">
+                <label><i class="fas fa-calendar"></i> Tahun</label>
+                <select name="year" class="form-control" style="font-size:13px;">
+                    <?php for ($y = date('Y') - 2; $y <= date('Y') + 1; $y++): ?>
+                        <option value="<?= $y ?>" <?= $filter_year == $y ? 'selected' : '' ?>><?= $y ?></option>
+                    <?php endfor; ?>
+                </select>
             </div>
 
             <?php if ($u_role === 'admin'): ?>
