@@ -182,6 +182,21 @@ if (!empty($__layout_settings['company_logo'])) {
                         <a href="index.php?page=admin_updater" class="nav-link <?= in_array($page, ['admin_updater', 'admin_updater_run']) ? 'active' : '' ?>"><i class="fas fa-arrows-rotate" style="color:#38bdf8;"></i> Update System</a>
                         <a href="index.php?page=admin_license" class="nav-link <?= $page == 'admin_license' ? 'active' : '' ?>"><i class="fas fa-key" style="color:#f59e0b;"></i> Lisensi</a>
                         <a href="index.php?page=admin_data_validation" class="nav-link <?= $page == 'admin_data_validation' ? 'active' : '' ?>"><i class="fas fa-shield-check" style="color:#10b981;"></i> Validasi Data</a>
+
+                        <!-- Dropdown Pengaturan -->
+                        <div class="nav-dropdown <?= in_array($page, ['admin_wa_gateway', 'admin_settings', 'admin_backup', 'admin_banners', 'admin_landing']) ? 'open' : '' ?>">
+                            <div class="nav-link dropdown-toggle" onclick="toggleDropdown(this)">
+                                <span><i class="fas fa-sliders-h"></i> Pengaturan</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                            <div class="dropdown-content">
+                                <a href="index.php?page=admin_wa_gateway" class="nav-link dropdown-link <?= $page == 'admin_wa_gateway' ? 'active' : '' ?>"><i class="fab fa-whatsapp" style="color:#25D366;"></i> WA Perangkat</a>
+                                <a href="index.php?page=admin_settings" class="nav-link dropdown-link <?= $page == 'admin_settings' ? 'active' : '' ?>"><i class="fas fa-cog"></i> Profil & Apps</a>
+                                <a href="index.php?page=admin_landing" class="nav-link dropdown-link <?= $page == 'admin_landing' ? 'active' : '' ?>"><i class="fas fa-globe"></i> Web Profil</a>
+                                <a href="index.php?page=admin_banners" class="nav-link dropdown-link <?= $page == 'admin_banners' ? 'active' : '' ?>"><i class="fas fa-scroll" style="color:var(--warning);"></i> Banner</a>
+                                <a href="index.php?page=admin_backup" class="nav-link dropdown-link <?= $page == 'admin_backup' ? 'active' : '' ?>"><i class="fas fa-shield-alt"></i> Backup</a>
+                            </div>
+                        </div>
                         
                         <!-- Dropdown Laporan -->
                         <div class="nav-dropdown <?= in_array($page, ['admin_reports', 'admin_report_assets']) ? 'open' : '' ?>">
