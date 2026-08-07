@@ -9,11 +9,13 @@ if (!$can_access_master) {
     return;
 }
 
+try {
+
 $tenant_filter = $_GET['tenant_id'] ?? 'all';
 $tenant_id_filter = ($tenant_filter === 'all') ? 'all' : intval($tenant_filter);
 
 try {
-    $tenants = $db->query("SELECT u.tenant_id, u.name as admin_name, COALESCE(s.company_name, u.name) as company_name FROM users u LEFT JOIN settings s ON s.tenant_id = u.tenant_id WHERE u.role = 'admin' GROUP BY u.tenant_id ORDER BY u.tenant_id ASC")->fetchAll();
+    $tenants = $db->query("SELECT DISTINCT u.tenant_id, u.name as admin_name, COALESCE(s.company_name, u.name) as company_name FROM users u LEFT JOIN settings s ON s.tenant_id = u.tenant_id WHERE u.role = 'admin' AND u.tenant_id IS NOT NULL ORDER BY u.tenant_id ASC")->fetchAll();
 } catch (Exception $e) {
     $tenants = [];
 }
@@ -200,3 +202,9 @@ if ($tenant_id_filter !== 'all') {
         </table>
     </div>
 </div>
+<?php
+} catch (Throwable $e) {
+    $debug_message = defined('APP_DEBUG') && APP_DEBUG ? htmlspecialchars($e->getMessage()) : 'Terjadi kesalahan saat memuat halaman Master Tenant.';
+    echo "<div class='glass-panel' style='padding:40px; text-align:center;'><h2>Gagal memuat Master Tenant</h2><p>{$debug_message}</p></div>";
+}
+?>
