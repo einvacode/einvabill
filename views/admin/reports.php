@@ -329,6 +329,11 @@ if ($action === 'print_spt') {
     }
 
     $profit = $total_income - $total_expenses_print;
+    $cash_balance = $profit;
+    $receivables = max(0, floatval($belum_bayar));
+    $total_assets = $cash_balance + $receivables;
+    $liabilities = 0;
+    $equity = $total_assets - $liabilities;
     $year_label = $filter_year ?: date('Y');
     $logo_src = '';
     if (!empty($company['company_logo'])) {
@@ -396,6 +401,16 @@ if ($action === 'print_spt') {
                 <tr><td colspan="2" class="muted">Tidak ada pengeluaran dalam periode ini.</td></tr>
             <?php endif; ?>
             <tr><td><strong>Total Pengeluaran</strong></td><td><strong>Rp <?= number_format($total_expenses_print, 0, ',', '.') ?></strong></td></tr>
+        </table>
+
+        <div class="section-title">Neraca Sederhana / Aset</div>
+        <table>
+            <tr><th>Item</th><th>Nominal</th></tr>
+            <tr><td>Kas / Saldo Laba</td><td>Rp <?= number_format($cash_balance, 0, ',', '.') ?></td></tr>
+            <tr><td>Piutang</td><td>Rp <?= number_format($receivables, 0, ',', '.') ?></td></tr>
+            <tr><td><strong>Total Aset</strong></td><td><strong>Rp <?= number_format($total_assets, 0, ',', '.') ?></strong></td></tr>
+            <tr><td>Liabilitas</td><td>Rp <?= number_format($liabilities, 0, ',', '.') ?></td></tr>
+            <tr><td><strong>Ekuitas</strong></td><td><strong>Rp <?= number_format($equity, 0, ',', '.') ?></strong></td></tr>
         </table>
 
         <div class="section-title">Daftar Transaksi</div>
