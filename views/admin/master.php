@@ -1,8 +1,10 @@
 <?php
 $u_id = $_SESSION['user_id'] ?? 0;
 $u_role = $_SESSION['user_role'] ?? 'guest';
+$u_tenant = intval($_SESSION['tenant_id'] ?? 0);
+$can_access_master = ($u_id == 1) || ($u_role === 'master') || ($u_role === 'admin' && $u_tenant === 1);
 
-if ($u_id != 1 && $u_role !== 'master') {
+if (!$can_access_master) {
     echo "<div class='glass-panel' style='padding:40px; text-align:center;'><h2>Akses Ditolak</h2><p>Halaman master hanya untuk super admin.</p></div>";
     return;
 }

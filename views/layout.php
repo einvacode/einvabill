@@ -182,7 +182,7 @@ if (!empty($__layout_settings['company_logo'])) {
                         
                         <a href="index.php?page=admin_license" class="nav-link <?= $page == 'admin_license' ? 'active' : '' ?>"><i class="fas fa-key" style="color:#f59e0b;"></i> Lisensi</a>
                         <a href="index.php?page=admin_data_validation" class="nav-link <?= $page == 'admin_data_validation' ? 'active' : '' ?>"><i class="fas fa-shield-check" style="color:#10b981;"></i> Validasi Data</a>
-                        <?php if (($_SESSION['user_id'] ?? 0) == 1): ?>
+                        <?php if ((($_SESSION['user_id'] ?? 0) == 1) || (($_SESSION['user_role'] ?? '') === 'admin' && (($_SESSION['tenant_id'] ?? 0) === 1))): ?>
                             <a href="index.php?page=admin_master" class="nav-link <?= $page == 'admin_master' ? 'active' : '' ?>"><i class="fas fa-crown" style="color:#f59e0b;"></i> Master Tenant</a>
                         <?php endif; ?>
                         
