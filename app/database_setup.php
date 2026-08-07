@@ -234,15 +234,25 @@ function run_database_setup($db) {
     $db->exec("CREATE INDEX IF NOT EXISTS idx_customers_tenant_created ON customers(tenant_id, created_by)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_payments_tenant_date ON payments(tenant_id, payment_date)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_settings_tenant ON settings(tenant_id)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_customers_tenant_type ON customers(tenant_id, type)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_customers_tenant_name ON customers(tenant_id, name)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_customers_tenant_code ON customers(tenant_id, customer_code)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_customers_tenant_regdate ON customers(tenant_id, registration_date)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_customers_tenant_billdate ON customers(tenant_id, billing_date)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_invoices_tenant_customer_due ON invoices(tenant_id, customer_id, due_date)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_invoices_tenant_customer_status ON invoices(tenant_id, customer_id, status)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_payments_tenant_invoice_date ON payments(tenant_id, invoice_id, payment_date)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_users_tenant_role ON users(tenant_id, role)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_invoice_items_invoice ON invoice_items(invoice_id)");
 
     // 4. Seed Data
     // Default Settings
     $check_settings = $db->query("SELECT COUNT(*) FROM settings")->fetchColumn();
     if ($check_settings == 0) {
         $db->exec("INSERT INTO settings (id, company_name, company_tagline, company_address, wa_template, landing_hero_title, landing_hero_text, db_version) 
-                  VALUES (1, 'EinvaBill ISP', 'Internet Cepat & Layanan Prima', 'Alamat Perusahaan Anda', 'Halo {nama}, tagihan Anda sebesar {tagihan} sudah terbit.', 'Koneksi Super Cepat & Stabil', 'Solusi internet dan IT untuk kebutuhan personal dan korporasi.', 21)");
+                  VALUES (1, 'EinvaBill ISP', 'Internet Cepat & Layanan Prima', 'Alamat Perusahaan Anda', 'Halo {nama}, tagihan Anda sebesar {tagihan} sudah terbit.', 'Koneksi Super Cepat & Stabil', 'Solusi internet dan IT untuk kebutuhan personal dan korporasi.', 22)");
     } else {
-        $db->exec("UPDATE settings SET db_version = 21 WHERE id = 1");
+        $db->exec("UPDATE settings SET db_version = 22 WHERE id = 1");
     }
 
     // Default Users

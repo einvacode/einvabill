@@ -89,14 +89,18 @@ $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 // High-Performance Concurrency Settings (WAL Mode)
 $db->exec("PRAGMA journal_mode=WAL;");
 $db->exec("PRAGMA synchronous=NORMAL;");
+$db->exec("PRAGMA foreign_keys=ON;");
+$db->exec("PRAGMA busy_timeout=5000;");
 $db->exec("PRAGMA cache_size = -20000;"); // 20MB Cache
 $db->exec("PRAGMA temp_store = MEMORY;");
 $db->exec("PRAGMA mmap_size = 30000000000;"); // Use memory mapping for faster reads
 $db->exec("PRAGMA count_changes = OFF;");
+$db->exec("PRAGMA wal_autocheckpoint=1000;");
+$db->exec("PRAGMA optimize;");
 $db->exec("PRAGMA threads = 4;");
 
 // --- VERSIONED SCHEMA MANAGEMENT ---
-define('APP_DB_VERSION', 21); // Sync with database_setup.php
+define('APP_DB_VERSION', 22); // Sync with database_setup.php
 define('APP_VERSION', '2.34.1-1');
 
 $current_db_ver = 0;
