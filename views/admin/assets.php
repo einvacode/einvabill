@@ -723,11 +723,12 @@ $active_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets a WHERE 
 </div>
 
 <!-- Asset Modal -->
-<div id="assetModal" class="modal" style="display:none; position:fixed; z-index:1001; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.8); backdrop-filter:blur(10px);">
-    <div class="glass-panel" style="width:90%; max-width:620px; margin:5% auto; padding:30px;">
+<div id="assetModal" class="modal" style="display:none; position:fixed; z-index:1001; left:0; top:0; width:100%; height:100%; overflow-y:auto; padding:24px 0; background:rgba(0,0,0,0.8); backdrop-filter:blur(10px);">
+    <div class="glass-panel" style="width:90%; max-width:620px; margin:0 auto; padding:30px; max-height:calc(100vh - 48px); overflow-y:auto;">
         <h3 id="modalTitle" style="margin-bottom:20px;">Tambah Aset Baru</h3>
-        <form method="POST" id="assetForm">
+        <form method="POST" id="assetForm" style="display:flex; flex-direction:column; gap:0;">
             <input type="hidden" name="id" id="asset_id">
+            <div style="max-height:calc(100vh - 220px); overflow-y:auto; padding-right:6px;">
             <div class="form-group">
                 <label>Nama Aset</label>
                 <input type="text" name="name" id="asset_name" class="form-control" required placeholder="Contoh: Laptop Administrasi">
@@ -806,7 +807,8 @@ $active_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets a WHERE 
                     <input type="text" name="lng" id="asset_lng" class="form-control">
                 </div>
             </div>
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px; position:sticky; bottom:0; background:linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.08) 35%, rgba(255,255,255,0.12) 100%); backdrop-filter:blur(8px); padding-top:14px;">
                 <button type="button" class="btn btn-ghost" onclick="closeAssetModal()">Batal</button>
                 <button type="submit" class="btn btn-primary" id="saveBtn">Simpan Aset</button>
             </div>
@@ -815,8 +817,8 @@ $active_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets a WHERE 
 </div>
 
 <!-- Invoice Modal -->
-<div id="invoiceModal" class="modal" style="display:none; position:fixed; z-index:1002; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.8); backdrop-filter:blur(10px);">
-    <div class="glass-panel" style="width:90%; max-width:520px; margin:5% auto; padding:20px;">
+<div id="invoiceModal" class="modal" style="display:none; position:fixed; z-index:1002; left:0; top:0; width:100%; height:100%; overflow-y:auto; padding:24px 0; background:rgba(0,0,0,0.8); backdrop-filter:blur(10px);">
+    <div class="glass-panel" style="width:90%; max-width:520px; margin:0 auto; padding:20px; max-height:calc(100vh - 48px); overflow-y:auto;">
         <h3 style="margin-bottom:10px;"><i class="fas fa-receipt"></i> Buat Nota Penjualan Aset</h3>
         <form method="POST" id="invoiceForm" action="index.php?page=admin_assets&action=invoice_create">
             <input type="hidden" name="asset_id" id="inv_asset_id">
