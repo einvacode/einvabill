@@ -659,6 +659,10 @@ tbody tr:hover {
   align-items: flex-end;
 }
 
+.filter-group-wide {
+  grid-column: span 2;
+}
+
 .filter-panel {
   padding: 18px;
   margin-bottom: 25px;
@@ -702,10 +706,12 @@ tbody tr:hover {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: nowrap;
 }
 
 .filter-date-range .form-control {
   flex: 1;
+  min-width: 0;
 }
 
 .filter-date-separator {
@@ -758,6 +764,21 @@ tbody tr:hover {
   .filter-quick-actions .filter-quick-btn {
     min-height: 36px;
     font-size: 11px;
+  }
+}
+
+@media (max-width: 980px) {
+  .filter-group-wide {
+    grid-column: span 1;
+  }
+
+  .filter-date-range {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-date-separator {
+    display: none;
   }
 }
 

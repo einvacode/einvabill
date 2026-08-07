@@ -631,7 +631,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
         <input type="hidden" name="page" value="admin_invoices">
         <input type="hidden" name="filter_type" value="<?= htmlspecialchars($filter_type) ?>">
         
-        <div class="filter-group">
+        <div class="filter-group filter-group-wide">
             <label><i class="fas fa-calendar-alt"></i> Periode Jatuh Tempo</label>
             <div class="filter-date-range">
                 <input type="date" name="date_from" class="form-control filter-control" value="<?= htmlspecialchars($date_from) ?>">
