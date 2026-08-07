@@ -1,69 +1,71 @@
 <?php
-$u_id = $_SESSION['user_id'] ?? 0;
+$u_id = intval($_SESSION['user_id'] ?? 0);
 $u_role = $_SESSION['user_role'] ?? 'guest';
 $u_tenant = intval($_SESSION['tenant_id'] ?? 0);
-$can_access_master = ($u_id == 1) || ($u_role === 'master') || ($u_role === 'admin' && $u_tenant === 1);
+$can_access_master = ($u_id === 1) || ($u_role === 'master') || ($u_role === 'admin' && $u_tenant === 1);
 
 if (!$can_access_master) {
     echo "<div class='glass-panel' style='padding:40px; text-align:center;'><h2>Akses Ditolak</h2><p>Halaman master hanya untuk super admin.</p></div>";
     return;
 }
 
-try {
+function master_count(PDO $db, $sql, array $params = []) {
+    try {
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+        return (float)$stmt->fetchColumn();
+    } catch (Exception $e) {
+        return 0;
+    }
+}
 
 $tenant_filter = $_GET['tenant_id'] ?? 'all';
 $tenant_id_filter = ($tenant_filter === 'all') ? 'all' : intval($tenant_filter);
 
+$tenants = [];
 try {
-    $tenants = $db->query("SELECT DISTINCT u.tenant_id, u.name as admin_name, COALESCE(s.company_name, u.name) as company_name FROM users u LEFT JOIN settings s ON s.tenant_id = u.tenant_id WHERE u.role = 'admin' AND u.tenant_id IS NOT NULL ORDER BY u.tenant_id ASC")->fetchAll();
+    $tenants = $db->query("SELECT tenant_id, name FROM users WHERE role = 'admin' AND tenant_id IS NOT NULL ORDER BY tenant_id ASC")->fetchAll();
 } catch (Exception $e) {
     $tenants = [];
-}
-
-if ($tenant_id_filter !== 'all') {
-    $tenant_ids = [$tenant_id_filter];
-    $tenant_where = " WHERE tenant_id = " . intval($tenant_id_filter);
-} else {
-    $tenant_ids = array_map(function($row) { return intval($row['tenant_id']); }, $tenants);
-    $tenant_where = "";
-}
-
-$selected_tenant_name = 'Semua Tenant';
-foreach ($tenants as $ten) {
-    if (intval($ten['tenant_id']) === intval($tenant_id_filter)) {
-        $selected_tenant_name = $ten['company_name'] ?: $ten['admin_name'];
-        break;
-    }
 }
 
 $tenant_summary = [];
 foreach ($tenants as $ten) {
     $tid = intval($ten['tenant_id']);
     try {
-        $tenant_summary[] = [
-            'tenant_id' => $tid,
-            'company_name' => $ten['company_name'] ?: $ten['admin_name'],
-            'admin_name' => $ten['admin_name'],
-            'customers' => (int)$db->query("SELECT COUNT(*) FROM customers WHERE tenant_id = $tid")->fetchColumn(),
-            'invoices' => (int)$db->query("SELECT COUNT(*) FROM invoices WHERE tenant_id = $tid")->fetchColumn(),
-            'cash_in' => (float)$db->query("SELECT COALESCE(SUM(amount),0) FROM payments WHERE tenant_id = $tid")->fetchColumn(),
-            'expenses' => (float)$db->query("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE tenant_id = $tid")->fetchColumn(),
-            'receivable' => (float)$db->query("SELECT COALESCE(SUM(amount - discount),0) FROM invoices WHERE tenant_id = $tid AND status = 'Belum Lunas'")->fetchColumn(),
-            'paid' => (float)$db->query("SELECT COALESCE(SUM(amount - discount),0) FROM invoices WHERE tenant_id = $tid AND status = 'Lunas'")->fetchColumn(),
-        ];
+        $stmt_company = $db->prepare("SELECT company_name FROM settings WHERE tenant_id = ? LIMIT 1");
+        $stmt_company->execute([$tid]);
+        $company_name = trim((string)$stmt_company->fetchColumn());
     } catch (Exception $e) {
-        $tenant_summary[] = [
-            'tenant_id' => $tid,
-            'company_name' => $ten['company_name'] ?: $ten['admin_name'],
-            'admin_name' => $ten['admin_name'],
-            'customers' => 0,
-            'invoices' => 0,
-            'cash_in' => 0,
-            'expenses' => 0,
-            'receivable' => 0,
-            'paid' => 0,
-        ];
+        $company_name = '';
     }
+    if ($company_name === '') {
+        $company_name = trim((string)($ten['name'] ?? ('Tenant ' . $tid)));
+    }
+
+    $tenant_summary[] = [
+        'tenant_id' => $tid,
+        'company_name' => $company_name,
+        'admin_name' => $ten['name'] ?? '-',
+        'customers' => (int)master_count($db, "SELECT COUNT(*) FROM customers WHERE tenant_id = ?", [$tid]),
+        'invoices' => (int)master_count($db, "SELECT COUNT(*) FROM invoices WHERE tenant_id = ?", [$tid]),
+        'cash_in' => master_count($db, "SELECT COALESCE(SUM(amount),0) FROM payments WHERE tenant_id = ?", [$tid]),
+        'expenses' => master_count($db, "SELECT COALESCE(SUM(amount),0) FROM expenses WHERE tenant_id = ?", [$tid]),
+        'receivable' => master_count($db, "SELECT COALESCE(SUM(amount - discount),0) FROM invoices WHERE tenant_id = ? AND status = 'Belum Lunas'", [$tid]),
+    ];
+}
+
+$all_customers = [];
+try {
+    if ($tenant_id_filter !== 'all') {
+        $stmt = $db->prepare("SELECT c.*, COALESCE(s.company_name, u.name) as tenant_name FROM customers c LEFT JOIN users u ON u.tenant_id = c.tenant_id AND u.role = 'admin' LEFT JOIN settings s ON s.tenant_id = c.tenant_id WHERE c.tenant_id = ? ORDER BY c.name ASC");
+        $stmt->execute([$tenant_id_filter]);
+        $all_customers = $stmt->fetchAll();
+    } else {
+        $all_customers = $db->query("SELECT c.*, COALESCE(s.company_name, u.name) as tenant_name FROM customers c LEFT JOIN users u ON u.tenant_id = c.tenant_id AND u.role = 'admin' LEFT JOIN settings s ON s.tenant_id = c.tenant_id ORDER BY c.tenant_id ASC, c.name ASC")->fetchAll();
+    }
+} catch (Exception $e) {
+    $all_customers = [];
 }
 
 $total_tenants = count($tenant_summary);
@@ -73,21 +75,11 @@ $total_cash_in = 0;
 $total_expenses = 0;
 $total_receivable = 0;
 foreach ($tenant_summary as $row) {
-    $total_customers += $row['customers'];
-    $total_invoices += $row['invoices'];
-    $total_cash_in += $row['cash_in'];
-    $total_expenses += $row['expenses'];
-    $total_receivable += $row['receivable'];
-}
-
-if ($tenant_id_filter !== 'all') {
-    $customer_sql = "SELECT c.*, COALESCE(s.company_name, u.name) as tenant_name FROM customers c LEFT JOIN users u ON u.tenant_id = c.tenant_id AND u.role = 'admin' LEFT JOIN settings s ON s.tenant_id = c.tenant_id WHERE c.tenant_id = ? ORDER BY c.name ASC";
-    $stmt_customers = $db->prepare($customer_sql);
-    $stmt_customers->execute([$tenant_id_filter]);
-    $all_customers = $stmt_customers->fetchAll();
-} else {
-    $customer_sql = "SELECT c.*, COALESCE(s.company_name, u.name) as tenant_name FROM customers c LEFT JOIN users u ON u.tenant_id = c.tenant_id AND u.role = 'admin' LEFT JOIN settings s ON s.tenant_id = c.tenant_id ORDER BY c.tenant_id ASC, c.name ASC";
-    $all_customers = $db->query($customer_sql)->fetchAll();
+    $total_customers += (int)$row['customers'];
+    $total_invoices += (int)$row['invoices'];
+    $total_cash_in += (float)$row['cash_in'];
+    $total_expenses += (float)$row['expenses'];
+    $total_receivable += (float)$row['receivable'];
 }
 ?>
 
@@ -95,7 +87,7 @@ if ($tenant_id_filter !== 'all') {
     <div style="display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; align-items:flex-start; margin-bottom:20px;">
         <div>
             <h3 style="font-size:22px; margin:0 0 6px;"><i class="fas fa-crown text-primary"></i> Master Tenant</h3>
-            <div style="color:var(--text-secondary);">Pantau seluruh customer dan keuangan lintas tenant dari satu halaman.</div>
+            <div style="color:var(--text-secondary);">Pantau customer dan keuangan semua tenant dari satu halaman.</div>
         </div>
         <form method="GET" style="min-width:220px;">
             <input type="hidden" name="page" value="admin_master">
@@ -110,30 +102,12 @@ if ($tenant_id_filter !== 'all') {
     </div>
 
     <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:24px;">
-        <div class="glass-panel" style="padding:16px;">
-            <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; font-weight:700;">Tenant</div>
-            <div style="font-size:26px; font-weight:800; margin-top:6px;"><?= number_format($total_tenants) ?></div>
-        </div>
-        <div class="glass-panel" style="padding:16px;">
-            <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; font-weight:700;">Pelanggan</div>
-            <div style="font-size:26px; font-weight:800; margin-top:6px;"><?= number_format($total_customers) ?></div>
-        </div>
-        <div class="glass-panel" style="padding:16px;">
-            <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; font-weight:700;">Invoice</div>
-            <div style="font-size:26px; font-weight:800; margin-top:6px;"><?= number_format($total_invoices) ?></div>
-        </div>
-        <div class="glass-panel" style="padding:16px;">
-            <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; font-weight:700;">Kas Masuk</div>
-            <div style="font-size:20px; font-weight:800; margin-top:6px; color:var(--success);">Rp <?= number_format($total_cash_in, 0, ',', '.') ?></div>
-        </div>
-        <div class="glass-panel" style="padding:16px;">
-            <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; font-weight:700;">Pengeluaran</div>
-            <div style="font-size:20px; font-weight:800; margin-top:6px; color:var(--danger);">Rp <?= number_format($total_expenses, 0, ',', '.') ?></div>
-        </div>
-        <div class="glass-panel" style="padding:16px;">
-            <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; font-weight:700;">Piutang</div>
-            <div style="font-size:20px; font-weight:800; margin-top:6px; color:var(--warning);">Rp <?= number_format($total_receivable, 0, ',', '.') ?></div>
-        </div>
+        <div class="glass-panel" style="padding:16px;"><div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; font-weight:700;">Tenant</div><div style="font-size:26px; font-weight:800; margin-top:6px;"><?= number_format($total_tenants) ?></div></div>
+        <div class="glass-panel" style="padding:16px;"><div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; font-weight:700;">Pelanggan</div><div style="font-size:26px; font-weight:800; margin-top:6px;"><?= number_format($total_customers) ?></div></div>
+        <div class="glass-panel" style="padding:16px;"><div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; font-weight:700;">Invoice</div><div style="font-size:26px; font-weight:800; margin-top:6px;"><?= number_format($total_invoices) ?></div></div>
+        <div class="glass-panel" style="padding:16px;"><div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; font-weight:700;">Kas Masuk</div><div style="font-size:20px; font-weight:800; margin-top:6px; color:var(--success);">Rp <?= number_format($total_cash_in, 0, ',', '.') ?></div></div>
+        <div class="glass-panel" style="padding:16px;"><div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; font-weight:700;">Pengeluaran</div><div style="font-size:20px; font-weight:800; margin-top:6px; color:var(--danger);">Rp <?= number_format($total_expenses, 0, ',', '.') ?></div></div>
+        <div class="glass-panel" style="padding:16px;"><div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; font-weight:700;">Piutang</div><div style="font-size:20px; font-weight:800; margin-top:6px; color:var(--warning);">Rp <?= number_format($total_receivable, 0, ',', '.') ?></div></div>
     </div>
 
     <div class="table-container" style="margin-bottom:24px;">
@@ -151,17 +125,17 @@ if ($tenant_id_filter !== 'all') {
             </thead>
             <tbody>
                 <?php foreach ($tenant_summary as $row): ?>
-                    <?php $saldo = $row['cash_in'] - $row['expenses']; ?>
+                    <?php $saldo = (float)$row['cash_in'] - (float)$row['expenses']; ?>
                     <tr>
                         <td>
                             <div style="font-weight:700;"><?= htmlspecialchars($row['company_name']) ?></div>
                             <div style="font-size:11px; color:var(--text-secondary);">Admin: <?= htmlspecialchars($row['admin_name']) ?> | ID <?= intval($row['tenant_id']) ?></div>
                         </td>
-                        <td><?= number_format($row['customers'], 0, ',', '.') ?></td>
-                        <td><?= number_format($row['invoices'], 0, ',', '.') ?></td>
-                        <td style="color:var(--success); font-weight:700;">Rp <?= number_format($row['cash_in'], 0, ',', '.') ?></td>
-                        <td style="color:var(--danger); font-weight:700;">Rp <?= number_format($row['expenses'], 0, ',', '.') ?></td>
-                        <td style="color:var(--warning); font-weight:700;">Rp <?= number_format($row['receivable'], 0, ',', '.') ?></td>
+                        <td><?= number_format((int)$row['customers'], 0, ',', '.') ?></td>
+                        <td><?= number_format((int)$row['invoices'], 0, ',', '.') ?></td>
+                        <td style="color:var(--success); font-weight:700;">Rp <?= number_format((float)$row['cash_in'], 0, ',', '.') ?></td>
+                        <td style="color:var(--danger); font-weight:700;">Rp <?= number_format((float)$row['expenses'], 0, ',', '.') ?></td>
+                        <td style="color:var(--warning); font-weight:700;">Rp <?= number_format((float)$row['receivable'], 0, ',', '.') ?></td>
                         <td style="font-weight:800;">Rp <?= number_format($saldo, 0, ',', '.') ?></td>
                     </tr>
                 <?php endforeach; ?>
@@ -202,9 +176,3 @@ if ($tenant_id_filter !== 'all') {
         </table>
     </div>
 </div>
-<?php
-} catch (Throwable $e) {
-    $debug_message = defined('APP_DEBUG') && APP_DEBUG ? htmlspecialchars($e->getMessage()) : 'Terjadi kesalahan saat memuat halaman Master Tenant.';
-    echo "<div class='glass-panel' style='padding:40px; text-align:center;'><h2>Gagal memuat Master Tenant</h2><p>{$debug_message}</p></div>";
-}
-?>
