@@ -373,6 +373,34 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
 }
 
+/* Cross-page data source navigation */
+.source-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 18px;
+}
+
+.source-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary);
+  border: 1px solid rgba(var(--primary-rgb), 0.22);
+  background: rgba(var(--primary-rgb), 0.08);
+}
+
+.source-nav-link.active {
+  color: #fff;
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
 /* ===== LAYOUT ===== */
 .app-layout {
   display: flex;

@@ -618,6 +618,12 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         </div>
     </div>
+
+    <div class="source-nav">
+        <a class="source-nav-link active" href="index.php?page=admin_customers"><i class="fas fa-users"></i> Pelanggan</a>
+        <a class="source-nav-link" href="index.php?page=admin_invoices"><i class="fas fa-file-invoice"></i> Tagihan</a>
+        <a class="source-nav-link" href="index.php?page=admin_reports"><i class="fas fa-chart-line"></i> Laporan</a>
+    </div>
     
     <?php if(isset($_GET['msg'])): ?>
         <div class="glass-panel" style="padding:15px; margin-bottom:20px; background:rgba(16, 185, 129, 0.1); border-left:4px solid var(--success); display:flex; align-items:center; gap:12px;">

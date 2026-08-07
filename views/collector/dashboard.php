@@ -711,38 +711,12 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
 </div>
 <?php endif; ?>
 
-<style>
-    .collector-source-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-bottom: 14px;
-    }
-    .collector-source-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 7px 11px;
-        border-radius: 10px;
-        border: 1px solid rgba(var(--primary-rgb), 0.22);
-        background: rgba(var(--primary-rgb), 0.07);
-        color: var(--primary);
-        text-decoration: none;
-        font-size: 12px;
-        font-weight: 700;
-    }
-    .collector-source-link.active {
-        background: rgba(var(--primary-rgb), 0.16);
-        border-color: rgba(var(--primary-rgb), 0.35);
-    }
-</style>
-
-<div class="collector-source-row">
-    <a class="collector-source-link <?= $coll_tab === 'summary' ? 'active' : '' ?>" href="index.php?page=collector&tab=summary&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>"><i class="fas fa-chart-pie"></i> Ringkasan</a>
-    <a class="collector-source-link <?= $coll_tab === 'tugas' ? 'active' : '' ?>" href="index.php?page=collector&tab=tugas&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>"><i class="fas fa-list-ul"></i> Tugas</a>
-    <a class="collector-source-link <?= $coll_tab === 'lunas' ? 'active' : '' ?>" href="index.php?page=collector&tab=lunas&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>"><i class="fas fa-check-circle"></i> Pelunasan</a>
-    <a class="collector-source-link <?= $coll_tab === 'pengeluaran' ? 'active' : '' ?>" href="index.php?page=collector&tab=pengeluaran&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>"><i class="fas fa-wallet"></i> Pengeluaran</a>
-    <a class="collector-source-link <?= $coll_tab === 'pelanggan' ? 'active' : '' ?>" href="index.php?page=collector&tab=pelanggan&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>"><i class="fas fa-users"></i> Pelanggan</a>
+<div class="source-nav">
+    <a class="source-nav-link <?= $coll_tab === 'summary' ? 'active' : '' ?>" href="index.php?page=collector&tab=summary&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>"><i class="fas fa-chart-pie"></i> Ringkasan</a>
+    <a class="source-nav-link <?= $coll_tab === 'tugas' ? 'active' : '' ?>" href="index.php?page=collector&tab=tugas&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>"><i class="fas fa-list-ul"></i> Tugas</a>
+    <a class="source-nav-link <?= $coll_tab === 'lunas' ? 'active' : '' ?>" href="index.php?page=collector&tab=lunas&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>"><i class="fas fa-check-circle"></i> Pelunasan</a>
+    <a class="source-nav-link <?= $coll_tab === 'pengeluaran' ? 'active' : '' ?>" href="index.php?page=collector&tab=pengeluaran&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>"><i class="fas fa-wallet"></i> Pengeluaran</a>
+    <a class="source-nav-link <?= $coll_tab === 'pelanggan' ? 'active' : '' ?>" href="index.php?page=collector&tab=pelanggan&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>"><i class="fas fa-users"></i> Pelanggan</a>
 </div>
 
 <?php if($success_data): ?>

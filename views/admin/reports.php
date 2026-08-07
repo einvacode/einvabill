@@ -889,6 +889,12 @@ if ($action === 'print') {
         </div>
     </div>
 
+    <div class="source-nav">
+        <a class="source-nav-link" href="index.php?page=admin_customers"><i class="fas fa-users"></i> Pelanggan</a>
+        <a class="source-nav-link" href="index.php?page=admin_invoices"><i class="fas fa-file-invoice"></i> Tagihan</a>
+        <a class="source-nav-link active" href="index.php?page=admin_reports"><i class="fas fa-chart-line"></i> Laporan</a>
+    </div>
+
     <!-- Standardized Filter Bar -->
     <div class="filter-panel">
         <form method="GET" action="index.php" class="grid-filters">

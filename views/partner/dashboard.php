@@ -650,25 +650,6 @@ function switchImportTab(t){
             <!-- LEFT/TOP: Simplified Summary -->
             <div>
                 <style>
-                    .partner-summary-links {
-                        display: flex;
-                        flex-wrap: wrap;
-                        gap: 8px;
-                        margin-bottom: 12px;
-                    }
-                    .partner-summary-links a {
-                        display: inline-flex;
-                        align-items: center;
-                        gap: 6px;
-                        padding: 8px 12px;
-                        border-radius: 10px;
-                        border: 1px solid rgba(var(--primary-rgb), 0.22);
-                        background: rgba(var(--primary-rgb), 0.08);
-                        color: var(--primary);
-                        text-decoration: none;
-                        font-size: 12px;
-                        font-weight: 700;
-                    }
                     .partner-summary-grid {
                         display: grid;
                         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -695,10 +676,10 @@ function switchImportTab(t){
                     }
                 </style>
 
-                <div class="partner-summary-links">
-                    <a href="index.php?page=partner"><i class="fas fa-users"></i> Data Pelanggan</a>
-                    <a href="index.php?page=partner_isp_invoices"><i class="fas fa-file-invoice"></i> Data Tagihan</a>
-                    <a href="index.php?page=partner_reports"><i class="fas fa-chart-line"></i> Data Laporan</a>
+                <div class="source-nav" style="margin:0 0 12px;">
+                    <a class="source-nav-link" href="index.php?page=partner"><i class="fas fa-users"></i> Data Pelanggan</a>
+                    <a class="source-nav-link" href="index.php?page=partner_isp_invoices"><i class="fas fa-file-invoice"></i> Data Tagihan</a>
+                    <a class="source-nav-link" href="index.php?page=partner_reports"><i class="fas fa-chart-line"></i> Data Laporan</a>
                 </div>
 
                 <div class="partner-summary-grid">
@@ -731,10 +712,10 @@ function switchImportTab(t){
 
             <!-- MAIN LISTS -->
             <div>
-                <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
-                    <a href="index.php?page=partner" style="display:inline-flex; align-items:center; gap:6px; padding:7px 11px; border-radius:10px; border:1px solid rgba(var(--primary-rgb), 0.22); background:rgba(var(--primary-rgb), 0.07); color:var(--primary); text-decoration:none; font-size:12px; font-weight:700;"><i class="fas fa-users"></i> Sumber Pelanggan</a>
-                    <a href="index.php?page=partner_isp_invoices" style="display:inline-flex; align-items:center; gap:6px; padding:7px 11px; border-radius:10px; border:1px solid rgba(var(--primary-rgb), 0.22); background:rgba(var(--primary-rgb), 0.07); color:var(--primary); text-decoration:none; font-size:12px; font-weight:700;"><i class="fas fa-file-invoice"></i> Sumber Tagihan</a>
-                    <a href="index.php?page=partner_reports" style="display:inline-flex; align-items:center; gap:6px; padding:7px 11px; border-radius:10px; border:1px solid rgba(var(--primary-rgb), 0.22); background:rgba(var(--primary-rgb), 0.07); color:var(--primary); text-decoration:none; font-size:12px; font-weight:700;"><i class="fas fa-chart-line"></i> Sumber Laporan</a>
+                <div class="source-nav" style="margin:0 0 14px;">
+                    <a class="source-nav-link" href="index.php?page=partner"><i class="fas fa-users"></i> Sumber Pelanggan</a>
+                    <a class="source-nav-link" href="index.php?page=partner_isp_invoices"><i class="fas fa-file-invoice"></i> Sumber Tagihan</a>
+                    <a class="source-nav-link" href="index.php?page=partner_reports"><i class="fas fa-chart-line"></i> Sumber Laporan</a>
                 </div>
 
                 <!-- 0. TRANSAKSI TERBARU -->
