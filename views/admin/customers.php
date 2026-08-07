@@ -801,7 +801,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php endif; ?>
                 <div style="margin-bottom:3px;"><i class="fas fa-phone" style="width:16px;"></i> <?= htmlspecialchars($c['contact']) ?></div>
                 <div style="font-family:monospace; font-size:11px;">
-                    IP: <?= htmlspecialchars($c['ip_address'] ?: '-') ?> • RB: <?= htmlspecialchars($rtName) ?>
+                    IP: <?= htmlspecialchars($c['ip_address'] ?: '-') ?> • Sumber: <?= htmlspecialchars($rtName) ?>
                 </div>
             </div>
 
@@ -831,7 +831,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     <th style="width:40px; text-align:center;"><input type="checkbox" id="check-all-cust" style="transform:scale(1.2); cursor:pointer;"></th>
                     <th>Nama</th>
                     <?php if ($u_role === 'admin'): ?><th>Tipe / Area</th><?php endif; ?>
-                    <th>Paket / Kontak</th>
+                    <th>Layanan / Kontak</th>
                     <th>Biaya Bulanan</th>
                     <th>IP / Koneksi</th>
                     <th>Status</th>
@@ -883,7 +883,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                         <?php endif; ?>
                         <a href="index.php?page=admin_customers&action=details&id=<?= $c['id'] ?>" class="btn btn-sm btn-info" title="Detail & Riwayat"><i class="fas fa-eye"></i></a>
                         <a href="index.php?page=admin_customers&action=edit&id=<?= $c['id'] ?>" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></a>
-                        <a href="index.php?page=admin_customers&action=delete&id=<?= $c['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus Pelanggan ini?')" title="Hapus"><i class="fas fa-trash"></i></a>
+                        <a href="index.php?page=admin_customers&action=delete&id=<?= $c['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus pelanggan ini?')" title="Hapus"><i class="fas fa-trash"></i></a>
                         
                         <?php 
                         $wa_number = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $c['contact']));

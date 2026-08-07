@@ -26,7 +26,7 @@ if ($is_print) {
     <html lang="id">
     <head>
         <meta charset="UTF-8">
-        <title>Laporan Inventaris Aset - <?= date('d/m/Y') ?></title>
+        <title>Laporan Inventaris Aset Perusahaan - <?= date('d/m/Y') ?></title>
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
             body { font-family: 'Inter', sans-serif; color: #1e293b; padding: 40px; line-height: 1.5; }
@@ -54,7 +54,7 @@ if ($is_print) {
                 </div>
             </div>
             <div style="text-align:right;">
-                <div style="font-size:18px; font-weight:800;">LAPORAN INVENTARIS ASET</div>
+                <div style="font-size:18px; font-weight:800;">LAPORAN INVENTARIS ASET PERUSAHAAN</div>
                 <div style="font-size:12px; color:#64748b;">Per Tanggal: <?= date('d F Y') ?></div>
             </div>
         </div>
@@ -66,8 +66,8 @@ if ($is_print) {
                 <div style="font-size:10px; color:#64748b; margin-top:5px;">OLT: <?= $stats_raw['OLT']??0 ?>, ODC: <?= $stats_raw['ODC']??0 ?>, ODP: <?= $stats_raw['ODP']??0 ?></div>
             </div>
             <div class="summary-box">
-                <h3>Utilisasi Port Jaringan</h3>
-                <div class="val"><?= $total_ports_used ?> / <?= $total_ports_capacity ?> Port</div>
+                <h3>Utilisasi Kapasitas Aset</h3>
+                <div class="val"><?= $total_ports_used ?> / <?= $total_ports_capacity ?> Unit</div>
                 <div style="font-size:10px; color:#64748b; margin-top:5px;"><?= round(($total_ports_capacity > 0 ? $total_ports_used/$total_ports_capacity : 0) * 100, 1) ?>% Terpakai</div>
             </div>
             <div class="summary-box">
@@ -82,10 +82,10 @@ if ($is_print) {
                 <tr>
                     <th>NAMA PERANGKAT</th>
                     <th>TIPE</th>
-                    <th>UPLINK (PARENT)</th>
+                    <th>INDUK</th>
                     <th>KAPASITAS</th>
                     <th>TERPAKAI</th>
-                    <th>SISA PORT</th>
+                    <th>SISA</th>
                     <th>HARGA BELI</th>
                 </tr>
             </thead>
@@ -108,9 +108,9 @@ if ($is_print) {
                     <td><strong><?= htmlspecialchars($a['name']) ?></strong><br><small style="color:#64748b"><?= htmlspecialchars($a['brand'] ?: '-') ?></small></td>
                     <td><?= $a['type'] ?></td>
                     <td><?= htmlspecialchars($a['parent_name'] ?: 'ROOT') ?></td>
-                    <td><?= $a['total_ports'] ?> Port</td>
-                    <td><?= $total_u ?> Port</td>
-                    <td style="font-weight:700; color:<?= ($a['total_ports'] - $total_u <= 1) ? '#ef4444' : '#10b981' ?>"><?= $a['total_ports'] - $total_u ?> Port</td>
+                    <td><?= $a['total_ports'] ?> Unit</td>
+                    <td><?= $total_u ?> Unit</td>
+                    <td style="font-weight:700; color:<?= ($a['total_ports'] - $total_u <= 1) ? '#ef4444' : '#10b981' ?>"><?= $a['total_ports'] - $total_u ?> Unit</td>
                     <td>Rp <?= number_format($a['price'], 0, ',', '.') ?></td>
                 </tr>
                 <?php endforeach; ?>
@@ -134,32 +134,32 @@ if ($is_print) {
 
 <div class="glass-panel" style="padding:24px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; flex-wrap:wrap; gap:15px;">
-        <h3 style="margin:0;"><i class="fas fa-file-contract text-primary"></i> Laporan Inventaris Jaringan</h3>
+        <h3 style="margin:0;"><i class="fas fa-file-contract text-primary"></i> Laporan Inventaris Aset Perusahaan</h3>
         <a href="index.php?page=admin_report_assets&action=print" target="_blank" class="btn btn-primary"><i class="fas fa-print"></i> Cetak Laporan Formal</a>
     </div>
 
     <!-- Metrics Breakdown -->
     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:20px; margin-bottom:30px;">
         <div class="glass-panel" style="padding:20px; border-left:4px solid var(--primary);">
-            <div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">TOTAL UNIT PERANGKAT</div>
+            <div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">TOTAL UNIT ASET</div>
             <div style="font-size:24px; font-weight:800;"><?= array_sum($stats_raw) ?> <span style="font-size:14px; font-weight:inset;">Pcs</span></div>
             <div style="display:flex; gap:10px; margin-top:10px; font-size:11px; font-weight:600;">
-                <span style="color:#3b82f6;">OLT: <?= $stats_raw['OLT']??0 ?></span>
-                <span style="color:#a855f7;">ODC: <?= $stats_raw['ODC']??0 ?></span>
-                <span style="color:#ec4899;">ODP: <?= $stats_raw['ODP']??0 ?></span>
+                <span style="color:#3b82f6;">Kategori 1: <?= $stats_raw['OLT']??0 ?></span>
+                <span style="color:#a855f7;">Kategori 2: <?= $stats_raw['ODC']??0 ?></span>
+                <span style="color:#ec4899;">Kategori 3: <?= $stats_raw['ODP']??0 ?></span>
             </div>
         </div>
         <div class="glass-panel" style="padding:20px; border-left:4px solid var(--success);">
-            <div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">UTILISASI PORT GLOBAL</div>
-            <div style="font-size:24px; font-weight:800; color:var(--success);"><?= $total_ports_used ?> <span style="font-size:14px; color:var(--text-secondary); font-weight:normal;">/ <?= $total_ports_capacity ?> Port</span></div>
+            <div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">UTILISASI KAPASITAS</div>
+            <div style="font-size:24px; font-weight:800; color:var(--success);"><?= $total_ports_used ?> <span style="font-size:14px; color:var(--text-secondary); font-weight:normal;">/ <?= $total_ports_capacity ?> Unit</span></div>
             <div style="width:100%; height:6px; background:rgba(255,255,255,0.05); border-radius:10px; margin-top:15px; overflow:hidden;">
                 <div style="width:<?= ($total_ports_capacity > 0) ? ($total_ports_used / $total_ports_capacity) * 100 : 0 ?>%; height:100%; background:var(--success);"></div>
             </div>
         </div>
         <div class="glass-panel" style="padding:20px; border-left:4px solid #f59e0b;">
-            <div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">VALUASI ASET INFRASTRUKTUR</div>
+            <div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">VALUASI ASET PERUSAHAAN</div>
             <div style="font-size:24px; font-weight:800; color:#f59e0b;">Rp <?= number_format($total_investment, 0, ',', '.') ?></div>
-            <div style="font-size:11px; color:var(--text-secondary); margin-top:10px;">Berdasarkan total harga beli terinput.</div>
+            <div style="font-size:11px; color:var(--text-secondary); margin-top:10px;">Berdasarkan total harga perolehan yang terinput.</div>
         </div>
     </div>
 
@@ -170,7 +170,7 @@ if ($is_print) {
                 <tr>
                     <th>Detail Aset</th>
                     <th>Kategori</th>
-                    <th>Status Port</th>
+                    <th>Status Kapasitas</th>
                     <th>Sisa Kapasitas</th>
                     <th style="text-align:right;">Nilai Aset</th>
                 </tr>

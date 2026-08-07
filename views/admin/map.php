@@ -154,15 +154,15 @@ $existing_customers = $db->query("SELECT id, name, customer_code FROM customers 
 <div class="glass-panel" style="padding:0; overflow:hidden; position:relative; height: calc(100vh - 150px); min-height: 500px;">
     <!-- Map Control HUD -->
     <div style="position:absolute; top:20px; right:20px; z-index:1000; background:rgba(0,0,0,0.6); padding:15px; border-radius:12px; backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.1); width:220px;">
-        <h4 style="margin:0 0 10px 0; font-size:14px; color:white;"><i class="fas fa-layer-group"></i> Legend Jaringan</h4>
+        <h4 style="margin:0 0 10px 0; font-size:14px; color:white;"><i class="fas fa-layer-group"></i> Legend Aset</h4>
         <div style="display:flex; flex-direction:column; gap:8px; font-size:12px; color:rgba(255,255,255,0.9);">
-                <div style="display:flex; align-items:center; gap:8px;"><span style="width:18px; height:18px; background:#ef4444; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:10px; color:white; border:1.5px solid white;">M</span> Pusat (OLT/Router)</div>
-                <div style="display:flex; align-items:center; gap:8px;"><span style="width:18px; height:18px; background:#0ea5e9; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:10px; color:white; border:1.5px solid white;">S</span> Sub (ODP/Pelanggan)</div>
+                <div style="display:flex; align-items:center; gap:8px;"><span style="width:18px; height:18px; background:#ef4444; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:10px; color:white; border:1.5px solid white;">M</span> Aset Utama</div>
+                <div style="display:flex; align-items:center; gap:8px;"><span style="width:18px; height:18px; background:#0ea5e9; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:10px; color:white; border:1.5px solid white;">S</span> Aset Pendukung / Pelanggan</div>
             <hr style="border:0; border-top:1px solid rgba(255,255,255,0.2); margin:5px 0;">
             <div style="display:flex; align-items:center; gap:8px;"><span style="width:15px; height:3px; background:#0ea5e9; box-shadow: 0 0 5px #0ea5e9;"></span> Jalur Aktif</div>
         </div>
         <div style="margin-top:15px; font-size:10px; color:rgba(255,255,255,0.6); text-align:center;">
-            Mode Satelit Hybrid
+            Mode Pemetaan Aset
         </div>
         <div style="margin-top:10px;">
             <button class="btn btn-sm" style="width:100%; font-size:11px; background:rgba(255,255,255,0.2); color:white; border:none;" onclick="centerMap()">Center Map</button>
@@ -188,31 +188,29 @@ $existing_customers = $db->query("SELECT id, name, customer_code FROM customers 
             
             <div id="fields_asset">
                 <div class="form-group">
-                    <label>Nama Aset (OLT/ODC/ODP)</label>
+                    <label>Nama Aset</label>
                     <input type="text" name="name" class="form-control" placeholder="Contoh: ODP-01">
                 </div>
                 <div class="form-group">
                     <label>Tipe</label>
                     <select name="type" class="form-control">
-                        <option value="ODP">ODP (Kotak)</option>
-                        <option value="ODC">ODC (Cabinet)</option>
-                        <option value="OLT">OLT (Pusat)</option>
-                        <option value="Router">Router (MikroTik/Lainnya)</option>
-                        <option value="Switch">Switch (L2/L3)</option>
-                        <option value="Wireless">Wireless (AP/Radio)</option>
-                        <option value="Server">Server</option>
-                        <option value="ONU">ONU (Modem)</option>
+                        <option value="Peralatan Kantor">Peralatan Kantor</option>
+                        <option value="Komputer & IT">Komputer & IT</option>
+                        <option value="Kendaraan">Kendaraan</option>
+                        <option value="Furniture">Furniture</option>
+                        <option value="Bangunan">Bangunan</option>
+                        <option value="Lainnya">Lainnya</option>
                     </select>
                 </div>
                 <div class="flex" style="gap:10px;">
                     <div class="form-group" style="flex:1;">
-                        <label>Port</label>
-                        <input type="number" name="ports" class="form-control" value="8">
+                        <label>Jumlah Unit</label>
+                        <input type="number" name="ports" class="form-control" value="1">
                     </div>
                     <div class="form-group" style="flex:2;">
-                        <label>Uplink (Sumber)</label>
+                        <label>Aset Induk (Sumber)</label>
                         <select name="parent_id" class="form-control">
-                            <option value="0">Pusat / Root</option>
+                            <option value="0">Tidak ada</option>
                             <?php 
                             $tenant_id = $_SESSION['tenant_id'] ?? 1;
                             $parents = $db->query("SELECT id, name, type FROM infrastructure_assets WHERE type != 'ODP' AND tenant_id = $tenant_id ORDER BY type DESC, name ASC")->fetchAll();
@@ -222,7 +220,7 @@ $existing_customers = $db->query("SELECT id, name, customer_code FROM customers 
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Harga Beli (Rp)</label>
+                    <label>Harga Perolehan (Rp)</label>
                     <input type="number" name="price" class="form-control" value="0">
                 </div>
             </div>
@@ -339,8 +337,8 @@ $existing_customers = $db->query("SELECT id, name, customer_code FROM customers 
             .setLatLng(e.latlng)
             .setContent(`
                 <div style="padding:5px;">
-                    <button class="btn btn-sm btn-primary" style="width:100%; margin-bottom:5px; font-size:11px;" onclick="openQuick('asset', ${lat}, ${lng})"><i class="fas fa-boxes"></i> Pasang Aset Baru</button>
-                    <button class="btn btn-sm btn-ghost" style="width:100%; font-size:11px; border:1px solid var(--primary);" onclick="openQuick('customer', ${lat}, ${lng})"><i class="fas fa-user-plus"></i> Pasang Pelanggan</button>
+                    <button class="btn btn-sm btn-primary" style="width:100%; margin-bottom:5px; font-size:11px;" onclick="openQuick('asset', ${lat}, ${lng})"><i class="fas fa-boxes"></i> Tambah Aset</button>
+                    <button class="btn btn-sm btn-ghost" style="width:100%; font-size:11px; border:1px solid var(--primary);" onclick="openQuick('customer', ${lat}, ${lng})"><i class="fas fa-user-plus"></i> Tambah Pelanggan</button>
                 </div>
             `)
             .openOn(map);
@@ -352,7 +350,7 @@ $existing_customers = $db->query("SELECT id, name, customer_code FROM customers 
         document.getElementById('qLng').value = lng;
         
         if(type === 'asset') {
-            document.getElementById('mTitle').innerHTML = '<i class="fas fa-boxes text-primary"></i> Registrasi Aset Lapangan';
+            document.getElementById('mTitle').innerHTML = '<i class="fas fa-boxes text-primary"></i> Registrasi Aset';
             document.getElementById('qAction').value = 'add_asset';
             document.getElementById('fields_asset').style.display = 'block';
             document.getElementById('fields_customer').style.display = 'none';

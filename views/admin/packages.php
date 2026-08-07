@@ -101,7 +101,7 @@ if ($action === 'sync_all') {
 
 <div class="glass-panel" style="padding: 24px;">
     <div style="display:flex; justify-content:space-between; margin-bottom:20px; align-items:center;">
-        <h3 style="font-size:20px;"><i class="fas fa-box text-primary"></i> Manajemen Paket Internet</h3>
+        <h3 style="font-size:20px;"><i class="fas fa-box text-primary"></i> Manajemen Paket Layanan</h3>
         <div style="display:flex; gap:10px;">
             <button id="btnBulkDelete" onclick="submitBulkDelete()" class="btn btn-danger btn-sm" style="display:none;"><i class="fas fa-trash"></i> Hapus Masal (<span id="selectedCount">0</span>)</button>
             <a href="index.php?page=admin_packages&action=sync_all" class="btn btn-ghost btn-sm" onclick="return confirm('Sinkronkan SEMUA harga pelanggan dengan harga paket terbaru?')" title="Selaraskan Semua Harga"><i class="fas fa-sync"></i> Sync Semua</a>

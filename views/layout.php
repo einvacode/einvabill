@@ -170,8 +170,8 @@ if (!empty($__layout_settings['company_logo'])) {
                         
                         <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">INFRASTRUKTUR</div>
                         <a href="index.php?page=admin_router" class="nav-link <?= $page == 'admin_router' ? 'active' : '' ?>"><i class="fas fa-network-wired"></i> Router</a>
-                        <a href="index.php?page=admin_assets" class="nav-link <?= $page == 'admin_assets' ? 'active' : '' ?>"><i class="fas fa-boxes"></i> Aset Jaringan</a>
-                        <a href="index.php?page=admin_map" class="nav-link <?= $page == 'admin_map' ? 'active' : '' ?>"><i class="fas fa-map-location-dot"></i> Peta Jaringan</a>
+                        <a href="index.php?page=admin_assets" class="nav-link <?= $page == 'admin_assets' ? 'active' : '' ?>"><i class="fas fa-boxes"></i> Aset Perusahaan</a>
+                        <a href="index.php?page=admin_map" class="nav-link <?= $page == 'admin_map' ? 'active' : '' ?>"><i class="fas fa-map-location-dot"></i> Peta Aset</a>
 
                         <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">DATA MASTER</div>
                         <a href="index.php?page=admin_packages" class="nav-link <?= $page == 'admin_packages' ? 'active' : '' ?>"><i class="fas fa-box"></i> Manajemen Paket</a>
@@ -181,6 +181,7 @@ if (!empty($__layout_settings['company_logo'])) {
                         <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">SISTEM & TOOLS</div>
                         
                         <a href="index.php?page=admin_license" class="nav-link <?= $page == 'admin_license' ? 'active' : '' ?>"><i class="fas fa-key" style="color:#f59e0b;"></i> Lisensi</a>
+                        <a href="index.php?page=admin_data_validation" class="nav-link <?= $page == 'admin_data_validation' ? 'active' : '' ?>"><i class="fas fa-shield-check" style="color:#10b981;"></i> Validasi Data</a>
                         
                         <!-- Dropdown Laporan -->
                         <div class="nav-dropdown <?= in_array($page, ['admin_reports', 'admin_report_assets']) ? 'open' : '' ?>">

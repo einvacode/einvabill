@@ -61,14 +61,14 @@ try {
 
 <div style="max-width:1100px; margin:12px auto;">
     <div style="display:flex; gap:10px; margin-bottom:12px;">
-        <button class="btn btn-sm btn-primary" id="tabCreateBtn" onclick="showTab('create')">Buat Nota</button>
+        <button class="btn btn-sm btn-primary" id="tabCreateBtn" onclick="showTab('create')">Buat Invoice</button>
         <button class="btn btn-sm btn-ghost" id="tabHistoryBtn" onclick="showTab('history')">Riwayat</button>
         <button class="btn btn-sm btn-ghost" id="tabTempsBtn" onclick="showTab('temps')">Pelanggan Baru</button>
     </div>
 
     <div id="createSection">
         <div class="glass-panel" style="padding:20px;">
-            <h3 style="margin-top:0;"><i class="fas fa-plus-circle"></i> Buat Nota (Invoice) Cepat</h3>
+            <h3 style="margin-top:0;"><i class="fas fa-plus-circle"></i> Buat Invoice Cepat</h3>
             <p style="color:var(--text-secondary); margin-bottom:12px;">Isi data penerima, tambahkan item, lalu klik "Buat & Cetak".</p>
 
             <form method="POST" action="index.php?page=admin_assets&action=invoice_create">

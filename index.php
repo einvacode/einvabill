@@ -167,6 +167,9 @@ switch ($page) {
     case 'admin_report_assets':
         require __DIR__ . '/views/admin/report_assets.php';
         break;
+    case 'admin_data_validation':
+        require __DIR__ . '/views/admin/data_validation.php';
+        break;
     case 'admin_reports':
         require __DIR__ . '/views/admin/reports.php';
         break;

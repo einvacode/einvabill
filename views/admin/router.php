@@ -66,7 +66,7 @@ if (!function_exists('formatBytes')) {
 ?>
 <div class="glass-panel" style="padding:24px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-        <h3 style="margin:0;"><i class="fas fa-network-wired"></i> Master Multi-Router</h3>
+        <h3 style="margin:0;"><i class="fas fa-network-wired"></i> Manajemen Router</h3>
         <button class="btn btn-primary" onclick="document.getElementById('addRouterModal').style.display='flex'"><i class="fas fa-plus"></i> Tambah Router</button>
     </div>
     
@@ -107,7 +107,7 @@ if (!function_exists('formatBytes')) {
                 </tr>
                 <?php endforeach; ?>
                 <?php if(count($routers) == 0): ?>
-                    <tr><td colspan="4" style="text-align:center; padding:30px;">Belum ada perangkat Router yang dimasukkan. <br><div style="font-size:12px; margin-top:5px; color:#64748b;">(Jalankan app/migrate8.php jika sebelumnya sudah pernah instal)</div></td></tr>
+                    <tr><td colspan="4" style="text-align:center; padding:30px;">Belum ada perangkat router yang dimasukkan. <br><div style="font-size:12px; margin-top:5px; color:#64748b;">(Jalankan app/migrate8.php jika sebelumnya sudah pernah instal)</div></td></tr>
                 <?php endif; ?>
             </tbody>
         </table>

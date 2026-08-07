@@ -187,8 +187,8 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
 <!-- Dashboard Title -->
 <div style="margin-bottom: 25px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px;">
     <div>
-        <h2 style="font-size: 24px; font-weight: 800; color: var(--text-primary);"><i class="fas fa-th-large text-primary" style="margin-right: 10px;"></i> Ringkasan Bisnis</h2>
-        <p style="color: var(--text-secondary); font-size: 14px;">Pantau performa operasional dan finansial Anda dalam sekejap.</p>
+        <h2 style="font-size: 24px; font-weight: 800; color: var(--text-primary);"><i class="fas fa-th-large text-primary" style="margin-right: 10px;"></i> Ringkasan Perusahaan</h2>
+        <p style="color: var(--text-secondary); font-size: 14px;">Pantau ringkasan operasional, aset, dan finansial perusahaan dalam sekejap.</p>
     </div>
     <div class="wa-status-indicator" style="cursor:pointer;" onclick="location.href='index.php?page=admin_wa_gateway'">
         <span class="badge" style="background:rgba(148,163,184,0.1); color:#94a3b8; border:1px solid rgba(148,163,184,0.3); font-size:10px;"><i class="fas fa-power-off"></i> WA OFFLINE</span>
@@ -215,7 +215,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
             <i class="fas fa-users"></i>
         </div>
         <div style="flex:1; overflow:hidden;">
-            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Retail</div>
+            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Pelanggan</div>
             <div id="stat-retail-count" style="font-size:20px; font-weight:800; line-height:1.2;"><?= number_format($total_customers, 0) ?></div>
             <div id="stat-retail-est" style="font-size:10px; color:#3b82f6; font-weight:700; margin-top:2px;">Estimasi: Rp<?= number_format($est_revenue_cust, 0, ',', '.') ?></div>
         </div>
@@ -239,7 +239,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
             <i class="fas fa-user-plus"></i>
         </div>
         <div style="flex:1; overflow:hidden;">
-            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Baru</div>
+            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Registrasi Baru</div>
             <div id="stat-baru-count" style="font-size:20px; font-weight:800; line-height:1.2;"><?= number_format($new_customers_month, 0) ?></div>
             <div style="font-size:10px; opacity:0.6; margin-top:2px;">Growth</div>
         </div>
@@ -263,7 +263,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
             <i class="fas fa-exclamation-triangle"></i>
         </div>
         <div style="flex:1; overflow:hidden;">
-            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Piutang Retail</div>
+            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Piutang Pelanggan</div>
             <div id="stat-piutang-r" style="font-size:16px; font-weight:800; color:#ef4444; line-height:1.2;">Rp<?= number_format($total_unpaid_cust, 0, ',', '.') ?></div>
             <div id="stat-piutang-r-count" style="font-size:10px; color:#ef4444; font-weight:700; margin-top:2px;"><?= number_format($count_unpaid_cust) ?></div>
         </div>
@@ -287,7 +287,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
             <i class="fas fa-coins"></i>
         </div>
         <div style="flex:1; overflow:hidden;">
-            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Koleksi Retail</div>
+            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Penerimaan Pelanggan</div>
             <div id="stat-koleksi-r" style="font-size:16px; font-weight:800; color:#10b981; line-height:1.2;">Rp<?= number_format($total_received_cust, 0, ',', '.') ?></div>
             <div style="font-size:10px; opacity:0.6; margin-top:2px;">Lunas</div>
         </div>
@@ -299,7 +299,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
             <i class="fas fa-vault"></i>
         </div>
         <div style="flex:1; overflow:hidden;">
-            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Koleksi Mitra</div>
+            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Penerimaan Mitra</div>
             <div id="stat-koleksi-m" style="font-size:16px; font-weight:800; color:#059669; line-height:1.2;">Rp<?= number_format($total_received_part, 0, ',', '.') ?></div>
             <div style="font-size:10px; opacity:0.6; margin-top:2px;">Lunas</div>
         </div>
@@ -311,7 +311,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
             <i class="fas fa-money-check-alt"></i>
         </div>
         <div style="flex:1; overflow:hidden;">
-            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Kas Retail</div>
+            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Kas Pelanggan</div>
             <div id="stat-cash-r" style="font-size:16px; font-weight:800; color:#f59e0b; line-height:1.2;">Rp<?= number_format($cash_monthly_cust, 0, ',', '.') ?></div>
             <div style="font-size:10px; opacity:0.6; margin-top:2px;">Bulan Ini</div>
         </div>
@@ -406,7 +406,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
 <div class="glass-panel" style="padding: 24px; margin-top:20px;">
     <div style="font-size:18px; font-weight:800; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
         <div style="display:flex; align-items:center; gap:10px;">
-            <i class="fas fa-satellite-dish text-primary"></i> Monitoring Penagihan (Live)
+            <i class="fas fa-satellite-dish text-primary"></i> Monitoring Transaksi (Live)
         </div>
         <span class="badge" style="background:rgba(16, 185, 129, 0.1); color:#10b981; border:1px solid #10b981; font-size:10px; animation: pulse 2s infinite;">• LIVE PULSE</span>
     </div>
