@@ -567,82 +567,68 @@ $active_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets a WHERE 
 <div class="glass-panel" style="padding:25px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; flex-wrap:wrap; gap:15px;">
         <h3 style="margin:0;"><i class="fas fa-boxes text-primary"></i> Register Aset Perusahaan</h3>
-        <div style="display:flex; gap:10px;">
-            <div class="view-toggle" style="background:rgba(255,255,255,0.05); padding:4px; border-radius:10px; display:flex;">
-                <button class="btn btn-sm <?= ($_GET['view']??'table') == 'table' ? 'btn-primary' : 'btn-ghost' ?>" onclick="location.href='index.php?page=admin_assets&view=table'">
-                    <i class="fas fa-table"></i> Daftar
-                </button>
-                <button class="btn btn-sm <?= ($_GET['view']??'') == 'tree' ? 'btn-primary' : 'btn-ghost' ?>" onclick="location.href='index.php?page=admin_assets&view=tree'">
-                    <i class="fas fa-network-wired"></i> Topologi
-                </button>
-            </div>
-            <button class="btn btn-ghost" onclick="window.open('index.php?page=admin_assets&action=print','_blank')"><i class="fas fa-print"></i> Export / Cetak</button>
-            <button class="btn btn-primary" onclick="showAssetModal()"><i class="fas fa-plus"></i> Tambah Aset</button>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <details style="position:relative;">
+                <summary class="btn btn-sm btn-ghost" style="list-style:none; cursor:pointer;"><i class="fas fa-eye"></i> Tampilan</summary>
+                <div style="position:absolute; right:0; margin-top:8px; background:rgba(15,23,42,0.96); border:1px solid rgba(255,255,255,0.09); border-radius:10px; min-width:180px; z-index:10; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.25);">
+                    <a href="index.php?page=admin_assets&view=table" style="display:block; padding:10px 12px; color:var(--text-primary); text-decoration:none; border-bottom:1px solid rgba(255,255,255,0.06);">Daftar Kartu</a>
+                    <a href="index.php?page=admin_assets&view=tree" style="display:block; padding:10px 12px; color:var(--text-primary); text-decoration:none;">Topologi</a>
+                </div>
+            </details>
+            <details style="position:relative;">
+                <summary class="btn btn-sm btn-ghost" style="list-style:none; cursor:pointer;"><i class="fas fa-ellipsis-v"></i> Aksi</summary>
+                <div style="position:absolute; right:0; margin-top:8px; background:rgba(15,23,42,0.96); border:1px solid rgba(255,255,255,0.09); border-radius:10px; min-width:190px; z-index:10; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.25);">
+                    <a href="javascript:void(0)" onclick="showAssetModal()" style="display:block; padding:10px 12px; color:var(--text-primary); text-decoration:none; border-bottom:1px solid rgba(255,255,255,0.06);"><i class="fas fa-plus"></i> Tambah Aset</a>
+                    <a href="index.php?page=admin_assets&action=print" target="_blank" style="display:block; padding:10px 12px; color:var(--text-primary); text-decoration:none;"><i class="fas fa-print"></i> Export / Cetak</a>
+                </div>
+            </details>
         </div>
     </div>
 
     <?php if(($_GET['view']??'table') === 'table'): ?>
-    <div class="table-container shadow-sm">
-        <table>
-            <thead>
-                <tr>
-                    <th>Nama Aset</th>
-                    <th>Kategori / Status</th>
-                    <th>Nilai Perolehan</th>
-                    <th>Penyusutan / Nilai Buku</th>
-                    <th>Status</th>
-                    <th>Aksi</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php
-                $assets = $db->query("SELECT a.*, p.name as parent_name FROM infrastructure_assets a LEFT JOIN infrastructure_assets p ON a.parent_id = p.id WHERE 1=1 $scope_where ORDER BY a.type DESC, a.name ASC")->fetchAll();
-                foreach($assets as $a):
-                    $useful_match = [];
-                    preg_match('/Masa manfaat:\s*(\d+)/i', $a['description'] ?? '', $useful_match);
-                    $useful_life_years = isset($useful_match[1]) ? max(1, intval($useful_match[1])) : 5;
-                    $depreciation_per_year = $a['price'] > 0 ? ($a['price'] / $useful_life_years) : 0;
-                    $years_used = 0;
-                    if (!empty($a['installation_date'])) {
-                        $purchase_date = new DateTime($a['installation_date']);
-                        $today = new DateTime(date('Y-m-d'));
-                        $interval = $today->diff($purchase_date);
-                        $years_used = $interval->y + ($interval->m / 12) + ($interval->d / 365);
-                    }
-                    $depreciation_amount = min($a['price'], $depreciation_per_year * floor($years_used));
-                    $book_value = max(0, $a['price'] - $depreciation_amount);
-                ?>
-                <tr>
-                    <td>
-                        <div style="font-weight:700;"><?= htmlspecialchars($a['name']) ?></div>
-                        <div style="font-size:11px; color:var(--text-secondary);"><?= htmlspecialchars($a['description'] ? trim(strip_tags($a['description'])) : 'Keterangan belum diisi') ?></div>
-                    </td>
-                    <td>
-                        <span class="badge" style="background:var(--primary); color:white;">
-                            <?= htmlspecialchars($a['type'] ?: 'Umum') ?>
-                        </span>
-                        <div style="font-size:11px; color:var(--text-secondary); margin-top:4px;"><?= htmlspecialchars($a['brand'] ?: 'Vendor belum diisi') ?></div>
-                    </td>
-                    <td>
-                        <div style="font-weight:700; color:var(--success);">Rp <?= number_format($a['price'], 0, ',', '.') ?></div>
-                    </td>
-                    <td>
-                        <div style="font-weight:700; color:#f59e0b;">Penyusutan: Rp <?= number_format($depreciation_amount, 0, ',', '.') ?></div>
-                        <div style="font-size:11px; color:var(--text-secondary);">Nilai buku: Rp <?= number_format($book_value, 0, ',', '.') ?></div>
-                    </td>
-                    <td><?= htmlspecialchars($a['status'] ?: '-') ?></td>
-                    <td>
-                        <button class="btn btn-sm btn-warning" onclick='editAsset(<?= json_encode($a) ?>)' title="Edit"><i class="fas fa-edit"></i></button>
-                        <button class="btn btn-sm btn-primary" onclick='showInvoiceModal(<?= json_encode($a) ?>)' title="Buat Nota / Cetak"><i class="fas fa-receipt"></i></button>
-                        <a href="index.php?page=admin_assets&action=delete&id=<?= $a['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus aset ini?')"><i class="fas fa-trash"></i></a>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-                <?php if(empty($assets)): ?>
-                    <tr><td colspan="6" style="text-align:center; padding:50px; color:var(--text-secondary);"><i class="fas fa-info-circle"></i> Belum ada aset terdaftar.</td></tr>
-                <?php endif; ?>
-            </tbody>
-        </table>
+    <div style="max-height:520px; overflow-y:auto; padding-right:6px; display:grid; gap:14px;">
+        <?php
+        $assets = $db->query("SELECT a.*, p.name as parent_name FROM infrastructure_assets a LEFT JOIN infrastructure_assets p ON a.parent_id = p.id WHERE 1=1 $scope_where ORDER BY a.type DESC, a.name ASC")->fetchAll();
+        foreach($assets as $a):
+            $useful_match = [];
+            preg_match('/Masa manfaat:\s*(\d+)/i', $a['description'] ?? '', $useful_match);
+            $useful_life_years = isset($useful_match[1]) ? max(1, intval($useful_match[1])) : 5;
+            $depreciation_per_year = $a['price'] > 0 ? ($a['price'] / $useful_life_years) : 0;
+            $years_used = 0;
+            if (!empty($a['installation_date'])) {
+                $purchase_date = new DateTime($a['installation_date']);
+                $today = new DateTime(date('Y-m-d'));
+                $interval = $today->diff($purchase_date);
+                $years_used = $interval->y + ($interval->m / 12) + ($interval->d / 365);
+            }
+            $depreciation_amount = min($a['price'], $depreciation_per_year * floor($years_used));
+            $book_value = max(0, $a['price'] - $depreciation_amount);
+        ?>
+        <div class="glass-panel" style="padding:18px 20px; border-left:4px solid var(--primary); display:grid; grid-template-columns: 1.6fr 1fr auto; gap:16px; align-items:center;">
+            <div>
+                <div style="font-weight:800; font-size:16px; margin-bottom:6px;"><?= htmlspecialchars($a['name']) ?></div>
+                <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px;"><?= htmlspecialchars($a['description'] ? trim(strip_tags($a['description'])) : 'Keterangan belum diisi') ?></div>
+                <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
+                    <span class="badge" style="background:var(--primary); color:white;"><?= htmlspecialchars($a['type'] ?: 'Umum') ?></span>
+                    <span class="badge" style="background:rgba(255,255,255,0.08); color:var(--text-primary);"><?= htmlspecialchars($a['brand'] ?: 'Vendor belum diisi') ?></span>
+                </div>
+            </div>
+            <div>
+                <div style="font-weight:700; color:var(--success); margin-bottom:4px;">Rp <?= number_format($a['price'], 0, ',', '.') ?></div>
+                <div style="font-size:12px; color:#f59e0b; margin-bottom:2px;">Penyusutan: Rp <?= number_format($depreciation_amount, 0, ',', '.') ?></div>
+                <div style="font-size:12px; color:var(--text-secondary);">Nilai buku: Rp <?= number_format($book_value, 0, ',', '.') ?></div>
+                <div style="font-size:12px; color:var(--text-secondary); margin-top:6px;">Status: <?= htmlspecialchars($a['status'] ?: '-') ?></div>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+                <button class="btn btn-sm btn-warning" onclick='editAsset(<?= json_encode($a) ?>)' title="Edit"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-sm btn-primary" onclick='showInvoiceModal(<?= json_encode($a) ?>)' title="Buat Nota / Cetak"><i class="fas fa-receipt"></i></button>
+                <a href="index.php?page=admin_assets&action=delete&id=<?= $a['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus aset ini?')"><i class="fas fa-trash"></i></a>
+            </div>
+        </div>
+        <?php endforeach; ?>
+        <?php if(empty($assets)): ?>
+            <div style="text-align:center; padding:50px; color:var(--text-secondary);"><i class="fas fa-info-circle"></i> Belum ada aset terdaftar.</div>
+        <?php endif; ?>
     </div>
     <?php else: ?>
     <!-- Network Topology Tree View -->
