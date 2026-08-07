@@ -1,12 +1,11 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Billing RT/RW Net</title>
     <link rel="stylesheet" href="public/style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
-    <script>(function(){const t=localStorage.getItem('billing_theme')||'dark';document.documentElement.setAttribute('data-theme',t);})()</script>
     <style>
         .login-box {
             padding: 50px 40px;
@@ -32,12 +31,6 @@
                 background: transparent;
                 border: none;
                 box-shadow: none;
-            }
-            .theme-toggle {
-                bottom: 15px !important;
-                right: 15px !important;
-                width: 40px !important;
-                height: 40px !important;
             }
         }
     </style>
@@ -93,18 +86,5 @@
                 </div>
             </div>
         </div>
-    <!-- Floating Theme Toggle -->
-    <button class="theme-toggle" onclick="toggleTheme()" title="Ganti Tema" style="position:fixed; bottom:25px; right:25px; z-index:999;">
-        <i class="fas fa-sun theme-icon-dark"></i>
-        <i class="fas fa-moon theme-icon-light"></i>
-    </button>
-    <script>
-    function toggleTheme() {
-        const html = document.documentElement;
-        const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-        html.setAttribute('data-theme', next);
-        localStorage.setItem('billing_theme', next);
-    }
-    </script>
 </body>
 </html>

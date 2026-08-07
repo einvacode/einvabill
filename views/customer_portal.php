@@ -59,14 +59,13 @@ if ($code_input) {
 $active_banners = $db->query("SELECT * FROM banners WHERE is_active = 1 AND target_role IN ('all', 'customer') ORDER BY created_at DESC")->fetchAll();
 ?>
 <!DOCTYPE html>
-<html lang="id" data-theme="dark">
+<html lang="id" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cek Tagihan - <?= htmlspecialchars($comp_name) ?></title>
     <link rel="stylesheet" href="public/style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
-    <script>(function(){const t=localStorage.getItem('billing_theme')||'dark';document.documentElement.setAttribute('data-theme',t);})()</script>
     <style>
         .portal-container { max-width: 700px; margin: 0 auto; padding: 20px; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; }
         .portal-header { text-align: center; margin-bottom: 30px; }
@@ -235,10 +234,6 @@ $active_banners = $db->query("SELECT * FROM banners WHERE is_active = 1 AND targ
         </div>
     </div>
 
-    <button class="theme-toggle" onclick="toggleTheme()" title="Ganti Tema" style="position:fixed; bottom:25px; right:25px; z-index:999;">
-        <i class="fas fa-sun theme-icon-dark"></i>
-        <i class="fas fa-moon theme-icon-light"></i>
-    </button>
     <!-- Global Image Modal -->
     <div id="globalImageModal" class="image-modal" onclick="closeImagePreview()">
         <span class="image-modal-close" onclick="closeImagePreview()">&times;</span>
@@ -246,13 +241,6 @@ $active_banners = $db->query("SELECT * FROM banners WHERE is_active = 1 AND targ
     </div>
 
     <script>
-    function toggleTheme() {
-        const html = document.documentElement;
-        const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-        html.setAttribute('data-theme', next);
-        localStorage.setItem('billing_theme', next);
-    }
-
     function openImagePreview(src) {
         const modal = document.getElementById('globalImageModal');
         const modalImg = document.getElementById('modalImg');

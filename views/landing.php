@@ -16,14 +16,13 @@ $wa_contact = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $site['com
 if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
 ?>
 <!DOCTYPE html>
-<html lang="id" data-theme="dark">
+<html lang="id" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($comp_name) ?> - ISP & IT Solutions</title>
     <link rel="stylesheet" href="public/style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script>(function(){const t=localStorage.getItem('billing_theme')||'dark';document.documentElement.setAttribute('data-theme',t);})()</script>
     <style>
         /* Landing Page Specific Styles */
         html, body {
@@ -146,15 +145,6 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
             background: rgba(var(--primary-rgb), 0.07);
         }
 
-        .nav-menu .theme-toggle {
-            width: 42px;
-            height: 42px;
-            border-radius: 12px;
-            border: 1px solid var(--glass-border);
-            background: rgba(255,255,255,0.7);
-            padding: 0;
-            flex-shrink: 0;
-        }
 
         .hero-section {
             min-height: 100vh;
@@ -608,7 +598,6 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
             .nav-menu { gap: 6px; }
             .nav-link { padding: 7px 8px; font-size: 13px; }
             .nav-cta { height: 38px; font-size: 13px; padding: 0 12px !important; }
-            .nav-menu .theme-toggle { width: 38px; height: 38px; }
             .navbar .navbar-logo-box { height: 35px; max-width: 165px; }
         }
 
@@ -617,7 +606,6 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
             .nav-link { font-size: 12px; padding: 6px 7px; }
             .nav-link i { margin-right: 4px; }
             .nav-cta { height: 36px; font-size: 12px; }
-            .nav-menu .theme-toggle { width: 36px; height: 36px; }
         }
 
         @media (max-width: 768px) {
@@ -665,10 +653,6 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
             <a href="http://fibernodeinternet.com:3004" target="_blank" class="nav-link"><i class="fas fa-tachometer-alt"></i> Speedtest</a>
             <a href="#services" class="nav-link">Layanan</a>
             <a href="https://wa.me/<?= $wa_contact ?>" target="_blank" class="nav-link"><i class="fab fa-whatsapp" style="color:#25D366;"></i> Hubungi Kami</a>
-            <button class="theme-toggle" onclick="toggleTheme()" title="Ganti Tema">
-                <i class="fas fa-sun theme-icon-dark"></i>
-                <i class="fas fa-moon theme-icon-light"></i>
-            </button>
             <a href="index.php?page=customer_portal" class="nav-link nav-link--billing"><i class="fas fa-receipt"></i> Cek Tagihan</a>
             <a href="index.php?page=login&role=partner" class="btn btn-sm btn-ghost nav-cta nav-cta-partner"><i class="fas fa-handshake"></i> Portal Partner</a>
             <a href="index.php?page=login&role=staff" class="btn btn-sm btn-primary nav-cta nav-cta-staff"><i class="fas fa-shield-alt"></i> Area Staff</a>
@@ -688,11 +672,6 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
         <a href="index.php?page=login&role=partner" onclick="toggleMobileMenu()" class="mobile-link-cta partner"><i class="fas fa-handshake"></i> Portal Partner</a>
         <a href="index.php?page=login&role=staff" onclick="toggleMobileMenu()" class="mobile-link-cta staff"><i class="fas fa-shield-alt"></i> Area Staff</a>
         <a href="https://wa.me/<?= $wa_contact ?>" target="_blank"><i class="fab fa-whatsapp" style="color:#25D366;"></i> Hubungi Kami</a>
-        <div style="margin-top:20px;">
-            <button class="btn btn-ghost" onclick="toggleTheme(); toggleMobileMenu();" style="width:100%; justify-content:center; gap:10px;">
-                <i class="fas fa-moon"></i> Ganti Tema
-            </button>
-        </div>
     </div>
 
     <!-- Hero -->
@@ -817,13 +796,6 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
     </footer>
 
     <script>
-    function toggleTheme() {
-        const html = document.documentElement;
-        const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-        html.setAttribute('data-theme', next);
-        localStorage.setItem('billing_theme', next);
-    }
-
     function toggleMobileMenu() {
         const menu = document.getElementById('mobileMenu');
         const overlay = document.querySelector('.mobile-menu-overlay');

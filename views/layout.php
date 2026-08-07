@@ -15,7 +15,7 @@ if (!empty($__layout_settings['company_logo'])) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="id" data-theme="dark">
+<html lang="id" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -28,12 +28,6 @@ if (!empty($__layout_settings['company_logo'])) {
     <link rel="stylesheet" href="public/style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script>
-        // Load saved theme instantly to prevent flash
-        (function() {
-            const saved = localStorage.getItem('billing_theme') || 'dark';
-            document.documentElement.setAttribute('data-theme', saved);
-        })();
-
         // Global WhatsApp API Constants (Available to all sub-views)
         window.WAGatewayCID = '<?= ($_SESSION["user_role"] === "admin") ? "admin_" . ($_SESSION["tenant_id"] ?? 1) : "u_" . ($_SESSION["user_id"] ?? "guest") ?>';
         window.WAApiProxy = 'wa_proxy.php?path=';
@@ -46,7 +40,7 @@ if (!empty($__layout_settings['company_logo'])) {
             <button class="burger-btn menu-btn" onclick="toggleSidebar()" aria-label="Open menu"><i class="fas fa-bars"></i></button>
             <span style="font-weight: 800; font-size: 16px; letter-spacing: 0.5px;"><?= htmlspecialchars($__layout_settings['company_name'] ?? 'BILLING') ?></span>
         </div>
-        <div onclick="toggleTheme()" style="cursor: pointer; opacity: 0.8;"><i class="fas fa-moon"></i></div>
+        <div></div>
     </header>
     <script>
     // Defensive binding: ensure burger and overlay always toggle sidebar
@@ -278,10 +272,6 @@ if (!empty($__layout_settings['company_logo'])) {
             <?php if(($_SESSION['user_role'] ?? '') === 'partner'): ?>
                 <div class="topbar partner-topbar" style="display:flex; justify-content:space-between; align-items:center;">
                     <?php if(!empty($topbar_title)): ?><div class="partner-topbar-title"><?= htmlspecialchars($topbar_title) ?></div><?php endif; ?>
-                    <button class="theme-toggle" onclick="toggleTheme()" title="Ganti Tema">
-                        <i class="fas fa-sun theme-icon-dark"></i>
-                        <i class="fas fa-moon theme-icon-light"></i>
-                    </button>
                 </div>
             <?php else: ?>
                 <div class="topbar glass-panel" style="padding:15px 24px;">
@@ -289,10 +279,6 @@ if (!empty($__layout_settings['company_logo'])) {
                     <div style="font-weight:600; font-size:18px;"><?= htmlspecialchars($topbar_title) ?></div>
                     <?php endif; ?>
                     <div style="display:flex; align-items:center; gap:15px;">
-                        <button class="theme-toggle" onclick="toggleTheme()" title="Ganti Tema">
-                            <i class="fas fa-sun theme-icon-dark"></i>
-                            <i class="fas fa-moon theme-icon-light"></i>
-                        </button>
                         <div class="user-profile">
                             <div style="text-align:right">
                                 <div style="font-size:14px; font-weight:600;"><?= htmlspecialchars($_SESSION['user_name']) ?></div>
@@ -448,13 +434,6 @@ if (!empty($__layout_settings['company_logo'])) {
         }
     };
     window.toggleDropdown = (el) => el && el.parentElement && el.parentElement.classList.toggle('open');
-    window.toggleTheme = () => {
-        const h = document.documentElement;
-        if (h) {
-            const n = h.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-            h.setAttribute('data-theme', n); localStorage.setItem('billing_theme', n);
-        }
-    };
 
     /** WA GATEWAY STATUS POLLING */
     async function checkWAStatus() {
