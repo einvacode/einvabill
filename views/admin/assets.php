@@ -567,21 +567,17 @@ $active_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets a WHERE 
 <div class="glass-panel" style="padding:25px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; flex-wrap:wrap; gap:15px;">
         <h3 style="margin:0;"><i class="fas fa-boxes text-primary"></i> Register Aset Perusahaan</h3>
-        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <details style="position:relative;">
-                <summary class="btn btn-sm btn-ghost" style="list-style:none; cursor:pointer;"><i class="fas fa-eye"></i> Tampilan</summary>
-                <div style="position:absolute; right:0; margin-top:8px; background:rgba(15,23,42,0.96); border:1px solid rgba(255,255,255,0.09); border-radius:10px; min-width:180px; z-index:10; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.25);">
-                    <a href="index.php?page=admin_assets&view=table" style="display:block; padding:10px 12px; color:var(--text-primary); text-decoration:none; border-bottom:1px solid rgba(255,255,255,0.06);">Daftar Kartu</a>
-                    <a href="index.php?page=admin_assets&view=tree" style="display:block; padding:10px 12px; color:var(--text-primary); text-decoration:none;">Topologi</a>
-                </div>
-            </details>
-            <details style="position:relative;">
-                <summary class="btn btn-sm btn-ghost" style="list-style:none; cursor:pointer;"><i class="fas fa-ellipsis-v"></i> Aksi</summary>
-                <div style="position:absolute; right:0; margin-top:8px; background:rgba(15,23,42,0.96); border:1px solid rgba(255,255,255,0.09); border-radius:10px; min-width:190px; z-index:10; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.25);">
-                    <a href="javascript:void(0)" onclick="showAssetModal()" style="display:block; padding:10px 12px; color:var(--text-primary); text-decoration:none; border-bottom:1px solid rgba(255,255,255,0.06);"><i class="fas fa-plus"></i> Tambah Aset</a>
-                    <a href="index.php?page=admin_assets&action=print" target="_blank" style="display:block; padding:10px 12px; color:var(--text-primary); text-decoration:none;"><i class="fas fa-print"></i> Export / Cetak</a>
-                </div>
-            </details>
+        <div style="display:flex; gap:10px;">
+            <div class="view-toggle" style="background:rgba(255,255,255,0.05); padding:4px; border-radius:10px; display:flex;">
+                <button class="btn btn-sm <?= ($_GET['view']??'table') == 'table' ? 'btn-primary' : 'btn-ghost' ?>" onclick="location.href='index.php?page=admin_assets&view=table'">
+                    <i class="fas fa-table"></i> Daftar
+                </button>
+                <button class="btn btn-sm <?= ($_GET['view']??'') == 'tree' ? 'btn-primary' : 'btn-ghost' ?>" onclick="location.href='index.php?page=admin_assets&view=tree'">
+                    <i class="fas fa-network-wired"></i> Topologi
+                </button>
+            </div>
+            <button class="btn btn-ghost" onclick="window.open('index.php?page=admin_assets&action=print','_blank')"><i class="fas fa-print"></i> Export / Cetak</button>
+            <button class="btn btn-primary" onclick="showAssetModal()"><i class="fas fa-plus"></i> Tambah Aset</button>
         </div>
     </div>
 
