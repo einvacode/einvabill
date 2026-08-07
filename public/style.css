@@ -751,28 +751,28 @@ tbody tr:hover {
     width: 100%;
   }
 
+  /* Keep action button groups compact (icon-style) on mobile */
   .btn-group {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
+    width: auto;
+    display: inline-flex;
+    flex-direction: row;
   }
 
   .btn-group .btn {
-    width: 100%;
-    border-right: none;
-    border-bottom: 1px solid var(--glass-border);
+    width: auto;
+    border-right: 1px solid var(--glass-border);
+    border-bottom: none;
   }
 
   .btn-group .btn:last-child {
-    border-bottom: none;
+    border-right: none;
   }
 
   .grid-items {
     grid-template-columns: 1fr;
   }
 
-  .grid-actions .btn,
-  .grid-actions .btn-group {
+  .grid-header .grid-actions > .btn {
     width: 100%;
   }
 
