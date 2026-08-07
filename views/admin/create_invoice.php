@@ -102,7 +102,7 @@ try {
                 #invoiceItemsTable tbody td input { width:100%; box-sizing:border-box; }
                 #invoiceItemsTable .btn-ghost { width:42px; height:42px; padding:0; border-radius:10px; }
                 </style>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; align-items:start;">
+                <div class="quick-invoice-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; align-items:start;">
                     <div>
                         <label>Nama Penerima</label>
                         <input type="text" name="recipient_name" class="form-control" placeholder="Nama orang/mitra" required>
@@ -110,7 +110,7 @@ try {
                         <label style="margin-top:12px;">Alamat Penagihan</label>
                         <input type="text" name="billing_address" class="form-control" placeholder="Alamat untuk dicantumkan di invoice">
 
-                        <div style="display:flex; gap:10px; margin-top:12px;">
+                        <div class="quick-invoice-contact-row" style="display:flex; gap:10px; margin-top:12px;">
                             <div style="flex:1;">
                                 <label>No. HP / Telepon</label>
                                 <input type="text" name="billing_phone" class="form-control" placeholder="0812xxxx">
@@ -125,7 +125,7 @@ try {
                         <textarea name="payment_instructions" class="form-control" rows="3" placeholder="Contoh: Transfer ke BCA 123456789 a.n. PT Contoh"></textarea>
                     </div>
 
-                    <div style="border-left:1px solid rgba(255,255,255,0.04); padding-left:14px;">
+                    <div class="quick-invoice-side" style="border-left:1px solid rgba(255,255,255,0.04); padding-left:14px;">
                         <label>Tanggal Jatuh Tempo</label>
                         <input type="date" name="due_date" class="form-control" value="<?= date('Y-m-d') ?>">
 
@@ -133,7 +133,7 @@ try {
                         <div style="margin-top:18px; font-weight:700; font-size:20px;">Total Nota</div>
                         <div style="font-size:20px; color:var(--primary); margin-top:6px;">Rp <span id="invoice_total_display">0</span></div>
 
-                        <div style="display:flex; gap:10px; margin-top:18px;">
+                        <div class="quick-invoice-actions" style="display:flex; gap:10px; margin-top:18px;">
                             <button class="btn btn-ghost" type="button" onclick="history.back()">Batal</button>
                             <button class="btn btn-primary" type="submit">Buat & Cetak</button>
                         </div>
@@ -165,7 +165,7 @@ try {
                                 </tbody>
                             </table>
 
-                            <div style="margin-top:10px; display:flex; gap:10px;">
+                            <div class="quick-invoice-item-actions" style="margin-top:10px; display:flex; gap:10px;">
                                 <button type="button" class="btn btn-sm btn-primary" onclick="CreateInvoice.addItemRow()"><i class="fas fa-plus"></i> Tambah Baris</button>
                                 <button type="button" class="btn btn-sm btn-ghost" onclick="CreateInvoice.clearItemRows()">Bersihkan</button>
                             </div>

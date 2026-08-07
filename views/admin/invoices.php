@@ -843,7 +843,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                 </div>
             </div>
 
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:18px; padding:12px; background:rgba(255,255,255,0.03); border-radius:12px;">
+            <div class="invoice-mobile-summary-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:18px; padding:12px; background:rgba(255,255,255,0.03); border-radius:12px;">
                 <div>
                     <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:700;">Periode</div>
                     <div style="font-size:13px; font-weight:600; color:var(--text-primary);"><?= $inv_month ?></div>
@@ -854,7 +854,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                 </div>
             </div>
             
-            <div style="display:flex; gap:8px;">
+            <div class="invoice-mobile-actions-row" style="display:flex; gap:8px;">
                 <?php if($inv['status'] != 'Lunas'): ?>
                     <?php if($view_mode !== 'isp_bill'): ?>
                         <?php if($is_grouped && $inv['months_owed'] > 1): ?>

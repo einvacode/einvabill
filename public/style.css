@@ -1058,6 +1058,38 @@ tbody tr:hover {
   .main-content {
     padding: 15px;
   }
+
+  .quick-invoice-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .quick-invoice-side {
+    border-left: none !important;
+    padding-left: 0 !important;
+    border-top: 1px solid var(--glass-border);
+    padding-top: 12px;
+  }
+
+  .quick-invoice-contact-row,
+  .quick-invoice-actions,
+  .quick-invoice-item-actions {
+    flex-direction: column;
+  }
+
+  .quick-invoice-contact-row > div,
+  .quick-invoice-actions .btn,
+  .quick-invoice-item-actions .btn {
+    width: 100% !important;
+  }
+
+  #invoiceItemsTable {
+    min-width: 620px;
+  }
+
+  #historySection .table {
+    min-width: 760px;
+  }
 }
 
 /* Global mobile-header: Hidden on desktop */
@@ -1113,6 +1145,20 @@ tbody tr:hover {
     padding: 8px 10px;
     font-size: 12px;
     min-height: 38px;
+  }
+
+  .invoice-mobile-summary-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .invoice-mobile-actions-row {
+    flex-wrap: wrap;
+  }
+
+  .invoice-mobile-actions-row > * {
+    flex: 1 1 auto;
+    min-width: 44px;
   }
 }
 /* Image Lightbox Modal */
