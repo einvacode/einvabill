@@ -163,6 +163,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $billing_phone = trim($_POST['billing_phone'] ?? '');
         $billing_email = trim($_POST['billing_email'] ?? '');
 
+        if ($customer_id > 0) {
+            try {
+                $tenant_id = $_SESSION['tenant_id'] ?? 1;
+                $cust_stmt = $db->prepare("SELECT name, address, contact, package_name, monthly_fee FROM customers WHERE id = ? AND tenant_id = ? LIMIT 1");
+                $cust_stmt->execute([$customer_id, $tenant_id]);
+                $customer = $cust_stmt->fetch(PDO::FETCH_ASSOC);
+                if ($customer) {
+                    if ($recipient_name === '') $recipient_name = trim($customer['name'] ?? '');
+                    if ($billing_address === '') $billing_address = trim($customer['address'] ?? '');
+                    if ($billing_phone === '') $billing_phone = trim($customer['contact'] ?? '');
+                    if ($billing_email === '') {
+                        try {
+                            $cust_cols = $db->query("PRAGMA table_info(customers)")->fetchAll(PDO::FETCH_COLUMN, 1);
+                            if (is_array($cust_cols) && in_array('email', $cust_cols)) {
+                                $email_val = $db->prepare("SELECT email FROM customers WHERE id = ? AND tenant_id = ? LIMIT 1");
+                                $email_val->execute([$customer_id, $tenant_id]);
+                                $billing_email = trim((string)$email_val->fetchColumn());
+                            }
+                        } catch (Exception $e) {}
+                    }
+                    if ($amount <= 0) $amount = floatval($customer['monthly_fee'] ?? 0);
+                    if (empty($_POST['item_desc'])) {
+                        $_POST['item_desc'] = [trim($customer['package_name'] ?? 'Tagihan Layanan') ?: 'Tagihan Layanan'];
+                        $_POST['item_qty'] = [1];
+                        $_POST['item_unit'] = [$amount > 0 ? $amount : floatval($customer['monthly_fee'] ?? 0)];
+                        $_POST['item_amount'] = [floatval($_POST['item_unit'][0] ?? $amount)];
+                    }
+                }
+            } catch (Exception $e) {}
+        }
+
         // Ownership / permission: only admin or creator can issue invoice
         $u_id = $_SESSION['user_id'];
         $u_role = $_SESSION['user_role'] ?? 'guest';

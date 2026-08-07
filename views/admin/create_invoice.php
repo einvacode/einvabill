@@ -56,6 +56,12 @@ try {
     $recent_temps = $db->query("SELECT id, name, address, contact, registration_date FROM customers WHERE type IN ('note','temp') AND created_by = 0 ORDER BY registration_date DESC LIMIT 10")->fetchAll();
 } catch (Exception $e) { $recent_temps = []; }
 
+// Existing customers for quick invoice autofill
+try {
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $existing_customers = $db->query("SELECT id, name, address, contact, package_name, monthly_fee, ip_address, customer_code FROM customers WHERE tenant_id = $tenant_id ORDER BY name ASC LIMIT 300")->fetchAll();
+} catch (Exception $e) { $existing_customers = []; }
+
 // Note: pendapatan handled in main reports/dashboard. no local pendapatan fetch here.
 ?>
 
@@ -73,6 +79,18 @@ try {
 
             <form method="POST" action="index.php?page=admin_assets&action=invoice_create">
                 <input type="hidden" name="created_via" value="quick">
+                <input type="hidden" name="customer_id" id="quick_invoice_customer_id" value="0">
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label>Pilih Customer Eksisting</label>
+                    <select class="form-control" id="existing_customer_picker" onchange="useExistingCustomer(this.value)">
+                        <option value="">-- Pilih customer untuk autofill --</option>
+                        <?php foreach($existing_customers as $cust): ?>
+                            <option value="<?= intval($cust['id']) ?>">
+                                <?= htmlspecialchars($cust['name']) ?><?= !empty($cust['customer_code']) ? ' - ' . htmlspecialchars($cust['customer_code']) : '' ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
                 <style>
                 /* Grid alignment for create-invoice to match edit layout */
                 #invoiceItemsTable { table-layout: fixed; width:100%; }
@@ -381,6 +399,50 @@ function useTempCustomer(id) {
     // focus first item desc
     const firstDesc = document.querySelector('input[name="item_desc[]"]');
     if (firstDesc) firstDesc.focus();
+    if (window.CreateInvoice) CreateInvoice.updateGrandTotal();
+}
+
+let existingCustomers = {};
+try {
+    existingCustomers = <?= json_encode($existing_customers ?? []) ?>;
+} catch(e) { existingCustomers = {}; }
+
+function useExistingCustomer(id) {
+    if (!id) return;
+    const c = (Array.isArray(existingCustomers) ? existingCustomers.find(x => parseInt(x.id) === parseInt(id)) : null);
+    if (!c) return alert('Data customer tidak ditemukan.');
+
+    const customerIdField = document.getElementById('quick_invoice_customer_id');
+    if (customerIdField) customerIdField.value = id;
+
+    showTab('create');
+
+    const nameField = document.querySelector('input[name="recipient_name"]');
+    const addressField = document.querySelector('input[name="billing_address"]');
+    const phoneField = document.querySelector('input[name="billing_phone"]');
+    const emailField = document.querySelector('input[name="billing_email"]');
+    const amountField = document.getElementById('invoice_total');
+    const amountDisplay = document.getElementById('invoice_total_display');
+
+    if (nameField) nameField.value = c.name || '';
+    if (addressField) addressField.value = c.address || '';
+    if (phoneField) phoneField.value = c.contact || '';
+    if (emailField && 'email' in c) emailField.value = c.email || '';
+
+    const firstDesc = document.querySelector('input[name="item_desc[]"]');
+    const firstQty = document.querySelector('input[name="item_qty[]"]');
+    const firstUnit = document.querySelector('input[name="item_unit[]"]');
+    const firstAmount = document.querySelector('input[name="item_amount[]"]');
+
+    if (firstDesc) firstDesc.value = c.package_name || 'Tagihan Layanan';
+    if (firstQty) firstQty.value = 1;
+    if (firstUnit) firstUnit.value = parseFloat(c.monthly_fee || 0);
+    if (firstAmount) firstAmount.value = Math.round(parseFloat(c.monthly_fee || 0));
+
+    const total = Math.round(parseFloat(c.monthly_fee || 0));
+    if (amountField) amountField.value = total;
+    if (amountDisplay) amountDisplay.innerText = new Intl.NumberFormat('id-ID').format(total);
+
     if (window.CreateInvoice) CreateInvoice.updateGrandTotal();
 }
 </script>
