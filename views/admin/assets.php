@@ -582,7 +582,7 @@ $active_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets a WHERE 
     </div>
 
     <?php if(($_GET['view']??'table') === 'table'): ?>
-    <div style="max-height:520px; overflow-y:auto; padding-right:6px; display:grid; gap:14px;">
+    <div style="max-height:520px; overflow-y:auto; padding-right:6px; display:grid; gap:12px;">
         <?php
         $assets = $db->query("SELECT a.*, p.name as parent_name FROM infrastructure_assets a LEFT JOIN infrastructure_assets p ON a.parent_id = p.id WHERE 1=1 $scope_where ORDER BY a.type DESC, a.name ASC")->fetchAll();
         foreach($assets as $a):
@@ -600,10 +600,10 @@ $active_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets a WHERE 
             $depreciation_amount = min($a['price'], $depreciation_per_year * floor($years_used));
             $book_value = max(0, $a['price'] - $depreciation_amount);
         ?>
-        <div class="glass-panel" style="padding:18px 20px; border-left:4px solid var(--primary); display:grid; grid-template-columns: 1.6fr 1fr auto; gap:16px; align-items:center;">
+        <div class="glass-panel" style="padding:16px 18px; border-left:4px solid var(--primary); display:grid; grid-template-columns: 1.6fr 1fr auto; gap:16px; align-items:center; border-radius:14px;">
             <div>
                 <div style="font-weight:800; font-size:16px; margin-bottom:6px;"><?= htmlspecialchars($a['name']) ?></div>
-                <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px;"><?= htmlspecialchars($a['description'] ? trim(strip_tags($a['description'])) : 'Keterangan belum diisi') ?></div>
+                <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px; line-height:1.5;"><?= htmlspecialchars($a['description'] ? trim(strip_tags($a['description'])) : 'Keterangan belum diisi') ?></div>
                 <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
                     <span class="badge" style="background:var(--primary); color:white;"><?= htmlspecialchars($a['type'] ?: 'Umum') ?></span>
                     <span class="badge" style="background:rgba(255,255,255,0.08); color:var(--text-primary);"><?= htmlspecialchars($a['brand'] ?: 'Vendor belum diisi') ?></span>
@@ -613,7 +613,7 @@ $active_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets a WHERE 
                 <div style="font-weight:700; color:var(--success); margin-bottom:4px;">Rp <?= number_format($a['price'], 0, ',', '.') ?></div>
                 <div style="font-size:12px; color:#f59e0b; margin-bottom:2px;">Penyusutan: Rp <?= number_format($depreciation_amount, 0, ',', '.') ?></div>
                 <div style="font-size:12px; color:var(--text-secondary);">Nilai buku: Rp <?= number_format($book_value, 0, ',', '.') ?></div>
-                <div style="font-size:12px; color:var(--text-secondary); margin-top:6px;">Status: <?= htmlspecialchars($a['status'] ?: '-') ?></div>
+                <div style="font-size:12px; color:var(--text-secondary); margin-top:6px; display:inline-block; padding:4px 8px; border-radius:999px; background:rgba(255,255,255,0.06);">Status: <?= htmlspecialchars($a['status'] ?: '-') ?></div>
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
                 <button class="btn btn-sm btn-warning" onclick='editAsset(<?= json_encode($a) ?>)' title="Edit"><i class="fas fa-edit"></i></button>
