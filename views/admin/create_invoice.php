@@ -56,10 +56,10 @@ try {
     $recent_temps = $db->query("SELECT id, name, address, contact, registration_date FROM customers WHERE type IN ('note','temp') AND created_by = 0 ORDER BY registration_date DESC LIMIT 10")->fetchAll();
 } catch (Exception $e) { $recent_temps = []; }
 
-// Existing customers for quick invoice autofill
+// Customers for quick invoice autofill: only manually entered temporary/non-primary records
 try {
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
-    $existing_customers = $db->query("SELECT id, name, address, contact, package_name, monthly_fee, ip_address, customer_code FROM customers WHERE tenant_id = $tenant_id ORDER BY name ASC LIMIT 300")->fetchAll();
+    $existing_customers = $db->query("SELECT id, name, address, contact, package_name, monthly_fee, ip_address, customer_code FROM customers WHERE tenant_id = $tenant_id AND type IN ('note','temp') ORDER BY registration_date DESC, name ASC LIMIT 300")->fetchAll();
 } catch (Exception $e) { $existing_customers = []; }
 
 // Note: pendapatan handled in main reports/dashboard. no local pendapatan fetch here.
@@ -81,9 +81,9 @@ try {
                 <input type="hidden" name="created_via" value="quick">
                 <input type="hidden" name="customer_id" id="quick_invoice_customer_id" value="0">
                 <div class="form-group" style="margin-bottom:14px;">
-                    <label>Pilih Customer Eksisting</label>
+                    <label>Pilih Customer Input Manual</label>
                     <select class="form-control" id="existing_customer_picker" onchange="useExistingCustomer(this.value)">
-                        <option value="">-- Pilih customer untuk autofill --</option>
+                        <option value="">-- Pilih customer input manual --</option>
                         <?php foreach($existing_customers as $cust): ?>
                             <option value="<?= intval($cust['id']) ?>">
                                 <?= htmlspecialchars($cust['name']) ?><?= !empty($cust['customer_code']) ? ' - ' . htmlspecialchars($cust['customer_code']) : '' ?>
@@ -390,7 +390,7 @@ try {
 
 function useTempCustomer(id) {
     const t = (Array.isArray(tempCustomers) ? tempCustomers.find(x => parseInt(x.id) === parseInt(id)) : null);
-    if (!t) return alert('Data pelanggan tidak ditemukan.');
+    if (!t) return alert('Data customer input manual tidak ditemukan.');
     // switch to create tab and fill fields
     showTab('create');
     document.querySelector('input[name="recipient_name"]').value = t.name || '';
@@ -410,7 +410,7 @@ try {
 function useExistingCustomer(id) {
     if (!id) return;
     const c = (Array.isArray(existingCustomers) ? existingCustomers.find(x => parseInt(x.id) === parseInt(id)) : null);
-    if (!c) return alert('Data customer tidak ditemukan.');
+    if (!c) return alert('Data customer input manual tidak ditemukan.');
 
     const customerIdField = document.getElementById('quick_invoice_customer_id');
     if (customerIdField) customerIdField.value = id;
