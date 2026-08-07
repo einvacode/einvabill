@@ -303,7 +303,7 @@ if ($action === 'export') {
     exit;
 }
 
-if ($action === 'print_spt') {
+if ($action === 'print_balance_sheet') {
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
     $company = $db->query("SELECT * FROM settings WHERE tenant_id = $tenant_id")->fetch();
     if (!$company) $company = ['company_name' => 'ISP', 'company_address' => '', 'company_contact' => '', 'company_logo' => ''];
@@ -346,7 +346,7 @@ if ($action === 'print_spt') {
     <html lang="id">
     <head>
         <meta charset="UTF-8">
-        <title>Laporan Akuntansi SPT Tahunan - <?= htmlspecialchars($year_label) ?></title>
+        <title>Laporan Neraca dan Laba Rugi - <?= htmlspecialchars($year_label) ?></title>
         <style>
             body { font-family: Arial, sans-serif; color: #111827; margin: 0; padding: 32px; background: #fff; }
             .header { border-bottom: 3px solid #0f172a; padding-bottom: 16px; margin-bottom: 24px; }
@@ -359,18 +359,35 @@ if ($action === 'print_spt') {
             table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; }
             th { background: #f1f5f9; text-align: left; padding: 8px 10px; border-bottom: 2px solid #cbd5e1; }
             td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
-            .section-title { font-size: 15px; font-weight: 700; margin: 24px 0 10px; text-transform: uppercase; }
+            .section-title { font-size: 15px; font-weight: 700; margin: 24px 0 10px; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; }
+            .summary-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
             .footer { margin-top: 30px; font-size: 11px; color: #64748b; }
             @media print { body { padding: 12px; } }
         </style>
     </head>
     <body>
         <div class="header">
-            <h1>Laporan Akuntansi SPT Tahunan</h1>
+            <h1>Laporan Neraca dan Laba Rugi</h1>
             <div class="muted">Perusahaan: <?= htmlspecialchars($company['company_name']) ?></div>
             <div class="muted">Periode: <?= htmlspecialchars($period_display) ?></div>
         </div>
 
+        <div class="section-title">Neraca Sederhana</div>
+        <table>
+            <tr><th colspan="2">Aset</th></tr>
+            <tr><td>Aset Lancar</td><td>Rp <?= number_format($current_assets, 0, ',', '.') ?></td></tr>
+            <tr><td>Kas / Saldo Laba</td><td>Rp <?= number_format($cash_balance, 0, ',', '.') ?></td></tr>
+            <tr><td>Piutang</td><td>Rp <?= number_format($receivables, 0, ',', '.') ?></td></tr>
+            <tr><td>Aset Tetap</td><td>Rp <?= number_format($fixed_assets, 0, ',', '.') ?></td></tr>
+            <tr><td><strong>Total Aset</strong></td><td><strong>Rp <?= number_format($total_assets, 0, ',', '.') ?></strong></td></tr>
+        </table>
+        <table>
+            <tr><th colspan="2">Kewajiban dan Ekuitas</th></tr>
+            <tr><td>Liabilitas</td><td>Rp <?= number_format($liabilities, 0, ',', '.') ?></td></tr>
+            <tr><td><strong>Ekuitas</strong></td><td><strong>Rp <?= number_format($equity, 0, ',', '.') ?></strong></td></tr>
+        </table>
+
+        <div class="section-title">Laba Rugi</div>
         <div class="grid">
             <div class="box">
                 <h3>Total Pendapatan</h3>
@@ -405,35 +422,6 @@ if ($action === 'print_spt') {
             <tr><td><strong>Total Pengeluaran</strong></td><td><strong>Rp <?= number_format($total_expenses_print, 0, ',', '.') ?></strong></td></tr>
         </table>
 
-        <div class="section-title">Neraca Sederhana</div>
-        <table>
-            <tr><th colspan="2">Aset</th></tr>
-            <tr><td>Aset Lancar</td><td>Rp <?= number_format($current_assets, 0, ',', '.') ?></td></tr>
-            <tr><td>Kas / Saldo Laba</td><td>Rp <?= number_format($cash_balance, 0, ',', '.') ?></td></tr>
-            <tr><td>Piutang</td><td>Rp <?= number_format($receivables, 0, ',', '.') ?></td></tr>
-            <tr><td>Aset Tetap</td><td>Rp <?= number_format($fixed_assets, 0, ',', '.') ?></td></tr>
-            <tr><td><strong>Total Aset</strong></td><td><strong>Rp <?= number_format($total_assets, 0, ',', '.') ?></strong></td></tr>
-        </table>
-        <table>
-            <tr><th colspan="2">Kewajiban dan Ekuitas</th></tr>
-            <tr><td>Liabilitas</td><td>Rp <?= number_format($liabilities, 0, ',', '.') ?></td></tr>
-            <tr><td><strong>Ekuitas</strong></td><td><strong>Rp <?= number_format($equity, 0, ',', '.') ?></strong></td></tr>
-        </table>
-
-        <div class="section-title">Daftar Transaksi</div>
-        <table>
-            <tr><th>Tanggal</th><th>Jenis</th><th>Nama</th><th>Nominal</th><th>Status</th></tr>
-            <?php foreach ($report_data as $row): ?>
-                <tr>
-                    <td><?= date('d/m/Y', strtotime($row['activity_date'])) ?></td>
-                    <td><?= htmlspecialchars($row['activity_type']) ?></td>
-                    <td><?= htmlspecialchars($row['customer_name']) ?></td>
-                    <td>Rp <?= number_format($row['amount'], 0, ',', '.') ?></td>
-                    <td><?= htmlspecialchars($row['status']) ?></td>
-                </tr>
-            <?php endforeach; ?>
-        </table>
-
         <div class="footer">
             <div>Dicetak oleh: <?= htmlspecialchars($_SESSION['user_name'] ?? 'System') ?></div>
             <div>Waktu cetak: <?= date('d/m/Y H:i:s') ?> WIB</div>
@@ -445,7 +433,7 @@ if ($action === 'print_spt') {
     exit;
 }
 
-if ($action === 'print_spt') {
+if ($action === 'print_profit_loss') {
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
     $company = $db->query("SELECT * FROM settings WHERE tenant_id = $tenant_id")->fetch();
     if (!$company) $company = ['company_name' => 'ISP', 'company_address' => '', 'company_contact' => '', 'company_logo' => ''];
@@ -481,7 +469,7 @@ if ($action === 'print_spt') {
     <html lang="id">
     <head>
         <meta charset="UTF-8">
-        <title>Laporan Akuntansi SPT Tahunan - <?= htmlspecialchars($year_label) ?></title>
+        <title>Laporan Laba Rugi - <?= htmlspecialchars($year_label) ?></title>
         <style>
             body { font-family: Arial, sans-serif; color: #111827; margin: 0; padding: 32px; background: #fff; }
             .header { border-bottom: 3px solid #0f172a; padding-bottom: 16px; margin-bottom: 24px; }
@@ -501,7 +489,7 @@ if ($action === 'print_spt') {
     </head>
     <body>
         <div class="header">
-            <h1>Laporan Akuntansi SPT Tahunan</h1>
+            <h1>Laporan Laba Rugi</h1>
             <div class="muted">Perusahaan: <?= htmlspecialchars($company['company_name']) ?></div>
             <div class="muted">Periode: <?= htmlspecialchars($period_display) ?></div>
         </div>
@@ -538,20 +526,6 @@ if ($action === 'print_spt') {
                 <tr><td colspan="2" class="muted">Tidak ada pengeluaran dalam periode ini.</td></tr>
             <?php endif; ?>
             <tr><td><strong>Total Pengeluaran</strong></td><td><strong>Rp <?= number_format($total_expenses_print, 0, ',', '.') ?></strong></td></tr>
-        </table>
-
-        <div class="section-title">Daftar Transaksi</div>
-        <table>
-            <tr><th>Tanggal</th><th>Jenis</th><th>Nama</th><th>Nominal</th><th>Status</th></tr>
-            <?php foreach ($report_data as $row): ?>
-                <tr>
-                    <td><?= date('d/m/Y', strtotime($row['activity_date'])) ?></td>
-                    <td><?= htmlspecialchars($row['activity_type']) ?></td>
-                    <td><?= htmlspecialchars($row['customer_name']) ?></td>
-                    <td>Rp <?= number_format($row['amount'], 0, ',', '.') ?></td>
-                    <td><?= htmlspecialchars($row['status']) ?></td>
-                </tr>
-            <?php endforeach; ?>
         </table>
 
         <div class="footer">
@@ -898,8 +872,8 @@ if ($action === 'print') {
                 <a href="index.php?page=admin_reports&action=print&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&user_id=<?= $filter_user ?>" target="_blank" class="btn btn-sm btn-primary">
                     <i class="fas fa-print"></i> <span>Cetak</span>
                 </a>
-                <a href="index.php?page=admin_reports&action=print_spt&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&user_id=<?= $filter_user ?>&year=<?= $filter_year ?>" target="_blank" class="btn btn-sm btn-warning" style="background:#f59e0b; border:none; color:white;">
-                    <i class="fas fa-file-contract"></i> <span>SPT Tahunan</span>
+                <a href="index.php?page=admin_reports&action=print_balance_sheet&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&user_id=<?= $filter_user ?>&year=<?= $filter_year ?>" target="_blank" class="btn btn-sm btn-info" style="background:#0ea5e9; border:none; color:white;">
+                    <i class="fas fa-file-contract"></i> <span>Neraca & Laba Rugi</span>
                 </a>
                 <a href="index.php?page=admin_reports&action=export&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&user_id=<?= $filter_user ?>" class="btn btn-sm btn-success" style="background:#10b981; border:none; color:white;">
                     <i class="fas fa-file-excel"></i> <span>Export</span>
