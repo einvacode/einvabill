@@ -611,7 +611,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         </div>
         <div class="grid-actions">
-            <div class="btn-group">
+            <div class="btn-group customers-top-actions">
                 <a href="<?= $export_url ?>" class="btn btn-sm btn-ghost" style="color:var(--success);"><i class="fas fa-arrow-down"></i> <span class="hide-mobile">Export</span></a>
                 <a href="index.php?page=admin_customers&action=import_view" class="btn btn-sm btn-ghost" style="color:var(--success);"><i class="fas fa-arrow-up"></i> <span class="hide-mobile">Import</span></a>
                 <a href="<?= $create_url ?>" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Tambah</a>

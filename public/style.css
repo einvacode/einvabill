@@ -742,7 +742,7 @@ tbody tr:hover {
     width: 100%;
   }
 
-  .grid-header .grid-actions .btn {
+  .grid-header .grid-actions > .btn {
     flex: 1;
     width: 100%;
   }
@@ -774,6 +774,16 @@ tbody tr:hover {
 
   .grid-header .grid-actions > .btn {
     width: 100%;
+  }
+
+  .customers-top-actions {
+    width: auto !important;
+    display: inline-flex !important;
+    flex-direction: row !important;
+  }
+
+  .customers-top-actions .btn {
+    width: auto !important;
   }
 
   .hide-mobile { display: none !important; }
