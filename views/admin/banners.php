@@ -75,7 +75,7 @@ if ($action === 'edit' && isset($_GET['id'])) {
 ?>
 
 <div class="container-fluid">
-    <div style="display:flex; justify-content:flex-end; align-items:center; margin-bottom:25px;">
+    <div class="top-actions-row" style="margin-bottom:25px;">
         <?php if($action !== 'add' && $action !== 'edit'): ?>
             <a href="index.php?page=admin_banners&action=add" class="btn btn-primary">
                 <i class="fas fa-plus"></i> Tambah Banner Baru
@@ -194,7 +194,7 @@ if ($action === 'edit' && isset($_GET['id'])) {
                             </a>
                         </td>
                         <td style="padding:15px 24px; text-align:right;">
-                            <div style="display:flex; justify-content:flex-end; gap:8px;">
+                            <div class="compact-action-icons" style="justify-content:flex-end; gap:8px;">
                                 <a href="index.php?page=admin_banners&action=edit&id=<?= $b['id'] ?>" class="btn btn-sm btn-ghost" title="Edit">
                                     <i class="fas fa-edit"></i>
                                 </a>

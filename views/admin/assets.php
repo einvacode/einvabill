@@ -598,7 +598,7 @@ $active_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets a WHERE 
 <div class="glass-panel" style="padding:25px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; flex-wrap:wrap; gap:15px;">
         <h3 style="margin:0;"><i class="fas fa-boxes text-primary"></i> Register Aset Perusahaan</h3>
-        <div style="display:flex; gap:10px;">
+        <div class="compact-toolbar" style="display:flex; gap:10px;">
             <div class="view-toggle" style="background:rgba(255,255,255,0.05); padding:4px; border-radius:10px; display:flex;">
                 <button class="btn btn-sm <?= ($_GET['view']??'table') == 'table' ? 'btn-primary' : 'btn-ghost' ?>" onclick="location.href='index.php?page=admin_assets&view=table'">
                     <i class="fas fa-table"></i> Daftar
@@ -646,7 +646,7 @@ $active_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets a WHERE 
                 <div style="font-size:12px; color:var(--text-secondary);">Nilai buku: Rp <?= number_format($book_value, 0, ',', '.') ?></div>
                 <div style="font-size:12px; color:var(--text-secondary); margin-top:6px; display:inline-block; padding:4px 8px; border-radius:999px; background:rgba(255,255,255,0.06);">Status: <?= htmlspecialchars($a['status'] ?: '-') ?></div>
             </div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+            <div class="compact-action-icons" style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
                 <button class="btn btn-sm btn-warning" onclick='editAsset(<?= json_encode($a) ?>)' title="Edit"><i class="fas fa-edit"></i></button>
                 <button class="btn btn-sm btn-primary" onclick='showInvoiceModal(<?= json_encode($a) ?>)' title="Buat Nota / Cetak"><i class="fas fa-receipt"></i></button>
                 <a href="index.php?page=admin_assets&action=delete&id=<?= $a['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus aset ini?')"><i class="fas fa-trash"></i></a>
@@ -839,7 +839,7 @@ $active_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets a WHERE 
                 </div>
             </div>
             </div>
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px; position:sticky; bottom:0; background:linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.08) 35%, rgba(255,255,255,0.12) 100%); backdrop-filter:blur(8px); padding-top:14px;">
+            <div class="form-actions-row" style="margin-top:20px; position:sticky; bottom:0; background:linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.08) 35%, rgba(255,255,255,0.12) 100%); backdrop-filter:blur(8px); padding-top:14px;">
                 <button type="button" class="btn btn-ghost" onclick="closeAssetModal()">Batal</button>
                 <button type="submit" class="btn btn-primary" id="saveBtn">Simpan Aset</button>
             </div>
@@ -896,7 +896,7 @@ $active_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets a WHERE 
                     <input type="checkbox" name="mark_sold" id="inv_mark_sold" value="1" style="width:20px; height:20px;">
                 </div>
             </div>
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+            <div class="form-actions-row" style="margin-top:16px;">
                 <button type="button" class="btn btn-ghost" onclick="closeInvoiceModal()">Batal</button>
                 <button type="submit" class="btn btn-primary">Buat & Cetak</button>
             </div>

@@ -179,9 +179,9 @@ $total_expense_month = $db->query("SELECT SUM(amount) FROM expenses e $scope_whe
                 <label>Keterangan</label>
                 <textarea name="description" class="form-control" rows="3" placeholder="Detail pengeluaran..."></textarea>
             </div>
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:25px;">
+            <div class="form-actions-row" style="margin-top:25px;">
                 <button type="button" class="btn btn-ghost" onclick="document.getElementById('addExpenseModal').style.display='none'">Batal</button>
-                <button type="submit" class="btn btn-primary" style="padding:10px 25px;">Simpan Data</button>
+                <button type="submit" class="btn btn-primary">Simpan Data</button>
             </div>
         </form>
     </div>
@@ -214,9 +214,9 @@ $total_expense_month = $db->query("SELECT SUM(amount) FROM expenses e $scope_whe
                 <label>Keterangan</label>
                 <textarea name="description" id="editDescription" class="form-control" rows="3"></textarea>
             </div>
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:25px;">
+            <div class="form-actions-row" style="margin-top:25px;">
                 <button type="button" class="btn btn-ghost" onclick="document.getElementById('editExpenseModal').style.display='none'">Batal</button>
-                <button type="submit" class="btn btn-warning" style="padding:10px 25px;">Update Data</button>
+                <button type="submit" class="btn btn-warning">Update Data</button>
             </div>
         </form>
     </div>

@@ -907,7 +907,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <!-- Pagination Navigation -->
     <?php if($total_pages > 1): ?>
-    <div style="display:flex; justify-content:center; gap:8px; margin-top:24px; flex-wrap:wrap;">
+    <div class="pagination-nav" style="margin-top:24px;">
         <?php 
         $params = $_GET; 
         unset($params['p']); 
@@ -933,7 +933,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             <a href="<?= $base_url . ($current_page + 1) ?>" class="btn btn-sm btn-ghost">Next &raquo;</a>
         <?php endif; ?>
         
-        <div style="width:100%; text-align:center; margin-top:8px; font-size:12px; color:var(--text-secondary);">
+        <div class="pagination-info">
             Menampilkan <?= count($customers) ?> dari <?= $total_rows ?> pelanggan (Halaman <?= $current_page ?> dari <?= $total_pages ?>)
         </div>
     </div>
@@ -1611,7 +1611,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <button type="button" class="btn btn-primary" onclick="document.getElementById('csv_input').click()">Pilih File</button>
                 <div id="file-name" style="margin-top: 15px; font-weight: 600; font-size: 13px; color: var(--success); display: none;"></div>
             </div>
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:25px;">
+            <div class="form-actions-row" style="margin-top:25px;">
                 <a href="index.php?page=admin_customers" class="btn btn-ghost">Batal</a>
                 <button type="submit" class="btn btn-primary" style="background:var(--success); border-color:var(--success); color:white;">Upload & Proses</button>
             </div>
@@ -1626,7 +1626,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <label>Salin & Tempel Data (Tab-Separated):</label>
                 <textarea name="paste_data" class="form-control" rows="10" placeholder="customer [Tab] Budi [Tab] Alamat..." required style="font-family:monospace; font-size:12px;"></textarea>
             </div>
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+            <div class="form-actions-row" style="margin-top:20px;">
                 <a href="index.php?page=admin_customers" class="btn btn-ghost">Batal</a>
                 <button type="submit" class="btn btn-primary">Mulai Import</button>
             </div>
@@ -1719,13 +1719,13 @@ document.addEventListener("DOMContentLoaded", () => {
         </table>
     </div>
 
-    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:30px; padding-top:20px; border-top:1px solid var(--glass-border);">
+    <div class="form-actions-row" style="margin-top:30px; padding-top:20px; border-top:1px solid var(--glass-border);">
         <form action="index.php?page=admin_customers&action=import_cancel" method="POST">
             <button type="submit" class="btn btn-ghost">Batalkan</button>
         </form>
         <?php if(!empty($pending)): ?>
             <form action="index.php?page=admin_customers&action=import_confirm" method="POST">
-                <button type="submit" class="btn btn-primary" style="background:var(--success); border-color:var(--success); color:white; padding:12px 40px; font-weight:700;">
+                <button type="submit" class="btn btn-primary" style="background:var(--success); border-color:var(--success); color:white; font-weight:700;">
                     <i class="fas fa-check"></i> Sudah Sesuai, Impor Sekarang
                 </button>
             </form>

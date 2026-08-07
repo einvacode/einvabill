@@ -140,7 +140,7 @@ if (!function_exists('formatBytes')) {
                 <label>Password Router</label>
                 <input type="password" name="password" id="rt_pass" class="form-control">
             </div>
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+            <div class="form-actions-row" style="margin-top:20px;">
                 <button type="button" class="btn btn-ghost" onclick="document.getElementById('addRouterModal').style.display='none'">Batal</button>
                 <button type="submit" class="btn btn-primary">Simpan Router</button>
             </div>

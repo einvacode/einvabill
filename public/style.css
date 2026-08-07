@@ -700,11 +700,74 @@ tbody tr:hover {
   gap: 20px;
 }
 
+.pagination-nav {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.pagination-nav .btn {
+  min-width: 36px;
+  min-height: 34px;
+  padding: 6px 10px;
+}
+
+.pagination-info {
+  width: 100%;
+  text-align: center;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
 .grid-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   align-items: center;
+}
+
+.compact-toolbar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.compact-action-icons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.invoice-desktop-actions {
+  justify-content: flex-end;
+}
+
+.compact-inline-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+}
+
+.form-actions-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.top-actions-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 /* Button Group Utility */
@@ -738,13 +801,16 @@ tbody tr:hover {
   
   .grid-header .grid-actions {
     justify-content: flex-start;
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
     width: 100%;
   }
 
   .grid-header .grid-actions > .btn {
-    flex: 1;
-    width: 100%;
+    flex: 0 0 auto;
+    width: auto;
   }
 
   .grid-actions {
@@ -773,7 +839,7 @@ tbody tr:hover {
   }
 
   .grid-header .grid-actions > .btn {
-    width: 100%;
+    width: auto;
   }
 
   .customers-top-actions {
@@ -784,6 +850,96 @@ tbody tr:hover {
 
   .customers-top-actions .btn {
     width: auto !important;
+  }
+
+  .grid-header .btn-group {
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: auto;
+    max-width: 100%;
+  }
+
+  .compact-toolbar {
+    width: 100%;
+    gap: 6px;
+  }
+
+  .compact-toolbar .btn,
+  .compact-toolbar .btn-sm,
+  .compact-header-btn {
+    min-height: 36px;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .compact-action-icons {
+    gap: 6px;
+    justify-content: flex-start;
+  }
+
+  .compact-action-icons .btn,
+  .compact-action-icons a.btn,
+  .compact-action-icons button.btn {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .compact-action-group .btn {
+    min-height: 32px;
+    padding: 5px 8px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .invoice-desktop-actions {
+    justify-content: flex-start;
+  }
+
+  .compact-inline-actions {
+    gap: 3px;
+    margin-left: 3px;
+  }
+
+  .compact-inline-actions .btn,
+  .compact-inline-actions a.btn,
+  .compact-inline-actions button.btn {
+    min-width: 26px;
+    min-height: 24px;
+    padding: 0 5px;
+    border-radius: 6px;
+  }
+
+  .form-actions-row {
+    justify-content: flex-start;
+    gap: 8px;
+  }
+
+  .top-actions-row {
+    justify-content: flex-start;
+    gap: 8px;
+  }
+
+  .form-actions-row .btn,
+  .form-actions-row a.btn,
+  .form-actions-row button.btn {
+    min-height: 36px;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .grid-header .btn,
+  .grid-header .btn-sm {
+    min-height: 36px;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .grid-header .btn-group .btn {
+    white-space: nowrap;
   }
 
   .hide-mobile { display: none !important; }
@@ -975,7 +1131,9 @@ tbody tr:hover {
   }
 
   .grid-header .btn-group {
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
   }
   
   /* Form controls larger for touch */
@@ -1093,6 +1251,61 @@ tbody tr:hover {
     width: 100% !important;
   }
 
+  .pagination-nav {
+    gap: 6px;
+  }
+
+  .pagination-nav .btn,
+  .pagination-nav .btn-sm {
+    min-width: 34px;
+    min-height: 34px;
+    padding: 6px 9px;
+    font-size: 12px;
+  }
+
+  /* Consistent compact actions for mobile cards */
+  .customers-mobile-container .btn-group {
+    border-radius: 10px;
+  }
+
+  .customers-mobile-container .btn-group .btn {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .customers-mobile-container .btn-group .btn.btn-xs {
+    font-size: 12px;
+  }
+
+  .invoice-mobile-actions-row {
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px !important;
+  }
+
+  .invoice-mobile-actions-row > .btn,
+  .invoice-mobile-actions-row > a.btn,
+  .invoice-mobile-actions-row > button.btn {
+    min-height: 36px;
+    border-radius: 10px !important;
+    font-size: 12px;
+  }
+
+  .invoice-mobile-actions-row > .btn:not(:first-child),
+  .invoice-mobile-actions-row > a.btn:not(:first-child),
+  .invoice-mobile-actions-row > button.btn:not(:first-child) {
+    width: 38px !important;
+    height: 36px !important;
+    padding: 0 !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
   #invoiceItemsTable {
     min-width: 620px;
   }
@@ -1139,6 +1352,74 @@ tbody tr:hover {
   .grid-header .grid-actions .btn {
     padding-left: 12px;
     padding-right: 12px;
+  }
+
+  .grid-header .btn,
+  .grid-header .btn-sm {
+    min-height: 34px;
+    padding: 7px 10px;
+    font-size: 12px;
+  }
+
+  .compact-toolbar .btn,
+  .compact-toolbar .btn-sm,
+  .compact-header-btn {
+    min-height: 34px;
+    padding: 7px 10px;
+    font-size: 11px;
+  }
+
+  .compact-action-icons .btn,
+  .compact-action-icons a.btn,
+  .compact-action-icons button.btn {
+    width: 34px;
+    height: 34px;
+  }
+
+  .compact-action-group .btn {
+    min-height: 30px;
+    padding: 4px 7px;
+    font-size: 10px;
+  }
+
+  .compact-inline-actions .btn,
+  .compact-inline-actions a.btn,
+  .compact-inline-actions button.btn {
+    min-width: 24px;
+    min-height: 22px;
+    padding: 0 4px;
+  }
+
+  .form-actions-row {
+    gap: 6px;
+  }
+
+  .form-actions-row .btn,
+  .form-actions-row a.btn,
+  .form-actions-row button.btn {
+    min-height: 34px;
+    padding: 7px 10px;
+    font-size: 11px;
+  }
+
+  .top-actions-row .btn,
+  .top-actions-row a.btn,
+  .top-actions-row button.btn {
+    min-height: 34px;
+    padding: 7px 10px;
+    font-size: 11px;
+  }
+
+  .pagination-nav {
+    gap: 5px;
+  }
+
+  .pagination-nav .btn,
+  .pagination-nav .btn-sm {
+    min-width: 32px;
+    min-height: 32px;
+    padding: 5px 8px;
+    font-size: 11px;
   }
 
   .btn-group {

@@ -109,7 +109,7 @@
                     <button type="button" class="btn btn-sm btn-ghost" onclick="EditInvoice.clearEditItemRows()">Bersihkan</button>
                 </div>
             </div>
-            <div style="margin-top:12px; display:flex; justify-content:flex-end; gap:12px; align-items:center;">
+            <div class="form-actions-row" style="margin-top:12px; gap:12px; align-items:center;">
                 <a class="btn btn-ghost" href="index.php?page=admin_create_invoice">Batal</a>
                 <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px; margin-right:8px;">
                     <div style="font-size:12px; color:var(--text-secondary);">Total Nota</div>

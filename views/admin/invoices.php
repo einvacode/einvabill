@@ -1080,7 +1080,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                         <?php endif; ?>
                     </td>
                     <td style="vertical-align: middle; padding-right:20px;">
-                        <div style="display:flex; gap:6px; justify-content:flex-end;">
+                        <div class="compact-action-icons invoice-desktop-actions" style="display:flex; gap:6px; justify-content:flex-end;">
                             <?php if($inv['status'] != 'Lunas'): ?>
                                 <?php if($view_mode !== 'isp_bill'): ?>
                                     <?php if($is_grouped && $inv['months_owed'] > 1): ?>
@@ -1122,7 +1122,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
 
         <!-- Pagination Navigation -->
         <?php if($total_pages > 1): ?>
-        <div style="display:flex; justify-content:center; gap:8px; margin:24px 0; flex-wrap:wrap;">
+        <div class="pagination-nav" style="margin:24px 0;">
             <?php 
             $params = $_GET; 
             unset($params['p']); 
@@ -1139,7 +1139,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
             $end_p = min($total_pages, $current_page + 2);
             for($i = $start_p; $i <= $end_p; $i++): 
             ?>
-                <a href="<?= $base_url . $i ?>" class="btn btn-sm <?= $i == $current_page ? 'btn-primary' : 'btn-ghost' ?>" style="min-width:35px;"><?= $i ?></a>
+                <a href="<?= $base_url . $i ?>" class="btn btn-sm <?= $i == $current_page ? 'btn-primary' : 'btn-ghost' ?>"><?= $i ?></a>
             <?php endfor; ?>
 
             <?php if($current_page < $total_pages): ?>
@@ -1486,9 +1486,9 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
             
             <button type="button" onclick="addManualItem()" class="btn btn-ghost btn-sm" style="margin-top:10px; font-size:11px;"><i class="fas fa-plus"></i> Tambah Baris Item</button>
             
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:30px;">
+            <div class="form-actions-row" style="margin-top:30px;">
                 <button type="button" class="btn btn-ghost" onclick="hideManualInvoiceModal()">Batal</button>
-                <button type="submit" class="btn btn-primary" style="font-weight:800; padding:10px 30px;">SIMPAN TAGIHAN</button>
+                <button type="submit" class="btn btn-primary" style="font-weight:800;">SIMPAN TAGIHAN</button>
             </div>
         </form>
     </div>

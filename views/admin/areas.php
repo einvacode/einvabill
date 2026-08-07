@@ -85,7 +85,7 @@ if ($action === 'delete') {
                 <label>Nama Area (Contoh: RT 01 / Blok A)</label>
                 <input type="text" name="name" class="form-control" placeholder="Contoh: Blok A" required>
             </div>
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+            <div class="form-actions-row" style="margin-top:20px;">
                 <button type="button" class="btn btn-sm btn-ghost" onclick="document.getElementById('addAreaModal').style.display='none'">Batal</button>
                 <button type="submit" class="btn btn-sm btn-primary">Simpan Area</button>
             </div>
@@ -103,7 +103,7 @@ if ($action === 'delete') {
                 <label>Nama Area</label>
                 <input type="text" name="name" id="editAreaName" class="form-control" required>
             </div>
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+            <div class="form-actions-row" style="margin-top:20px;">
                 <button type="button" class="btn btn-sm btn-ghost" onclick="document.getElementById('editAreaModal').style.display='none'">Batal</button>
                 <button type="submit" class="btn btn-sm btn-primary">Update Area</button>
             </div>

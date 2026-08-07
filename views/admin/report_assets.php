@@ -135,7 +135,7 @@ if ($is_print) {
 <div class="glass-panel" style="padding:24px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; flex-wrap:wrap; gap:15px;">
         <h3 style="margin:0;"><i class="fas fa-file-contract text-primary"></i> Laporan Inventaris Aset Perusahaan</h3>
-        <a href="index.php?page=admin_report_assets&action=print" target="_blank" class="btn btn-primary"><i class="fas fa-print"></i> Cetak Laporan Formal</a>
+        <a href="index.php?page=admin_report_assets&action=print" target="_blank" class="btn btn-primary compact-header-btn"><i class="fas fa-print"></i> Cetak Laporan Formal</a>
     </div>
 
     <!-- Metrics Breakdown -->

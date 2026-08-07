@@ -213,7 +213,7 @@ $partner_logos = $db->query("SELECT * FROM landing_logos WHERE tenant_id=$tenant
                 </div>
             </div>
             
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
+            <div class="form-actions-row" style="margin-top:10px;">
                 <button type="button" class="btn btn-ghost" onclick="document.getElementById('modalPackage').style.display='none';">Batal</button>
                 <button type="submit" class="btn btn-primary">Simpan Etalase</button>
             </div>

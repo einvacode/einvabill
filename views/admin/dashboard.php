@@ -372,7 +372,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
                     <td style="padding:12px;">
                         <div style="font-weight:700; font-size:14px; color:var(--text-primary);"><?= htmlspecialchars($ls['name']) ?></div>
                         <div style="font-size:11px; color:var(--text-secondary); margin-bottom:8px;"><?= htmlspecialchars($ls['contact']) ?></div>
-                        <div class="btn-group">
+                        <div class="btn-group compact-action-group">
                             <button onclick="quickPay(<?= $ls['cust_id'] ?>, '<?= addslashes($ls['name']) ?>', <?= $ls['months_owed'] ?>, <?= $ls['total_debt'] ?>)" class="btn btn-xs btn-primary">
                                 <i class="fas fa-money-bill-wave"></i> Bayar
                             </button>

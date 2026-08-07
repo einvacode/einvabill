@@ -762,6 +762,7 @@ if ($action === 'print') {
                     <td style="font-weight:800; text-align:right; font-size:14px;">Rp <?= number_format($row['amount'], 0, ',', '.') ?></td>
                     <td style="font-weight:700; <?= $row['status']=='Lunas'?'color:#10b981;':'color:#ef4444;' ?>">
                         <?= strtoupper($row['status']) ?>
+                        <span class="compact-inline-actions">
                         <?php if($row['status'] == 'Lunas'): 
                             $settings = $db->query("SELECT wa_template_paid, company_name, site_url FROM settings WHERE id=1")->fetch();
                             $wa_num = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $row['contact']));
@@ -789,6 +790,7 @@ if ($action === 'print') {
                                 <?php endif; ?>
                             <?php endif; ?>
                         <?php endif; ?>
+                        </span>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -1024,6 +1026,7 @@ if ($action === 'print') {
                         );
                         $wa_link = "https://api.whatsapp.com/send?phone=$wa_num&text=" . urlencode($receipt_msg);
                     ?>
+                        <span class="compact-inline-actions">
                         <button onclick="sendWAGateway('<?= $wa_num ?>', <?= htmlspecialchars(json_encode($receipt_msg)) ?>, '<?= $wa_link ?>', this)" style="margin-left:5px; color:#25D366; background:none; border:none; padding:0; cursor:pointer;"><i class="fab fa-whatsapp" style="font-size:14px;"></i></button>
                         <a href="index.php?page=invoice_print&id=<?= $row['invoice_id'] ?>" target="_blank" style="margin-left:8px; color:var(--primary);"><i class="fas fa-print"></i></a>
                         <?php if($_SESSION['user_role'] === 'admin'): ?>
@@ -1033,6 +1036,7 @@ if ($action === 'print') {
                                 <a href="index.php?page=admin_reports&action=delete_tx&tx=invoice&id=<?= intval($row['invoice_id']) ?>" onclick="return confirm('Hapus invoice ini beserta item dan pembayaran terkait?')" style="margin-left:8px; color:#ef4444;"><i class="fas fa-trash"></i></a>
                             <?php endif; ?>
                         <?php endif; ?>
+                        </span>
                     <?php endif; ?>
                 </div>
             </div>
@@ -1125,7 +1129,7 @@ if ($action === 'print') {
 
     <!-- Pagination Navigation -->
     <?php if ($total_pages > 1): ?>
-        <div style="display:flex; justify-content:center; gap:8px; margin:24px 0; flex-wrap:wrap;">
+        <div class="pagination-nav" style="margin:24px 0;">
             <?php 
                 $params = $_GET; 
                 unset($params['p']); 
@@ -1142,7 +1146,7 @@ if ($action === 'print') {
                 $end_p = min($total_pages, $current_page + 2);
                 for($i = $start_p; $i <= $end_p; $i++): 
             ?>
-                <a href="<?= $base_p_url . $i ?>" class="btn btn-sm <?= $i == $current_page ? 'btn-primary' : 'btn-ghost' ?>" style="min-width:35px;"><?= $i ?></a>
+                <a href="<?= $base_p_url . $i ?>" class="btn btn-sm <?= $i == $current_page ? 'btn-primary' : 'btn-ghost' ?>"><?= $i ?></a>
             <?php endfor; ?>
 
             <?php if($current_page < $total_pages): ?>

@@ -299,7 +299,7 @@ $existing_customers = $db->query("SELECT id, name, customer_code FROM customers 
                 </div>
             </div>
 
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+            <div class="form-actions-row" style="margin-top:20px;">
                 <button type="button" class="btn btn-ghost" onclick="closeQuickModal()">Batal</button>
                 <button type="submit" class="btn btn-primary">Simpan Sekarang</button>
             </div>

@@ -165,7 +165,7 @@ if ($action === 'sync_all') {
                 <label>Biaya Bulanan (Rp)</label>
                 <input type="number" name="fee" class="form-control" placeholder="Contoh: 150000" required>
             </div>
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+            <div class="form-actions-row" style="margin-top:20px;">
                 <button type="button" class="btn btn-sm btn-ghost" onclick="document.getElementById('addPackageModal').style.display='none'">Batal</button>
                 <button type="submit" class="btn btn-sm btn-primary">Simpan Paket</button>
             </div>
@@ -190,7 +190,7 @@ if ($action === 'sync_all') {
             <div style="font-size:11px; color:var(--danger); background:rgba(239, 68, 68, 0.1); padding:10px; border-radius:8px; margin-top:15px; border-left:3px solid var(--danger);">
                 <i class="fas fa-exclamation-triangle"></i> <strong>PENTING:</strong> Mengubah paket ini akan otomatis memperbarui biaya bulanan seluruh pelanggan yang terdaftar menggunakan paket ini.
             </div>
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+            <div class="form-actions-row" style="margin-top:20px;">
                 <button type="button" class="btn btn-sm btn-ghost" onclick="document.getElementById('editPackageModal').style.display='none'">Batal</button>
                 <button type="submit" class="btn btn-sm btn-primary">Update Paket</button>
             </div>

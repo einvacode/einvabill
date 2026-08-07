@@ -242,7 +242,7 @@ if ($_SESSION['user_id'] == 1 && $action !== 'list') {
         var _currentLinkedId = <?= json_encode($u['customer_id'] ?? '') ?>;
         </script>
 
-        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+        <div class="form-actions-row" style="margin-top:20px;">
             <a href="index.php?page=admin_users" class="btn btn-ghost">Batal</a>
             <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Simpan</button>
         </div>
