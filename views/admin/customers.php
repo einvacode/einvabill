@@ -807,7 +807,13 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--glass-border); padding-top:12px;">
                 <div class="conn-status" data-router="<?= htmlspecialchars($c['router_id'] ?? 0) ?>" data-pppoe="<?= htmlspecialchars($c['pppoe_name'] ?? '') ?>">
-                    <i class="fas fa-spinner fa-spin text-warning"></i>
+                    <?php if(empty($c['pppoe_name'])): ?>
+                        <span style="color:var(--text-secondary); font-size:12px;">Tanpa API</span>
+                    <?php elseif(intval($c['router_id'] ?? 0) <= 0): ?>
+                        <span style="color:var(--text-secondary); font-size:12px;">Router N/A</span>
+                    <?php else: ?>
+                        <i class="fas fa-spinner fa-spin text-warning"></i>
+                    <?php endif; ?>
                 </div>
                 <div class="btn-group">
                     <button class="btn btn-xs btn-ghost" onclick="createInvoice(<?= $c['id'] ?>, <?= $c['monthly_fee'] ?>)" title="Tagih"><i class="fas fa-file-invoice-dollar"></i></button>
@@ -1163,6 +1169,8 @@ document.addEventListener("DOMContentLoaded", function() {
         .filter(id => id > 0))];
 
     function checkOnlineStatus() {
+        // Always refresh UI for non-API/non-router rows too.
+        updateUI();
         if(routerIds.length === 0) return;
         routerIds.forEach(rId => {
             fetch(`index.php?page=router_data&router_id=${rId}&action=pppoe_active`)
@@ -1173,6 +1181,11 @@ document.addEventListener("DOMContentLoaded", function() {
                         data.forEach(sess => activeSessions[rId][sess.name] = true);
                     }
                     updateUI();
+                })
+                .catch(() => {
+                    // API error should not leave endless spinner.
+                    activeSessions[rId] = {};
+                    updateUI();
                 });
         });
     }
@@ -1181,6 +1194,14 @@ document.addEventListener("DOMContentLoaded", function() {
         document.querySelectorAll('.conn-status[data-router]').forEach(td => {
             let rId = parseInt(td.getAttribute('data-router'));
             let pppoe = td.getAttribute('data-pppoe');
+            if(!pppoe) {
+                td.innerHTML = '<span style="color:var(--text-secondary); font-size:12px;">Tanpa API</span>';
+                return;
+            }
+            if(!(rId > 0)) {
+                td.innerHTML = '<span style="color:var(--text-secondary); font-size:12px;">Router N/A</span>';
+                return;
+            }
             if(rId > 0 && pppoe !== "") {
                 if(activeSessions[rId] && activeSessions[rId][pppoe]) {
                     td.innerHTML = '<span class="badge badge-success" style="padding:4px 8px; font-size:10px;"><i class="fas fa-circle" style="font-size:8px;"></i> Online</span>';
