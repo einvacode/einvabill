@@ -122,6 +122,11 @@ $total_received_part = $s['koleksi_m'] ?: 0;
 $cash_monthly_cust = $s['cash_r'] ?: 0;
 $cash_monthly_part = $s['cash_m'] ?: 0;
 
+$total_unpaid_all = $total_unpaid_cust + $total_unpaid_part;
+$count_unpaid_all = $count_unpaid_cust + $count_unpaid_part;
+$total_received_all = $total_received_cust + $total_received_part;
+$cash_monthly_all = $cash_monthly_cust + $cash_monthly_part;
+
 $tenant_id = $_SESSION['tenant_id'] ?? 1;
 $settings = $db->query("SELECT company_name, wa_template_paid, site_url FROM settings WHERE tenant_id = $tenant_id")->fetch();
 if (!$settings) $settings = ['company_name' => 'ISP', 'wa_template_paid' => '', 'site_url' => ''];
@@ -195,139 +200,144 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
     </div>
 </div>
 
-<!-- Main Statistics Grid -->
-<div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 25px;">
-    <style>
-        .stats-grid > .glass-panel { border-top: 4px solid var(--primary); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .stats-grid > .glass-panel:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(0,0,0,0.25); border-color: #ffffff; }
-        @media (max-width: 640px) { 
-            .stats-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
-            .stats-grid > div { padding: 10px !important; gap: 8px !important; }
-            .stats-grid > div:last-child { grid-column: span 2; }
-            .stats-grid i { font-size: 14px !important; }
-            .stats-grid .glass-panel > div:first-child { width:32px !important; height:32px !important; }
+<style>
+    .dashboard-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 14px;
+    }
+    .dashboard-links a {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(59, 130, 246, 0.24);
+        background: rgba(59, 130, 246, 0.08);
+        color: var(--primary);
+        font-size: 12px;
+        font-weight: 700;
+        text-decoration: none;
+    }
+    .dashboard-links a:hover {
+        background: rgba(59, 130, 246, 0.14);
+    }
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+        margin-bottom: 25px;
+    }
+    .summary-card {
+        text-decoration: none;
+        color: inherit;
+        border-top: 3px solid var(--primary);
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .summary-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.12);
+    }
+    .summary-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        font-weight: 800;
+        color: var(--text-secondary);
+        letter-spacing: 0.4px;
+    }
+    .summary-value {
+        font-size: 22px;
+        font-weight: 900;
+        line-height: 1.2;
+        color: var(--text-primary);
+    }
+    .summary-sub {
+        font-size: 12px;
+        color: var(--text-secondary);
+        font-weight: 600;
+    }
+    .summary-source {
+        margin-top: auto;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--primary);
+    }
+    @media (max-width: 640px) {
+        .summary-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
         }
-    </style>
-    
-    <!-- 1. Pelanggan -->
-    <div class="glass-panel" style="border-color: #3b82f6; display:flex; align-items:center; gap:12px; padding:15px; background:linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(59, 130, 246, 0.01) 100%);">
-        <div style="background:rgba(59, 130, 246, 0.1); color:#3b82f6; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
-            <i class="fas fa-users"></i>
-        </div>
-        <div style="flex:1; overflow:hidden;">
-            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Pelanggan</div>
-            <div id="stat-retail-count" style="font-size:20px; font-weight:800; line-height:1.2;"><?= number_format($total_customers, 0) ?></div>
-            <div id="stat-retail-est" style="font-size:10px; color:#3b82f6; font-weight:700; margin-top:2px;">Estimasi: Rp<?= number_format($est_revenue_cust, 0, ',', '.') ?></div>
-        </div>
-    </div>
+        .summary-card {
+            padding: 12px;
+        }
+        .summary-value {
+            font-size: 18px;
+        }
+    }
+</style>
 
-    <!-- 2. Mitra -->
-    <div class="glass-panel" style="border-color: #a855f7; display:flex; align-items:center; gap:12px; padding:15px; background:linear-gradient(135deg, rgba(168, 85, 247, 0.05) 0%, rgba(168, 85, 247, 0.01) 100%);">
-        <div style="background:rgba(168, 85, 247, 0.1); color:#a855f7; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
-            <i class="fas fa-handshake"></i>
-        </div>
-        <div style="flex:1; overflow:hidden;">
-            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Mitra</div>
-            <div id="stat-mitra-count" style="font-size:20px; font-weight:800; line-height:1.2;"><?= number_format($total_partners, 0) ?></div>
-            <div id="stat-mitra-est" style="font-size:10px; color:#a855f7; font-weight:700; margin-top:2px;">Estimasi: Rp<?= number_format($est_revenue_part, 0, ',', '.') ?></div>
-        </div>
-    </div>
+<div class="dashboard-links">
+    <a href="index.php?page=admin_customers"><i class="fas fa-users"></i> Data Pelanggan</a>
+    <a href="index.php?page=admin_invoices"><i class="fas fa-file-invoice"></i> Data Tagihan</a>
+    <a href="index.php?page=admin_reports"><i class="fas fa-chart-line"></i> Data Laporan</a>
+    <a href="index.php?page=admin_expenses"><i class="fas fa-receipt"></i> Data Pengeluaran</a>
+</div>
 
-    <!-- 3. Pelanggan Baru -->
-    <div class="glass-panel" style="border-color: #06b6d4; display:flex; align-items:center; gap:12px; padding:15px;">
-        <div style="background:rgba(6, 182, 212, 0.1); color:#06b6d4; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
-            <i class="fas fa-user-plus"></i>
-        </div>
-        <div style="flex:1; overflow:hidden;">
-            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Registrasi Baru</div>
-            <div id="stat-baru-count" style="font-size:20px; font-weight:800; line-height:1.2;"><?= number_format($new_customers_month, 0) ?></div>
-            <div style="font-size:10px; opacity:0.6; margin-top:2px;">Growth</div>
-        </div>
-    </div>
+<!-- Main Statistics Grid (Simplified + Linked) -->
+<div class="summary-grid">
+    <a class="glass-panel summary-card" href="index.php?page=admin_customers">
+        <div class="summary-label">Total Pelanggan</div>
+        <div id="stat-retail-count" class="summary-value"><?= number_format($total_customers, 0) ?></div>
+        <div id="stat-retail-est" class="summary-sub">Estimasi Rp<?= number_format($est_revenue_cust, 0, ',', '.') ?></div>
+        <div class="summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
+    </a>
 
-    <!-- 7. Invoice External -->
-    <div class="glass-panel" style="border-color: #f59e0b; display:flex; align-items:center; gap:12px; padding:15px;">
-        <div style="background:rgba(245, 158, 11, 0.1); color:#f59e0b; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
-            <i class="fas fa-file-invoice"></i>
-        </div>
-        <div style="flex:1; overflow:hidden;">
-            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Invoice External</div>
-            <div id="stat-inv-external" style="font-size:16px; font-weight:800; line-height:1.2; color:#f59e0b;"><?php echo 'Rp' . number_format($s['ext_total'] ?? 0,0,',','.'); ?></div>
-            <div style="font-size:10px; opacity:0.6; margin-top:2px;">Jumlah: <?= number_format($s['ext_count'] ?? 0) ?></div>
-        </div>
-    </div>
+    <a class="glass-panel summary-card" href="index.php?page=admin_customers">
+        <div class="summary-label">Total Mitra</div>
+        <div id="stat-mitra-count" class="summary-value"><?= number_format($total_partners, 0) ?></div>
+        <div id="stat-mitra-est" class="summary-sub">Estimasi Rp<?= number_format($est_revenue_part, 0, ',', '.') ?></div>
+        <div class="summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
+    </a>
 
-    <!-- 4. Piutang Retail -->
-    <div class="glass-panel" style="border-color: #ef4444; display:flex; align-items:center; gap:12px; padding:15px;">
-        <div style="background:rgba(239, 68, 68, 0.1); color:#ef4444; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
-            <i class="fas fa-exclamation-triangle"></i>
-        </div>
-        <div style="flex:1; overflow:hidden;">
-            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Piutang Pelanggan</div>
-            <div id="stat-piutang-r" style="font-size:16px; font-weight:800; color:#ef4444; line-height:1.2;">Rp<?= number_format($total_unpaid_cust, 0, ',', '.') ?></div>
-            <div id="stat-piutang-r-count" style="font-size:10px; color:#ef4444; font-weight:700; margin-top:2px;"><?= number_format($count_unpaid_cust) ?></div>
-        </div>
-    </div>
+    <a class="glass-panel summary-card" href="index.php?page=admin_customers">
+        <div class="summary-label">Pelanggan Baru Bulan Ini</div>
+        <div id="stat-baru-count" class="summary-value"><?= number_format($new_customers_month, 0) ?></div>
+        <div class="summary-sub">Registrasi bulan berjalan</div>
+        <div class="summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
+    </a>
 
-    <!-- 5. Piutang Mitra -->
-    <div class="glass-panel" style="border-color: #f43f5e; display:flex; align-items:center; gap:12px; padding:15px;">
-        <div style="background:rgba(244, 63, 94, 0.1); color:#f43f5e; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
-            <i class="fas fa-hand-holding-dollar"></i>
-        </div>
-        <div style="flex:1; overflow:hidden;">
-            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Piutang Mitra</div>
-            <div id="stat-piutang-m" style="font-size:16px; font-weight:800; color:#f43f5e; line-height:1.2;">Rp<?= number_format($total_unpaid_part, 0, ',', '.') ?></div>
-            <div id="stat-piutang-m-count" style="font-size:10px; color:#f43f5e; font-weight:700; margin-top:2px;"><?= number_format($count_unpaid_part) ?></div>
-        </div>
-    </div>
+    <a class="glass-panel summary-card" href="index.php?page=admin_invoices&filter_status=belum">
+        <div class="summary-label">Total Piutang</div>
+        <div class="summary-value">Rp<?= number_format($total_unpaid_all, 0, ',', '.') ?></div>
+        <div class="summary-sub">Pelanggan menunggak: <?= number_format($count_unpaid_all, 0) ?></div>
+        <div class="summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
+    </a>
 
-    <!-- 6. Koleksi Retail -->
-    <div class="glass-panel" style="border-color: #10b981; display:flex; align-items:center; gap:12px; padding:15px;">
-        <div style="background:rgba(16, 185, 129, 0.1); color:#10b981; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
-            <i class="fas fa-coins"></i>
-        </div>
-        <div style="flex:1; overflow:hidden;">
-            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Penerimaan Pelanggan</div>
-            <div id="stat-koleksi-r" style="font-size:16px; font-weight:800; color:#10b981; line-height:1.2;">Rp<?= number_format($total_received_cust, 0, ',', '.') ?></div>
-            <div style="font-size:10px; opacity:0.6; margin-top:2px;">Lunas</div>
-        </div>
-    </div>
+    <a class="glass-panel summary-card" href="index.php?page=admin_reports">
+        <div class="summary-label">Total Penerimaan</div>
+        <div class="summary-value">Rp<?= number_format($total_received_all, 0, ',', '.') ?></div>
+        <div class="summary-sub">Akumulasi pembayaran masuk</div>
+        <div class="summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
+    </a>
 
-    <!-- 7. Koleksi Mitra -->
-    <div class="glass-panel" style="border-color: #059669; display:flex; align-items:center; gap:12px; padding:15px;">
-        <div style="background:rgba(5, 150, 105, 0.1); color:#059669; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
-            <i class="fas fa-vault"></i>
-        </div>
-        <div style="flex:1; overflow:hidden;">
-            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Penerimaan Mitra</div>
-            <div id="stat-koleksi-m" style="font-size:16px; font-weight:800; color:#059669; line-height:1.2;">Rp<?= number_format($total_received_part, 0, ',', '.') ?></div>
-            <div style="font-size:10px; opacity:0.6; margin-top:2px;">Lunas</div>
-        </div>
-    </div>
+    <a class="glass-panel summary-card" href="index.php?page=admin_reports">
+        <div class="summary-label">Kas Masuk Bulan Ini</div>
+        <div class="summary-value">Rp<?= number_format($cash_monthly_all, 0, ',', '.') ?></div>
+        <div class="summary-sub">Arus kas periode berjalan</div>
+        <div class="summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
+    </a>
 
-    <!-- 8. Kas Retail (Bulan Ini) -->
-    <div class="glass-panel" style="border-color: #f59e0b; display:flex; align-items:center; gap:12px; padding:15px;">
-        <div style="background:rgba(245, 158, 11, 0.1); color:#f59e0b; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
-            <i class="fas fa-money-check-alt"></i>
-        </div>
-        <div style="flex:1; overflow:hidden;">
-            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Kas Pelanggan</div>
-            <div id="stat-cash-r" style="font-size:16px; font-weight:800; color:#f59e0b; line-height:1.2;">Rp<?= number_format($cash_monthly_cust, 0, ',', '.') ?></div>
-            <div style="font-size:10px; opacity:0.6; margin-top:2px;">Bulan Ini</div>
-        </div>
-    </div>
-
-    <!-- 9. Kas Mitra (Bulan Ini) -->
-    <div class="glass-panel" style="border-color: #d97706; display:flex; align-items:center; gap:12px; padding:15px;">
-        <div style="background:rgba(217, 119, 6, 0.1); color:#d97706; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">
-            <i class="fas fa-briefcase"></i>
-        </div>
-        <div style="flex:1; overflow:hidden;">
-            <div style="text-transform:uppercase; font-size:9px; font-weight:800; opacity:0.7; margin-bottom:2px;">Kas Mitra</div>
-            <div id="stat-cash-m" style="font-size:16px; font-weight:800; color:#d97706; line-height:1.2;">Rp<?= number_format($cash_monthly_part, 0, ',', '.') ?></div>
-            <div style="font-size:10px; opacity:0.6; margin-top:2px;">Bulan Ini</div>
-        </div>
-    </div>
+    <a class="glass-panel summary-card" href="index.php?page=admin_invoices">
+        <div class="summary-label">Invoice External</div>
+        <div id="stat-inv-external" class="summary-value"><?='Rp' . number_format($s['ext_total'] ?? 0, 0, ',', '.') ?></div>
+        <div class="summary-sub">Jumlah invoice: <?= number_format($s['ext_count'] ?? 0) ?></div>
+        <div class="summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
+    </a>
 </div>
 
 <!-- Secondary Components -->

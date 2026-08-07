@@ -711,6 +711,40 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
 </div>
 <?php endif; ?>
 
+<style>
+    .collector-source-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 14px;
+    }
+    .collector-source-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 11px;
+        border-radius: 10px;
+        border: 1px solid rgba(var(--primary-rgb), 0.22);
+        background: rgba(var(--primary-rgb), 0.07);
+        color: var(--primary);
+        text-decoration: none;
+        font-size: 12px;
+        font-weight: 700;
+    }
+    .collector-source-link.active {
+        background: rgba(var(--primary-rgb), 0.16);
+        border-color: rgba(var(--primary-rgb), 0.35);
+    }
+</style>
+
+<div class="collector-source-row">
+    <a class="collector-source-link <?= $coll_tab === 'summary' ? 'active' : '' ?>" href="index.php?page=collector&tab=summary&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>"><i class="fas fa-chart-pie"></i> Ringkasan</a>
+    <a class="collector-source-link <?= $coll_tab === 'tugas' ? 'active' : '' ?>" href="index.php?page=collector&tab=tugas&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>"><i class="fas fa-list-ul"></i> Tugas</a>
+    <a class="collector-source-link <?= $coll_tab === 'lunas' ? 'active' : '' ?>" href="index.php?page=collector&tab=lunas&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>"><i class="fas fa-check-circle"></i> Pelunasan</a>
+    <a class="collector-source-link <?= $coll_tab === 'pengeluaran' ? 'active' : '' ?>" href="index.php?page=collector&tab=pengeluaran&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>"><i class="fas fa-wallet"></i> Pengeluaran</a>
+    <a class="collector-source-link <?= $coll_tab === 'pelanggan' ? 'active' : '' ?>" href="index.php?page=collector&tab=pelanggan&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>"><i class="fas fa-users"></i> Pelanggan</a>
+</div>
+
 <?php if($success_data): ?>
 <div class="glass-panel" style="margin-bottom:20px; border-left:4px solid var(--success); padding:20px; animation: slideDown 0.4s ease-out; background:rgba(16,185,129,0.1);">
     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
@@ -760,67 +794,107 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
 </div>
 <?php endif; ?>
 
-<!-- PELAKSANAAN TUGAS: PREMIUM STATS GRID -->
-<div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:12px; margin-bottom:25px;">
-    <!-- 1. Total Pelanggan -->
-    <div class="glass-panel" style="padding:18px; border-left:4px solid #6366f1; background:linear-gradient(135deg, rgba(99, 102, 241, 0.1), transparent); border-radius:20px; transition:all 0.3s;" onclick="location.href='index.php?page=collector&tab=pelanggan'">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <div style="width:32px; height:32px; border-radius:8px; background:rgba(99, 102, 241, 0.2); color:#818cf8; display:flex; align-items:center; justify-content:center; font-size:14px;">
-                <i class="fas fa-users"></i>
-            </div>
-            <span style="font-size:10px; font-weight:800; color:#818cf8;">TOTAL</span>
-        </div>
-        <div style="font-size:26px; font-weight:900; color:var(--text-primary); letter-spacing:-1px;"><?= number_format($total_customers) ?></div>
-        <div style="font-size:10px; color:var(--text-secondary); margin-top:2px;">User Aktif</div>
-    </div>
+<style>
+    .collector-summary-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+    .collector-summary-links a {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(var(--primary-rgb), 0.22);
+        background: rgba(var(--primary-rgb), 0.08);
+        color: var(--primary);
+        text-decoration: none;
+        font-size: 12px;
+        font-weight: 700;
+    }
+    .collector-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    .collector-summary-card {
+        text-decoration: none;
+        color: inherit;
+        padding: 14px;
+        border-top: 3px solid var(--primary);
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    .collector-summary-card:hover {
+        transform: translateY(-2px);
+    }
+    .collector-summary-title { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 800; }
+    .collector-summary-value { font-size: 20px; font-weight: 900; color: var(--text-primary); line-height: 1.2; }
+    .collector-summary-sub { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
+    .collector-summary-source { margin-top: auto; font-size: 12px; font-weight: 700; color: var(--primary); }
+    @media (max-width: 640px) {
+        .collector-summary-grid { grid-template-columns: 1fr 1fr; }
+    }
+</style>
 
-    <!-- 2. Terkumpul -->
-    <div class="glass-panel" style="padding:18px; border-left:4px solid #10b981; background:linear-gradient(135deg, rgba(16, 185, 129, 0.1), transparent); border-radius:20px; transition:all 0.3s;" onclick="location.href='index.php?page=collector&tab=lunas'">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <div style="width:32px; height:32px; border-radius:8px; background:rgba(16, 185, 129, 0.2); color:#34d399; display:flex; align-items:center; justify-content:center; font-size:14px;">
-                <i class="fas fa-check-double"></i>
-            </div>
-            <span style="font-size:10px; font-weight:800; color:#34d399;">SETORAN</span>
-        </div>
-        <div style="font-size:17px; font-weight:900; color:#34d399;">Rp<?= number_format($paid_total_range, 0, ',', '.') ?></div>
-        <div style="font-size:10px; color:var(--text-secondary); margin-top:2px;"><?= $paid_count_range ?> Berhasil</div>
-    </div>
-
-    <!-- 3. Tunggakan -->
-    <div class="glass-panel" style="padding:18px; border-left:4px solid #ef4444; background:linear-gradient(135deg, rgba(239, 68, 68, 0.1), transparent); border-radius:20px; transition:all 0.3s;" onclick="location.href='index.php?page=collector&tab=tugas'">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <div style="width:32px; height:32px; border-radius:8px; background:rgba(239, 68, 68, 0.2); color:#f87171; display:flex; align-items:center; justify-content:center; font-size:14px;">
-                <i class="fas fa-clock"></i>
-            </div>
-            <span style="font-size:10px; font-weight:800; color:#f87171;">PIUTANG</span>
-        </div>
-        <div style="font-size:17px; font-weight:900; color:#ef4444;">Rp<?= number_format($unpaid_total, 0, ',', '.') ?></div>
-        <div style="font-size:10px; color:var(--text-secondary); margin-top:2px;"><?= $unpaid_count ?> Tagihan</div>
-    </div>
-
-    <!-- 4. Cash Flow -->
-    <div class="glass-panel" style="padding:18px; border-left:4px solid #f59e0b; background:linear-gradient(135deg, rgba(245, 158, 11, 0.1), transparent); border-radius:20px; transition:all 0.3s;" onclick="location.href='index.php?page=collector&tab=pengeluaran'">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <div style="width:32px; height:32px; border-radius:8px; background:rgba(245, 158, 11, 0.2); color:#fbbf24; display:flex; align-items:center; justify-content:center; font-size:14px;">
-                <i class="fas fa-wallet"></i>
-            </div>
-            <span style="font-size:10px; font-weight:800; color:#fbbf24;">OPS</span>
-        </div>
-        <div style="font-size:17px; font-weight:900; color:var(--text-primary);">Rp<?= number_format($expenses_range, 0, ',', '.') ?></div>
-        <div style="font-size:10px; color:var(--text-secondary); margin-top:2px;">Biaya Operasi</div>
-    </div>
+<div class="collector-summary-links">
+    <a href="index.php?page=collector&tab=pelanggan"><i class="fas fa-users"></i> Data Pelanggan</a>
+    <a href="index.php?page=collector&tab=tugas"><i class="fas fa-clock"></i> Data Tunggakan</a>
+    <a href="index.php?page=collector&tab=lunas"><i class="fas fa-check-circle"></i> Data Pelunasan</a>
+    <a href="index.php?page=collector&tab=pengeluaran"><i class="fas fa-wallet"></i> Data Pengeluaran</a>
 </div>
 
-<!-- TUGAS PENTING (IMMEDIATE VISIBILITY) -->
+<div class="collector-summary-grid">
+    <a class="glass-panel collector-summary-card" href="index.php?page=collector&tab=pelanggan">
+        <div class="collector-summary-title">Total Pelanggan</div>
+        <div class="collector-summary-value"><?= number_format($total_customers) ?></div>
+        <div class="collector-summary-sub">Pelanggan area penagihan Anda</div>
+        <div class="collector-summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
+    </a>
+
+    <a class="glass-panel collector-summary-card" href="index.php?page=collector&tab=lunas&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>">
+        <div class="collector-summary-title">Pembayaran Terkumpul</div>
+        <div class="collector-summary-value" style="color:var(--success);">Rp<?= number_format($paid_total_range, 0, ',', '.') ?></div>
+        <div class="collector-summary-sub"><?= number_format($paid_count_range) ?> transaksi berhasil</div>
+        <div class="collector-summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
+    </a>
+
+    <a class="glass-panel collector-summary-card" href="index.php?page=collector&tab=tugas&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>">
+        <div class="collector-summary-title">Total Tunggakan</div>
+        <div class="collector-summary-value" style="color:var(--danger);">Rp<?= number_format($unpaid_total, 0, ',', '.') ?></div>
+        <div class="collector-summary-sub"><?= number_format($unpaid_count) ?> tagihan belum lunas</div>
+        <div class="collector-summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
+    </a>
+
+    <a class="glass-panel collector-summary-card" href="index.php?page=collector&tab=pengeluaran&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>">
+        <div class="collector-summary-title">Total Pengeluaran</div>
+        <div class="collector-summary-value">Rp<?= number_format($expenses_range, 0, ',', '.') ?></div>
+        <div class="collector-summary-sub">Biaya operasional periode ini</div>
+        <div class="collector-summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
+    </a>
+
+    <a class="glass-panel collector-summary-card" href="index.php?page=collector&tab=summary&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>">
+        <div class="collector-summary-title">Progress Penagihan</div>
+        <div class="collector-summary-value"><?= $percent_paid ?>%</div>
+        <div class="collector-summary-sub">Rp<?= number_format($paid_total_range, 0, ',', '.') ?> dari Rp<?= number_format($total_potential, 0, ',', '.') ?></div>
+        <div class="collector-summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
+    </a>
+</div>
+
+<!-- TUGAS PENTING (RINGKAS) -->
 <div style="margin-bottom:20px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding:0 5px;">
-        <h3 style="margin:0; font-size:16px; font-weight:800; color:var(--text-primary);">Tugas Mendesak Hari Ini</h3>
+        <h3 style="margin:0; font-size:16px; font-weight:800; color:var(--text-primary);">Tugas Mendesak</h3>
         <a href="index.php?page=collector&tab=tugas" style="font-size:12px; font-weight:700; color:var(--primary); text-decoration:none;">Lihat Semua <i class="fas fa-arrow-right"></i></a>
     </div>
     
     <div style="display:flex; flex-direction:column; gap:12px;">
         <?php 
-        $urgent_tasks = array_slice($unpaid_invoices, 0, 3);
+        $urgent_tasks = array_slice($unpaid_invoices, 0, 2);
         foreach($urgent_tasks as $ui): 
             $wa_num = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $ui['contact']));
             $is_overdue = strtotime($ui['oldest_due_date']) < time();

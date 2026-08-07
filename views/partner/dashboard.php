@@ -377,7 +377,7 @@ $recent_revenue = $db->query("
     JOIN customers c ON i.customer_id = c.id 
     WHERE c.created_by = $user_id 
     ORDER BY p.payment_date DESC 
-    LIMIT 5
+    LIMIT 3
 ")->fetchAll();
 
 // --- LOGIC CALCULATIONS FOR SUMMARY BAR ---
@@ -647,41 +647,96 @@ function switchImportTab(t){
         <!-- Dashboard Home Contents -->
         
         <div style="display:grid; grid-template-columns: 1fr; gap:20px;">
-            <!-- LEFT/TOP: Stats and Recent Revenue -->
+            <!-- LEFT/TOP: Simplified Summary -->
             <div>
-                <!-- REVENUE OVERVIEW -->
-                <div class="glass-panel" style="padding: 20px; border-bottom:4px solid var(--success); background:linear-gradient(135deg, rgba(16, 185, 129, 0.05), transparent);">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                        <h3 style="font-size:15px; font-weight:800; margin:0;"><i class="fas fa-wallet text-success"></i> Pendapatan Saya (Bulan Ini)</h3>
-                        <span style="font-size:11px; font-weight:700; color:var(--text-secondary);"><?= date('F Y') ?></span>
-                    </div>
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
-                        <div>
-                            <div style="font-size:10px; color:var(--text-secondary); font-weight:800; text-transform:uppercase;">Diterima</div>
-                            <div style="font-size:18px; font-weight:900; color:var(--success);">Rp<?= number_format($total_paid_val, 0, ',', '.') ?></div>
-                        </div>
-                        <div>
-                            <div style="font-size:10px; color:var(--text-secondary); font-weight:800; text-transform:uppercase;">Estimasi Bersih</div>
-                            <div style="font-size:18px; font-weight:900; color:var(--primary);">Rp<?= number_format($my_net_profit, 0, ',', '.') ?></div>
-                        </div>
-                    </div>
+                <style>
+                    .partner-summary-links {
+                        display: flex;
+                        flex-wrap: wrap;
+                        gap: 8px;
+                        margin-bottom: 12px;
+                    }
+                    .partner-summary-links a {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 6px;
+                        padding: 8px 12px;
+                        border-radius: 10px;
+                        border: 1px solid rgba(var(--primary-rgb), 0.22);
+                        background: rgba(var(--primary-rgb), 0.08);
+                        color: var(--primary);
+                        text-decoration: none;
+                        font-size: 12px;
+                        font-weight: 700;
+                    }
+                    .partner-summary-grid {
+                        display: grid;
+                        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                        gap: 10px;
+                    }
+                    .partner-summary-card {
+                        padding: 14px;
+                        border-top: 3px solid var(--primary);
+                        display: flex;
+                        flex-direction: column;
+                        gap: 6px;
+                        text-decoration: none;
+                        color: inherit;
+                    }
+                    .partner-summary-card:hover {
+                        transform: translateY(-2px);
+                    }
+                    .partner-summary-title { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 800; }
+                    .partner-summary-value { font-size: 20px; font-weight: 900; color: var(--text-primary); line-height: 1.2; }
+                    .partner-summary-sub { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
+                    .partner-summary-source { margin-top: auto; font-size: 12px; color: var(--primary); font-weight: 700; }
+                    @media (max-width: 640px) {
+                        .partner-summary-grid { grid-template-columns: 1fr 1fr; }
+                    }
+                </style>
+
+                <div class="partner-summary-links">
+                    <a href="index.php?page=partner"><i class="fas fa-users"></i> Data Pelanggan</a>
+                    <a href="index.php?page=partner_isp_invoices"><i class="fas fa-file-invoice"></i> Data Tagihan</a>
+                    <a href="index.php?page=partner_reports"><i class="fas fa-chart-line"></i> Data Laporan</a>
                 </div>
 
-                <!-- QUICK STATS -->
-                <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:12px; margin-top:15px;">
-                    <div class="glass-panel" style="padding:15px; border-radius:16px;">
-                        <div style="font-size:10px; font-weight:800; color:var(--text-secondary); text-transform:uppercase;">Total Pelanggan</div>
-                        <div style="font-size:20px; font-weight:900;"><?= number_format($my_cust_count) ?></div>
-                    </div>
-                    <div class="glass-panel" style="padding:15px; border-radius:16px;">
-                        <div style="font-size:10px; font-weight:800; color:var(--text-secondary); text-transform:uppercase;">Jatuh Tempo Hari Ini</div>
-                        <div style="font-size:20px; font-weight:900;"><?= $due_today ?></div>
-                    </div>
+                <div class="partner-summary-grid">
+                    <a class="glass-panel partner-summary-card" href="index.php?page=partner">
+                        <div class="partner-summary-title">Total Pelanggan</div>
+                        <div class="partner-summary-value"><?= number_format($my_cust_count) ?></div>
+                        <div class="partner-summary-sub">Pelanggan aktif yang dikelola</div>
+                        <div class="partner-summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
+                    </a>
+                    <a class="glass-panel partner-summary-card" href="index.php?page=partner_reports">
+                        <div class="partner-summary-title">Pendapatan Bulan Ini</div>
+                        <div class="partner-summary-value" style="color:var(--success);">Rp<?= number_format($total_paid_val, 0, ',', '.') ?></div>
+                        <div class="partner-summary-sub"><?= date('F Y') ?></div>
+                        <div class="partner-summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
+                    </a>
+                    <a class="glass-panel partner-summary-card" href="index.php?page=partner_isp_invoices&filter_status=belum">
+                        <div class="partner-summary-title">Total Piutang</div>
+                        <div class="partner-summary-value" style="color:var(--danger);">Rp<?= number_format($total_unpaid_val, 0, ',', '.') ?></div>
+                        <div class="partner-summary-sub">Jatuh tempo hari ini: <?= number_format($due_today) ?></div>
+                        <div class="partner-summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
+                    </a>
+                    <a class="glass-panel partner-summary-card" href="index.php?page=partner_reports">
+                        <div class="partner-summary-title">Laba Bersih</div>
+                        <div class="partner-summary-value">Rp<?= number_format($my_net_profit, 0, ',', '.') ?></div>
+                        <div class="partner-summary-sub">Koleksi - tagihan ISP</div>
+                        <div class="partner-summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
+                    </a>
                 </div>
             </div>
 
             <!-- MAIN LISTS -->
             <div>
+                <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
+                    <a href="index.php?page=partner" style="display:inline-flex; align-items:center; gap:6px; padding:7px 11px; border-radius:10px; border:1px solid rgba(var(--primary-rgb), 0.22); background:rgba(var(--primary-rgb), 0.07); color:var(--primary); text-decoration:none; font-size:12px; font-weight:700;"><i class="fas fa-users"></i> Sumber Pelanggan</a>
+                    <a href="index.php?page=partner_isp_invoices" style="display:inline-flex; align-items:center; gap:6px; padding:7px 11px; border-radius:10px; border:1px solid rgba(var(--primary-rgb), 0.22); background:rgba(var(--primary-rgb), 0.07); color:var(--primary); text-decoration:none; font-size:12px; font-weight:700;"><i class="fas fa-file-invoice"></i> Sumber Tagihan</a>
+                    <a href="index.php?page=partner_reports" style="display:inline-flex; align-items:center; gap:6px; padding:7px 11px; border-radius:10px; border:1px solid rgba(var(--primary-rgb), 0.22); background:rgba(var(--primary-rgb), 0.07); color:var(--primary); text-decoration:none; font-size:12px; font-weight:700;"><i class="fas fa-chart-line"></i> Sumber Laporan</a>
+                </div>
+
                 <!-- 0. TRANSAKSI TERBARU -->
                 <?php if(!empty($recent_revenue)): ?>
                 <div class="glass-panel" style="padding:20px; border-left:4px solid var(--success); margin-bottom:20px;">
