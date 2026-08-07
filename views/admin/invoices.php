@@ -2,6 +2,7 @@
 $action = $_GET['action'] ?? 'list';
 $u_id = $_SESSION['user_id'];
 $u_role = $_SESSION['user_role'] ?? 'guest';
+$id = intval($_GET['id'] ?? 0);
 
 // Fetch current user templates and global settings
 $tenant_id = $_SESSION['tenant_id'] ?? 1;
