@@ -79,6 +79,7 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            max-width: 300px;
         }
 
         .nav-menu {
@@ -592,6 +593,15 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
             display: none;
         }
 
+        @media (max-width: 1380px) {
+            .navbar { padding: 11px 14px; }
+            .nav-menu { display: none; }
+            .mobile-menu-toggle { display: block; }
+            .navbar .navbar-logo-box { height: 35px; max-width: 160px; }
+            .nav-brand { font-size: 15px; gap: 8px; }
+            .nav-brand span { max-width: 260px; }
+        }
+
         @media (max-width: 1180px) {
             .navbar { padding: 11px 16px; }
             .nav-brand { font-size: 15px; }
@@ -612,10 +622,10 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
 
         @media (max-width: 768px) {
             .navbar { padding: 12px 14px; }
-            .nav-menu { display: none; }
             .mobile-menu-toggle { display: block; }
             .navbar .navbar-logo-box { height: 34px; max-width: 150px; }
             .nav-brand { font-size: 14px; gap: 8px; }
+            .nav-brand span { max-width: 190px; }
             .hero-title { font-size: 36px; }
             .hero-subtitle { font-size: 16px; }
             .hero-actions .btn { min-height: 48px; font-size: 16px; max-width: 320px; }
