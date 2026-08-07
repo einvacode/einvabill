@@ -331,7 +331,9 @@ if ($action === 'print_spt') {
     $profit = $total_income - $total_expenses_print;
     $cash_balance = $profit;
     $receivables = max(0, floatval($belum_bayar));
-    $total_assets = $cash_balance + $receivables;
+    $current_assets = $cash_balance + $receivables;
+    $fixed_assets = 0;
+    $total_assets = $current_assets + $fixed_assets;
     $liabilities = 0;
     $equity = $total_assets - $liabilities;
     $year_label = $filter_year ?: date('Y');
@@ -403,12 +405,17 @@ if ($action === 'print_spt') {
             <tr><td><strong>Total Pengeluaran</strong></td><td><strong>Rp <?= number_format($total_expenses_print, 0, ',', '.') ?></strong></td></tr>
         </table>
 
-        <div class="section-title">Neraca Sederhana / Aset</div>
+        <div class="section-title">Neraca Sederhana</div>
         <table>
-            <tr><th>Item</th><th>Nominal</th></tr>
+            <tr><th colspan="2">Aset</th></tr>
+            <tr><td>Aset Lancar</td><td>Rp <?= number_format($current_assets, 0, ',', '.') ?></td></tr>
             <tr><td>Kas / Saldo Laba</td><td>Rp <?= number_format($cash_balance, 0, ',', '.') ?></td></tr>
             <tr><td>Piutang</td><td>Rp <?= number_format($receivables, 0, ',', '.') ?></td></tr>
+            <tr><td>Aset Tetap</td><td>Rp <?= number_format($fixed_assets, 0, ',', '.') ?></td></tr>
             <tr><td><strong>Total Aset</strong></td><td><strong>Rp <?= number_format($total_assets, 0, ',', '.') ?></strong></td></tr>
+        </table>
+        <table>
+            <tr><th colspan="2">Kewajiban dan Ekuitas</th></tr>
             <tr><td>Liabilitas</td><td>Rp <?= number_format($liabilities, 0, ',', '.') ?></td></tr>
             <tr><td><strong>Ekuitas</strong></td><td><strong>Rp <?= number_format($equity, 0, ',', '.') ?></strong></td></tr>
         </table>
