@@ -738,11 +738,42 @@ tbody tr:hover {
   
   .grid-header .grid-actions {
     justify-content: flex-start;
+    flex-direction: column;
     width: 100%;
   }
 
   .grid-header .grid-actions .btn {
     flex: 1;
+    width: 100%;
+  }
+
+  .grid-actions {
+    width: 100%;
+  }
+
+  .btn-group {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .btn-group .btn {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--glass-border);
+  }
+
+  .btn-group .btn:last-child {
+    border-bottom: none;
+  }
+
+  .grid-items {
+    grid-template-columns: 1fr;
+  }
+
+  .grid-actions .btn,
+  .grid-actions .btn-group {
+    width: 100%;
   }
 
   .hide-mobile { display: none !important; }
@@ -887,6 +918,7 @@ tbody tr:hover {
     flex-wrap: wrap;
     gap: 10px;
     margin-bottom: 16px;
+    align-items: stretch;
   }
   
   .topbar .glass-panel {
@@ -917,6 +949,23 @@ tbody tr:hover {
   /* Glass panels narrower padding */
   .glass-panel {
     border-radius: 12px;
+  }
+
+  .glass-panel {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+
+  .table-container {
+    border-radius: 12px;
+  }
+
+  .scroll-container {
+    max-height: none !important;
+  }
+
+  .grid-header .btn-group {
+    flex-direction: column;
   }
   
   /* Form controls larger for touch */
@@ -1025,7 +1074,7 @@ tbody tr:hover {
 
   .mobile-header .burger-btn { font-size: 22px; }
   .stats-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 8px;
   }
   
@@ -1043,6 +1092,16 @@ tbody tr:hover {
   
   .main-content {
     padding: 12px;
+  }
+
+  .grid-header .grid-actions .btn {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .btn-group {
+    border-radius: 12px;
+    overflow: hidden;
   }
   
   th, td {
