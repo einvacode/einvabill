@@ -659,6 +659,39 @@ tbody tr:hover {
   align-items: flex-end;
 }
 
+.filter-panel {
+  padding: 18px;
+  margin-bottom: 25px;
+  background: rgba(var(--primary-rgb), 0.04);
+  border: 1px solid rgba(var(--primary-rgb), 0.12);
+  border-radius: 14px;
+}
+
+.filter-control {
+  height: 40px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.filter-control-with-icon {
+  position: relative;
+}
+
+.filter-input-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  opacity: 0.55;
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.filter-control-with-icon .filter-control {
+  padding-left: 35px;
+}
+
 .filter-group {
   display: flex;
   flex-direction: column;
@@ -671,7 +704,48 @@ tbody tr:hover {
   gap: 8px;
 }
 
+.filter-date-range .form-control {
+  flex: 1;
+}
+
+.filter-date-separator {
+  color: var(--text-secondary);
+  font-size: 12px;
+  opacity: 0.6;
+  white-space: nowrap;
+}
+
+.filter-actions {
+  margin-top: auto;
+}
+
+.filter-actions .btn-group,
+.filter-actions .btn {
+  width: 100%;
+}
+
+.filter-reset-btn {
+  min-width: 42px;
+}
+
+.filter-quick-actions .filter-quick-btn {
+  flex: 1;
+  min-height: 38px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 @media (max-width: 640px) {
+  .filter-panel {
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .filter-control {
+    height: 38px;
+    font-size: 12px;
+  }
+
   .filter-date-range {
     flex-direction: column;
     align-items: stretch;
@@ -679,6 +753,11 @@ tbody tr:hover {
   }
   .filter-date-range span {
     display: none; 
+  }
+
+  .filter-quick-actions .filter-quick-btn {
+    min-height: 36px;
+    font-size: 11px;
   }
 }
 

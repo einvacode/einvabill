@@ -719,22 +719,22 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <!-- Filter Bar -->
-    <div style="padding:20px; background:rgba(var(--primary-rgb), 0.05); border-radius:12px; margin-bottom:25px; border:1px solid rgba(var(--primary-rgb), 0.1);">
+    <div class="filter-panel">
         <form method="GET" class="grid-filters">
             <input type="hidden" name="page" value="admin_customers">
             
             <div class="filter-group">
                 <label><i class="fas fa-search"></i> Cari Pelanggan</label>
-                <div style="position:relative;">
-                    <i class="fas fa-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-secondary); opacity:0.5; font-size:12px;"></i>
-                    <input type="text" name="search" class="form-control" placeholder="Nama / Kode / HP..." value="<?= htmlspecialchars($search) ?>" style="padding-left:35px; font-size:13px; height:40px;">
+                <div class="filter-control-with-icon">
+                    <i class="fas fa-search filter-input-icon"></i>
+                    <input type="text" name="search" class="form-control filter-control" placeholder="Nama / Kode / HP..." value="<?= htmlspecialchars($search) ?>">
                 </div>
             </div>
 
             <?php if ($u_role === 'admin'): ?>
             <div class="filter-group">
                 <label><i class="fas fa-user-tag"></i> Tipe</label>
-                <select name="filter_type" class="form-control" style="font-size:13px; height:40px;">
+                <select name="filter_type" class="form-control filter-control">
                     <option value="">Semua Tipe</option>
                     <option value="customer" <?= $filter_type == 'customer' ? 'selected' : '' ?>>Rumahan</option>
                     <option value="partner" <?= $filter_type == 'partner' ? 'selected' : '' ?>>Mitra / B2B</option>
@@ -745,7 +745,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php if ($u_role === 'admin'): ?>
             <div class="filter-group">
                 <label><i class="fas fa-user-tie"></i> Penagih</label>
-                <select name="filter_collector" class="form-control" style="font-size:13px; height:40px;">
+                <select name="filter_collector" class="form-control filter-control">
                     <option value="">Semua Penagih</option>
                     <?php foreach($collectors as $coll): ?>
                         <option value="<?= $coll['id'] ?>" <?= $filter_collector == $coll['id'] ? 'selected' : '' ?>><?= htmlspecialchars($coll['name']) ?></option>
@@ -754,11 +754,11 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             <?php endif; ?>
 
-            <div class="grid-actions" style="margin-top:auto;">
-                <div class="btn-group" style="width:100%;">
-                    <button type="submit" class="btn btn-primary btn-sm" style="flex:1; height:40px;"><i class="fas fa-search"></i> Cari</button>
+            <div class="grid-actions filter-actions">
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search"></i> Cari</button>
                     <?php if($search || $filter_type || $filter_collector): ?>
-                        <a href="index.php?page=admin_customers" class="btn btn-ghost btn-sm" style="flex:0; width:45px; height:40px; display:flex; align-items:center; justify-content:center;"><i class="fas fa-sync"></i></a>
+                        <a href="index.php?page=admin_customers" class="btn btn-ghost btn-sm filter-reset-btn"><i class="fas fa-sync"></i></a>
                     <?php endif; ?>
                 </div>
             </div>

@@ -83,35 +83,37 @@ $partner_invoices = $stmt_inv->fetchAll();
     </div>
 
     <!-- Filter Form -->
-    <div style="background:rgba(255,255,255,0.02); padding:20px; border-radius:15px; border:1px solid var(--glass-border); margin-bottom:25px;">
-        <form method="GET" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:15px; align-items:flex-end;">
+    <div class="filter-panel">
+        <form method="GET" class="grid-filters">
             <input type="hidden" name="page" value="partner_isp_invoices">
-            <div>
-                <label style="font-size:11px; font-weight:800; color:var(--text-secondary); display:block; margin-bottom:8px;">DARI TANGGAL JATUH TEMPO</label>
-                <input type="date" name="date_from" class="form-control" value="<?= htmlspecialchars($date_from) ?>" style="font-size:13px;">
+            <div class="filter-group">
+                <label>Dari Tanggal Jatuh Tempo</label>
+                <input type="date" name="date_from" class="form-control filter-control" value="<?= htmlspecialchars($date_from) ?>">
             </div>
-            <div>
-                <label style="font-size:11px; font-weight:800; color:var(--text-secondary); display:block; margin-bottom:8px;">SAMPAI TANGGAL</label>
-                <input type="date" name="date_to" class="form-control" value="<?= htmlspecialchars($date_to) ?>" style="font-size:13px;">
+            <div class="filter-group">
+                <label>Sampai Tanggal</label>
+                <input type="date" name="date_to" class="form-control filter-control" value="<?= htmlspecialchars($date_to) ?>">
             </div>
-            <div>
-                <label style="font-size:11px; font-weight:800; color:var(--text-secondary); display:block; margin-bottom:8px;">STATUS PEMBAYARAN</label>
-                <select name="filter_status" class="form-control" style="font-size:13px;">
+            <div class="filter-group">
+                <label>Status Pembayaran</label>
+                <select name="filter_status" class="form-control filter-control">
                     <option value="semua" <?= $filter_status === 'semua' ? 'selected' : '' ?>>Semua Status</option>
                     <option value="belum" <?= $filter_status === 'belum' ? 'selected' : '' ?>>Belum Lunas</option>
                     <option value="lunas" <?= $filter_status === 'lunas' ? 'selected' : '' ?>>Lunas Terbayar</option>
                 </select>
             </div>
-            <div>
-                <label style="font-size:11px; font-weight:800; color:var(--text-secondary); display:block; margin-bottom:8px;">URUTAN</label>
-                <select name="sort_date" class="form-control" style="font-size:13px;">
+            <div class="filter-group">
+                <label>Urutan</label>
+                <select name="sort_date" class="form-control filter-control">
                     <option value="desc" <?= $sort_date === 'desc' ? 'selected' : '' ?>>Terbaru (Desc)</option>
                     <option value="asc" <?= $sort_date === 'asc' ? 'selected' : '' ?>>Terlama (Asc)</option>
                 </select>
             </div>
-            <div style="display:flex; gap:8px;">
-                <button type="submit" class="btn btn-primary" style="flex:1; height:42px; font-weight:800; border-radius:10px;"><i class="fas fa-filter"></i> CARI</button>
-                <a href="index.php?page=partner_isp_invoices" class="btn btn-ghost" style="width:42px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:10px; border:1px solid var(--glass-border);"><i class="fas fa-redo"></i></a>
+            <div class="grid-actions filter-actions">
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter"></i> Cari</button>
+                    <a href="index.php?page=partner_isp_invoices" class="btn btn-ghost btn-sm filter-reset-btn"><i class="fas fa-redo"></i></a>
+                </div>
             </div>
         </form>
     </div>

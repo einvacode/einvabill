@@ -626,23 +626,23 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
     </div>
 
     <!-- Integrated Filter Bar -->
-    <div style="padding:20px; margin-bottom:25px; background:rgba(var(--primary-rgb), 0.05); border-radius:12px; border:1px solid rgba(var(--primary-rgb), 0.1);">
+    <div class="filter-panel">
     <form method="GET" class="grid-filters">
         <input type="hidden" name="page" value="admin_invoices">
         <input type="hidden" name="filter_type" value="<?= htmlspecialchars($filter_type) ?>">
         
         <div class="filter-group">
             <label><i class="fas fa-calendar-alt"></i> Periode Jatuh Tempo</label>
-            <div style="display:flex; align-items:center; gap:8px;">
-                <input type="date" name="date_from" class="form-control" value="<?= htmlspecialchars($date_from) ?>" style="padding:8px 10px; font-size:12px;">
-                <span style="color:var(--text-secondary); font-size:12px; opacity:0.5;">sampai dengan</span>
-                <input type="date" name="date_to" class="form-control" value="<?= htmlspecialchars($date_to) ?>" style="padding:8px 10px; font-size:12px;">
+            <div class="filter-date-range">
+                <input type="date" name="date_from" class="form-control filter-control" value="<?= htmlspecialchars($date_from) ?>">
+                <span class="filter-date-separator">sampai dengan</span>
+                <input type="date" name="date_to" class="form-control filter-control" value="<?= htmlspecialchars($date_to) ?>">
             </div>
         </div>
 
         <div class="filter-group">
             <label><i class="fas fa-info-circle"></i> Status</label>
-            <select name="filter_status" class="form-control" style="padding:8px 12px; font-size:13px;">
+            <select name="filter_status" class="form-control filter-control">
                 <option value="">Semua Status</option>
                 <option value="lunas" <?= $filter_status === 'lunas' ? 'selected' : '' ?>>Lunas</option>
                 <option value="belum" <?= $filter_status === 'belum' ? 'selected' : '' ?>>Belum Lunas</option>
@@ -652,7 +652,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
         <?php if ($u_role === 'admin'): ?>
         <div class="filter-group">
             <label><i class="fas fa-user-tie"></i> Collector</label>
-            <select name="filter_collector" class="form-control" style="padding:8px 12px; font-size:13px;">
+            <select name="filter_collector" class="form-control filter-control">
                 <option value="">Semua Collector</option>
                 <?php foreach($collectors as $coll): ?>
                     <option value="<?= $coll['id'] ?>" <?= $filter_collector == $coll['id'] ? 'selected' : '' ?>><?= htmlspecialchars($coll['name']) ?></option>
@@ -661,11 +661,11 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
         </div>
         <?php endif; ?>
 
-        <div class="grid-actions" style="margin-top:auto;">
-            <div class="btn-group" style="width:100%;">
-                <button type="submit" class="btn btn-primary btn-sm" style="flex:1;"><i class="fas fa-filter"></i> Apply</button>
+        <div class="grid-actions filter-actions">
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter"></i> Apply</button>
                 <?php if($date_from || $date_to || $filter_status || $filter_collector): ?>
-                    <a href="index.php?page=admin_invoices&filter_type=<?= $filter_type ?>" class="btn btn-ghost btn-sm" style="flex:0; padding:0 15px;"><i class="fas fa-sync"></i></a>
+                    <a href="index.php?page=admin_invoices&filter_type=<?= $filter_type ?>" class="btn btn-ghost btn-sm filter-reset-btn"><i class="fas fa-sync"></i></a>
                 <?php endif; ?>
             </div>
         </div>

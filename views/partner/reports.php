@@ -133,18 +133,20 @@ $report_items = $stmt_list->fetchAll();
 </div>
 
 <!-- Filter Bar -->
-<div class="glass-panel" style="padding:20px; margin-bottom:25px; border:1px solid var(--glass-border);">
-    <form method="GET" style="display:flex; gap:15px; align-items:flex-end; flex-wrap:wrap;">
+<div class="filter-panel">
+    <form method="GET" class="grid-filters">
         <input type="hidden" name="page" value="partner_reports">
-        <div style="flex:1; min-width:200px;">
-            <label style="font-size:11px; font-weight:800; color:var(--text-secondary); display:block; margin-bottom:8px;">DARI TANGGAL</label>
-            <input type="date" name="date_from" class="form-control" value="<?= $date_from ?>" style="height:42px;">
+        <div class="filter-group">
+            <label>Dari Tanggal</label>
+            <input type="date" name="date_from" class="form-control filter-control" value="<?= $date_from ?>">
         </div>
-        <div style="flex:1; min-width:200px;">
-            <label style="font-size:11px; font-weight:800; color:var(--text-secondary); display:block; margin-bottom:8px;">SAMPAI TANGGAL</label>
-            <input type="date" name="date_to" class="form-control" value="<?= $date_to ?>" style="height:42px;">
+        <div class="filter-group">
+            <label>Sampai Tanggal</label>
+            <input type="date" name="date_to" class="form-control filter-control" value="<?= $date_to ?>">
         </div>
-        <button type="submit" class="btn btn-primary" style="height:42px; padding:0 30px;"><i class="fas fa-filter"></i> UPDATE LAPORAN</button>
+        <div class="grid-actions filter-actions">
+            <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter"></i> Update Laporan</button>
+        </div>
     </form>
 </div>
 

@@ -890,29 +890,29 @@ if ($action === 'print') {
     </div>
 
     <!-- Standardized Filter Bar -->
-    <div style="padding:20px; margin-bottom:25px; background:rgba(var(--primary-rgb), 0.05); border-radius:15px; border:1px solid rgba(var(--primary-rgb), 0.1);">
+    <div class="filter-panel">
         <form method="GET" action="index.php" class="grid-filters">
             <input type="hidden" name="page" value="admin_reports">
             
             <div class="filter-group">
                 <label><i class="fas fa-calendar-alt"></i> Dari Tanggal</label>
-                <div style="position:relative;">
-                    <i class="fas fa-calendar" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); opacity:0.5; font-size:12px;"></i>
-                    <input type="date" name="date_from" class="form-control" value="<?= $date_from ?>" style="padding-left:35px; font-size:13px;">
+                <div class="filter-control-with-icon">
+                    <i class="fas fa-calendar filter-input-icon"></i>
+                    <input type="date" name="date_from" class="form-control filter-control" value="<?= $date_from ?>">
                 </div>
             </div>
 
             <div class="filter-group">
                 <label><i class="fas fa-calendar-check"></i> Sampai Tanggal</label>
-                <div style="position:relative;">
-                    <i class="fas fa-calendar" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); opacity:0.5; font-size:12px;"></i>
-                    <input type="date" name="date_to" class="form-control" value="<?= $date_to ?>" style="padding-left:35px; font-size:13px;">
+                <div class="filter-control-with-icon">
+                    <i class="fas fa-calendar filter-input-icon"></i>
+                    <input type="date" name="date_to" class="form-control filter-control" value="<?= $date_to ?>">
                 </div>
             </div>
 
             <div class="filter-group">
                 <label><i class="fas fa-calendar"></i> Tahun</label>
-                <select name="year" class="form-control" style="font-size:13px;">
+                <select name="year" class="form-control filter-control">
                     <?php for ($y = date('Y') - 2; $y <= date('Y') + 1; $y++): ?>
                         <option value="<?= $y ?>" <?= $filter_year == $y ? 'selected' : '' ?>><?= $y ?></option>
                     <?php endfor; ?>
@@ -922,7 +922,7 @@ if ($action === 'print') {
             <?php if ($u_role === 'admin'): ?>
             <div class="filter-group">
                 <label><i class="fas fa-user-tie"></i> Diterima Oleh</label>
-                <select name="user_id" class="form-control" style="font-size:13px;">
+                <select name="user_id" class="form-control filter-control">
                     <option value="all">-- Semua --</option>
                     <?php foreach($available_users as $u): ?>
                         <option value="<?= $u['id'] ?>" <?= $filter_user == $u['id'] ? 'selected' : '' ?>><?= $u['name'] ?> (<?= ucfirst($u['role']) ?>)</option>
@@ -931,8 +931,8 @@ if ($action === 'print') {
             </div>
             <?php endif; ?>
 
-            <div class="grid-actions" style="margin-top:auto;">
-                <button type="submit" class="btn btn-primary" style="height:44px; width:100%;"><i class="fas fa-sync-alt"></i> Apply Filter</button>
+            <div class="grid-actions filter-actions">
+                <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-sync-alt"></i> Apply Filter</button>
             </div>
         </form>
     </div>

@@ -491,12 +491,12 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
             Riwayat Lunas
         </h3>
         <!-- Date Filter -->
-        <form method="GET" style="display:flex; align-items:center; gap:8px;">
+        <form method="GET" class="grid-filters" style="grid-template-columns: repeat(3, minmax(120px, 1fr)); gap:8px; align-items:flex-end;">
             <input type="hidden" name="page" value="partner_collection">
             <input type="hidden" name="tab" value="lunas">
-            <input type="date" name="date_from" class="form-control" value="<?= $date_from ?>" style="font-size:12px; width:130px; border-radius:8px;">
-            <input type="date" name="date_to" class="form-control" value="<?= $date_to ?>" style="font-size:12px; width:130px; border-radius:8px;">
-            <button type="submit" class="btn btn-sm btn-primary" style="height:36px;"><i class="fas fa-filter"></i></button>
+            <input type="date" name="date_from" class="form-control filter-control" value="<?= $date_from ?>">
+            <input type="date" name="date_to" class="form-control filter-control" value="<?= $date_to ?>">
+            <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-filter"></i></button>
         </form>
     </div>
 
@@ -918,9 +918,9 @@ if (!window.PartnerPage) window.PartnerPage = {};
             
             <div class="form-group" style="margin-bottom:24px;">
                 <label style="display:block; font-size:11px; font-weight:800; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; margin-bottom:12px;">Pilih Bulan Penagihan</label>
-                <div style="position:relative;">
-                    <i class="fas fa-calendar-alt" style="position:absolute; left:15px; top:50%; transform:translateY(-50%); color:var(--primary); opacity:0.6;"></i>
-                    <select name="month" class="form-control" style="padding:12px 15px 12px 45px; border-radius:15px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); width:100%; font-weight:700;">
+                <div class="filter-control-with-icon">
+                    <i class="fas fa-calendar-alt filter-input-icon"></i>
+                    <select name="month" class="form-control filter-control" style="padding-left:45px; font-weight:700;">
                         <?php
                         for ($i = 0; $i < 6; $i++) {
                             $m = date('Y-m', strtotime("-$i month"));
@@ -934,9 +934,9 @@ if (!window.PartnerPage) window.PartnerPage = {};
 
             <div class="form-group" style="margin-bottom:24px;">
                 <label style="display:block; font-size:11px; font-weight:800; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; margin-bottom:12px;">Siklus Tagihan (Tanggal)</label>
-                <div style="position:relative;">
-                    <i class="fas fa-calendar-day" style="position:absolute; left:15px; top:50%; transform:translateY(-50%); color:var(--primary); opacity:0.6;"></i>
-                    <select name="filter_billing_date" class="form-control" style="padding:12px 15px 12px 45px; border-radius:15px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); width:100%; font-weight:700;">
+                <div class="filter-control-with-icon">
+                    <i class="fas fa-calendar-day filter-input-icon"></i>
+                    <select name="filter_billing_date" class="form-control filter-control" style="padding-left:45px;">
                         <option value="all" <?= $filter_billing_date === 'all' ? 'selected' : '' ?>>Semua Tanggal</option>
                         <?php for($i=1; $i<=31; $i++): ?>
                             <option value="<?= $i ?>" <?= $filter_billing_date == $i ? 'selected' : '' ?>>Tanggal <?= $i ?></option>
@@ -949,18 +949,18 @@ if (!window.PartnerPage) window.PartnerPage = {};
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:24px;">
                 <div class="form-group">
                     <label style="display:block; font-size:10px; font-weight:800; color:var(--text-secondary); margin-bottom:10px;">DARI</label>
-                    <input type="date" name="date_from" class="form-control" value="<?= $date_from ?>" style="background:rgba(255,255,255,0.03); border-radius:12px; border:1px solid var(--glass-border); font-size:12px; font-weight:700;">
+                    <input type="date" name="date_from" class="form-control filter-control" value="<?= $date_from ?>">
                 </div>
                 <div class="form-group">
                     <label style="display:block; font-size:10px; font-weight:800; color:var(--text-secondary); margin-bottom:10px;">SAMPAI</label>
-                    <input type="date" name="date_to" class="form-control" value="<?= $date_to ?>" style="background:rgba(255,255,255,0.03); border-radius:12px; border:1px solid var(--glass-border); font-size:12px; font-weight:700;">
+                    <input type="date" name="date_to" class="form-control filter-control" value="<?= $date_to ?>">
                 </div>
             </div>
             <?php endif; ?>
 
-            <div style="display:flex; gap:10px; margin-top:10px;">
-                <a href="index.php?page=partner_collection&tab=<?= $coll_tab ?>&month=<?= date('Y-m') ?>" class="btn btn-ghost" style="flex:1; border-radius:15px; font-weight:700;">Reset</a>
-                <button type="submit" class="btn btn-primary" style="flex:2; border-radius:15px; font-weight:800;">Terapkan Filter</button>
+            <div class="form-actions-row" style="margin-top:10px; border-top:1px solid var(--glass-border); padding-top:12px;">
+                <a href="index.php?page=partner_collection&tab=<?= $coll_tab ?>&month=<?= date('Y-m') ?>" class="btn btn-ghost">Reset</a>
+                <button type="submit" class="btn btn-primary">Terapkan Filter</button>
             </div>
         </form>
     </div>

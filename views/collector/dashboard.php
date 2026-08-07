@@ -1865,26 +1865,26 @@ function setQuickFilter(type) {
             
             <div style="margin-bottom:24px;">
                 <label style="display:block; font-size:12px; font-weight:800; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; margin-bottom:16px;">Rentang Waktu</label>
-                <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:20px;">
-                    <button type="button" onclick="setQuickFilter('today')" style="flex:1; padding:12px; border-radius:12px; border:1px solid var(--glass-border); background:rgba(255,255,255,0.03); color:var(--text-primary); font-size:12px; font-weight:700; cursor:pointer; transition:all 0.2s;">Hari Ini</button>
-                    <button type="button" onclick="setQuickFilter('week')" style="flex:1; padding:12px; border-radius:12px; border:1px solid var(--glass-border); background:rgba(255,255,255,0.03); color:var(--text-primary); font-size:12px; font-weight:700; cursor:pointer; transition:all 0.2s;">7 Hari</button>
-                    <button type="button" onclick="setQuickFilter('month')" style="flex:1; padding:12px; border-radius:12px; border:1px solid var(--glass-border); background:rgba(255,255,255,0.03); color:var(--text-primary); font-size:12px; font-weight:700; cursor:pointer; transition:all 0.2s;">Bulan Ini</button>
+                <div class="filter-quick-actions" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:20px;">
+                    <button type="button" onclick="setQuickFilter('today')" class="btn btn-ghost btn-sm filter-quick-btn">Hari Ini</button>
+                    <button type="button" onclick="setQuickFilter('week')" class="btn btn-ghost btn-sm filter-quick-btn">7 Hari</button>
+                    <button type="button" onclick="setQuickFilter('month')" class="btn btn-ghost btn-sm filter-quick-btn">Bulan Ini</button>
                 </div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
                     <div class="form-group">
                         <label style="font-size:11px; color:var(--text-secondary); margin-bottom:8px; display:block;">Mulai Tanggal</label>
-                        <input type="date" name="date_from" id="filter_date_from" value="<?= $date_from ?>" style="width:100%; padding:14px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); color:var(--text-primary); font-weight:700; font-size:14px;">
+                        <input type="date" name="date_from" id="filter_date_from" class="form-control filter-control" value="<?= $date_from ?>">
                     </div>
                     <div class="form-group">
                         <label style="font-size:11px; color:var(--text-secondary); margin-bottom:8px; display:block;">Hingga Tanggal</label>
-                        <input type="date" name="date_to" id="filter_date_to" value="<?= $date_to ?>" style="width:100%; padding:14px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); color:var(--text-primary); font-weight:700; font-size:14px;">
+                        <input type="date" name="date_to" id="filter_date_to" class="form-control filter-control" value="<?= $date_to ?>">
                     </div>
                 </div>
             </div>
 
             <div style="margin-bottom:24px;">
                 <label style="display:block; font-size:12px; font-weight:800; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; margin-bottom:16px;">Area Wilayah</label>
-                <select name="filter_area" style="width:100%; padding:14px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); color:var(--text-primary); font-weight:700; font-size:14px; cursor:pointer;">
+                <select name="filter_area" class="form-control filter-control">
                     <?php if($collector_area_val): ?>
                         <option value="<?= htmlspecialchars($collector_area_val) ?>" selected>Wilayah Saya: <?= htmlspecialchars($collector_area_val) ?></option>
                     <?php else: ?>
@@ -1896,9 +1896,9 @@ function setQuickFilter(type) {
                 </select>
             </div>
 
-            <div style="display:flex; gap:12px; padding-top:12px; border-top:1px solid var(--glass-border);">
-                <button type="button" onclick="location.href='index.php?page=collector&tab=<?= $coll_tab ?>'" style="flex:1; padding:15px; border-radius:14px; border:1px solid var(--glass-border); background:none; color:var(--text-secondary); font-weight:700; cursor:pointer; font-size:14px;">Reset</button>
-                <button type="submit" style="flex:2; padding:15px; border-radius:14px; background:var(--primary); border:none; color:white; font-weight:800; cursor:pointer; font-size:14px; box-shadow: 0 10px 20px rgba(var(--primary-rgb), 0.2);">
+            <div class="form-actions-row" style="padding-top:12px; border-top:1px solid var(--glass-border);">
+                <button type="button" class="btn btn-ghost" onclick="location.href='index.php?page=collector&tab=<?= $coll_tab ?>'">Reset</button>
+                <button type="submit" class="btn btn-primary">
                     Terapkan Filter
                 </button>
             </div>
