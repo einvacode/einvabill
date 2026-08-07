@@ -42,7 +42,8 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 20px 50px;
+            padding: 12px 26px;
+            gap: 18px;
             background: var(--glass-bg);
             backdrop-filter: blur(15px);
             -webkit-backdrop-filter: blur(15px);
@@ -51,35 +52,107 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
             transition: all 0.3s ease;
         }
 
+        .navbar .navbar-logo-box {
+            height: 38px;
+            max-width: 180px;
+            margin-right: 8px;
+        }
+
         .nav-brand {
             display: flex;
             align-items: center;
-            gap: 15px;
-            font-size: 24px;
+            gap: 10px;
+            font-size: 16px;
             font-weight: 700;
             background: linear-gradient(to right, var(--gradient-text-from), var(--gradient-text-to));
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
             text-decoration: none;
+            min-width: 0;
+            letter-spacing: 0.3px;
+            flex-shrink: 1;
+        }
+
+        .nav-brand span {
+            line-height: 1.15;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .nav-menu {
             display: flex;
-            gap: 30px;
+            gap: 10px;
             align-items: center;
+            flex-wrap: nowrap;
+            min-width: 0;
         }
 
         .nav-menu a {
             color: var(--text-primary);
             text-decoration: none;
             font-weight: 500;
-            font-size: 15px;
-            transition: color 0.3s;
+            font-size: 14px;
+            line-height: 1.2;
+            transition: color 0.3s, background 0.2s ease, border-color 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .nav-link {
+            padding: 8px 10px;
+            border-radius: 10px;
+        }
+
+        .nav-link i {
+            margin-right: 5px;
+            font-size: 13px;
+        }
+
+        .nav-link--billing {
+            color: var(--primary) !important;
+            font-weight: 700;
+        }
+
+        .nav-link--billing i {
+            font-size: 12px;
+        }
+
+        .nav-cta {
+            height: 42px;
+            padding: 0 16px !important;
+            border-radius: 999px !important;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .nav-cta i {
+            font-size: 13px;
+        }
+
+        .nav-cta-partner {
+            border: 1px solid var(--primary) !important;
+            margin-left: 4px;
+        }
+
+        .nav-cta-staff {
+            padding: 0 18px !important;
+            box-shadow: 0 8px 20px rgba(var(--primary-rgb), 0.22);
         }
 
         .nav-menu a:hover {
             color: var(--primary);
+            background: rgba(var(--primary-rgb), 0.07);
+        }
+
+        .nav-menu .theme-toggle {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            background: rgba(255,255,255,0.7);
+            padding: 0;
+            flex-shrink: 0;
         }
 
         .hero-section {
@@ -88,8 +161,31 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
             align-items: center;
             justify-content: center;
             text-align: center;
-            padding: 100px 20px 50px;
+            padding: 118px 20px 56px;
             position: relative;
+        }
+
+        .hero-shell {
+            z-index: 2;
+            position: relative;
+            animation: fadeIn 1s ease-out;
+            width: 100%;
+            max-width: 920px;
+            margin: 0 auto;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 8px 18px;
+            background: rgba(var(--primary-rgb), 0.1);
+            border: 1px solid rgba(var(--primary-rgb), 0.24);
+            border-radius: 999px;
+            color: var(--primary);
+            font-weight: 700;
+            font-size: 13px;
+            margin-bottom: 22px;
         }
 
         /* Abstract glowing blobs for hero section */
@@ -130,6 +226,23 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
             max-width: 700px;
             margin: 0 auto 40px;
             line-height: 1.6;
+        }
+
+        .hero-actions {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .hero-actions .btn {
+            min-height: 52px;
+            padding: 0 42px !important;
+            font-size: 18px;
+            border-radius: 999px !important;
+            width: 100%;
+            max-width: 380px;
+            box-shadow: 0 15px 30px rgba(var(--primary-rgb), 0.28);
         }
 
         .section {
@@ -414,14 +527,14 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
             position: fixed;
             top: 0;
             right: -100%;
-            width: 80%;
+            width: min(84vw, 340px);
             height: 100vh;
             background: var(--bg-color);
             z-index: 1050;
-            padding: 100px 40px;
+            padding: 86px 18px 24px;
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 8px;
             transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: -10px 0 30px rgba(0,0,0,0.5);
             border-left: 1px solid var(--glass-border);
@@ -432,12 +545,39 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
         }
 
         .mobile-menu a {
-            font-size: 20px;
+            font-size: 15px;
             font-weight: 600;
             color: var(--text-primary);
             text-decoration: none;
-            padding: 10px 0;
-            border-bottom: 1px solid var(--glass-border);
+            padding: 11px 12px;
+            border: 1px solid transparent;
+            border-radius: 10px;
+        }
+
+        .mobile-menu a:hover {
+            background: rgba(var(--primary-rgb), 0.08);
+            border-color: rgba(var(--primary-rgb), 0.18);
+            color: var(--primary);
+        }
+
+        .mobile-link-cta {
+            font-weight: 700 !important;
+            border-color: var(--glass-border) !important;
+        }
+
+        .mobile-link-cta.partner {
+            color: var(--primary) !important;
+        }
+
+        .mobile-link-cta.staff {
+            color: #ffffff !important;
+            background: var(--primary);
+            border-color: var(--primary) !important;
+        }
+
+        .mobile-link-cta.staff:hover {
+            color: #ffffff !important;
+            background: var(--primary-hover);
         }
 
         .mobile-menu-overlay {
@@ -452,12 +592,33 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
             display: none;
         }
 
+        @media (max-width: 1180px) {
+            .navbar { padding: 11px 16px; }
+            .nav-brand { font-size: 15px; }
+            .nav-menu { gap: 6px; }
+            .nav-link { padding: 7px 8px; font-size: 13px; }
+            .nav-cta { height: 38px; font-size: 13px; padding: 0 12px !important; }
+            .nav-menu .theme-toggle { width: 38px; height: 38px; }
+            .navbar .navbar-logo-box { height: 35px; max-width: 165px; }
+        }
+
+        @media (max-width: 980px) {
+            .nav-brand span { max-width: 220px; }
+            .nav-link { font-size: 12px; padding: 6px 7px; }
+            .nav-link i { margin-right: 4px; }
+            .nav-cta { height: 36px; font-size: 12px; }
+            .nav-menu .theme-toggle { width: 36px; height: 36px; }
+        }
+
         @media (max-width: 768px) {
-            .navbar { padding: 15px 20px; }
+            .navbar { padding: 12px 14px; }
             .nav-menu { display: none; }
             .mobile-menu-toggle { display: block; }
+            .navbar .navbar-logo-box { height: 34px; max-width: 150px; }
+            .nav-brand { font-size: 14px; gap: 8px; }
             .hero-title { font-size: 36px; }
             .hero-subtitle { font-size: 16px; }
+            .hero-actions .btn { min-height: 48px; font-size: 16px; max-width: 320px; }
             .powered-grid { gap: 25px; }
             .powered-item img { max-height: 35px; }
             
@@ -478,7 +639,7 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
 
     <!-- Nav -->
     <nav class="navbar">
-        <a href="#" class="nav-brand" style="display:flex; align-items:center;">
+        <a href="#" class="nav-brand">
             <?php if(!empty($site['company_logo'])): ?>
                 <div class="brand-logo-wrapper navbar-logo-box">
                     <img src="<?= htmlspecialchars($site['company_logo']) ?>" alt="Logo">
@@ -489,18 +650,18 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
             <span><?= htmlspecialchars(strtoupper($comp_name)) ?></span>
         </a>
         <div class="nav-menu">
-            <a href="#about">Tentang Kami</a>
-            <a href="http://fibernodeinternet.com:3001/status/server" target="_blank"><i class="fas fa-server"></i> Server Status</a>
-            <a href="http://fibernodeinternet.com:3004" target="_blank"><i class="fas fa-tachometer-alt"></i> Speedtest</a>
-            <a href="#services">Layanan</a>
-            <a href="https://wa.me/<?= $wa_contact ?>" target="_blank"><i class="fab fa-whatsapp" style="color:#25D366; font-size:18px;"></i> Hubungi Kami</a>
+            <a href="#about" class="nav-link">Tentang Kami</a>
+            <a href="http://fibernodeinternet.com:3001/status/server" target="_blank" class="nav-link"><i class="fas fa-server"></i> Server Status</a>
+            <a href="http://fibernodeinternet.com:3004" target="_blank" class="nav-link"><i class="fas fa-tachometer-alt"></i> Speedtest</a>
+            <a href="#services" class="nav-link">Layanan</a>
+            <a href="https://wa.me/<?= $wa_contact ?>" target="_blank" class="nav-link"><i class="fab fa-whatsapp" style="color:#25D366;"></i> Hubungi Kami</a>
             <button class="theme-toggle" onclick="toggleTheme()" title="Ganti Tema">
                 <i class="fas fa-sun theme-icon-dark"></i>
                 <i class="fas fa-moon theme-icon-light"></i>
             </button>
-            <a href="index.php?page=customer_portal" style="color:var(--success); font-weight:600;"><i class="fas fa-receipt"></i> Cek Tagihan</a>
-            <a href="index.php?page=login&role=partner" class="btn btn-sm btn-ghost" style="padding: 10px 15px; border-radius:30px; border:1px solid var(--primary);"><i class="fas fa-handshake"></i> Portal Partner</a>
-            <a href="index.php?page=login&role=staff" class="btn btn-sm btn-primary" style="padding: 10px 20px; border-radius:30px;"><i class="fas fa-shield-alt"></i> Area Staff</a>
+            <a href="index.php?page=customer_portal" class="nav-link nav-link--billing"><i class="fas fa-receipt"></i> Cek Tagihan</a>
+            <a href="index.php?page=login&role=partner" class="btn btn-sm btn-ghost nav-cta nav-cta-partner"><i class="fas fa-handshake"></i> Portal Partner</a>
+            <a href="index.php?page=login&role=staff" class="btn btn-sm btn-primary nav-cta nav-cta-staff"><i class="fas fa-shield-alt"></i> Area Staff</a>
         </div>
         <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">
             <i class="fas fa-bars"></i>
@@ -513,9 +674,9 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
         <a href="http://fibernodeinternet.com:3001/status/server" target="_blank" onclick="toggleMobileMenu()"><i class="fas fa-server"></i> Server Status</a>
         <a href="http://fibernodeinternet.com:3004" target="_blank" onclick="toggleMobileMenu()"><i class="fas fa-tachometer-alt"></i> Speedtest</a>
         <a href="#services" onclick="toggleMobileMenu()">Layanan</a>
-        <a href="index.php?page=customer_portal" onclick="toggleMobileMenu()" style="color:var(--success);"><i class="fas fa-receipt"></i> Cek Tagihan</a>
-        <a href="index.php?page=login&role=partner" onclick="toggleMobileMenu()" style="color:var(--primary);"><i class="fas fa-handshake"></i> Portal Partner</a>
-        <a href="index.php?page=login&role=staff" onclick="toggleMobileMenu()" style="color:var(--danger);"><i class="fas fa-shield-alt"></i> Area Staff</a>
+        <a href="index.php?page=customer_portal" onclick="toggleMobileMenu()" class="mobile-link-cta"><i class="fas fa-receipt"></i> Cek Tagihan</a>
+        <a href="index.php?page=login&role=partner" onclick="toggleMobileMenu()" class="mobile-link-cta partner"><i class="fas fa-handshake"></i> Portal Partner</a>
+        <a href="index.php?page=login&role=staff" onclick="toggleMobileMenu()" class="mobile-link-cta staff"><i class="fas fa-shield-alt"></i> Area Staff</a>
         <a href="https://wa.me/<?= $wa_contact ?>" target="_blank"><i class="fab fa-whatsapp" style="color:#25D366;"></i> Hubungi Kami</a>
         <div style="margin-top:20px;">
             <button class="btn btn-ghost" onclick="toggleTheme(); toggleMobileMenu();" style="width:100%; justify-content:center; gap:10px;">
@@ -526,14 +687,14 @@ if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
 
     <!-- Hero -->
     <section class="hero-section">
-        <div style="z-index: 2; position:relative; animation: fadeIn 1s ease-out;">
-            <div style="display:inline-block; padding:8px 20px; background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.3); border-radius:50px; color:#60a5fa; font-weight:600; font-size:14px; margin-bottom:25px;">
+        <div class="hero-shell">
+            <div class="hero-badge">
                 <i class="fas fa-bolt"></i> Internet Cepat Tanpa Batas
             </div>
             <h1 class="hero-title"><?= htmlspecialchars($site['landing_hero_title'] ?? 'Koneksi Super Cepat & Stabil') ?></h1>
             <p class="hero-subtitle"><?= htmlspecialchars($site['landing_hero_text'] ?? 'Solusi internet dan IT untuk kebutuhan personal dan korporasi.') ?></p>
-            <div style="display:flex; flex-direction:column; align-items:center; gap:25px;">
-                <a href="#services" class="btn btn-primary" style="padding:18px 60px; font-size:20px; border-radius:50px; width:100%; max-width:400px; box-shadow: 0 15px 30px rgba(59, 130, 246, 0.3);">Lihat Paket <i class="fas fa-arrow-right" style="margin-left:10px;"></i></a>
+            <div class="hero-actions">
+                <a href="#services" class="btn btn-primary">Lihat Paket <i class="fas fa-arrow-right" style="margin-left:10px;"></i></a>
             </div>
         </div>
     </section>
