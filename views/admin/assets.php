@@ -6,6 +6,48 @@ $u_role = $_SESSION['user_role'] ?? 'admin';
 $tenant_id = $_SESSION['tenant_id'] ?? 1;
 $scope_where = " AND (a.tenant_id = $tenant_id) ";
 
+function inferAssetCategory($name) {
+    $text = strtolower(trim((string)($name ?? '')));
+    if ($text === '') return 'Peralatan Kantor';
+    if (preg_match('/laptop|komputer|pc|server|router|switch|monitor|printer|scanner|notebook|tablet|wifi|network|internet|access point|access-point/i', $text)) return 'Komputer & IT';
+    if (preg_match('/mobil|motor|truck|kendaraan|vehicle/i', $text)) return 'Kendaraan';
+    if (preg_match('/meja|kursi|lemari|rak|sofa|furniture|kabinet/i', $text)) return 'Furniture';
+    if (preg_match('/gedung|bangunan|ruang|kantor|rumah|building/i', $text)) return 'Bangunan';
+    if (preg_match('/printer|fax|stapler|scanner|projector|alat tulis|office/i', $text)) return 'Peralatan Kantor';
+    return 'Lainnya';
+}
+
+function extractAssetCode($description) {
+    if (!is_string($description)) return '';
+    if (preg_match('/Kode:\s*([^|\n]+)/i', $description, $m)) {
+        return trim($m[1]);
+    }
+    return '';
+}
+
+function generateAssetCode($db, $tenant_id, $category) {
+    $prefixMap = [
+        'Peralatan Kantor' => 'PK',
+        'Komputer & IT' => 'IT',
+        'Kendaraan' => 'KD',
+        'Furniture' => 'FR',
+        'Bangunan' => 'BG',
+        'Lainnya' => 'LN'
+    ];
+    $prefix = $prefixMap[$category] ?? 'LN';
+    $stmt = $db->prepare("SELECT description FROM infrastructure_assets WHERE tenant_id = ? ORDER BY id DESC");
+    $stmt->execute([$tenant_id]);
+    $latest = 0;
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $code = extractAssetCode($row['description'] ?? '');
+        if (preg_match('/' . preg_quote($prefix) . '-?(\d{3,})$/i', $code, $m)) {
+            $num = intval($m[1]);
+            if ($num > $latest) $latest = $num;
+        }
+    }
+    return $prefix . '-' . str_pad($latest + 1, 4, '0', STR_PAD_LEFT);
+}
+
 if (($action ?? 'list') === 'print') {
     $assets = $db->query("SELECT a.*, p.name as parent_name FROM infrastructure_assets a LEFT JOIN infrastructure_assets p ON a.parent_id = p.id WHERE 1=1 $scope_where ORDER BY a.type DESC, a.name ASC")->fetchAll();
     $company_name = $_SESSION['company_name'] ?? 'Perusahaan';
@@ -42,7 +84,10 @@ if (($action ?? 'list') === 'print') {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'add' || $action === 'edit') {
         $name = $_POST['name'];
-        $type = $_POST['type'];
+        $type = inferAssetCategory($name);
+        if (!empty($_POST['type'])) {
+            $type = $_POST['type'];
+        }
         $parent_id = $_POST['parent_id'] ?? 0;
         $lat = $_POST['lat'] ?? '';
         $lng = $_POST['lng'] ?? '';
@@ -56,6 +101,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($action === 'add') {
             $tenant_id = $_SESSION['tenant_id'] ?? 1;
             $asset_code = trim($_POST['asset_code'] ?? '');
+            if ($asset_code === '') {
+                $asset_code = generateAssetCode($db, $tenant_id, $type);
+            }
             $description = trim($_POST['description'] ?? '');
             $useful_life_years = max(1, intval($_POST['useful_life_years'] ?? 5));
             $description_parts = [];
@@ -80,6 +128,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $is_owner = ($u_role === 'admin') ? ($check == $tenant_id) : (/* restricted */ false);
             if ($is_owner) {
                 $asset_code = trim($_POST['asset_code'] ?? '');
+                if ($asset_code === '') {
+                    $asset_code = extractAssetCode($db->query("SELECT description FROM infrastructure_assets WHERE id = $id LIMIT 1")->fetchColumn() ?: '');
+                }
                 $description = trim($_POST['description'] ?? '');
                 $useful_life_years = max(1, intval($_POST['useful_life_years'] ?? 5));
                 $description_parts = [];
@@ -698,6 +749,7 @@ $active_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets a WHERE 
             <div class="form-group">
                 <label>Nama Aset</label>
                 <input type="text" name="name" id="asset_name" class="form-control" required placeholder="Contoh: Laptop Administrasi">
+                <div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">Kategori dan kode akan dibuat otomatis berdasarkan nama aset.</div>
             </div>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
                 <div class="form-group">
@@ -838,6 +890,26 @@ $active_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets a WHERE 
 </div>
 
 <script>
+function autoCategorizeAsset(name) {
+    const text = (name || '').toLowerCase();
+    let category = 'Lainnya';
+    if (/laptop|komputer|pc|server|router|switch|monitor|printer|scanner|notebook|tablet|wifi|network|internet|access/.test(text)) {
+        category = 'Komputer & IT';
+    } else if (/mobil|motor|truck|kendaraan|vehicle/.test(text)) {
+        category = 'Kendaraan';
+    } else if (/meja|kursi|lemari|rak|sofa|furniture|kabinet/.test(text)) {
+        category = 'Furniture';
+    } else if (/gedung|bangunan|ruang|kantor|rumah|building/.test(text)) {
+        category = 'Bangunan';
+    } else if (/printer|fax|stapler|scanner|projector|alat tulis|office/.test(text)) {
+        category = 'Peralatan Kantor';
+    }
+    const typeSelect = document.getElementById('asset_type');
+    if (typeSelect) {
+        typeSelect.value = category;
+    }
+}
+
 function showAssetModal() {
     document.getElementById('assetForm').action = 'index.php?page=admin_assets&action=add';
     document.getElementById('modalTitle').innerText = 'Tambah Aset Baru';
@@ -867,6 +939,10 @@ function showInvoiceModal(asset) {
 function closeInvoiceModal() {
     document.getElementById('invoiceModal').style.display = 'none';
 }
+document.getElementById('asset_name').addEventListener('input', function() {
+    autoCategorizeAsset(this.value);
+});
+
 function editAsset(a) {
     const description = (a.description || '').toString();
     const codeMatch = description.match(/Kode:\s*([^|]+)/i);
