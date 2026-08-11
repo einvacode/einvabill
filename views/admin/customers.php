@@ -262,9 +262,9 @@ if ($action === 'bulk_delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $id_placeholders = implode(',', array_fill(0, count($ids), '?'));
         
         // OPTION C: DELETE PREVENTION - Check for related invoices
-        $result = $db->prepare("SELECT customer_id, COUNT(*) as cnt FROM invoices WHERE customer_id IN ($id_placeholders) AND tenant_id = ? GROUP BY customer_id")
-            ->execute(array_merge($ids, [$tenant_id]));
-        $invoiced_customers = $result->fetchAll();
+        $stmt = $db->prepare("SELECT customer_id, COUNT(*) as cnt FROM invoices WHERE customer_id IN ($id_placeholders) AND tenant_id = ? GROUP BY customer_id");
+        $stmt->execute(array_merge($ids, [$tenant_id]));
+        $invoiced_customers = $stmt->fetchAll();
         
         if (!empty($invoiced_customers)) {
             // Some customers have invoices - prevent bulk delete
