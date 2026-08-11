@@ -304,7 +304,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
         <div class="summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
     </a>
 
-    <a class="glass-panel summary-card" href="index.php?page=admin_customers">
+    <a class="glass-panel summary-card" href="index.php?page=admin_new_customers">
         <div class="summary-label">Pelanggan Baru Bulan Ini</div>
         <div id="stat-baru-count" class="summary-value"><?= number_format($new_customers_month, 0) ?></div>
         <div class="summary-sub">Registrasi bulan berjalan</div>
