@@ -173,6 +173,9 @@ switch ($page) {
     case 'admin_reports':
         require __DIR__ . '/views/admin/reports.php';
         break;
+    case 'admin_partner_dashboard':
+        require __DIR__ . '/views/admin/partner_dashboard.php';
+        break;
     // 'admin_kpis' removed per user request
     case 'admin_banners':
         require __DIR__ . '/views/admin/banners.php';
