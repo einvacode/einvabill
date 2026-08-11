@@ -77,6 +77,8 @@ if (isset($_GET['sid'])) {
     </p>
 </div>
 <?php endif; ?>
+
+<?php
 // Fetch all packages for dropdowns (Scoped by Tenant)
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
     $u_id = $_SESSION['user_id'];
