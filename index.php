@@ -233,6 +233,9 @@ switch ($page) {
     case 'partner_settings':
         require __DIR__ . '/views/partner/settings.php';
         break;
+    case 'partner_wa_device':
+        require __DIR__ . '/views/partner/wa_device.php';
+        break;
     case 'partner':
         require __DIR__ . '/views/partner/dashboard.php';
         break;
