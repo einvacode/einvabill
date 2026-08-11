@@ -38,11 +38,17 @@ function generate_invoices_auto($db, $tenant_id = 1, $simulate = false) {
         $current_day = (int)date('d');
         
         // Get all ACTIVE customers for this tenant
+        // RBAC Filter: exclude customers created by partners (only show admin/system created)
+        $partner_ids = $db->query("SELECT id FROM users WHERE role = 'partner' AND tenant_id = $tenant_id")->fetchAll(PDO::FETCH_COLUMN);
+        $partner_list = !empty($partner_ids) ? implode(',', $partner_ids) : '0';
+        $scope_filter = " AND (created_by NOT IN ($partner_list) OR created_by = 0 OR created_by IS NULL) ";
+         
         $customers = $db->query("
             SELECT id, name, billing_date, monthly_fee, type, created_by, collector_id
             FROM customers 
             WHERE tenant_id = $tenant_id 
             AND type IN ('customer', 'partner')
+            $scope_filter
             ORDER BY id ASC
         ")->fetchAll(PDO::FETCH_ASSOC);
         
