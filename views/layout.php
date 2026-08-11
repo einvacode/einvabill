@@ -154,6 +154,7 @@ if (!empty($__layout_settings['company_logo'])) {
                         <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">OPERASIONAL</div>
                         <a href="index.php?page=admin_dashboard" class="nav-link <?= $page == 'admin_dashboard' ? 'active' : '' ?>"><i class="fas fa-home"></i> Dashboard</a>
                         <a href="index.php?page=admin_customers&filter_type=customer" class="nav-link <?= $page == 'admin_customers' && ($_GET['filter_type'] ?? '') == 'customer' ? 'active' : '' ?>"><i class="fas fa-users"></i> Pelanggan Rumahan</a>
+                        <a href="index.php?page=admin_new_customers" class="nav-link <?= $page == 'admin_new_customers' ? 'active' : '' ?>"><i class="fas fa-star text-warning"></i> Pelanggan Baru</a>
                         <a href="index.php?page=admin_customers&filter_type=partner" class="nav-link <?= $page == 'admin_customers' && ($_GET['filter_type'] ?? '') == 'partner' ? 'active' : '' ?>"><i class="fas fa-handshake"></i> Kemitraan (B2B)</a>
                         
                         <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">KEUANGAN</div>
