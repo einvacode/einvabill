@@ -10,7 +10,8 @@ $tenant_id = $_SESSION['tenant_id'] ?? 1;
 
 // Only admin can access
 if ($u_role !== 'admin') {
-    die('<div class="glass-panel p-5 text-center"><h1>403 Access Denied</h1></div>');
+    echo '<div class="glass-panel p-5 text-center"><h1>403 Access Denied</h1></div>';
+    return;
 }
 
 $action = $_GET['action'] ?? 'list';
@@ -21,18 +22,20 @@ $result_type = '';
 if ($action === 'delete_invoices' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $invoice_ids = $_POST['invoice_ids'] ?? [];
     
-    if (!empty($invoice_ids)) {
+    if (!empty($invoice_ids) && isset($db)) {
         $ids_str = implode(',', array_map('intval', $invoice_ids));
         
         try {
             // Delete associated payments first (if any)
-            $db->query("DELETE FROM payments WHERE invoice_id IN ($ids_str)");
-            
-            // Then delete invoices
-            $count = $db->query("DELETE FROM invoices WHERE id IN ($ids_str) AND tenant_id = $tenant_id");
-            
-            $result_message = "✅ Successfully deleted " . count($invoice_ids) . " orphan invoice(s)";
-            $result_type = 'success';
+            if (method_exists($db, 'query')) {
+                $db->query("DELETE FROM payments WHERE invoice_id IN ($ids_str)");
+                
+                // Then delete invoices
+                $db->query("DELETE FROM invoices WHERE id IN ($ids_str) AND tenant_id = $tenant_id");
+                
+                $result_message = "✅ Successfully deleted " . count($invoice_ids) . " orphan invoice(s)";
+                $result_type = 'success';
+            }
         } catch (Exception $e) {
             $result_message = "❌ Error deleting invoices: " . $e->getMessage();
             $result_type = 'error';
@@ -41,15 +44,24 @@ if ($action === 'delete_invoices' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Get orphan invoices
-$orphans = $db->query("
-    SELECT 
-        i.id, i.invoice_number, i.customer_id, i.amount, i.due_date, i.status,
-        i.created_at
-    FROM invoices i
-    WHERE tenant_id = $tenant_id
-    AND customer_id NOT IN (SELECT id FROM customers WHERE tenant_id = $tenant_id)
-    ORDER BY i.created_at DESC
-")->fetchAll();
+$orphans = array();
+if (isset($db) && method_exists($db, 'query')) {
+    try {
+        $result = $db->query("
+            SELECT 
+                i.id, i.invoice_number, i.customer_id, i.amount, i.due_date, i.status,
+                i.created_at
+            FROM invoices i
+            WHERE tenant_id = $tenant_id
+            AND customer_id NOT IN (SELECT id FROM customers WHERE tenant_id = $tenant_id)
+            ORDER BY i.created_at DESC
+        ");
+        $orphans = $result ? $result->fetchAll() : array();
+    } catch (Exception $e) {
+        $result_message = "❌ Database error: " . $e->getMessage();
+        $result_type = 'error';
+    }
+}
 
 ?>
 
