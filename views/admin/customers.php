@@ -46,7 +46,37 @@ if (isset($_GET['sid'])) {
     </div>
 </div>
 <?php endif; ?>
-<?php
+
+<!-- Error Messages for Delete Prevention -->
+<?php if ($_GET['msg'] === 'has_invoices'): 
+    $invoice_count = intval($_GET['invoice_count'] ?? 0);
+    $cust_id = intval($_GET['cust_id'] ?? 0);
+    $customer = $db->query("SELECT name FROM customers WHERE id = $cust_id")->fetch();
+?>
+<div class="glass-panel" style="margin-bottom:20px; border-left:4px solid #ef4444; padding:20px; background:rgba(239,68,68,0.1);">
+    <h3 style="margin:0; color:#991b1b;"><i class="fas fa-exclamation-circle"></i> Tidak Bisa Menghapus Pelanggan</h3>
+    <p style="margin:8px 0 0 0; color:#991b1b;">
+        Pelanggan <strong><?= htmlspecialchars($customer['name'] ?? 'Unknown') ?></strong> memiliki <strong><?= $invoice_count ?></strong> tagihan yang masih ada.
+    </p>
+    <p style="margin:8px 0 0 0; font-size:12px; color:#dc2626;">
+        Untuk menghapus pelanggan, hapus atau lunasi semua tagihannya terlebih dahulu.
+    </p>
+</div>
+<?php endif; ?>
+
+<?php if ($_GET['msg'] === 'bulk_has_invoices'): 
+    $blocked_count = intval($_GET['blocked_count'] ?? 0);
+?>
+<div class="glass-panel" style="margin-bottom:20px; border-left:4px solid #f59e0b; padding:20px; background:rgba(245,158,11,0.1);">
+    <h3 style="margin:0; color:#92400e;"><i class="fas fa-exclamation-triangle"></i> Sebagian Pelanggan Tidak Bisa Dihapus</h3>
+    <p style="margin:8px 0 0 0; color:#92400e;">
+        <strong><?= $blocked_count ?></strong> pelanggan yang dipilih memiliki tagihan aktif dan tidak bisa dihapus.
+    </p>
+    <p style="margin:8px 0 0 0; font-size:12px; color:#d97706;">
+        Silakan hapus atau lunasi tagihan mereka terlebih dahulu, atau pilih pelanggan lain yang tidak memiliki tagihan.
+    </p>
+</div>
+<?php endif; ?>
 // Fetch all packages for dropdowns (Scoped by Tenant)
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
     $u_id = $_SESSION['user_id'];
@@ -207,10 +237,16 @@ if ($action === 'delete') {
         exit;
     }
 
-    // Cascade Delete
-    $db->prepare("DELETE FROM payments WHERE invoice_id IN (SELECT id FROM invoices WHERE customer_id = ? AND tenant_id = ?) AND tenant_id = ?")->execute([$id, $tenant_id, $tenant_id]);
-    $db->prepare("DELETE FROM invoice_items WHERE invoice_id IN (SELECT id FROM invoices WHERE customer_id = ? AND tenant_id = ?)")->execute([$id, $tenant_id]);
-    $db->prepare("DELETE FROM invoices WHERE customer_id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
+    // OPTION C: DELETE PREVENTION - Check for related invoices
+    $invoice_count = $db->query("SELECT COUNT(*) FROM invoices WHERE customer_id = $id AND tenant_id = $tenant_id")->fetchColumn() ?? 0;
+    
+    if ($invoice_count > 0) {
+        // Cannot delete - has related invoices
+        header("Location: index.php?page=admin_customers&msg=has_invoices&invoice_count=$invoice_count&cust_id=$id");
+        exit;
+    }
+
+    // Safe to delete - no related invoices
     $db->prepare("DELETE FROM customers WHERE id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
     
     header("Location: index.php?page=admin_customers&msg=deleted");
@@ -223,11 +259,20 @@ if ($action === 'bulk_delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $tenant_id = $_SESSION['tenant_id'] ?? 1;
         $id_placeholders = implode(',', array_fill(0, count($ids), '?'));
         
-        // Clean up everything related to these customers
-        $params = array_merge($ids, [$tenant_id, $tenant_id]);
-        $db->prepare("DELETE FROM invoice_items WHERE invoice_id IN (SELECT id FROM invoices WHERE customer_id IN ($id_placeholders) AND tenant_id = ?)")->execute(array_merge($ids, [$tenant_id]));
-        $db->prepare("DELETE FROM payments WHERE invoice_id IN (SELECT id FROM invoices WHERE customer_id IN ($id_placeholders) AND tenant_id = ?) AND tenant_id = ?")->execute($params);
-        $db->prepare("DELETE FROM invoices WHERE customer_id IN ($id_placeholders) AND tenant_id = ?")->execute(array_merge($ids, [$tenant_id]));
+        // OPTION C: DELETE PREVENTION - Check for related invoices
+        $result = $db->prepare("SELECT customer_id, COUNT(*) as cnt FROM invoices WHERE customer_id IN ($id_placeholders) AND tenant_id = ? GROUP BY customer_id")
+            ->execute(array_merge($ids, [$tenant_id]));
+        $invoiced_customers = $result->fetchAll();
+        
+        if (!empty($invoiced_customers)) {
+            // Some customers have invoices - prevent bulk delete
+            $blocked_ids = implode(',', array_column($invoiced_customers, 'customer_id'));
+            $blocked_count = count($invoiced_customers);
+            header("Location: index.php?page=admin_customers&msg=bulk_has_invoices&blocked_count=$blocked_count&blocked_ids=$blocked_ids");
+            exit;
+        }
+        
+        // Safe to delete - no related invoices
         $db->prepare("DELETE FROM customers WHERE id IN ($id_placeholders) AND tenant_id = ?")->execute(array_merge($ids, [$tenant_id]));
         
         header("Location: index.php?page=admin_customers&msg=bulk_deleted");
