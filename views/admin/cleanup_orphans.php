@@ -49,7 +49,7 @@ if (isset($db) && method_exists($db, 'query')) {
     try {
         $result = $db->query("
             SELECT 
-                i.id, i.invoice_number, i.customer_id, i.amount, i.due_date, i.status,
+                i.id, i.customer_id, i.amount, i.due_date, i.status,
                 i.created_at
             FROM invoices i
             WHERE tenant_id = $tenant_id
@@ -228,7 +228,7 @@ if (isset($db) && method_exists($db, 'query')) {
                             <th style="width: 50px;">
                                 <input type="checkbox" id="select-all" onchange="toggleAll(this)">
                             </th>
-                            <th>Invoice #</th>
+                            <th>Invoice ID</th>
                             <th>Customer ID</th>
                             <th>Amount</th>
                             <th>Due Date</th>
@@ -243,7 +243,7 @@ if (isset($db) && method_exists($db, 'query')) {
                                 <input type="checkbox" name="invoice_ids[]" value="<?= $inv['id'] ?>" 
                                        class="orphan-checkbox" onchange="updateCount()">
                             </td>
-                            <td><strong><?= htmlspecialchars($inv['invoice_number']) ?></strong></td>
+                            <td><strong>#<?= $inv['id'] ?></strong></td>
                             <td>
                                 <span style="background: #fee2e2; color: #991b1b; padding: 4px 8px; border-radius: 4px;">
                                     <?= $inv['customer_id'] ?> (MISSING)
