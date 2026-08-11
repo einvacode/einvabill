@@ -189,6 +189,14 @@ function run_database_setup($db) {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             created_by INTEGER DEFAULT 0
         );
+
+        CREATE TABLE IF NOT EXISTS auto_invoice_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_id INTEGER DEFAULT 1,
+            report_json TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(tenant_id) REFERENCES settings(id)
+        );
     ");
 
     // 2. Incremental Schema Migrations (Safety check for existing databases)

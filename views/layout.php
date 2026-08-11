@@ -173,13 +173,14 @@ if (!empty($__layout_settings['company_logo'])) {
                         <a href="index.php?page=admin_users" class="nav-link <?= $page == 'admin_users' ? 'active' : '' ?>"><i class="fas fa-user-shield"></i> Akses Pengguna</a>
 
                         <!-- Dropdown Pengaturan -->
-                        <div class="nav-dropdown <?= in_array($page, ['admin_wa_gateway', 'admin_settings', 'admin_backup', 'admin_banners', 'admin_landing']) ? 'open' : '' ?>">
+                        <div class="nav-dropdown <?= in_array($page, ['admin_wa_gateway', 'admin_auto_invoice', 'admin_settings', 'admin_backup', 'admin_banners', 'admin_landing']) ? 'open' : '' ?>">
                             <div class="nav-link dropdown-toggle" onclick="toggleDropdown(this)">
                                 <span><i class="fas fa-sliders-h"></i> Pengaturan</span>
                                 <i class="fas fa-chevron-down"></i>
                             </div>
                             <div class="dropdown-content">
                                 <a href="index.php?page=admin_wa_gateway" class="nav-link dropdown-link <?= $page == 'admin_wa_gateway' ? 'active' : '' ?>"><i class="fab fa-whatsapp" style="color:#25D366;"></i> WA Perangkat</a>
+                                <a href="index.php?page=admin_auto_invoice" class="nav-link dropdown-link <?= $page == 'admin_auto_invoice' ? 'active' : '' ?>"><i class="fas fa-magic" style="color:#8b5cf6;"></i> Auto Tagihan</a>
                                 <a href="index.php?page=admin_settings" class="nav-link dropdown-link <?= $page == 'admin_settings' ? 'active' : '' ?>"><i class="fas fa-cog"></i> Profil & Apps</a>
                                 <a href="index.php?page=admin_landing" class="nav-link dropdown-link <?= $page == 'admin_landing' ? 'active' : '' ?>"><i class="fas fa-globe"></i> Web Profil</a>
                                 <a href="index.php?page=admin_banners" class="nav-link dropdown-link <?= $page == 'admin_banners' ? 'active' : '' ?>"><i class="fas fa-scroll" style="color:var(--warning);"></i> Banner</a>

@@ -198,6 +198,9 @@ switch ($page) {
     case 'admin_areas':
         require __DIR__ . '/views/admin/areas.php';
         break;
+    case 'admin_auto_invoice':
+        require __DIR__ . '/views/admin/auto_invoice_manager.php';
+        break;
     case 'admin_assets':
         require __DIR__ . '/views/admin/assets.php';
         break;
