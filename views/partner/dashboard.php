@@ -646,6 +646,14 @@ function switchImportTab(t){
     <div class="scroll-container">
         <!-- Dashboard Home Contents -->
         
+        <!-- Invoice Reminder Widget (H-3) -->
+        <div style="margin-bottom:20px;">
+            <?php 
+                require_once __DIR__ . '/../../app/reminder_widget.php';
+                render_reminder_widget($db, $tenant_id, $user_id, 'partner', '500px');
+            ?>
+        </div>
+        
         <div style="display:grid; grid-template-columns: 1fr; gap:20px;">
             <!-- LEFT/TOP: Simplified Summary -->
             <div>
