@@ -152,6 +152,9 @@ switch ($page) {
     case 'admin_customers':
         require __DIR__ . '/views/admin/customers.php';
         break;
+    case 'admin_new_customers':
+        require __DIR__ . '/views/admin/new_customers.php';
+        break;
     case 'admin_invoices':
         require __DIR__ . '/views/admin/invoices.php';
         break;
