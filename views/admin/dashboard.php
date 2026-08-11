@@ -343,14 +343,6 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
 <!-- Secondary Components -->
 <?php require __DIR__ . '/../components/wa_broadcast.php'; ?>
 
-<!-- Invoice Reminder Widget (H-3) -->
-<div style="margin-top:20px; margin-bottom:20px;">
-    <?php 
-        require_once __DIR__ . '/../../app/reminder_widget.php';
-        render_reminder_widget($db, $tenant_id, $u_id, $u_role, '600px');
-    ?>
-</div>
-
 <!-- Daftar Tunggakan Teragregasi (Per Customer) -->
 <div class="glass-panel" style="padding: 24px; margin-top:20px; border-left: 5px solid #ef4444;">
     <div style="font-size:18px; font-weight:800; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">

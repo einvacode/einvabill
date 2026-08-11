@@ -105,7 +105,7 @@ if ($page === 'home') {
 $permissions = [
     'admin' => '*', // Full access
     'collector' => ['collector', 'admin_customers', 'admin_invoices', 'invoice_print', 'router_data', 'admin_areas', 'admin_map', 'admin_wa_gateway', 'collector_settings'],
-    'partner' => ['partner', 'partner_collection', 'partner_settings', 'partner_isp_invoices', 'partner_reports', 'admin_expenses', 'invoice_print', 'admin_invoices', 'partner_wa_device']
+    'partner' => ['partner', 'partner_collection', 'partner_settings', 'partner_isp_invoices', 'partner_reports', 'admin_expenses', 'invoice_print', 'admin_invoices']
 ];
 
 $user_role = $_SESSION['user_role'] ?? 'guest';
@@ -172,9 +172,6 @@ switch ($page) {
         break;
     case 'admin_reports':
         require __DIR__ . '/views/admin/reports.php';
-        break;
-    case 'admin_partner_dashboard':
-        require __DIR__ . '/views/admin/partner_dashboard.php';
         break;
     // 'admin_kpis' removed per user request
     case 'admin_banners':

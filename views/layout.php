@@ -197,7 +197,6 @@ if (!empty($__layout_settings['company_logo'])) {
                             <div class="dropdown-content">
                                 <a href="index.php?page=admin_reports" class="nav-link dropdown-link <?= $page == 'admin_reports' ? 'active' : '' ?>"><i class="fas fa-chart-line"></i> Keuangan</a>
                                 <a href="index.php?page=admin_report_assets" class="nav-link dropdown-link <?= $page == 'admin_report_assets' ? 'active' : '' ?>"><i class="fas fa-file-contract"></i> Aset</a>
-                                <a href="index.php?page=admin_partner_dashboard" class="nav-link dropdown-link <?= $page == 'admin_partner_dashboard' ? 'active' : '' ?>"><i class="fas fa-handshake" style="color:var(--primary);"></i> Dashboard Mitra</a>
                                 <!-- KPI removed -->
                             </div>
                         </div>
@@ -267,7 +266,6 @@ if (!empty($__layout_settings['company_logo'])) {
                 elseif($page == 'admin_wa_gateway') $topbar_title = 'Manajemen Perangkat WhatsApp';
                 elseif($page == 'admin_settings') $topbar_title = 'Pengaturan Perusahaan';
                 elseif($page == 'admin_backup') $topbar_title = 'Backup & Restore Database';
-                elseif($page == 'admin_partner_dashboard') $topbar_title = 'Dashboard Mitra - Monitoring & Statistik';
                 elseif($page == 'collector') $topbar_title = 'Dashboard Penagih';
                 elseif($page == 'partner') $topbar_title = 'Dashboard Mitra';
                 elseif($page == 'partner_settings') $topbar_title = 'Pengaturan Profil Mitra';
