@@ -78,7 +78,7 @@ try {
             <p style="color:var(--text-secondary); margin-bottom:12px;">Isi data penerima, tambahkan item, lalu klik "Buat & Cetak".</p>
 
             <form method="POST" action="index.php?page=admin_assets&action=invoice_create">
-                <input type="hidden" name="created_via" value="quick">
+                <input type="hidden" name="created_via" value="admin_manual">
                 <input type="hidden" name="customer_id" id="quick_invoice_customer_id" value="0">
                 <div class="form-group" style="margin-bottom:14px;">
                     <label>Pilih Customer Input Manual</label>

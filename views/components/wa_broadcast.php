@@ -11,6 +11,7 @@ $u_id = $_SESSION['user_id'] ?? 0;
 $scope_where = ($u_role === 'admin') ? " AND (c.created_by = 0 OR c.created_by IS NULL) " : " AND (c.created_by = $u_id) ";
 
 // Query H-3 Jatuh Tempo (Grouped by Customer)
+// Exclude admin_manual invoices (separate billing system)
 $query_wa = "
     SELECT 
         c.id as cust_id, c.customer_code, c.name, c.contact, c.package_name,
@@ -21,6 +22,7 @@ $query_wa = "
     JOIN customers c ON i.customer_id = c.id 
     WHERE i.status = 'Belum Lunas' 
       AND i.due_date <= date('now', '+3 days') 
+      AND (i.created_via IS NULL OR i.created_via NOT IN ('admin_manual', 'quick', 'external'))
       $scope_where
       $area_filter
     GROUP BY c.id

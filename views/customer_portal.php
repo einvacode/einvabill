@@ -32,6 +32,7 @@ if ($code_input) {
         $invoices = $db->query("
             SELECT i.* FROM invoices i 
             WHERE i.customer_id = " . intval($customer['id']) . "
+            AND (i.created_via IS NULL OR i.created_via NOT IN ('admin_manual', 'quick', 'external'))
             ORDER BY i.id DESC
         ")->fetchAll();
         

@@ -508,6 +508,9 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
         $collector_where = " AND c.collector_id = " . intval($filter_collector);
     }
     
+    // Exclude admin_manual invoices (separate billing system)
+    $admin_manual_where = " AND (i.created_via IS NULL OR i.created_via NOT IN ('admin_manual', 'quick', 'external')) ";
+    
     // Scoping Logic (Multi-tenancy/Silo)
     $u_id = $_SESSION['user_id'];
     $u_role = $_SESSION['user_role'];
@@ -692,9 +695,9 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
         $tenant_id = $_SESSION['tenant_id'] ?? 1;
         // Hitung total baris untuk filter ini
         if ($is_grouped) {
-            $count_q = "SELECT COUNT(DISTINCT c.id) FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.tenant_id = $tenant_id $date_where $status_where $collector_where $scope_where $type_where";
+            $count_q = "SELECT COUNT(DISTINCT c.id) FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.tenant_id = $tenant_id $date_where $status_where $collector_where $scope_where $type_where $admin_manual_where";
         } else {
-            $count_q = "SELECT COUNT(*) FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.tenant_id = $tenant_id $date_where $status_where $collector_where $scope_where $type_where";
+            $count_q = "SELECT COUNT(*) FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.tenant_id = $tenant_id $date_where $status_where $collector_where $scope_where $type_where $admin_manual_where";
         }
         $total_rows = $db->query($count_q)->fetchColumn();
         $total_pages = ceil($total_rows / $items_per_page);
@@ -714,7 +717,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                     0 as item_count
                 FROM invoices i
                 JOIN customers c ON i.customer_id = c.id
-                WHERE i.tenant_id = $tenant_id $date_where $status_where $collector_where $scope_where $type_where
+               WHERE i.tenant_id = $tenant_id $date_where $status_where $collector_where $scope_where $type_where $admin_manual_where
                 GROUP BY c.id
                 ORDER BY due_date ASC
                 LIMIT $items_per_page OFFSET $offset
@@ -725,7 +728,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                 (SELECT COUNT(*) FROM invoice_items WHERE invoice_id = i.id) as item_count
                 FROM invoices i
                 JOIN customers c ON i.customer_id = c.id
-                WHERE i.tenant_id = $tenant_id $date_where $status_where $collector_where $scope_where $type_where
+               WHERE i.tenant_id = $tenant_id $date_where $status_where $collector_where $scope_where $type_where $admin_manual_where
                 ORDER BY i.id DESC
                 LIMIT $items_per_page OFFSET $offset
             ")->fetchAll();
