@@ -847,6 +847,9 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                     <span class="badge" style="background:var(--nav-active-bg); color:var(--primary); border:1px solid var(--glass-border); font-size:10px; font-weight:700; border-radius:6px;"><?= $package_display ?></span>
                     <span style="font-size:11px; color:var(--text-secondary); opacity:0.8;">#<?= $cust_id_display ?></span>
                 </div>
+                <div style="margin-top:6px;">
+                    <?= render_wa_status_badge($db, $inv['id']) ?>
+                </div>
             </div>
 
             <div class="invoice-mobile-summary-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:18px; padding:12px; background:rgba(255,255,255,0.03); border-radius:12px;">
@@ -1045,6 +1048,9 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                                 <span style="font-size:11px; color:var(--text-secondary); font-family:monospace; opacity:0.7;">INV-<?= str_pad($inv['id'], 5, "0", STR_PAD_LEFT) ?></span>
                             <?php endif; ?>
                             <span style="font-size:11px; color:var(--text-secondary); opacity:0.7;"><i class="fas fa-box" style="font-size:9px;"></i> <?= $package_display ?></span>
+                        </div>
+                        <div style="margin-top:4px;">
+                            <?= render_wa_status_badge($db, $inv['id']) ?>
                         </div>
                     </td>
                     <td style="vertical-align: middle; font-size:13px; color:var(--text-secondary);">

@@ -15,7 +15,8 @@ $query_wa = "
     SELECT 
         c.id as cust_id, c.customer_code, c.name, c.contact, c.package_name,
         SUM(i.amount) as total_current_amount,
-        MIN(i.due_date) as nearest_due
+        MIN(i.due_date) as nearest_due,
+        MIN(i.id) as first_invoice_id
     FROM invoices i 
     JOIN customers c ON i.customer_id = c.id 
     WHERE i.status = 'Belum Lunas' 
@@ -99,7 +100,9 @@ foreach($targets as $t) {
     $broadcast_data[] = [
         'name' => htmlspecialchars($t['name']),
         'phone' => htmlspecialchars($wa_number),
-        'text' => urlencode($msg)
+        'text' => urlencode($msg),
+        'customer_id' => $t['cust_id'],
+        'invoice_id' => $t['first_invoice_id']
     ];
 }
 ?>
@@ -203,6 +206,23 @@ function confirmSent() {
     document.getElementById(iconId).className = "fas fa-check-circle text-success";
     document.getElementById(rowId).style.background = "rgba(16, 185, 129, 0.1)";
     
+    // Log WA message to database
+    let target = broadcastData[broadcastIndex];
+    if (target.customer_id && target.invoice_id) {
+        fetch('api_log_wa_message.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                invoice_id: target.invoice_id,
+                customer_id: target.customer_id,
+                customer_name: target.name,
+                phone_number: target.phone,
+                message_type: 'reminder',
+                status: 'sent'
+            })
+        }).catch(err => console.log('WA log error:', err));
+    }
+    
     broadcastIndex++;
     updateProgress();
     executeNextBroadcast();
@@ -253,6 +273,22 @@ function executeNextBroadcast() {
         sendWAGateway(target.phone, decodeURIComponent(target.text), null, null).then(result => {
             document.getElementById(iconId).className = "fas fa-check-circle text-success";
             document.getElementById(`bc_row_${broadcastIndex}`).style.background = "rgba(16, 185, 129, 0.1)";
+            
+            // Log WA message to database
+            if (target.customer_id && target.invoice_id) {
+                fetch('api_log_wa_message.php', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        invoice_id: target.invoice_id,
+                        customer_id: target.customer_id,
+                        customer_name: target.name,
+                        phone_number: target.phone,
+                        message_type: 'reminder',
+                        status: 'sent'
+                    })
+                }).catch(err => console.log('WA log error:', err));
+            }
             
             broadcastIndex++;
             updateProgress();

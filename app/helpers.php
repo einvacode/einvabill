@@ -49,3 +49,53 @@ if (!function_exists('parse_wa_template')) {
         return $message;
     }
 }
+
+if (!function_exists('get_wa_delivery_status')) {
+    function get_wa_delivery_status($db, $invoice_id) {
+        try {
+            $stmt = $db->prepare("
+                SELECT * FROM wa_message_logs 
+                WHERE invoice_id = ? 
+                ORDER BY sent_at DESC 
+                LIMIT 1
+            ");
+            $stmt->execute([$invoice_id]);
+            $log = $stmt->fetch();
+            
+            if ($log) {
+                return [
+                    'status' => $log['status'] ?? 'sent',
+                    'sent_at' => $log['sent_at'] ?? '',
+                    'customer_name' => $log['customer_name'] ?? '',
+                    'phone' => $log['phone_number'] ?? ''
+                ];
+            }
+            return null;
+        } catch (Exception $e) {
+            return null;
+        }
+    }
+}
+
+if (!function_exists('render_wa_status_badge')) {
+    function render_wa_status_badge($db, $invoice_id) {
+        $log = get_wa_delivery_status($db, $invoice_id);
+        
+        if (!$log) {
+            return '<span style="font-size:11px; color:#999;">ℹ Belum terkirim</span>';
+        }
+        
+        $sent_time = date('d M Y H:i', strtotime($log['sent_at']));
+        $status = $log['status'] ?? 'sent';
+        
+        if ($status === 'sent') {
+            return '<span style="font-size:11px; color:#10b981; font-weight:600;">✅ Terkirim ' . $sent_time . '</span>';
+        } elseif ($status === 'delivered') {
+            return '<span style="font-size:11px; color:#0ea5e9; font-weight:600;">✔✔ Diterima ' . $sent_time . '</span>';
+        } elseif ($status === 'read') {
+            return '<span style="font-size:11px; color:#8b5cf6; font-weight:600;">👁 Dibaca ' . $sent_time . '</span>';
+        } else {
+            return '<span style="font-size:11px; color:#ef4444;">❌ Gagal ' . $sent_time . '</span>';
+        }
+    }
+}

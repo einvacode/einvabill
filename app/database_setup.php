@@ -197,6 +197,23 @@ function run_database_setup($db) {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(tenant_id) REFERENCES settings(id)
         );
+
+        CREATE TABLE IF NOT EXISTS wa_message_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            invoice_id INTEGER NOT NULL,
+            customer_id INTEGER NOT NULL,
+            customer_name TEXT,
+            phone_number TEXT,
+            message_type TEXT DEFAULT 'reminder',
+            status TEXT DEFAULT 'sent',
+            sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            sent_by INTEGER,
+            notes TEXT,
+            tenant_id INTEGER DEFAULT 1,
+            FOREIGN KEY(invoice_id) REFERENCES invoices(id),
+            FOREIGN KEY(customer_id) REFERENCES customers(id),
+            FOREIGN KEY(sent_by) REFERENCES users(id)
+        );
     ");
 
     // 2. Incremental Schema Migrations (Safety check for existing databases)
@@ -252,15 +269,19 @@ function run_database_setup($db) {
     $db->exec("CREATE INDEX IF NOT EXISTS idx_payments_tenant_invoice_date ON payments(tenant_id, invoice_id, payment_date)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_users_tenant_role ON users(tenant_id, role)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_invoice_items_invoice ON invoice_items(invoice_id)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_wa_message_logs_invoice ON wa_message_logs(invoice_id)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_wa_message_logs_customer ON wa_message_logs(customer_id)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_wa_message_logs_tenant_sent ON wa_message_logs(tenant_id, sent_at)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_wa_message_logs_status ON wa_message_logs(status)");
 
     // 4. Seed Data
     // Default Settings
     $check_settings = $db->query("SELECT COUNT(*) FROM settings")->fetchColumn();
     if ($check_settings == 0) {
         $db->exec("INSERT INTO settings (id, company_name, company_tagline, company_address, wa_template, landing_hero_title, landing_hero_text, db_version) 
-                  VALUES (1, 'EinvaBill ISP', 'Internet Cepat & Layanan Prima', 'Alamat Perusahaan Anda', 'Halo {nama}, tagihan Anda sebesar {tagihan} sudah terbit.', 'Koneksi Super Cepat & Stabil', 'Solusi internet dan IT untuk kebutuhan personal dan korporasi.', 22)");
+                  VALUES (1, 'EinvaBill ISP', 'Internet Cepat & Layanan Prima', 'Alamat Perusahaan Anda', 'Halo {nama}, tagihan Anda sebesar {tagihan} sudah terbit.', 'Koneksi Super Cepat & Stabil', 'Solusi internet dan IT untuk kebutuhan personal dan korporasi.', 23)");
     } else {
-        $db->exec("UPDATE settings SET db_version = 22 WHERE id = 1");
+        $db->exec("UPDATE settings SET db_version = 23 WHERE id = 1");
     }
 
     // Default Users
