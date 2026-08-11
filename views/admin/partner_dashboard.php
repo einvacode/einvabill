@@ -222,8 +222,6 @@ $summary_unpaid = $db->query("
     }
 }
 </style>
-
-<div class="content-wrapper">
     <!-- Page Header -->
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
         <div>
@@ -359,7 +357,6 @@ $summary_unpaid = $db->query("
 
         <?php endif; ?>
     </div>
-</div>
 
 <script>
 function refreshDashboard() {
