@@ -26,6 +26,9 @@ if ($action === 'delete_invoices' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $ids_str = implode(',', array_map('intval', $invoice_ids));
         
         try {
+            // Disable foreign key constraints temporarily
+            $db->query("PRAGMA foreign_keys = OFF");
+            
             // Delete associated payments first (if any)
             if (method_exists($db, 'query')) {
                 $db->query("DELETE FROM payments WHERE invoice_id IN ($ids_str)");
@@ -33,10 +36,18 @@ if ($action === 'delete_invoices' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Then delete invoices
                 $db->query("DELETE FROM invoices WHERE id IN ($ids_str) AND tenant_id = $tenant_id");
                 
+                // Re-enable foreign key constraints
+                $db->query("PRAGMA foreign_keys = ON");
+                
                 $result_message = "✅ Successfully deleted " . count($invoice_ids) . " orphan invoice(s)";
                 $result_type = 'success';
             }
         } catch (Exception $e) {
+            // Re-enable foreign keys even on error
+            try {
+                $db->query("PRAGMA foreign_keys = ON");
+            } catch (Exception $e2) {}
+            
             $result_message = "❌ Error deleting invoices: " . $e->getMessage();
             $result_type = 'error';
         }
