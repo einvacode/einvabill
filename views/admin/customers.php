@@ -118,6 +118,9 @@ if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $lng = $_POST['lng'] ?? '';
     $odp_id = intval($_POST['odp_id'] ?? 0);
     $odp_port = intval($_POST['odp_port'] ?? 0);
+    $ppn_active = isset($_POST['ppn_active']) ? 1 : 0;
+    $bhp_active = isset($_POST['bhp_active']) ? 1 : 0;
+    $uso_active = isset($_POST['uso_active']) ? 1 : 0;
     
     // Auto-generate unique random customer code
     $stmt_check = $db->prepare("SELECT COUNT(*) FROM customers WHERE customer_code = ?");
@@ -128,9 +131,10 @@ if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
     $created_by = $_SESSION['user_id'];
+    $invoice_total = compute_customer_invoice_total($monthly_fee, $ppn_active, $bhp_active, $uso_active)['total'];
     
-    $stmt = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, package_name, monthly_fee, ip_address, type, registration_date, billing_date, area, router_id, pppoe_name, collector_id, lat, lng, odp_id, odp_port, created_by, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$customer_code, $name, $address, $contact, $package_name, $monthly_fee, $ip_address, $type, $registration_date, $billing_date, $area, $router_id, $pppoe_name, $collector_id, $lat, $lng, $odp_id, $odp_port, $created_by, $tenant_id]);
+    $stmt = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, package_name, monthly_fee, ip_address, type, registration_date, billing_date, area, router_id, pppoe_name, collector_id, lat, lng, odp_id, odp_port, created_by, tenant_id, ppn_active, bhp_active, uso_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$customer_code, $name, $address, $contact, $package_name, $monthly_fee, $ip_address, $type, $registration_date, $billing_date, $area, $router_id, $pppoe_name, $collector_id, $lat, $lng, $odp_id, $odp_port, $created_by, $tenant_id, $ppn_active, $bhp_active, $uso_active]);
     $id = $db->lastInsertId();
 
     // SELECTIVE AUTOMATIC PAYMENT ON REGISTRATION
@@ -138,7 +142,7 @@ if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($type === 'customer') {
             // RUMAHAN: Tagihan Terbit di Hari Registrasi (Belum Lunas - perlu konfirmasi manual)
             $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at, tenant_id) VALUES (?, ?, ?, 'Belum Lunas', ?, ?)");
-            $stmt_inv->execute([$id, $monthly_fee, $registration_date, date('Y-m-d H:i:s'), $tenant_id]);
+            $stmt_inv->execute([$id, $invoice_total, $registration_date, date('Y-m-d H:i:s'), $tenant_id]);
         } else {
             // MITRA: Bayar Setelah 30 Hari / Sesuai Tanggal Tagihan Bulan Depan (Belum Lunas)
             $next_month = date('Y-m', strtotime("+1 month"));
@@ -146,7 +150,7 @@ if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $due_date = "{$next_month}-{$bday}";
             
             $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at, tenant_id) VALUES (?, ?, ?, 'Belum Lunas', ?, ?)");
-            $stmt_inv->execute([$id, $monthly_fee, $due_date, date('Y-m-d H:i:s'), $tenant_id]);
+            $stmt_inv->execute([$id, $invoice_total, $due_date, date('Y-m-d H:i:s'), $tenant_id]);
         }
     }
     
@@ -187,6 +191,9 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $lng = $_POST['lng'] ?? '';
     $odp_id = intval($_POST['odp_id'] ?? 0);
     $odp_port = intval($_POST['odp_port'] ?? 0);
+    $ppn_active = isset($_POST['ppn_active']) ? 1 : 0;
+    $bhp_active = isset($_POST['bhp_active']) ? 1 : 0;
+    $uso_active = isset($_POST['uso_active']) ? 1 : 0;
     
     // Multi-Tenancy Ownership Check
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
@@ -198,11 +205,12 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
-    $stmt = $db->prepare("UPDATE customers SET name=?, address=?, contact=?, package_name=?, monthly_fee=?, ip_address=?, type=?, registration_date=?, billing_date=?, area=?, router_id=?, pppoe_name=?, collector_id=?, lat=?, lng=?, odp_id=?, odp_port=? WHERE id=? AND tenant_id=?");
-    $stmt->execute([$name, $address, $contact, $package_name, $monthly_fee, $ip_address, $type, $registration_date, $billing_date, $area, $router_id, $pppoe_name, $collector_id, $lat, $lng, $odp_id, $odp_port, $id, $tenant_id]);
+    $stmt = $db->prepare("UPDATE customers SET name=?, address=?, contact=?, package_name=?, monthly_fee=?, ip_address=?, type=?, registration_date=?, billing_date=?, area=?, router_id=?, pppoe_name=?, collector_id=?, lat=?, lng=?, odp_id=?, odp_port=?, ppn_active=?, bhp_active=?, uso_active=? WHERE id=? AND tenant_id=?");
+    $stmt->execute([$name, $address, $contact, $package_name, $monthly_fee, $ip_address, $type, $registration_date, $billing_date, $area, $router_id, $pppoe_name, $collector_id, $lat, $lng, $odp_id, $odp_port, $ppn_active, $bhp_active, $uso_active, $id, $tenant_id]);
 
-    // OPTIMIZATION: Sync existing unpaid invoices with the new monthly fee
-    $db->prepare("UPDATE invoices SET amount = ? WHERE customer_id = ? AND status = 'Belum Lunas' AND tenant_id = ?")->execute([$monthly_fee, $id, $tenant_id]);
+    // OPTIMIZATION: Sync existing unpaid invoices with the new monthly fee, including active taxes
+    $invoice_total = compute_customer_invoice_total($monthly_fee, $ppn_active, $bhp_active, $uso_active)['total'];
+    $db->prepare("UPDATE invoices SET amount = ? WHERE customer_id = ? AND status = 'Belum Lunas' AND tenant_id = ?")->execute([$invoice_total, $id, $tenant_id]);
     
     // Process additional arrears if any during update
     $arrears_months = intval($_POST['arrears_months'] ?? 0);
@@ -360,7 +368,7 @@ if ($action === 'export') {
     $output = fopen('php://output', 'w');
     fputs($output, chr(0xEF) . chr(0xBB) . chr(0xBF)); // BOM for Excel
     
-    fputcsv($output, ['Kode', 'Nama', 'Tipe', 'Alamat', 'Kontak', 'Paket', 'Biaya Bulanan', 'IP Address', 'Area']);
+    fputcsv($output, ['Kode', 'Nama', 'Tipe', 'Alamat', 'Kontak', 'Paket', 'Biaya Bulanan', 'IP Address', 'Area', 'PPN', 'BHP', 'USO']);
     
     foreach ($customers_export as $row) {
         fputcsv($output, [
@@ -372,8 +380,11 @@ if ($action === 'export') {
             $row['package_name'],
             $row['monthly_fee'],
             $row['ip_address'],
-            $row['area']
-        ]);
+           $row['area'],
+           !empty($row['ppn_active']) ? 'Aktif' : 'Nonaktif',
+           !empty($row['bhp_active']) ? 'Aktif' : 'Nonaktif',
+           !empty($row['uso_active']) ? 'Aktif' : 'Nonaktif'
+       ]);
     }
     fclose($output);
     exit;
@@ -1288,7 +1299,7 @@ document.addEventListener("DOMContentLoaded", function() {
     } else {
         $u_role = $_SESSION['user_role'] ?? 'admin';
         $default_type = ($u_role === 'partner') ? 'customer' : ($_GET['type'] ?? 'customer');
-        $c = ['type'=>$default_type, 'registration_date'=>date('Y-m-d'), 'billing_date'=>'', 'router_id'=>0, 'pppoe_name'=>'', 'name'=>'', 'address'=>'', 'contact'=>'', 'package_name'=>'', 'monthly_fee'=>'', 'ip_address'=>'', 'area'=>''];
+        $c = ['type'=>$default_type, 'registration_date'=>date('Y-m-d'), 'billing_date'=>'', 'router_id'=>0, 'pppoe_name'=>'', 'name'=>'', 'address'=>'', 'contact'=>'', 'package_name'=>'', 'monthly_fee'=>'', 'ip_address'=>'', 'area'=>'', 'ppn_active'=>0, 'bhp_active'=>0, 'uso_active'=>0];
     }
 ?>
 <div class="glass-panel" style="padding: 24px; max-width:600px; margin:0 auto;">
@@ -1415,6 +1426,24 @@ document.addEventListener("DOMContentLoaded", function() {
             </div>
             <input type="hidden" name="area" value="">
         <?php endif; ?>
+
+        <div class="form-group" style="margin-top:18px;">
+            <label>Aktivasi Fitur Tambahan</label>
+            <div class="flex" style="gap:10px; flex-wrap:wrap; margin-top:8px;">
+                <label style="display:flex; align-items:center; gap:8px; background:var(--hover-bg); padding:8px 12px; border-radius:10px; min-width:110px;">
+                    <input type="checkbox" name="ppn_active" value="1" <?= !empty($c['ppn_active']) ? 'checked' : '' ?>>
+                    <span>PPN</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:8px; background:var(--hover-bg); padding:8px 12px; border-radius:10px; min-width:110px;">
+                    <input type="checkbox" name="bhp_active" value="1" <?= !empty($c['bhp_active']) ? 'checked' : '' ?>>
+                    <span>BHP</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:8px; background:var(--hover-bg); padding:8px 12px; border-radius:10px; min-width:110px;">
+                    <input type="checkbox" name="uso_active" value="1" <?= !empty($c['uso_active']) ? 'checked' : '' ?>>
+                    <span>USO</span>
+                </label>
+            </div>
+        </div>
 
         <?php if ($u_role === 'admin'): ?>
         <!-- NEW: Infra & GIS Section -->

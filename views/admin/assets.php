@@ -183,11 +183,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             }
                         } catch (Exception $e) {}
                     }
-                    if ($amount <= 0) $amount = floatval($customer['monthly_fee'] ?? 0);
+                    $base_amount = floatval($customer['monthly_fee'] ?? 0);
+                    $customer_tax_total = compute_customer_invoice_total($base_amount, $customer['ppn_active'] ?? 0, $customer['bhp_active'] ?? 0, $customer['uso_active'] ?? 0)['total'];
+                    if ($amount <= 0) $amount = $customer_tax_total;
                     if (empty($_POST['item_desc'])) {
                         $_POST['item_desc'] = [trim($customer['package_name'] ?? 'Tagihan Layanan') ?: 'Tagihan Layanan'];
                         $_POST['item_qty'] = [1];
-                        $_POST['item_unit'] = [$amount > 0 ? $amount : floatval($customer['monthly_fee'] ?? 0)];
+                        $_POST['item_unit'] = [$amount > 0 ? $amount : $base_amount];
                         $_POST['item_amount'] = [floatval($_POST['item_unit'][0] ?? $amount)];
                     }
                 }

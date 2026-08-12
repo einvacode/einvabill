@@ -210,7 +210,37 @@ if (($invoice['status'] ?? '') === 'Lunas') {
                 </div>
                 <div class="divider"></div>
             <?php endif; ?>
-            
+
+            <?php
+                $customer_tax_summary = null;
+                if (empty($invoice_items) && !empty($invoice['customer_id'])) {
+                    try {
+                        $cust_tax = $db->prepare("SELECT ppn_active, bhp_active, uso_active FROM customers WHERE id = ? LIMIT 1");
+                        $cust_tax->execute([intval($invoice['customer_id'])]);
+                        $cust_row = $cust_tax->fetch();
+                        if ($cust_row) {
+                            $customer_tax_summary = compute_customer_invoice_total_from_amount(floatval($invoice['amount']), $cust_row['ppn_active'] ?? 0, $cust_row['bhp_active'] ?? 0, $cust_row['uso_active'] ?? 0);
+                        }
+                    } catch (Exception $e) {
+                        $customer_tax_summary = null;
+                    }
+                }
+            ?>
+
+            <?php if ($customer_tax_summary && !empty($customer_tax_summary['taxes'])): ?>
+                <div class="mb-2 flex-between">
+                    <span style="font-size:13px;">Subtotal:</span>
+                    <span style="font-size:13px;">Rp <?= number_format($customer_tax_summary['base_amount'], 0, ',', '.') ?></span>
+                </div>
+                <?php foreach ($customer_tax_summary['taxes'] as $tax_item): ?>
+                    <div class="mb-2 flex-between" style="color:#475569;">
+                        <span style="font-size:12px;"><?= htmlspecialchars($tax_item['label']) ?> (<?= number_format($tax_item['rate'] * 100, 0, ',', '.') ?>%):</span>
+                        <span style="font-size:12px;">Rp <?= number_format($tax_item['amount'], 0, ',', '.') ?></span>
+                    </div>
+                <?php endforeach; ?>
+                <div class="divider"></div>
+            <?php endif; ?>
+             
             <div class="mb-2 flex-between">
                 <span style="font-size:13px;">Tagihan Bulan Ini:</span>
                 <span style="font-size:13px;">Rp <?= number_format($invoice['amount'], 0, ',', '.') ?></span>

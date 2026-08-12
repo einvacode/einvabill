@@ -64,6 +64,71 @@ function get_app_url($custom = null) {
     return $base;
 }
 
+function get_customer_tax_rates() {
+    return [
+        'ppn' => ['label' => 'PPN', 'rate' => 0.11],
+        'bhp' => ['label' => 'BHP', 'rate' => 0.02],
+        'uso' => ['label' => 'USO', 'rate' => 0.01],
+    ];
+}
+
+function compute_customer_invoice_total($base_amount, $ppn_active = 0, $bhp_active = 0, $uso_active = 0) {
+    $base_amount = max(0, (float) $base_amount);
+    $taxes = [
+        'ppn' => ['label' => 'PPN', 'active' => (int) $ppn_active, 'rate' => 0.11],
+        'bhp' => ['label' => 'BHP', 'active' => (int) $bhp_active, 'rate' => 0.02],
+        'uso' => ['label' => 'USO', 'active' => (int) $uso_active, 'rate' => 0.01],
+    ];
+
+    $tax_total = 0.0;
+    $items = [];
+    foreach ($taxes as $key => $config) {
+        if (!$config['active']) {
+            continue;
+        }
+
+        $amount = round($base_amount * $config['rate'], 2);
+        $tax_total += $amount;
+        $items[] = [
+            'code' => $key,
+            'label' => $config['label'],
+            'rate' => $config['rate'],
+            'amount' => $amount,
+        ];
+    }
+
+    return [
+        'base_amount' => round($base_amount, 2),
+        'tax_total' => round($tax_total, 2),
+        'total' => round($base_amount + $tax_total, 2),
+        'taxes' => $items,
+    ];
+}
+
+function compute_customer_invoice_total_from_amount($invoice_amount, $ppn_active = 0, $bhp_active = 0, $uso_active = 0) {
+    $invoice_amount = max(0, (float) $invoice_amount);
+    $tax_rates = [
+        'ppn' => ['active' => (int) $ppn_active, 'rate' => 0.11],
+        'bhp' => ['active' => (int) $bhp_active, 'rate' => 0.02],
+        'uso' => ['active' => (int) $uso_active, 'rate' => 0.01],
+    ];
+
+    $multiplier = 1.0;
+    foreach ($tax_rates as $config) {
+        if (!empty($config['active'])) {
+            $multiplier += $config['rate'];
+        }
+    }
+
+    $base_amount = $multiplier > 0 ? round($invoice_amount / $multiplier, 2) : round($invoice_amount, 2);
+    $tax_total = round(max(0, $invoice_amount - $base_amount), 2);
+    $breakdown = compute_customer_invoice_total($base_amount, $ppn_active, $bhp_active, $uso_active);
+    $breakdown['base_amount'] = $base_amount;
+    $breakdown['tax_total'] = $tax_total;
+    $breakdown['total'] = round($invoice_amount, 2);
+    return $breakdown;
+}
+
 // --- DATABASE INITIALIZATION ---
 $db_file = __DIR__ . '/../database.sqlite';
 
@@ -100,7 +165,7 @@ $db->exec("PRAGMA optimize;");
 $db->exec("PRAGMA threads = 4;");
 
 // --- VERSIONED SCHEMA MANAGEMENT ---
-define('APP_DB_VERSION', 22); // Sync with database_setup.php
+define('APP_DB_VERSION', 24); // Sync with database_setup.php
 define('APP_VERSION', '2.34.1-1');
 
 $current_db_ver = 0;

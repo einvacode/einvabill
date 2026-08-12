@@ -44,6 +44,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'add_customer' && $_SERVER['RE
     $registration_date = $_POST['registration_date'] ?: date('Y-m-d');
     $billing_date = intval($_POST['billing_date'] ?: 1);
     $area = $_POST['area'] ?? '';
+    $ppn_active = isset($_POST['ppn_active']) ? 1 : 0;
+    $bhp_active = isset($_POST['bhp_active']) ? 1 : 0;
+    $uso_active = isset($_POST['uso_active']) ? 1 : 0;
     
     // Auto-generate unique random customer code
     $stmt_check = $db->prepare("SELECT COUNT(*) FROM customers WHERE customer_code = ? AND tenant_id = ?");
@@ -54,14 +57,15 @@ if (isset($_GET['action']) && $_GET['action'] === 'add_customer' && $_SERVER['RE
     
     $db->beginTransaction();
     try {
-        $stmt = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, package_name, monthly_fee, type, registration_date, billing_date, area, created_by, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$customer_code, $name, $address, $contact, $package_name, $monthly_fee, $type, $registration_date, $billing_date, $area, $user_id, $tenant_id]);
+        $stmt = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, package_name, monthly_fee, type, registration_date, billing_date, area, created_by, tenant_id, ppn_active, bhp_active, uso_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$customer_code, $name, $address, $contact, $package_name, $monthly_fee, $type, $registration_date, $billing_date, $area, $user_id, $tenant_id, $ppn_active, $bhp_active, $uso_active]);
         $new_id = $db->lastInsertId();
+        $invoice_total = compute_customer_invoice_total($monthly_fee, $ppn_active, $bhp_active, $uso_active)['total'];
 
         // Initial Invoice for current month
         if ($monthly_fee > 0) {
             $stmt_inv = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at, tenant_id) VALUES (?, ?, ?, 'Belum Lunas', ?, ?)");
-            $stmt_inv->execute([$new_id, $monthly_fee, $registration_date, date('Y-m-d H:i:s'), $tenant_id]);
+            $stmt_inv->execute([$new_id, $invoice_total, $registration_date, date('Y-m-d H:i:s'), $tenant_id]);
         }
         $db->commit();
     } catch (Exception $e) {
@@ -84,6 +88,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'edit_customer' && $_SERVER['R
     $monthly_fee = floatval($_POST['monthly_fee']);
     $billing_date = intval($_POST['billing_date'] ?: 1);
     $area = $_POST['area'] ?? '';
+    $ppn_active = isset($_POST['ppn_active']) ? 1 : 0;
+    $bhp_active = isset($_POST['bhp_active']) ? 1 : 0;
+    $uso_active = isset($_POST['uso_active']) ? 1 : 0;
     
     // Ownership Check: Only allow editing own customers
     $check = $db->query("SELECT id FROM customers WHERE id = $id AND created_by = $user_id AND tenant_id = $tenant_id")->fetchColumn();
@@ -92,11 +99,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'edit_customer' && $_SERVER['R
         exit;
     }
     
-    $stmt = $db->prepare("UPDATE customers SET name=?, address=?, contact=?, package_name=?, monthly_fee=?, billing_date=?, area=? WHERE id=? AND created_by=? AND tenant_id=?");
-    $stmt->execute([$name, $address, $contact, $package_name, $monthly_fee, $billing_date, $area, $id, $user_id, $tenant_id]);
+    $stmt = $db->prepare("UPDATE customers SET name=?, address=?, contact=?, package_name=?, monthly_fee=?, billing_date=?, area=?, ppn_active=?, bhp_active=?, uso_active=? WHERE id=? AND created_by=? AND tenant_id=?");
+    $stmt->execute([$name, $address, $contact, $package_name, $monthly_fee, $billing_date, $area, $ppn_active, $bhp_active, $uso_active, $id, $user_id, $tenant_id]);
+    $invoice_total = compute_customer_invoice_total($monthly_fee, $ppn_active, $bhp_active, $uso_active)['total'];
     
-    // Sync existing unpaid invoices with the new monthly fee
-    $db->prepare("UPDATE invoices SET amount = ? WHERE customer_id = ? AND status = 'Belum Lunas' AND tenant_id = ?")->execute([$monthly_fee, $id, $tenant_id]);
+    // Sync existing unpaid invoices with the new monthly fee, including any active taxes
+    $db->prepare("UPDATE invoices SET amount = ? WHERE customer_id = ? AND status = 'Belum Lunas' AND tenant_id = ?")->execute([$invoice_total, $id, $tenant_id]);
     
     header("Location: index.php?page=partner&msg=updated&t=" . time());
     exit;
@@ -256,7 +264,7 @@ if ($action === 'export_csv') {
     $output = fopen('php://output', 'w');
     fputs($output, chr(0xEF) . chr(0xBB) . chr(0xBF)); // BOM for Excel
     
-    fputcsv($output, ['Kode', 'Nama', 'Alamat', 'Kontak', 'Paket', 'Biaya Bulanan', 'IP Address', 'Tgl Daftar', 'Tgl Tagihan', 'Area']);
+    fputcsv($output, ['Kode', 'Nama', 'Alamat', 'Kontak', 'Paket', 'Biaya Bulanan', 'IP Address', 'Tgl Daftar', 'Tgl Tagihan', 'Area', 'PPN', 'BHP', 'USO']);
     
     foreach ($customers_export as $row) {
         fputcsv($output, [
@@ -269,7 +277,10 @@ if ($action === 'export_csv') {
             $row['ip_address'],
             $row['registration_date'],
             $row['billing_date'],
-            $row['area']
+            $row['area'],
+            !empty($row['ppn_active']) ? 'Aktif' : 'Nonaktif',
+            !empty($row['bhp_active']) ? 'Aktif' : 'Nonaktif',
+            !empty($row['uso_active']) ? 'Aktif' : 'Nonaktif'
         ]);
     }
     fclose($output);
@@ -809,7 +820,10 @@ function switchImportTab(t){
                                                     "package_name" => $cust["package_name"],
                                                     "monthly_fee" => $cust["monthly_fee"],
                                                     "billing_date" => $cust["billing_date"],
-                                                    "area" => $cust["area"]
+                                                    "area" => $cust["area"],
+                                                    "ppn_active" => $cust["ppn_active"] ?? 0,
+                                                    "bhp_active" => $cust["bhp_active"] ?? 0,
+                                                    "uso_active" => $cust["uso_active"] ?? 0
                                                 ], JSON_HEX_APOS | JSON_HEX_QUOT) ?>)' class="btn btn-sm" style="background:rgba(var(--primary-rgb), 0.1); color:var(--primary); padding:5px 8px;" title="Edit Pelanggan"><i class="fas fa-pen"></i></button>
                                                 <button onclick="PartnerPage.deleteCustomer(<?= $cust['id'] ?>, '<?= addslashes($cust['name']) ?>')" class="btn btn-sm" style="background:rgba(239,68,68,0.1); color:var(--danger); padding:5px 8px;" title="Hapus Pelanggan"><i class="fas fa-trash"></i></button>
                                                 <?php 
@@ -929,6 +943,9 @@ window.PartnerPage = (function(){
         document.getElementById('edit_monthly_fee').value = data.monthly_fee || 0;
         document.getElementById('edit_billing_date').value = data.billing_date || 1;
         document.getElementById('edit_area').value = data.area || '';
+        document.getElementById('edit_ppn_active').checked = !!parseInt(data.ppn_active || 0, 10);
+        document.getElementById('edit_bhp_active').checked = !!parseInt(data.bhp_active || 0, 10);
+        document.getElementById('edit_uso_active').checked = !!parseInt(data.uso_active || 0, 10);
         document.getElementById('editCustomerModal').style.display = 'flex';
     }
     function syncEditPrice(select){ const fee = select.options[select.selectedIndex].getAttribute('data-fee'); if(fee){ document.getElementById('edit_monthly_fee').value = fee; } }
@@ -1010,6 +1027,23 @@ window.PartnerPage = (function(){
                     <div class="form-group" style="grid-column: span 2;">
                         <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Alamat Lengkap</label>
                         <textarea name="address" class="form-control" rows="3" placeholder="Jl. Contoh Nomor 1..." style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;"></textarea>
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Aktivasi Fitur Tambahan</label>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                            <label style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); border-radius:10px; padding:8px 12px; min-width:110px;">
+                                <input type="checkbox" name="ppn_active" value="1">
+                                <span>PPN</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); border-radius:10px; padding:8px 12px; min-width:110px;">
+                                <input type="checkbox" name="bhp_active" value="1">
+                                <span>BHP</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); border-radius:10px; padding:8px 12px; min-width:110px;">
+                                <input type="checkbox" name="uso_active" value="1">
+                                <span>USO</span>
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1094,6 +1128,23 @@ window.PartnerPage = (function(){
                     <div class="form-group" style="grid-column: span 2;">
                         <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Alamat Lengkap</label>
                         <textarea name="address" id="edit_address" class="form-control" rows="3" style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;"></textarea>
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Aktivasi Fitur Tambahan</label>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                            <label style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); border-radius:10px; padding:8px 12px; min-width:110px;">
+                                <input type="checkbox" name="ppn_active" id="edit_ppn_active" value="1">
+                                <span>PPN</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); border-radius:10px; padding:8px 12px; min-width:110px;">
+                                <input type="checkbox" name="bhp_active" id="edit_bhp_active" value="1">
+                                <span>BHP</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); border-radius:10px; padding:8px 12px; min-width:110px;">
+                                <input type="checkbox" name="uso_active" id="edit_uso_active" value="1">
+                                <span>USO</span>
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>
