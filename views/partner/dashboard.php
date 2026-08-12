@@ -60,7 +60,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'add_customer' && $_SERVER['RE
         $stmt = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, package_name, monthly_fee, type, registration_date, billing_date, area, created_by, tenant_id, ppn_active, bhp_active, uso_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([$customer_code, $name, $address, $contact, $package_name, $monthly_fee, $type, $registration_date, $billing_date, $area, $user_id, $tenant_id, $ppn_active, $bhp_active, $uso_active]);
         $new_id = $db->lastInsertId();
-        $invoice_total = compute_customer_invoice_total($monthly_fee, $ppn_active, $bhp_active, $uso_active)['total'];
+        $invoice_total = compute_customer_invoice_total_from_amount($monthly_fee, $ppn_active, $bhp_active, $uso_active)['total'];
 
         // Initial Invoice for current month
         if ($monthly_fee > 0) {
@@ -101,9 +101,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'edit_customer' && $_SERVER['R
     
     $stmt = $db->prepare("UPDATE customers SET name=?, address=?, contact=?, package_name=?, monthly_fee=?, billing_date=?, area=?, ppn_active=?, bhp_active=?, uso_active=? WHERE id=? AND created_by=? AND tenant_id=?");
     $stmt->execute([$name, $address, $contact, $package_name, $monthly_fee, $billing_date, $area, $ppn_active, $bhp_active, $uso_active, $id, $user_id, $tenant_id]);
-    $invoice_total = compute_customer_invoice_total($monthly_fee, $ppn_active, $bhp_active, $uso_active)['total'];
+    $invoice_total = compute_customer_invoice_total_from_amount($monthly_fee, $ppn_active, $bhp_active, $uso_active)['total'];
     
-    // Sync existing unpaid invoices with the new monthly fee, including any active taxes
+    // Sync existing unpaid invoices with the new total amount, where the entered monthly fee already includes active taxes
     $db->prepare("UPDATE invoices SET amount = ? WHERE customer_id = ? AND status = 'Belum Lunas' AND tenant_id = ?")->execute([$invoice_total, $id, $tenant_id]);
     
     header("Location: index.php?page=partner&msg=updated&t=" . time());

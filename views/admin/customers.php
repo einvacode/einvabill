@@ -131,7 +131,7 @@ if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
     $created_by = $_SESSION['user_id'];
-    $invoice_total = compute_customer_invoice_total($monthly_fee, $ppn_active, $bhp_active, $uso_active)['total'];
+    $invoice_total = compute_customer_invoice_total_from_amount($monthly_fee, $ppn_active, $bhp_active, $uso_active)['total'];
     
     $stmt = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, package_name, monthly_fee, ip_address, type, registration_date, billing_date, area, router_id, pppoe_name, collector_id, lat, lng, odp_id, odp_port, created_by, tenant_id, ppn_active, bhp_active, uso_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $stmt->execute([$customer_code, $name, $address, $contact, $package_name, $monthly_fee, $ip_address, $type, $registration_date, $billing_date, $area, $router_id, $pppoe_name, $collector_id, $lat, $lng, $odp_id, $odp_port, $created_by, $tenant_id, $ppn_active, $bhp_active, $uso_active]);
@@ -208,8 +208,8 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = $db->prepare("UPDATE customers SET name=?, address=?, contact=?, package_name=?, monthly_fee=?, ip_address=?, type=?, registration_date=?, billing_date=?, area=?, router_id=?, pppoe_name=?, collector_id=?, lat=?, lng=?, odp_id=?, odp_port=?, ppn_active=?, bhp_active=?, uso_active=? WHERE id=? AND tenant_id=?");
     $stmt->execute([$name, $address, $contact, $package_name, $monthly_fee, $ip_address, $type, $registration_date, $billing_date, $area, $router_id, $pppoe_name, $collector_id, $lat, $lng, $odp_id, $odp_port, $ppn_active, $bhp_active, $uso_active, $id, $tenant_id]);
 
-    // OPTIMIZATION: Sync existing unpaid invoices with the new monthly fee, including active taxes
-    $invoice_total = compute_customer_invoice_total($monthly_fee, $ppn_active, $bhp_active, $uso_active)['total'];
+    // OPTIMIZATION: Sync existing unpaid invoices with the new total amount, where the value already includes the active taxes
+    $invoice_total = compute_customer_invoice_total_from_amount($monthly_fee, $ppn_active, $bhp_active, $uso_active)['total'];
     $db->prepare("UPDATE invoices SET amount = ? WHERE customer_id = ? AND status = 'Belum Lunas' AND tenant_id = ?")->execute([$invoice_total, $id, $tenant_id]);
     
     // Process additional arrears if any during update

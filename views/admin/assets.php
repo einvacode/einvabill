@@ -184,7 +184,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         } catch (Exception $e) {}
                     }
                     $base_amount = floatval($customer['monthly_fee'] ?? 0);
-                    $customer_tax_total = compute_customer_invoice_total($base_amount, $customer['ppn_active'] ?? 0, $customer['bhp_active'] ?? 0, $customer['uso_active'] ?? 0)['total'];
+                    $customer_tax_total = compute_customer_invoice_total_from_amount($base_amount, $customer['ppn_active'] ?? 0, $customer['bhp_active'] ?? 0, $customer['uso_active'] ?? 0)['total'];
                     if ($amount <= 0) $amount = $customer_tax_total;
                     if (empty($_POST['item_desc'])) {
                         $_POST['item_desc'] = [trim($customer['package_name'] ?? 'Tagihan Layanan') ?: 'Tagihan Layanan'];
