@@ -67,8 +67,8 @@ function get_app_url($custom = null) {
 function get_customer_tax_rates() {
     return [
         'ppn' => ['label' => 'PPN', 'rate' => 0.11],
-        'bhp' => ['label' => 'BHP', 'rate' => 0.02],
-        'uso' => ['label' => 'USO', 'rate' => 0.01],
+        'bhp' => ['label' => 'BHP', 'rate' => 0.005],
+        'uso' => ['label' => 'USO', 'rate' => 0.0125],
     ];
 }
 
@@ -76,8 +76,8 @@ function compute_customer_invoice_total($base_amount, $ppn_active = 0, $bhp_acti
     $base_amount = max(0, (float) $base_amount);
     $taxes = [
         'ppn' => ['label' => 'PPN', 'active' => (int) $ppn_active, 'rate' => 0.11],
-        'bhp' => ['label' => 'BHP', 'active' => (int) $bhp_active, 'rate' => 0.02],
-        'uso' => ['label' => 'USO', 'active' => (int) $uso_active, 'rate' => 0.01],
+        'bhp' => ['label' => 'BHP', 'active' => (int) $bhp_active, 'rate' => 0.005],
+        'uso' => ['label' => 'USO', 'active' => (int) $uso_active, 'rate' => 0.0125],
     ];
 
     $tax_total = 0.0;
@@ -109,8 +109,8 @@ function compute_customer_invoice_total_from_amount($invoice_amount, $ppn_active
     $invoice_amount = max(0, (float) $invoice_amount);
     $tax_rates = [
         'ppn' => ['active' => (int) $ppn_active, 'rate' => 0.11],
-        'bhp' => ['active' => (int) $bhp_active, 'rate' => 0.02],
-        'uso' => ['active' => (int) $uso_active, 'rate' => 0.01],
+        'bhp' => ['active' => (int) $bhp_active, 'rate' => 0.005],
+        'uso' => ['active' => (int) $uso_active, 'rate' => 0.0125],
     ];
 
     $multiplier = 1.0;
