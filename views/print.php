@@ -229,20 +229,20 @@ if (($invoice['status'] ?? '') === 'Lunas') {
 
             <?php if ($customer_tax_summary && !empty($customer_tax_summary['taxes'])): ?>
                 <div class="mb-2 flex-between">
-                    <span style="font-size:13px;">Subtotal:</span>
+                    <span style="font-size:13px;">Nilai Layanan / Dasar:</span>
                     <span style="font-size:13px;">Rp <?= number_format($customer_tax_summary['base_amount'], 0, ',', '.') ?></span>
                 </div>
                 <?php foreach ($customer_tax_summary['taxes'] as $tax_item): ?>
                     <div class="mb-2 flex-between" style="color:#475569;">
-                        <span style="font-size:12px;"><?= htmlspecialchars($tax_item['label']) ?> (<?= number_format($tax_item['rate'] * 100, 0, ',', '.') ?>%):</span>
+                        <span style="font-size:12px;">Pajak <?= htmlspecialchars($tax_item['label']) ?> (<?= number_format($tax_item['rate'] * 100, 0, ',', '.') ?>%):</span>
                         <span style="font-size:12px;">Rp <?= number_format($tax_item['amount'], 0, ',', '.') ?></span>
                     </div>
                 <?php endforeach; ?>
                 <div class="divider"></div>
             <?php endif; ?>
-             
+              
             <div class="mb-2 flex-between">
-                <span style="font-size:13px;">Tagihan Bulan Ini:</span>
+                <span style="font-size:13px;">Tagihan Pelanggan:</span>
                 <span style="font-size:13px;">Rp <?= number_format($invoice['amount'], 0, ',', '.') ?></span>
             </div>
             

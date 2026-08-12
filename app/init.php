@@ -73,6 +73,9 @@ function get_customer_tax_rates() {
 }
 
 function compute_customer_invoice_total($base_amount, $ppn_active = 0, $bhp_active = 0, $uso_active = 0) {
+    // This helper assumes $base_amount is the tax-exclusive service value.
+    // For reseller/mitra flows where the customer invoice is already tax-inclusive,
+    // use compute_customer_invoice_total_from_amount() instead so the total does not get inflated twice.
     $base_amount = max(0, (float) $base_amount);
     $taxes = [
         'ppn' => ['label' => 'PPN', 'active' => (int) $ppn_active, 'rate' => 0.11],
@@ -106,6 +109,8 @@ function compute_customer_invoice_total($base_amount, $ppn_active = 0, $bhp_acti
 }
 
 function compute_customer_invoice_total_from_amount($invoice_amount, $ppn_active = 0, $bhp_active = 0, $uso_active = 0) {
+    // For reseller / mitra workflows: the customer-facing invoice value is the final tax-inclusive amount.
+    // This helper reverses the tax to derive the service base and tax breakdown without inflating the invoice total.
     $invoice_amount = max(0, (float) $invoice_amount);
     $tax_rates = [
         'ppn' => ['active' => (int) $ppn_active, 'rate' => 0.11],
