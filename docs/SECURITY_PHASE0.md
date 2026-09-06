@@ -79,3 +79,12 @@ memblokir path sensitif, tetapi itu hanya untuk uji coba lokal.
 | CSRF | token di semua form POST dan `fetch()`, aksi ubah data wajib POST |
 | WhatsApp gateway | wajib login + CSRF, cid dari sesi, token bersama, bind 127.0.0.1 |
 | Skema DB | v25: `login_attempts`, `users.must_change_password`, kolom invoice yang dulu dibuat di halaman aset |
+| Perbaikan data | kolom `settings.debug_mode` yang tidak pernah dibuat membuat init.php menyisipkan baris settings baru di setiap request (77.448 baris di produksi per 7 Sep 2026). Migrasi v25 menambah kolomnya dan menghapus baris duplikat, menyisakan satu baris per tenant |
+
+## Hasil uji dengan salinan data produksi (7 Sep 2026)
+
+Diuji pada salinan `backup_billing_2026-09-07_022239.sqlite`: migrasi
+v24 ke v25 berjalan pada request pertama, jumlah pelanggan, invoice, dan
+pembayaran tetap sama, semua halaman admin, petugas, dan mitra memberi
+200, tandai lunas dan batal lunas bekerja lewat POST bertoken, nota dan
+portal pelanggan tampil, backup terunduh. Tidak ada fatal error.

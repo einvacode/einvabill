@@ -240,7 +240,7 @@ function run_database_setup($db) {
         'banners' => ['tenant_id' => 'INTEGER DEFAULT 1'],
         'landing_packages' => ['tenant_id' => 'INTEGER DEFAULT 1'],
         'landing_logos' => ['tenant_id' => 'INTEGER DEFAULT 1'],
-        'settings' => ['license_key' => 'TEXT', 'license_expiry' => 'TEXT', 'license_type' => 'TEXT', 'installation_date' => 'TEXT', 'site_url' => "TEXT DEFAULT 'http://fibernodeinternet.com'", 'acs_url' => 'TEXT', 'acs_user' => 'TEXT', 'acs_pass' => 'TEXT', 'landing_hero_title' => 'TEXT', 'landing_hero_text' => 'TEXT', 'landing_about_us' => 'TEXT', 'db_version' => 'INTEGER DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1']
+        'settings' => ['license_key' => 'TEXT', 'license_expiry' => 'TEXT', 'license_type' => 'TEXT', 'installation_date' => 'TEXT', 'site_url' => "TEXT DEFAULT 'http://fibernodeinternet.com'", 'acs_url' => 'TEXT', 'acs_user' => 'TEXT', 'acs_pass' => 'TEXT', 'landing_hero_title' => 'TEXT', 'landing_hero_text' => 'TEXT', 'landing_about_us' => 'TEXT', 'db_version' => 'INTEGER DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1', 'debug_mode' => 'INTEGER DEFAULT 0', 'company_qris' => 'TEXT', 'company_contact' => 'TEXT']
     ];
 
     foreach ($cols_to_add as $table => $cols) {
@@ -248,6 +248,15 @@ function run_database_setup($db) {
             try { $db->exec("ALTER TABLE $table ADD COLUMN $col $def"); } catch (Exception $e) {}
         }
     }
+
+    // Repair: before v25, init.php selected settings.debug_mode, which no
+    // migration ever created. The failed SELECT made init.php believe the
+    // tenant had no settings row and insert a fresh "Perusahaan Baru" row
+    // on every request. Keep the oldest row per tenant, drop the rest.
+    try {
+        $db->exec("DELETE FROM settings WHERE company_name = 'Perusahaan Baru'
+                   AND id NOT IN (SELECT MIN(id) FROM settings GROUP BY tenant_id)");
+    } catch (Exception $e) {}
 
     // 3. Performance Indexes
     $db->exec("CREATE INDEX IF NOT EXISTS idx_invoices_customer ON invoices(customer_id)");
