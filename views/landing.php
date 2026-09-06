@@ -340,12 +340,12 @@ function svg_icon(string $name, string $class = 'h-5 w-5'): string {
 
 <!-- Network partners -->
 <?php if (count($partner_logos) > 0): ?>
-<section class="bg-primary-deep text-primary-foreground">
+<section class="border-y border-border bg-card">
     <div class="container py-12">
-        <p class="text-center text-sm font-medium text-white/70">Jaringan, asosiasi, dan penyedia yang menopang layanan kami</p>
+        <p class="text-center text-sm font-medium text-muted-foreground">Jaringan, asosiasi, dan penyedia yang menopang layanan kami</p>
         <div class="mt-8 flex flex-wrap items-center justify-center gap-4">
             <?php foreach ($partner_logos as $p): ?>
-            <div class="flex h-16 w-[calc(50%-0.5rem)] items-center justify-center rounded-md bg-white/[.06] px-5 sm:w-44">
+            <div class="flex h-16 w-[calc(50%-0.5rem)] items-center justify-center rounded-md border border-border bg-white px-5 sm:w-44">
                 <img src="<?= htmlspecialchars($p['image_path']) ?>" alt="Logo mitra jaringan" class="max-h-10 w-auto max-w-full object-contain" loading="lazy">
             </div>
             <?php endforeach; ?>
