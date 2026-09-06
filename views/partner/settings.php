@@ -20,22 +20,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     $web_upload_dir = 'uploads/partner/';
     $fs_upload_dir = __DIR__ . '/../../public/' . $web_upload_dir;
-    if (!is_dir($fs_upload_dir)) {
-        mkdir($fs_upload_dir, 0777, true);
-    }
 
     $logo_path = $user['brand_logo'];
     $qris_path = $user['brand_qris'];
-    
+
     // Logo Upload Disabled (Policy)
-    
-    // Handle QRIS Upload
-    if (!empty($_FILES['brand_qris']['name'])) {
-        $ext = pathinfo($_FILES['brand_qris']['name'], PATHINFO_EXTENSION);
-        $qris_filename = 'qris_' . $u_id . '_' . time() . '.' . $ext;
-        $new_qris_fs = $fs_upload_dir . $qris_filename;
-        if (move_uploaded_file($_FILES['brand_qris']['tmp_name'], $new_qris_fs)) {
-            $qris_path = $web_upload_dir . $qris_filename;
+
+    // Handle QRIS Upload (validated: extension allowlist, real MIME type, random name)
+    if (isset($_FILES['brand_qris']) && $_FILES['brand_qris']['error'] !== UPLOAD_ERR_NO_FILE) {
+        $up = save_uploaded_image($_FILES['brand_qris'], $fs_upload_dir, 'qris_' . intval($u_id));
+        if ($up['ok']) {
+            $qris_path = $web_upload_dir . $up['filename'];
+        } else {
+            $err = "QRIS: " . $up['error'];
         }
     }
     

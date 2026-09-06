@@ -71,19 +71,19 @@ if ($action === 'delete_package') {
 
 // Handle Powered By Logo Upload (UNLIMITED)
 if ($action === 'add_logo' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $upload_dir = __DIR__ . '/../../public/uploads/';
-    if (!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
-    
-    if (isset($_FILES['logo_file']) && $_FILES['logo_file']['error'] === UPLOAD_ERR_OK) {
-        $fname = 'logo_v2_' . time() . '_' . str_replace(' ', '_', basename($_FILES['logo_file']['name']));
-        $target = $upload_dir . $fname;
-        if (move_uploaded_file($_FILES['logo_file']['tmp_name'], $target)) {
-            $path = 'public/uploads/' . $fname;
+    if (isset($_FILES['logo_file'])) {
+        $up = save_uploaded_image($_FILES['logo_file'], __DIR__ . '/../../public/uploads', 'logo');
+        if ($up['ok']) {
+            $path = 'public/uploads/' . $up['filename'];
             $tenant_id = $_SESSION['tenant_id'] ?? 1;
             $db->prepare("INSERT INTO landing_logos (image_path, tenant_id) VALUES (?, ?)")->execute([$path, $tenant_id]);
+            header("Location: index.php?page=admin_landing&msg=logo_added");
+            exit;
         }
+        header("Location: index.php?page=admin_landing&msg=logo_error&reason=" . urlencode($up['error']));
+        exit;
     }
-    header("Location: index.php?page=admin_landing&msg=logo_added");
+    header("Location: index.php?page=admin_landing");
     exit;
 }
 

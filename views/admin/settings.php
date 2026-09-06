@@ -29,37 +29,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $acs_user = $_POST['acs_user'] ?? '';
     $acs_pass = $_POST['acs_pass'] ?? '';
     
-    // Handle File Upload
-    $allowed_ext = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-    
-    if (isset($_FILES['logo_file']) && $_FILES['logo_file']['error'] === UPLOAD_ERR_OK) {
-        $ext = strtolower(pathinfo($_FILES['logo_file']['name'], PATHINFO_EXTENSION));
-        if (in_array($ext, $allowed_ext)) {
-            $upload_dir = __DIR__ . '/../../public/uploads/';
-            if(!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
-            $file_name = 'logo_' . time() . '_' . str_replace(' ', '_', basename($_FILES['logo_file']['name']));
-            $target_path = $upload_dir . $file_name;
-            if (move_uploaded_file($_FILES['logo_file']['tmp_name'], $target_path)) {
-                $company_logo = 'public/uploads/' . $file_name;
-            }
+    // Stored paths may only point at our own upload folder.
+    foreach (['company_logo', 'company_qris'] as $__pv) {
+        if ($$__pv !== '' && !preg_match('~^public/uploads/[A-Za-z0-9_./-]+$~', $$__pv)) { $$__pv = ''; }
+    }
+
+    // Handle File Upload (validated: extension allowlist, real MIME type, random name)
+    $upload_dir = __DIR__ . '/../../public/uploads';
+    if (isset($_FILES['logo_file']) && $_FILES['logo_file']['error'] !== UPLOAD_ERR_NO_FILE) {
+        $up = save_uploaded_image($_FILES['logo_file'], $upload_dir, 'logo');
+        if ($up['ok']) {
+            $company_logo = 'public/uploads/' . $up['filename'];
         } else {
-            $error = "Format file logo tidak didukung! Gunakan JPG, PNG, atau WebP.";
+            $error = "Logo: " . $up['error'];
         }
     }
 
     // Handle QRIS Upload
-    if (isset($_FILES['qris_file']) && $_FILES['qris_file']['error'] === UPLOAD_ERR_OK) {
-        $ext = strtolower(pathinfo($_FILES['qris_file']['name'], PATHINFO_EXTENSION));
-        if (in_array($ext, $allowed_ext)) {
-            $upload_dir = __DIR__ . '/../../public/uploads/';
-            if(!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
-            $file_name = 'qris_' . time() . '_' . str_replace(' ', '_', basename($_FILES['qris_file']['name']));
-            $target_path = $upload_dir . $file_name;
-            if (move_uploaded_file($_FILES['qris_file']['tmp_name'], $target_path)) {
-                $company_qris = 'public/uploads/' . $file_name;
-            }
+    if (isset($_FILES['qris_file']) && $_FILES['qris_file']['error'] !== UPLOAD_ERR_NO_FILE) {
+        $up = save_uploaded_image($_FILES['qris_file'], $upload_dir, 'qris');
+        if ($up['ok']) {
+            $company_qris = 'public/uploads/' . $up['filename'];
         } else {
-            $error = "Format file QRIS tidak didukung! Gunakan JPG, PNG, atau WebP.";
+            $error = "QRIS: " . $up['error'];
         }
     }
 

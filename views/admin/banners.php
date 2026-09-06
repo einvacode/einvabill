@@ -14,21 +14,19 @@ if ($action === 'save' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $target_role = $_POST['target_role'] ?? 'all';
     $is_active = isset($_POST['is_active']) ? 1 : 0;
     
-    // Handle Image Upload (Optional)
+    // Handle Image Upload (Optional). Only a previously stored upload path
+    // may be kept; anything else in existing_image is discarded.
     $image_path = $_POST['existing_image'] ?? '';
-    $allowed_ext = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-    
-    if (isset($_FILES['image']) && $_FILES['image']['error'] === 0) {
-        $ext = strtolower(pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION));
-        if (in_array($ext, $allowed_ext)) {
-            $upload_dir = 'public/uploads/banners/';
-            if (!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
-            
-            $filename = 'banner_' . time() . '.' . $ext;
-            move_uploaded_file($_FILES['image']['tmp_name'], $upload_dir . $filename);
-            $image_path = $upload_dir . $filename;
+    if ($image_path !== '' && !preg_match('~^public/uploads/banners/[A-Za-z0-9_.-]+$~', $image_path)) {
+        $image_path = '';
+    }
+
+    if (isset($_FILES['image']) && $_FILES['image']['error'] !== UPLOAD_ERR_NO_FILE) {
+        $up = save_uploaded_image($_FILES['image'], __DIR__ . '/../../public/uploads/banners', 'banner');
+        if ($up['ok']) {
+            $image_path = 'public/uploads/banners/' . $up['filename'];
         } else {
-            $error = "Format file gambar tidak didukung! Gunakan JPG, PNG, atau WebP.";
+            $error = $up['error'];
         }
     }
 
