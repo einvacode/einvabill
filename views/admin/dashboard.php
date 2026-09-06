@@ -1,7 +1,8 @@
 <?php
 /**
- * Dashboard Admin Sederhana & Modern
- * Fokus pada 6 Parameter Utama sesuai permintaan User.
+ * Dashboard Admin
+ * Ringkasan operasional dan keuangan. Semua angka dihitung oleh
+ * get_dashboard_stats() dan bisa diperbarui lewat ?ajax=stats.
  */
 $u_id = $_SESSION['user_id'];
 $u_role = $_SESSION['user_role'] ?? 'admin';
@@ -21,51 +22,51 @@ $c_scope = " AND i.tenant_id = $tenant_id " . $c_scope;
 
 // --- CONSOLIDATED STATS ENGINE ---
 function get_dashboard_stats($db, $scope_where, $c_scope) {
-    // Combine 9 queries into 3 main optimized aggregates
-    
     // 1. Customer & Revenue Stats
     $cust_stats = $db->query("
-        SELECT 
+        SELECT
             SUM(CASE WHEN type='customer' THEN 1 ELSE 0 END) as retail_count,
             SUM(CASE WHEN type='customer' THEN monthly_fee ELSE 0 END) as retail_est,
             SUM(CASE WHEN type='partner' THEN 1 ELSE 0 END) as mitra_count,
             SUM(CASE WHEN type='partner' THEN monthly_fee ELSE 0 END) as mitra_est,
             SUM(CASE WHEN strftime('%Y-%m', registration_date) = strftime('%Y-%m', 'now') THEN 1 ELSE 0 END) as baru_count
-        FROM customers 
+        FROM customers
         WHERE 1=1 $scope_where
     ")->fetch();
 
     // 2. Unpaid (Piutang) Stats
     $unpaid_stats = $db->query("
-        SELECT 
+        SELECT
             SUM(CASE WHEN c.type='customer' THEN (i.amount - i.discount) ELSE 0 END) as piutang_r,
             COUNT(DISTINCT CASE WHEN c.type='customer' THEN i.customer_id ELSE NULL END) as piutang_r_c,
             SUM(CASE WHEN c.type='partner' THEN (i.amount - i.discount) ELSE 0 END) as piutang_m,
             COUNT(DISTINCT CASE WHEN c.type='partner' THEN i.customer_id ELSE NULL END) as piutang_m_c
-        FROM invoices i 
-        JOIN customers c ON i.customer_id = c.id 
+        FROM invoices i
+        JOIN customers c ON i.customer_id = c.id
         WHERE i.status='Belum Lunas' $c_scope
     ")->fetch();
 
     // 3. Collection (Koleksi) & Cash Flow Stats
     $cash_stats = $db->query("
-        SELECT 
+        SELECT
             SUM(CASE WHEN c.type='customer' THEN p.amount ELSE 0 END) as koleksi_r,
             SUM(CASE WHEN c.type='partner' THEN p.amount ELSE 0 END) as koleksi_m,
             SUM(CASE WHEN c.type='customer' AND strftime('%Y-%m', p.payment_date) = strftime('%Y-%m', 'now') THEN p.amount ELSE 0 END) as cash_r,
             SUM(CASE WHEN c.type='partner' AND strftime('%Y-%m', p.payment_date) = strftime('%Y-%m', 'now') THEN p.amount ELSE 0 END) as cash_m
-        FROM payments p 
-        JOIN invoices i ON p.invoice_id = i.id 
-        JOIN customers c ON i.customer_id = c.id 
+        FROM payments p
+        JOIN invoices i ON p.invoice_id = i.id
+        JOIN customers c ON i.customer_id = c.id
         WHERE 1=1 $c_scope
     ")->fetch();
-    
-        // 4. External Invoices (created via external integrations or quick temp customers)
-        $tenant_id = $_SESSION['tenant_id'] ?? 1;
-        $external_stats = $db->query("SELECT COUNT(*) as ext_count, COALESCE(SUM(i.amount - i.discount),0) as ext_total FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.tenant_id = $tenant_id AND (i.created_via = 'external' OR c.type IN ('note','temp')) $c_scope")->fetch();
+
+    // 4. External Invoices (created via external integrations or quick temp customers)
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $external_stats = $db->query("SELECT COUNT(*) as ext_count, COALESCE(SUM(i.amount - i.discount),0) as ext_total FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE i.tenant_id = $tenant_id AND (i.created_via = 'external' OR c.type IN ('note','temp')) $c_scope")->fetch();
 
     return array_merge($cust_stats, $unpaid_stats, $cash_stats, $external_stats ?? []);
 }
+
+function rp($n): string { return 'Rp ' . number_format((float) ($n ?: 0), 0, ',', '.'); }
 
 // --- AJAX REFRESH ENDPOINT ---
 if (isset($_GET['ajax']) && $_GET['ajax'] === 'stats') {
@@ -73,20 +74,21 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'stats') {
     $s = get_dashboard_stats($db, $scope_where, $c_scope);
     echo json_encode([
         'retail_count' => number_format($s['retail_count'] ?: 0, 0),
-        'retail_est'   => 'Rp' . number_format($s['retail_est'] ?: 0, 0, ',', '.'),
+        'retail_est'   => rp($s['retail_est']),
         'mitra_count'  => number_format($s['mitra_count'] ?: 0, 0),
-        'mitra_est'    => 'Rp' . number_format($s['mitra_est'] ?: 0, 0, ',', '.'),
+        'mitra_est'    => rp($s['mitra_est']),
         'baru_count'   => number_format($s['baru_count'] ?: 0, 0),
-        'piutang_r'    => 'Rp' . number_format($s['piutang_r'] ?: 0, 0, ',', '.'),
-        'piutang_r_c'  => number_format($s['piutang_r_c'] ?: 0),
-        'piutang_m'    => 'Rp' . number_format($s['piutang_m'] ?: 0, 0, ',', '.'),
-        'piutang_m_c'  => number_format($s['piutang_m_c'] ?: 0),
-        'koleksi_r'    => 'Rp' . number_format($s['koleksi_r'] ?: 0, 0, ',', '.'),
-        'koleksi_m'    => 'Rp' . number_format($s['koleksi_m'] ?: 0, 0, ',', '.'),
-        'cash_r'       => 'Rp' . number_format($s['cash_r'] ?: 0, 0, ',', '.'),
-        'cash_m'       => 'Rp' . number_format($s['cash_m'] ?: 0, 0, ',', '.'),
+        'piutang_all'  => rp(($s['piutang_r'] ?: 0) + ($s['piutang_m'] ?: 0)),
+        'piutang_c'    => number_format(($s['piutang_r_c'] ?: 0) + ($s['piutang_m_c'] ?: 0)),
+        'koleksi_all'  => rp(($s['koleksi_r'] ?: 0) + ($s['koleksi_m'] ?: 0)),
+        'cash_all'     => rp(($s['cash_r'] ?: 0) + ($s['cash_m'] ?: 0)),
         'ext_count'    => intval($s['ext_count'] ?? 0),
-        'ext_total'    => 'Rp' . number_format($s['ext_total'] ?? 0, 0, ',', '.')
+        'ext_total'    => rp($s['ext_total'] ?? 0),
+        // Kept for older callers
+        'piutang_r'    => rp($s['piutang_r']), 'piutang_r_c' => number_format($s['piutang_r_c'] ?: 0),
+        'piutang_m'    => rp($s['piutang_m']), 'piutang_m_c' => number_format($s['piutang_m_c'] ?: 0),
+        'koleksi_r'    => rp($s['koleksi_r']), 'koleksi_m'  => rp($s['koleksi_m']),
+        'cash_r'       => rp($s['cash_r']),    'cash_m'     => rp($s['cash_m']),
     ]);
     exit;
 }
@@ -94,45 +96,22 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'stats') {
 // Initial Page Load Stats
 $s = get_dashboard_stats($db, $scope_where, $c_scope);
 
-// --- END AJAX ---
-
-// 1. Total Pelanggan (User) - Count & Est. Revenue (Scoped)
-$total_customers = $s['retail_count'];
-$est_revenue_cust = $s['retail_est'] ?: 0;
-
-// 2. Total Mitra (B2B) - Count & Est. Revenue (Scoped)
-$total_partners = $s['mitra_count'];
-$est_revenue_part = $s['mitra_est'] ?: 0;
-
-// 3. Pelanggan Baru Bulan Ini (Scoped)
+$total_customers     = $s['retail_count'];
+$est_revenue_cust    = $s['retail_est'] ?: 0;
+$total_partners      = $s['mitra_count'];
+$est_revenue_part    = $s['mitra_est'] ?: 0;
 $new_customers_month = $s['baru_count'];
-
-// 4. Belum Bayar (Piutang) - Split Retail vs Partner
-$count_unpaid_cust = $s['piutang_r_c'];
-$total_unpaid_cust = $s['piutang_r'] ?: 0;
-
-$count_unpaid_part = $s['piutang_m_c'];
-$total_unpaid_part = $s['piutang_m'] ?: 0;
-
-// 5. Total Pendapatan Terkumpul - Split Retail vs Partner
-$total_received_cust = $s['koleksi_r'] ?: 0;
-$total_received_part = $s['koleksi_m'] ?: 0;
-
-// 6. Arus Kas Bulanan 
-$cash_monthly_cust = $s['cash_r'] ?: 0;
-$cash_monthly_part = $s['cash_m'] ?: 0;
-
-$total_unpaid_all = $total_unpaid_cust + $total_unpaid_part;
-$count_unpaid_all = $count_unpaid_cust + $count_unpaid_part;
-$total_received_all = $total_received_cust + $total_received_part;
-$cash_monthly_all = $cash_monthly_cust + $cash_monthly_part;
+$count_unpaid_all    = ($s['piutang_r_c'] ?: 0) + ($s['piutang_m_c'] ?: 0);
+$total_unpaid_all    = ($s['piutang_r'] ?: 0) + ($s['piutang_m'] ?: 0);
+$total_received_all  = ($s['koleksi_r'] ?: 0) + ($s['koleksi_m'] ?: 0);
+$cash_monthly_all    = ($s['cash_r'] ?: 0) + ($s['cash_m'] ?: 0);
 
 $tenant_id = $_SESSION['tenant_id'] ?? 1;
 $settings = $db->query("SELECT company_name, wa_template_paid, site_url FROM settings WHERE tenant_id = $tenant_id")->fetch();
 if (!$settings) $settings = ['company_name' => 'ISP', 'wa_template_paid' => '', 'site_url' => ''];
 $base_url = !empty($settings['site_url']) ? $settings['site_url'] : get_app_url();
 
-// Success Modal for Admin Dashboard
+// Success panel after a quick payment
 $success_data = null;
 if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'])) {
     $sid = intval($_GET['cust_id']);
@@ -147,319 +126,181 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
         $tunggakan_display = 'Rp ' . number_format($tunggakan_val, 0, ',', '.');
         $portal_link = $base_url . "/index.php?page=customer_portal&code=" . ($success_data['customer_code'] ?: $success_data['id']);
         $receipt_msg = str_replace(
-            ['{nama}', '{id_cust}', '{tagihan}', '{paket}', '{bulan}', '{tunggakan}', '{waktu_bayar}', '{admin}', '{perusahaan}', '{link_tagihan}'], 
-            [$success_data['name'], ($success_data['customer_code'] ?: $success_data['id']), 'Rp ' . number_format($success_data['monthly_fee'], 0, ',', '.'), ($success_data['package_name'] ?: '-'), $months_paid, $tunggakan_display, date('d/m/Y H:i') . ' WIB', $_SESSION['user_name'], $settings['company_name'], $portal_link], 
+            ['{nama}', '{id_cust}', '{tagihan}', '{paket}', '{bulan}', '{tunggakan}', '{waktu_bayar}', '{admin}', '{perusahaan}', '{link_tagihan}'],
+            [$success_data['name'], ($success_data['customer_code'] ?: $success_data['id']), 'Rp ' . number_format($success_data['monthly_fee'], 0, ',', '.'), ($success_data['package_name'] ?: '-'), $months_paid, $tunggakan_display, date('d/m/Y H:i') . ' WIB', $_SESSION['user_name'], $settings['company_name'], $portal_link],
             $settings['wa_template_paid'] ?: "Halo {nama}, pembayaran {tagihan} LUNAS. Cek nota: {link_tagihan}"
         );
         $success_data['wa_link'] = "https://api.whatsapp.com/send?phone=$wa_num_paid&text=" . urlencode($receipt_msg);
     }
 }
-?><!DOCTYPE html>
 
-<?php if($success_data): ?>
-<div class="glass-panel" style="margin-bottom:20px; border-left:4px solid var(--success); padding:20px; animation: slideDown 0.4s ease-out; background:rgba(16,185,129,0.1);">
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
+$late_summary = $db->query("
+    SELECT c.id as cust_id, c.name, c.contact, COUNT(i.id) as months_owed, SUM(i.amount - i.discount) as total_debt
+    FROM invoices i JOIN customers c ON i.customer_id = c.id
+    WHERE i.status = 'Belum Lunas' $c_scope
+    GROUP BY c.id ORDER BY months_owed DESC, total_debt DESC LIMIT 5
+")->fetchAll();
+
+$latest = $db->query("
+    SELECT p.*, c.name as customer_name, u.name as receiver_name
+    FROM payments p JOIN invoices i ON p.invoice_id = i.id JOIN customers c ON i.customer_id = c.id
+    LEFT JOIN users u ON p.received_by = u.id
+    WHERE 1=1 $c_scope ORDER BY p.payment_date DESC LIMIT 10
+")->fetchAll();
+
+$stat_cards = [
+    ['id' => 'stat-retail-count', 'label' => 'Total pelanggan', 'value' => number_format($total_customers, 0), 'sub_id' => 'stat-retail-est', 'sub' => 'Estimasi ' . rp($est_revenue_cust) . ' / bulan', 'href' => 'index.php?page=admin_customers&filter_type=customer', 'icon' => 'fa-users'],
+    ['id' => 'stat-mitra-count', 'label' => 'Total mitra', 'value' => number_format($total_partners, 0), 'sub_id' => 'stat-mitra-est', 'sub' => 'Estimasi ' . rp($est_revenue_part) . ' / bulan', 'href' => 'index.php?page=admin_customers&filter_type=partner', 'icon' => 'fa-handshake'],
+    ['id' => 'stat-baru-count', 'label' => 'Pelanggan baru bulan ini', 'value' => number_format($new_customers_month, 0), 'sub_id' => '', 'sub' => 'Registrasi bulan berjalan', 'href' => 'index.php?page=admin_new_customers', 'icon' => 'fa-star'],
+    ['id' => 'stat-piutang-all', 'label' => 'Total piutang', 'value' => rp($total_unpaid_all), 'sub_id' => 'stat-piutang-c', 'sub' => number_format($count_unpaid_all, 0) . ' pelanggan menunggak', 'href' => 'index.php?page=admin_invoices&filter_status=belum', 'icon' => 'fa-user-clock', 'tone' => 'danger'],
+    ['id' => 'stat-koleksi-all', 'label' => 'Total penerimaan', 'value' => rp($total_received_all), 'sub_id' => '', 'sub' => 'Akumulasi pembayaran masuk', 'href' => 'index.php?page=admin_reports', 'icon' => 'fa-coins'],
+    ['id' => 'stat-cash-all', 'label' => 'Kas masuk bulan ini', 'value' => rp($cash_monthly_all), 'sub_id' => '', 'sub' => 'Arus kas periode berjalan', 'href' => 'index.php?page=admin_reports', 'icon' => 'fa-arrow-trend-up', 'tone' => 'signal'],
+    ['id' => 'stat-inv-external', 'label' => 'Invoice eksternal', 'value' => rp($s['ext_total'] ?? 0), 'sub_id' => 'stat-ext-count', 'sub' => number_format($s['ext_count'] ?? 0) . ' invoice', 'href' => 'index.php?page=admin_invoices', 'icon' => 'fa-file-export'],
+];
+?>
+
+<?php if ($success_data): ?>
+<div class="ui-card mb-5 border-l-4 border-l-signal p-4 sm:p-5">
+    <div class="flex items-start justify-between gap-4">
         <div>
-            <h3 style="margin:0; color:var(--success); font-size:18px;"><i class="fas fa-check-circle"></i> Pembayaran Berhasil!</h3>
-            <p style="margin:5px 0 0; font-size:13px; color:var(--text-secondary);">Tagihan <strong><?= htmlspecialchars($success_data['name']) ?></strong> diperbarui.</p>
+            <div class="flex items-center gap-2 text-[15px] font-bold text-signal"><i class="fas fa-check-circle"></i> Pembayaran berhasil</div>
+            <p class="mt-1 text-sm text-muted-foreground">Tagihan <strong class="text-foreground"><?= htmlspecialchars($success_data['name']) ?></strong> diperbarui.</p>
         </div>
-        <button onclick="this.parentElement.parentElement.style.display='none'" style="background:none; border:none; color:var(--text-secondary); cursor:pointer;"><i class="fas fa-times"></i></button>
+        <button type="button" class="grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted bg-transparent border-0" onclick="this.closest('.ui-card').remove()" aria-label="Tutup"><i class="fas fa-times"></i></button>
     </div>
-    <div style="display:flex; gap:10px; flex-wrap:wrap;">
-        <button onclick="sendWAGateway('<?= $wa_num_paid ?>', <?= htmlspecialchars(json_encode($receipt_msg)) ?>, '<?= $success_data['wa_link'] ?>', this)" class="btn btn-sm btn-success" style="padding:10px 20px;"><i class="fab fa-whatsapp"></i> Kirim Notifikasi WA</button>
+    <div class="mt-4">
+        <button type="button" onclick="sendWAGateway('<?= $wa_num_paid ?>', <?= htmlspecialchars(json_encode($receipt_msg)) ?>, '<?= $success_data['wa_link'] ?>', this)" class="ui-btn ui-btn-wa"><i class="fab fa-whatsapp"></i> Kirim notifikasi WhatsApp</button>
     </div>
 </div>
-<style> @keyframes slideDown { from { transform: translateY(-10px); opacity:0; } to { transform: translateY(0); opacity:1; } } </style>
 <?php endif; ?>
 
-<!-- Banner Lisensi -->
-<?php if(LICENSE_ST === 'TRIAL'): ?>
-    <div class="glass-panel" style="padding: 12px 20px; margin-bottom: 25px; background: rgba(245, 158, 11, 0.1); border-left: 4px solid #f59e0b; display: flex; align-items: center; justify-content: space-between;">
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <i class="fas fa-clock" style="color: #f59e0b; font-size: 18px;"></i>
-            <div style="font-size: 14px; font-weight: 600; color: #f59e0b;"><?= LICENSE_MSG ?></div>
-        </div>
-        <a href="index.php?page=admin_license" class="btn btn-sm" style="background: #f59e0b; color: white; border-radius: 8px;">Aktivasi Sekarang</a>
-    </div>
-<?php elseif(LICENSE_ST === 'UNLIMITED'): ?>
-    <div style="margin-bottom: 25px; display: flex; justify-content: flex-end;">
-        <div class="badge" style="background: rgba(59, 130, 246, 0.1); color: var(--primary); border: 1px solid var(--primary); padding: 8px 20px; border-radius: 50px; font-weight: 700; font-size: 12px;">
-            <i class="fas fa-crown"></i> UNLIMITED MASTER LICENSE
-        </div>
-    </div>
+<?php if (LICENSE_ST === 'TRIAL'): ?>
+<div class="ui-card mb-5 flex flex-col gap-3 border-l-4 border-l-accent p-4 sm:flex-row sm:items-center sm:justify-between">
+    <div class="flex items-center gap-3 text-sm font-semibold text-accent-ink"><i class="fas fa-clock text-accent"></i> <?= LICENSE_MSG ?></div>
+    <a href="index.php?page=admin_license" class="ui-btn ui-btn-sm ui-btn-primary">Aktivasi sekarang</a>
+</div>
 <?php endif; ?>
 
-<!-- Dashboard Title -->
-<div style="margin-bottom: 25px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px;">
+<!-- Page header -->
+<div class="mb-5 flex flex-wrap items-end justify-between gap-3">
     <div>
-        <h2 style="font-size: 24px; font-weight: 800; color: var(--text-primary);"><i class="fas fa-th-large text-primary" style="margin-right: 10px;"></i> Ringkasan Perusahaan</h2>
-        <p style="color: var(--text-secondary); font-size: 14px;">Pantau ringkasan operasional, aset, dan finansial perusahaan dalam sekejap.</p>
+        <h2 class="m-0 text-xl font-bold sm:text-2xl">Ringkasan perusahaan</h2>
+        <p class="m-0 mt-1 text-sm text-muted-foreground">Operasional, piutang, dan arus kas <?= htmlspecialchars($settings['company_name']) ?> hari ini.</p>
     </div>
-    <div class="wa-status-indicator" style="cursor:pointer;" onclick="location.href='index.php?page=admin_wa_gateway'">
-        <span class="badge" style="background:rgba(148,163,184,0.1); color:#94a3b8; border:1px solid rgba(148,163,184,0.3); font-size:10px;"><i class="fas fa-power-off"></i> WA OFFLINE</span>
+    <div class="flex flex-wrap items-center gap-2">
+        <?php if (LICENSE_ST === 'UNLIMITED'): ?>
+            <span class="ui-badge ui-badge-accent"><i class="fas fa-crown"></i> Lisensi unlimited</span>
+        <?php endif; ?>
+        <span class="wa-status-indicator cursor-pointer sm:hidden" onclick="location.href='index.php?page=admin_wa_gateway'"></span>
+        <span id="statsUpdated" class="ui-badge ui-badge-muted" title="Angka diperbarui otomatis tiap 45 detik"><i class="fas fa-rotate"></i> Live</span>
     </div>
 </div>
 
-<style>
-    .dashboard-links {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-bottom: 14px;
-    }
-    .dashboard-links a {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 8px 12px;
-        border-radius: 10px;
-        border: 1px solid rgba(59, 130, 246, 0.24);
-        background: rgba(59, 130, 246, 0.08);
-        color: var(--primary);
-        font-size: 12px;
-        font-weight: 700;
-        text-decoration: none;
-    }
-    .dashboard-links a:hover {
-        background: rgba(59, 130, 246, 0.14);
-    }
-    .summary-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 12px;
-        margin-bottom: 25px;
-    }
-    .summary-card {
-        text-decoration: none;
-        color: inherit;
-        border-top: 3px solid var(--primary);
-        padding: 14px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .summary-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.12);
-    }
-    .summary-label {
-        font-size: 11px;
-        text-transform: uppercase;
-        font-weight: 800;
-        color: var(--text-secondary);
-        letter-spacing: 0.4px;
-    }
-    .summary-value {
-        font-size: 22px;
-        font-weight: 900;
-        line-height: 1.2;
-        color: var(--text-primary);
-    }
-    .summary-sub {
-        font-size: 12px;
-        color: var(--text-secondary);
-        font-weight: 600;
-    }
-    .summary-source {
-        margin-top: auto;
-        font-size: 12px;
-        font-weight: 700;
-        color: var(--primary);
-    }
-    @media (max-width: 640px) {
-        .summary-grid {
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-        }
-        .summary-card {
-            padding: 12px;
-        }
-        .summary-value {
-            font-size: 18px;
-        }
-    }
-</style>
-
-<div class="dashboard-links">
-    <a href="index.php?page=admin_customers"><i class="fas fa-users"></i> Data Pelanggan</a>
-    <a href="index.php?page=admin_invoices"><i class="fas fa-file-invoice"></i> Data Tagihan</a>
-    <a href="index.php?page=admin_reports"><i class="fas fa-chart-line"></i> Data Laporan</a>
-    <a href="index.php?page=admin_expenses"><i class="fas fa-receipt"></i> Data Pengeluaran</a>
+<!-- Quick links -->
+<div class="mb-5 flex flex-wrap gap-2">
+    <a href="index.php?page=admin_customers" class="ui-btn ui-btn-sm ui-btn-outline"><i class="fas fa-users"></i> Data pelanggan</a>
+    <a href="index.php?page=admin_invoices" class="ui-btn ui-btn-sm ui-btn-outline"><i class="fas fa-file-invoice"></i> Data tagihan</a>
+    <a href="index.php?page=admin_reports" class="ui-btn ui-btn-sm ui-btn-outline"><i class="fas fa-chart-line"></i> Laporan</a>
+    <a href="index.php?page=admin_expenses" class="ui-btn ui-btn-sm ui-btn-outline"><i class="fas fa-receipt"></i> Pengeluaran</a>
+    <a href="index.php?page=admin_create_invoice" class="ui-btn ui-btn-sm ui-btn-primary"><i class="fas fa-plus"></i> Buat invoice</a>
 </div>
 
-<!-- Main Statistics Grid (Simplified + Linked) -->
-<div class="summary-grid">
-    <a class="glass-panel summary-card" href="index.php?page=admin_customers">
-        <div class="summary-label">Total Pelanggan</div>
-        <div id="stat-retail-count" class="summary-value"><?= number_format($total_customers, 0) ?></div>
-        <div id="stat-retail-est" class="summary-sub">Estimasi Rp<?= number_format($est_revenue_cust, 0, ',', '.') ?></div>
-        <div class="summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
+<!-- Stats -->
+<div class="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+    <?php foreach ($stat_cards as $c):
+        $tone = $c['tone'] ?? '';
+        $valueCls = $tone === 'danger' ? 'text-danger' : ($tone === 'signal' ? 'text-signal' : 'text-foreground');
+    ?>
+    <a href="<?= htmlspecialchars($c['href']) ?>" class="ui-card group flex flex-col gap-1 p-4 no-underline text-foreground hover:border-primary/40 transition-colors">
+        <div class="flex items-start justify-between gap-2">
+            <span class="min-w-0 text-xs font-medium text-muted-foreground"><?= $c['label'] ?></span>
+            <i class="fas <?= $c['icon'] ?> mt-0.5 shrink-0 text-[13px] text-muted-foreground/70"></i>
+        </div>
+        <div id="<?= $c['id'] ?>" class="mt-1 text-xl font-extrabold leading-tight tabular-nums sm:text-2xl <?= $valueCls ?>"><?= $c['value'] ?></div>
+        <div <?= $c['sub_id'] ? 'id="' . $c['sub_id'] . '"' : '' ?> class="text-xs text-muted-foreground"><?= $c['sub'] ?></div>
     </a>
-
-    <a class="glass-panel summary-card" href="index.php?page=admin_customers">
-        <div class="summary-label">Total Mitra</div>
-        <div id="stat-mitra-count" class="summary-value"><?= number_format($total_partners, 0) ?></div>
-        <div id="stat-mitra-est" class="summary-sub">Estimasi Rp<?= number_format($est_revenue_part, 0, ',', '.') ?></div>
-        <div class="summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
-    </a>
-
-    <a class="glass-panel summary-card" href="index.php?page=admin_new_customers">
-        <div class="summary-label">Pelanggan Baru Bulan Ini</div>
-        <div id="stat-baru-count" class="summary-value"><?= number_format($new_customers_month, 0) ?></div>
-        <div class="summary-sub">Registrasi bulan berjalan</div>
-        <div class="summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
-    </a>
-
-    <a class="glass-panel summary-card" href="index.php?page=admin_invoices&filter_status=belum">
-        <div class="summary-label">Total Piutang</div>
-        <div class="summary-value">Rp<?= number_format($total_unpaid_all, 0, ',', '.') ?></div>
-        <div class="summary-sub">Pelanggan menunggak: <?= number_format($count_unpaid_all, 0) ?></div>
-        <div class="summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
-    </a>
-
-    <a class="glass-panel summary-card" href="index.php?page=admin_reports">
-        <div class="summary-label">Total Penerimaan</div>
-        <div class="summary-value">Rp<?= number_format($total_received_all, 0, ',', '.') ?></div>
-        <div class="summary-sub">Akumulasi pembayaran masuk</div>
-        <div class="summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
-    </a>
-
-    <a class="glass-panel summary-card" href="index.php?page=admin_reports">
-        <div class="summary-label">Kas Masuk Bulan Ini</div>
-        <div class="summary-value">Rp<?= number_format($cash_monthly_all, 0, ',', '.') ?></div>
-        <div class="summary-sub">Arus kas periode berjalan</div>
-        <div class="summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
-    </a>
-
-    <a class="glass-panel summary-card" href="index.php?page=admin_invoices">
-        <div class="summary-label">Invoice External</div>
-        <div id="stat-inv-external" class="summary-value"><?='Rp' . number_format($s['ext_total'] ?? 0, 0, ',', '.') ?></div>
-        <div class="summary-sub">Jumlah invoice: <?= number_format($s['ext_count'] ?? 0) ?></div>
-        <div class="summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
-    </a>
+    <?php endforeach; ?>
 </div>
 
-<!-- Secondary Components -->
+<!-- Reminder / broadcast widget (existing component) -->
 <?php require __DIR__ . '/../components/wa_broadcast.php'; ?>
 
-<!-- Daftar Tunggakan Teragregasi (Per Customer) -->
-<div class="glass-panel" style="padding: 24px; margin-top:20px; border-left: 5px solid #ef4444;">
-    <div style="font-size:18px; font-weight:800; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
-        <div style="display:flex; align-items:center; gap:10px;">
-            <i class="fas fa-user-clock text-danger"></i> Daftar Tunggakan Pelanggan (Teragregasi)
+<div class="mt-6 grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+
+    <!-- Arrears per customer -->
+    <section class="ui-card overflow-hidden">
+        <div class="flex items-center justify-between gap-3 border-b border-solid border-border px-4 py-3 sm:px-5">
+            <div>
+                <h3 class="m-0 text-[15px] font-bold">Tunggakan pelanggan</h3>
+                <p class="m-0 text-xs text-muted-foreground">Lima pelanggan dengan tunggakan terbanyak</p>
+            </div>
+            <a href="index.php?page=admin_invoices&filter_status=belum" class="ui-btn ui-btn-sm ui-btn-outline">Lihat semua</a>
         </div>
-        <a href="index.php?page=admin_invoices&filter_status=belum" class="btn btn-sm btn-info" style="font-size:11px;">Lihat Semua</a>
-    </div>
-    
-    <div class="table-container" style="max-height:400px; overflow-y:auto; padding-right:5px;">
-        <table style="width:100%;">
-            <thead>
-                <tr>
-                    <th style="padding:12px; font-size:11px;">PELANGGAN & AKSI</th>
-                    <th style="padding:12px; font-size:11px;">PERIODE</th>
-                    <th style="padding:12px; font-size:11px; text-align:right;">TOTAL HUTANG</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php
-                $late_summary = $db->query("
-                    SELECT 
-                        c.id as cust_id, c.name, c.contact, 
-                        COUNT(i.id) as months_owed,
-                        SUM(i.amount - i.discount) as total_debt
-                    FROM invoices i
-                    JOIN customers c ON i.customer_id = c.id
-                    WHERE i.status = 'Belum Lunas' $c_scope
-                    GROUP BY c.id
-                    ORDER BY months_owed DESC, total_debt DESC
-                    LIMIT 5
-                ")->fetchAll();
-                
-                foreach($late_summary as $ls):
+        <?php if (empty($late_summary)): ?>
+            <div class="px-5 py-10 text-center text-sm text-muted-foreground">Tidak ada tunggakan saat ini.</div>
+        <?php else: ?>
+        <div class="overflow-x-auto">
+            <table class="w-full border-collapse text-sm">
+                <thead>
+                    <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                        <th class="px-4 py-2.5 font-semibold sm:px-5">Pelanggan</th>
+                        <th class="px-3 py-2.5 font-semibold">Bulan</th>
+                        <th class="px-3 py-2.5 text-right font-semibold">Total</th>
+                        <th class="px-4 py-2.5 text-right font-semibold sm:px-5">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($late_summary as $ls):
+                    $phone = preg_replace('/[^0-9]/', '', $ls['contact'] ?? '');
+                    $remind = 'Halo ' . $ls['name'] . ', mohon segera melunasi tunggakan sebesar Rp ' . number_format($ls['total_debt'], 0, ',', '.') . '. Terima kasih.';
                 ?>
-                <tr style="border-bottom:1px solid var(--glass-border);">
-                    <td style="padding:12px;">
-                        <div style="font-weight:700; font-size:14px; color:var(--text-primary);"><?= htmlspecialchars($ls['name']) ?></div>
-                        <div style="font-size:11px; color:var(--text-secondary); margin-bottom:8px;"><?= htmlspecialchars($ls['contact']) ?></div>
-                        <div class="btn-group compact-action-group">
-                            <button onclick="quickPay(<?= $ls['cust_id'] ?>, '<?= addslashes($ls['name']) ?>', <?= $ls['months_owed'] ?>, <?= $ls['total_debt'] ?>)" class="btn btn-xs btn-primary">
-                                <i class="fas fa-money-bill-wave"></i> Bayar
-                            </button>
-                            <button onclick="sendWAGateway('<?= preg_replace('/[^0-9]/', '', $ls['contact']) ?>', 'Halo <?= addslashes($ls['name']) ?>, mohon segera melunasi tunggakan sebesar Rp <?= number_format($ls['total_debt'], 0, ',', '.') ?>. Terima kasih.', 'https://wa.me/<?= preg_replace('/[^0-9]/', '', $ls['contact']) ?>', this)" class="btn btn-xs btn-success">
-                                <i class="fab fa-whatsapp"></i> Tagih
-                            </button>
-                        </div>
-                    </td>
-                    <td style="padding:12px;">
-                        <span class="badge" style="background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.3); font-size:11px;">
-                             <i class="fas fa-history"></i> <?= $ls['months_owed'] ?>
-                        </span>
-                    </td>
-                    <td style="padding:12px;">
-                        <div style="font-weight:800; color:#ef4444; font-size:14px;">Rp <?= number_format($ls['total_debt'], 0, ',', '.') ?></div>
-                    </td>
-
-                </tr>
+                    <tr class="border-t border-solid border-border">
+                        <td class="px-4 py-3 sm:px-5">
+                            <div class="font-semibold"><?= htmlspecialchars($ls['name']) ?></div>
+                            <div class="text-xs text-muted-foreground"><?= htmlspecialchars($ls['contact']) ?></div>
+                        </td>
+                        <td class="px-3 py-3"><span class="ui-badge ui-badge-danger"><?= (int) $ls['months_owed'] ?> bln</span></td>
+                        <td class="px-3 py-3 text-right font-bold tabular-nums text-danger whitespace-nowrap"><?= rp($ls['total_debt']) ?></td>
+                        <td class="px-4 py-3 sm:px-5">
+                            <div class="flex justify-end gap-1.5">
+                                <button type="button" onclick="quickPay(<?= (int) $ls['cust_id'] ?>, <?= htmlspecialchars(json_encode($ls['name']), ENT_QUOTES) ?>, <?= (int) $ls['months_owed'] ?>, <?= (float) $ls['total_debt'] ?>)" class="ui-btn ui-btn-sm ui-btn-primary" title="Tandai lunas"><i class="fas fa-money-bill-wave"></i><span class="hidden sm:inline">Bayar</span></button>
+                                <button type="button" onclick="sendWAGateway('<?= $phone ?>', <?= htmlspecialchars(json_encode($remind), ENT_QUOTES) ?>, 'https://wa.me/<?= $phone ?>', this)" class="ui-btn ui-btn-sm ui-btn-wa" title="Kirim pengingat WhatsApp"><i class="fab fa-whatsapp"></i><span class="hidden sm:inline">Tagih</span></button>
+                            </div>
+                        </td>
+                    </tr>
                 <?php endforeach; ?>
-                <?php if(empty($late_summary)): ?>
-                <tr>
-                    <td colspan="3" style="text-align:center; padding:30px; color:var(--text-secondary);">🎉 Tidak ada tunggakan saat ini.</td>
-                </tr>
-                <?php endif; ?>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Financial Activity Pulse (Live Monitor) -->
-<div class="glass-panel" style="padding: 24px; margin-top:20px;">
-    <div style="font-size:18px; font-weight:800; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
-        <div style="display:flex; align-items:center; gap:10px;">
-            <i class="fas fa-satellite-dish text-primary"></i> Monitoring Transaksi (Live)
+                </tbody>
+            </table>
         </div>
-        <span class="badge" style="background:rgba(16, 185, 129, 0.1); color:#10b981; border:1px solid #10b981; font-size:10px; animation: pulse 2s infinite;">• LIVE PULSE</span>
-    </div>
-    
-    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap:15px; max-height:500px; overflow-y:auto; padding-right:5px;">
-        <?php
-        $latest = $db->query("
-            SELECT p.*, c.name as customer_name, u.name as receiver_name
-            FROM payments p 
-            JOIN invoices i ON p.invoice_id = i.id 
-            JOIN customers c ON i.customer_id = c.id 
-            LEFT JOIN users u ON p.received_by = u.id
-            WHERE 1=1 $c_scope
-            ORDER BY p.payment_date DESC LIMIT 10
-        ")->fetchAll();
-        
-        foreach($latest as $l):
-            $is_admin = strpos(strtolower($l['receiver_name'] ?? ''), 'admin') !== false;
-        ?>
-        <div style="display:flex; align-items:center; gap:15px; padding:15px; background:rgba(255,255,255,0.03); border-radius:15px; border:1px solid var(--glass-border); border-left:4px solid #10b981;">
-            <div style="width:45px; height:45px; border-radius:12px; background:rgba(16,185,129,0.1); color:#10b981; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-            </div>
-            <div style="flex:1;">
-                <div style="font-weight:700; font-size:14px; color:var(--text-primary);"><?= htmlspecialchars($l['customer_name']) ?></div>
-                <div style="font-size:11px; color:var(--text-secondary);">
-                    Diterima oleh: <span style="font-weight:700; color:var(--primary);"><?= htmlspecialchars($l['receiver_name'] ?? 'Sistem') ?></span>
-                    <br>
-                    <?= date('d M, H:i', strtotime($l['payment_date'])) ?>
-                </div>
-            </div>
-            <div style="text-align:right;">
-                <div style="font-weight:900; color:#10b981; font-size:16px;">+Rp <?= number_format($l['amount'], 0, ',', '.') ?></div>
-                <div style="font-size:9px; text-transform:uppercase; font-weight:800; color:var(--text-secondary);">Lunas</div>
-            </div>
-        </div>
-        <?php endforeach; ?>
-        <?php if(empty($latest)): ?>
-            <div style="grid-column: 1/-1; text-align:center; padding:40px; color:var(--text-secondary); font-size:14px;">
-                <i class="fas fa-inbox fa-2x" style="display:block; margin-bottom:10px; opacity:0.3;"></i>
-                Belum ada aktivitas penagihan yang tercatat.
-            </div>
         <?php endif; ?>
-    </div>
+    </section>
+
+    <!-- Latest payments -->
+    <section class="ui-card overflow-hidden">
+        <div class="flex items-center justify-between gap-3 border-b border-solid border-border px-4 py-3 sm:px-5">
+            <div>
+                <h3 class="m-0 text-[15px] font-bold">Pembayaran terbaru</h3>
+                <p class="m-0 text-xs text-muted-foreground">Sepuluh transaksi terakhir yang tercatat</p>
+            </div>
+            <a href="index.php?page=admin_reports" class="ui-btn ui-btn-sm ui-btn-outline">Laporan</a>
+        </div>
+        <?php if (empty($latest)): ?>
+            <div class="px-5 py-10 text-center text-sm text-muted-foreground">Belum ada pembayaran yang tercatat.</div>
+        <?php else: ?>
+        <ul class="m-0 list-none p-0 max-h-[480px] overflow-y-auto">
+            <?php foreach ($latest as $l): ?>
+            <li class="flex items-center gap-3 border-t border-solid border-border px-4 py-3 first:border-t-0 sm:px-5">
+                <span class="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-signal-soft text-signal"><i class="fas fa-check text-xs"></i></span>
+                <div class="min-w-0 flex-1">
+                    <div class="truncate text-sm font-semibold"><?= htmlspecialchars($l['customer_name']) ?></div>
+                    <div class="truncate text-xs text-muted-foreground">Diterima <?= htmlspecialchars($l['receiver_name'] ?? 'Sistem') ?> · <?= date('d M, H:i', strtotime($l['payment_date'])) ?></div>
+                </div>
+                <div class="shrink-0 text-right text-sm font-bold tabular-nums text-signal">+<?= rp($l['amount']) ?></div>
+            </li>
+            <?php endforeach; ?>
+        </ul>
+        <?php endif; ?>
+    </section>
 </div>
 
 <!-- Hidden Form for Quick Pay -->
@@ -472,54 +313,43 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
 <script>
 function quickPay(custId, name, months, total) {
     const formattedTotal = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(total);
-    if (confirm(`Proses pembayaran cepat untuk ${name}?\n\nTotal: ${formattedTotal} (${months} Bulan)\n\nTindakan ini akan menandai tagihan tertua sebagai LUNAS.`)) {
+    if (confirm(`Proses pembayaran cepat untuk ${name}?\n\nTotal: ${formattedTotal} (${months} bulan)\n\nTindakan ini akan menandai tagihan tertua sebagai LUNAS.`)) {
         document.getElementById('qp_cust_id').value = custId;
         document.getElementById('qp_num_months').value = months;
         document.getElementById('quickPayForm').submit();
     }
 }
 
-// Function to update stats via AJAX
+// Refresh the summary numbers without reloading the page
 async function updateDashboardStats() {
     try {
         const response = await fetch('index.php?page=admin_dashboard&ajax=stats');
         if (!response.ok) return;
         const data = await response.json();
-        
         const updateEl = (id, val) => {
             const el = document.getElementById(id);
-            if (!el) return;
-            if (el.innerText !== val) {
-                el.innerText = val;
-                el.style.color = 'var(--primary)';
-                el.style.transform = 'scale(1.1)';
-                el.style.transition = 'all 0.3s ease';
-                setTimeout(() => {
-                    el.style.color = '';
-                    el.style.transform = 'scale(1)';
-                }, 1000);
-            }
+            if (!el || el.innerText === val) return;
+            el.innerText = val;
+            el.style.transition = 'background-color .6s ease';
+            el.style.backgroundColor = '#FFF3D6';
+            setTimeout(() => { el.style.backgroundColor = ''; }, 900);
         };
-
         updateEl('stat-retail-count', data.retail_count);
-        updateEl('stat-retail-est', 'Estimasi: ' + data.retail_est);
+        updateEl('stat-retail-est', 'Estimasi ' + data.retail_est + ' / bulan');
         updateEl('stat-mitra-count', data.mitra_count);
-        updateEl('stat-mitra-est', 'Estimasi: ' + data.mitra_est);
+        updateEl('stat-mitra-est', 'Estimasi ' + data.mitra_est + ' / bulan');
         updateEl('stat-baru-count', data.baru_count);
-        updateEl('stat-piutang-r', data.piutang_r);
-        updateEl('stat-piutang-r-count', data.piutang_r_c);
-        updateEl('stat-piutang-m', data.piutang_m);
-        updateEl('stat-piutang-m-count', data.piutang_m_c);
-        updateEl('stat-koleksi-r', data.koleksi_r);
-        updateEl('stat-koleksi-m', data.koleksi_m);
-        updateEl('stat-cash-r', data.cash_r);
-        updateEl('stat-cash-m', data.cash_m);
-
+        updateEl('stat-piutang-all', data.piutang_all);
+        updateEl('stat-piutang-c', data.piutang_c + ' pelanggan menunggak');
+        updateEl('stat-koleksi-all', data.koleksi_all);
+        updateEl('stat-cash-all', data.cash_all);
+        updateEl('stat-inv-external', data.ext_total);
+        updateEl('stat-ext-count', data.ext_count + ' invoice');
+        const badge = document.getElementById('statsUpdated');
+        if (badge) badge.innerHTML = '<i class="fas fa-rotate"></i> Diperbarui ' + new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
     } catch (error) {
         console.error('Failed to update stats:', error);
     }
 }
-
-// Start polling every 45 seconds
 setInterval(updateDashboardStats, 45000);
 </script>

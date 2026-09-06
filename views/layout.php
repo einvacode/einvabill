@@ -13,20 +13,167 @@ if (!empty($__layout_settings['company_logo'])) {
         $__favicon_src = '/' . str_replace(' ', '%20', ltrim($__layout_settings['company_logo'], '/'));
     }
 }
+
+$site_settings = $__layout_settings;
+$app_base_url = rtrim($site_settings['site_url'] ?? '', '/');
+$logo_src = $__favicon_src;
+$company_name = $site_settings['company_name'] ?? 'BILLING';
+$role = $_SESSION['user_role'] ?? 'guest';
+$date_from = $date_from ?? '';
+$date_to = $date_to ?? '';
+
+// Page titles for the top bar
+$page_titles = [
+    'admin_dashboard' => 'Dashboard Admin',
+    'admin_customers' => 'Manajemen Pelanggan',
+    'admin_new_customers' => 'Pelanggan Baru',
+    'admin_assets' => 'Manajemen Aset (OLT/ODP)',
+    'admin_map' => 'Peta Sebaran Jaringan',
+    'admin_invoices' => 'Manajemen Tagihan',
+    'admin_create_invoice' => 'Buat Invoice Baru',
+    'admin_edit_quick_invoice' => 'Edit Invoice',
+    'admin_expenses' => 'Manajemen Pengeluaran',
+    'admin_reports' => 'Laporan Keuangan',
+    'admin_report_assets' => 'Laporan Inventaris Aset',
+    'admin_updater' => 'Update System',
+    'admin_updater_run' => 'Update System',
+    'admin_banners' => 'Manajemen Banner Informasi',
+    'admin_landing' => 'Pengaturan Web Profil',
+    'admin_users' => 'Akses Pengguna',
+    'admin_wa_gateway' => 'Manajemen Perangkat WhatsApp',
+    'admin_settings' => 'Pengaturan Perusahaan',
+    'admin_backup' => 'Backup & Restore Database',
+    'admin_router' => 'Router',
+    'admin_packages' => 'Manajemen Paket',
+    'admin_areas' => 'Manajemen Area',
+    'admin_auto_invoice' => 'Auto Tagihan',
+    'admin_license' => 'Lisensi',
+    'admin_temp_customers' => 'Pelanggan Sementara',
+    'admin_data_validation' => 'Validasi Data',
+    'database_audit' => 'Audit Database',
+    'cleanup_orphans' => 'Pembersihan Data',
+    'change_password' => 'Ganti Password',
+    'change_password_post' => 'Ganti Password',
+    'collector' => 'Dashboard Penagih',
+    'collector_settings' => 'Profil & WhatsApp',
+    'partner' => 'Dashboard Mitra',
+    'partner_collection' => 'Penagihan Lapangan',
+    'partner_settings' => 'Pengaturan Profil Mitra',
+    'partner_isp_invoices' => 'Tagihan ke ISP',
+    'partner_reports' => 'Laporan Keuangan',
+    'partner_wa_device' => 'Perangkat WhatsApp',
+];
+$topbar_title = $page_titles[$page] ?? '';
+
+/** Sidebar link helper: $active is a boolean computed by the caller. */
+function nav_item(string $href, string $icon, string $label, bool $active, string $extra = ''): string {
+    $cls = $active
+        ? 'bg-white/10 text-white'
+        : 'text-white/70 hover:bg-white/5 hover:text-white';
+    return '<a href="' . htmlspecialchars($href) . '" class="nav-item ' . $cls . '"' . ($active ? ' aria-current="page"' : '') . '>'
+        . '<i class="' . $icon . ' w-5 text-center text-[15px]"></i><span class="truncate">' . $label . '</span>' . $extra . '</a>';
+}
+function nav_heading(string $text): string {
+    return '<div class="mt-5 mb-1.5 px-3 text-[11px] font-semibold text-white/40">' . $text . '</div>';
+}
 ?>
 <!DOCTYPE html>
 <html lang="id" data-theme="light">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Billing Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title><?= htmlspecialchars($topbar_title ?: 'Billing') ?> · <?= htmlspecialchars($company_name) ?></title>
     <?php if (!empty($__favicon_src)): ?>
         <link rel="icon" href="<?= htmlspecialchars($__favicon_src) ?>" sizes="any">
     <?php else: ?>
         <link rel="icon" href="public/favicon.png">
     <?php endif; ?>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="public/style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Design tokens shared with the landing page (shadcn/ui shape).
+        // Preflight is off so the existing page styles in public/style.css keep working.
+        tailwind.config = {
+            corePlugins: { preflight: false },
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+                    colors: {
+                        background: '#F5F7F6',
+                        foreground: '#172026',
+                        card: '#FFFFFF',
+                        border: '#D9E0E2',
+                        input: '#D9E0E2',
+                        ring: '#0F3A47',
+                        primary: { DEFAULT: '#0F3A47', foreground: '#FFFFFF', deep: '#0A2A34', soft: '#E4EDF0' },
+                        muted: { DEFAULT: '#E9EEEC', foreground: '#5B6B72' },
+                        accent: { DEFAULT: '#E39B0A', soft: '#FFF3D6', ink: '#7A5000' },
+                        signal: { DEFAULT: '#1F8A5B', soft: '#E3F3EA' },
+                        danger: { DEFAULT: '#B42318', soft: '#FBE9E7' },
+                        wa: { DEFAULT: '#1DA851', hover: '#178A43' },
+                    },
+                    borderRadius: { lg: '0.75rem', md: '0.5rem', sm: '0.375rem' },
+                    boxShadow: { card: '0 1px 2px rgba(23,32,38,.05), 0 1px 0 rgba(23,32,38,.02)', lift: '0 12px 32px -12px rgba(15,58,71,.25)' },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        /* Bring the legacy theme variables in line with the new palette so
+           pages that still use public/style.css look like they belong. */
+        :root, [data-theme="light"] {
+            --bg-color: #F5F7F6;
+            --primary: #0F3A47; --primary-rgb: 15, 58, 71; --primary-hover: #0A2A34;
+            --success: #1F8A5B; --danger: #B42318; --warning: #B85C0A; --info: #0F3A47;
+            --glass-bg: #FFFFFF; --glass-border: #D9E0E2; --glass-shadow: 0 1px 2px rgba(23,32,38,.05);
+            --card-radius: 12px; --hover-bg: #E9EEEC; --table-header-bg: #F0F3F2;
+            --nav-active-bg: #E4EDF0; --nav-active-color: #0F3A47;
+            --text-primary: #172026; --text-secondary: #5B6B72;
+            --btn-ghost-bg: #FFFFFF; --btn-ghost-border: #D9E0E2; --btn-ghost-hover-bg: #E9EEEC;
+            --gradient-text-from: #172026; --gradient-text-to: #0F3A47;
+        }
+        @layer base {
+            html { -webkit-font-smoothing: antialiased; }
+            body { @apply bg-background text-foreground font-sans; background-image: none !important; }
+            :focus-visible { @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background; }
+            @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+        }
+        @layer components {
+            .ui-btn { @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border border-solid border-transparent text-sm font-semibold transition-colors h-10 px-4 cursor-pointer no-underline; }
+            .ui-btn-sm { @apply h-8 px-3 text-xs; }
+            .ui-btn-primary { @apply bg-primary text-primary-foreground hover:bg-primary-deep; }
+            .ui-btn-outline { @apply border-border bg-card text-foreground hover:bg-muted; }
+            .ui-btn-ghost { @apply text-foreground hover:bg-muted; }
+            .ui-btn-wa { @apply bg-wa text-white hover:bg-wa-hover; }
+            .ui-card { @apply rounded-lg border border-solid border-border bg-card shadow-card; }
+            .ui-badge { @apply inline-flex items-center gap-1 rounded-md border border-solid border-border bg-card px-2 py-0.5 text-[11px] font-semibold leading-5; }
+            .ui-badge-signal { @apply border-transparent bg-signal-soft text-signal; }
+            .ui-badge-danger { @apply border-transparent bg-danger-soft text-danger; }
+            .ui-badge-accent { @apply border-transparent bg-accent-soft text-accent-ink; }
+            .ui-badge-muted { @apply border-transparent bg-muted text-muted-foreground; }
+
+            .nav-item { @apply flex items-center gap-3 rounded-md px-3 py-2 text-[13.5px] font-medium no-underline transition-colors; }
+            .nav-group-body { display: none; }
+            .nav-group.open .nav-group-body { display: block; }
+            .nav-group.open .nav-chevron { transform: rotate(180deg); }
+            .bottom-nav-item { @apply flex flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium text-muted-foreground no-underline; }
+            .bottom-nav-item.active { @apply text-primary; }
+            .bottom-nav-item i { @apply text-[18px]; }
+            .sheet-item { @apply flex flex-col items-center gap-1.5 rounded-md bg-muted px-2 py-3 text-xs font-medium text-foreground no-underline hover:bg-primary-soft; }
+            .sheet-item i { @apply text-xl text-primary; }
+            .sheet-item.active { @apply bg-primary-soft; }
+        }
+        /* Sidebar scrollbar */
+        .app-sidebar-nav { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.25) transparent; }
+        .app-sidebar-nav::-webkit-scrollbar { width: 6px; }
+        .app-sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); border-radius: 3px; }
+        /* Keep legacy panels flat inside the new shell */
+        .glass-panel { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+    </style>
     <script>
         // Global WhatsApp API Constants (Available to all sub-views)
         window.WAGatewayCID = '<?= ($_SESSION["user_role"] === "admin") ? "admin_" . ($_SESSION["tenant_id"] ?? 1) : "u_" . ($_SESSION["user_id"] ?? "guest") ?>';
@@ -79,513 +226,378 @@ if (!empty($__layout_settings['company_logo'])) {
                 f.submit();
             });
         })();
-    </script>
-</head>
-<body>
-    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
-    <header class="mobile-header">
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <button class="burger-btn menu-btn" onclick="toggleSidebar()" aria-label="Open menu"><i class="fas fa-bars"></i></button>
-            <span style="font-weight: 800; font-size: 16px; letter-spacing: 0.5px;"><?= htmlspecialchars($__layout_settings['company_name'] ?? 'BILLING') ?></span>
-        </div>
-        <div></div>
-    </header>
-    <script>
-    // Defensive binding: ensure burger and overlay always toggle sidebar
-    (function(){
-        function safeToggle(){
-            try {
-                console.debug('safeToggle called');
-                const s = document.querySelector('.sidebar'), o = document.getElementById('sidebarOverlay');
-                if(!s || !o) { console.debug('safeToggle: missing sidebar or overlay', !!s, !!o); return; }
-                s.classList.toggle('active'); o.classList.toggle('active');
-                document.body.style.overflow = s.classList.contains('active') ? 'hidden' : 'auto';
-            } catch(e) { console.warn('safeToggle error', e); }
-        }
-        // Provide an early, defensive toggleDropdown so inline onclicks won't break
-        // if a later script fails to execute. This ensures dropdowns remain responsive.
-        window.toggleDropdown = function(el){
-            try {
-                if(!el || !el.parentElement) return;
-                el.parentElement.classList.toggle('open');
-            } catch(e) { console.warn('toggleDropdown fallback error', e); }
+
+        /** UI TOGGLES (defined early so inline onclick handlers always work) */
+        window.toggleSidebar = function () {
+            const s = document.getElementById('appSidebar'), o = document.getElementById('sidebarOverlay');
+            if (!s || !o) return;
+            const open = s.classList.contains('-translate-x-full');
+            s.classList.toggle('-translate-x-full', !open);
+            o.classList.toggle('hidden', !open);
+            document.body.style.overflow = open ? 'hidden' : '';
+        };
+        window.closeSidebar = function () {
+            const s = document.getElementById('appSidebar'), o = document.getElementById('sidebarOverlay');
+            if (s) s.classList.add('-translate-x-full');
+            if (o) o.classList.add('hidden');
+            document.body.style.overflow = '';
+        };
+        window.safeToggleSidebar = window.toggleSidebar;
+        window.toggleDropdown = function (el) {
+            try { if (el && el.parentElement) el.parentElement.classList.toggle('open'); } catch (e) {}
         };
 
-            // Universal invoice edit modal opener — ensures edit modal can be
-            // triggered even if page-specific JS fails to load. Buttons should
-            // include the class `btn-edit-invoice` and data attributes.
-            window.openInvoiceEditModal = function(id, amount, discount, date) {
-                try {
-                    const modal = document.getElementById('editInvoiceModal');
-                    if(!modal) return false;
-                    const setVal = (sel, v) => { const el = document.getElementById(sel); if(el) el.value = v ?? ''; };
-                    setVal('editInvId', id);
-                    setVal('editInvAmount', amount);
-                    setVal('editInvDiscount', discount || 0);
-                    setVal('editInvDate', date || '');
-                    const title = document.getElementById('editTitle'); if(title) title.innerText = 'Edit INV-' + String(id).padStart(5, '0');
-                    modal.style.display = 'flex';
-                    return true;
-                } catch(e) { console.warn('openInvoiceEditModal error', e); return false; }
-            };
-
-            // Delegated click handler for edit buttons (works even if inline
-            // onclick handlers are missing or JS earlier failed).
-            document.addEventListener('click', function(ev){
-                try {
-                    const btn = ev.target.closest && ev.target.closest('.btn-edit-invoice');
-                    if(!btn) return;
-                    ev.preventDefault();
-                    const id = btn.dataset.invId || btn.getAttribute('data-inv-id');
-                    const amount = btn.dataset.invAmount || btn.getAttribute('data-inv-amount');
-                    const discount = btn.dataset.invDiscount || btn.getAttribute('data-inv-discount');
-                    const date = btn.dataset.invDate || btn.getAttribute('data-inv-date');
-                    window.openInvoiceEditModal(id, amount, discount, date);
-                } catch(e) { /* swallow */ }
-            }, true);
-
-        document.addEventListener('DOMContentLoaded', function(){
-                console.debug('DOMContentLoaded: binding burger');
-                const burger = document.querySelector('.burger-btn');
-                if(burger) {
-                    burger.addEventListener('click', function(e){ console.debug('burger click event'); safeToggle(); });
-                    burger.addEventListener('touchstart', function(e){ console.debug('burger touchstart'); e.preventDefault(); safeToggle(); }, {passive:false});
-                } else { console.debug('burger element not found'); }
-
-                const menuBtn = document.querySelector('.menu-btn');
-                if(menuBtn) {
-                    menuBtn.addEventListener('click', function(e){ console.debug('menu click event'); safeToggle(); });
-                    menuBtn.addEventListener('touchstart', function(e){ console.debug('menu touchstart'); e.preventDefault(); safeToggle(); }, {passive:false});
-                } else { console.debug('menu element not found'); }
-                const overlay = document.getElementById('sidebarOverlay');
-                if(overlay) {
-                    overlay.addEventListener('click', function(){ console.debug('overlay click'); safeToggle(); });
-                    overlay.addEventListener('touchstart', function(e){ console.debug('overlay touchstart'); e.preventDefault(); safeToggle(); }, {passive:false});
-                } else { console.debug('overlay element not found'); }
-            });
-        window.safeToggleSidebar = safeToggle;
-    })();
+        // Universal invoice edit modal opener — ensures the edit modal can be
+        // triggered even if page-specific JS fails to load. Buttons should
+        // include the class `btn-edit-invoice` and data attributes.
+        window.openInvoiceEditModal = function (id, amount, discount, date) {
+            try {
+                const modal = document.getElementById('editInvoiceModal');
+                if (!modal) return false;
+                const setVal = (sel, v) => { const el = document.getElementById(sel); if (el) el.value = v ?? ''; };
+                setVal('editInvId', id);
+                setVal('editInvAmount', amount);
+                setVal('editInvDiscount', discount || 0);
+                setVal('editInvDate', date || '');
+                const title = document.getElementById('editTitle'); if (title) title.innerText = 'Edit INV-' + String(id).padStart(5, '0');
+                modal.style.display = 'flex';
+                return true;
+            } catch (e) { console.warn('openInvoiceEditModal error', e); return false; }
+        };
+        document.addEventListener('click', function (ev) {
+            try {
+                const btn = ev.target.closest && ev.target.closest('.btn-edit-invoice');
+                if (!btn) return;
+                ev.preventDefault();
+                window.openInvoiceEditModal(
+                    btn.dataset.invId || btn.getAttribute('data-inv-id'),
+                    btn.dataset.invAmount || btn.getAttribute('data-inv-amount'),
+                    btn.dataset.invDiscount || btn.getAttribute('data-inv-discount'),
+                    btn.dataset.invDate || btn.getAttribute('data-inv-date')
+                );
+            } catch (e) { /* swallow */ }
+        }, true);
     </script>
-    <div class="app-layout">
-        <aside class="sidebar">
-            <div>
-                <?php
-                    $tenant_id_layout = $_SESSION['tenant_id'] ?? 1;
-                    $site_settings = $db->query("SELECT company_name, company_logo, site_url FROM settings WHERE tenant_id = $tenant_id_layout")->fetch();
-                    if (!$site_settings) {
-                        $site_settings = $db->query("SELECT company_name, company_logo, site_url FROM settings WHERE id=1")->fetch();
-                    }
-                    $app_base_url = rtrim($site_settings['site_url'] ?? '', '/');
-                    $logo_src = '';
-                    if (!empty($site_settings['company_logo'])) {
-                        if (preg_match('/^https?:\/\//', $site_settings['company_logo'])) {
-                            $logo_src = $site_settings['company_logo'];
-                        } else {
-                            $logo_src = '/' . str_replace(' ', '%20', $site_settings['company_logo']);
-                        }
-                    }
-                ?>
-                <div class="sidebar-header" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 20px 10px 30px; position:relative;">
-                    <?php if(!empty($logo_src)): ?>
-                        <div class="brand-logo-wrapper sidebar-logo-box">
-                            <img src="<?= htmlspecialchars($logo_src) ?>" alt="Logo" loading="eager">
-                        </div>
-                    <?php else: ?>
-                        <div style="background: var(--nav-active-bg); padding: 12px; border-radius: 12px; margin-bottom: 5px;">
-                            <i class="fas fa-wifi" style="font-size: 28px; color: var(--primary);"></i>
-                        </div>
-                    <?php endif; ?>
-                    <h2 style="font-size: 16px; margin: 0; line-height: 1.3; word-break: break-word; text-align: center; font-weight: 700; color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);"><?= htmlspecialchars(strtoupper($site_settings['company_name'])) ?></h2>
-                </div>
-                <div class="nav-links">
-                    <?php if($_SESSION['user_role'] === 'admin'): ?>
-                        <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">OPERASIONAL</div>
-                        <a href="index.php?page=admin_dashboard" class="nav-link <?= $page == 'admin_dashboard' ? 'active' : '' ?>"><i class="fas fa-home"></i> Dashboard</a>
-                        <a href="index.php?page=admin_customers&filter_type=customer" class="nav-link <?= $page == 'admin_customers' && ($_GET['filter_type'] ?? '') == 'customer' ? 'active' : '' ?>"><i class="fas fa-users"></i> Pelanggan Rumahan</a>
-                        <a href="index.php?page=admin_new_customers" class="nav-link <?= $page == 'admin_new_customers' ? 'active' : '' ?>"><i class="fas fa-star text-warning"></i> Pelanggan Baru</a>
-                        <a href="index.php?page=admin_customers&filter_type=partner" class="nav-link <?= $page == 'admin_customers' && ($_GET['filter_type'] ?? '') == 'partner' ? 'active' : '' ?>"><i class="fas fa-handshake"></i> Kemitraan (B2B)</a>
-                        
-                        <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">KEUANGAN</div>
-                        <a href="index.php?page=admin_invoices&filter_type=customer" class="nav-link <?= $page == 'admin_invoices' && ($_GET['filter_type'] ?? '') == 'customer' && ($filter_status ?? '') != 'belum' ? 'active' : '' ?>"><i class="fas fa-file-invoice-dollar"></i> Tagihan Pelanggan</a>
-                        <a href="index.php?page=admin_invoices&filter_type=partner" class="nav-link <?= $page == 'admin_invoices' && ($_GET['filter_type'] ?? '') == 'partner' ? 'active' : '' ?>"><i class="fas fa-handshake" style="color:var(--primary);"></i> Tagihan Kemitraan</a>
-                        <a href="index.php?page=admin_create_invoice" class="nav-link <?= $page == 'admin_create_invoice' ? 'active' : '' ?>"><i class="fas fa-plus-circle" style="color:#06b6d4;"></i> Buat Invoice Baru</a>
-                        <a href="index.php?page=admin_expenses" class="nav-link <?= $page == 'admin_expenses' ? 'active' : '' ?>"><i class="fas fa-wallet" style="color:var(--warning);"></i> Pengeluaran / Biaya</a>
-                        
-                        <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">INFRASTRUKTUR</div>
-                        <a href="index.php?page=admin_router" class="nav-link <?= $page == 'admin_router' ? 'active' : '' ?>"><i class="fas fa-network-wired"></i> Router</a>
-                        <a href="index.php?page=admin_assets" class="nav-link <?= $page == 'admin_assets' ? 'active' : '' ?>"><i class="fas fa-boxes"></i> Aset Perusahaan</a>
-                        <a href="index.php?page=admin_map" class="nav-link <?= $page == 'admin_map' ? 'active' : '' ?>"><i class="fas fa-map-location-dot"></i> Peta Aset</a>
+</head>
+<body class="min-h-screen">
 
-                        <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">DATA MASTER</div>
-                        <a href="index.php?page=admin_packages" class="nav-link <?= $page == 'admin_packages' ? 'active' : '' ?>"><i class="fas fa-box"></i> Manajemen Paket</a>
-                        <a href="index.php?page=admin_areas" class="nav-link <?= $page == 'admin_areas' ? 'active' : '' ?>"><i class="fas fa-map-marker-alt"></i> Manajemen Area</a>
-                        <a href="index.php?page=admin_users" class="nav-link <?= $page == 'admin_users' ? 'active' : '' ?>"><i class="fas fa-user-shield"></i> Akses Pengguna</a>
+<div class="lg:grid lg:grid-cols-[256px_minmax(0,1fr)] min-h-screen">
 
-                        <!-- Dropdown Pengaturan -->
-                        <div class="nav-dropdown <?= in_array($page, ['admin_wa_gateway', 'admin_auto_invoice', 'admin_settings', 'admin_backup', 'admin_banners', 'admin_landing']) ? 'open' : '' ?>">
-                            <div class="nav-link dropdown-toggle" onclick="toggleDropdown(this)">
-                                <span><i class="fas fa-sliders-h"></i> Pengaturan</span>
-                                <i class="fas fa-chevron-down"></i>
-                            </div>
-                            <div class="dropdown-content">
-                                <a href="index.php?page=admin_wa_gateway" class="nav-link dropdown-link <?= $page == 'admin_wa_gateway' ? 'active' : '' ?>"><i class="fab fa-whatsapp" style="color:#25D366;"></i> WA Perangkat</a>
-                                <a href="index.php?page=admin_auto_invoice" class="nav-link dropdown-link <?= $page == 'admin_auto_invoice' ? 'active' : '' ?>"><i class="fas fa-magic" style="color:#8b5cf6;"></i> Auto Tagihan</a>
-                                <a href="index.php?page=admin_settings" class="nav-link dropdown-link <?= $page == 'admin_settings' ? 'active' : '' ?>"><i class="fas fa-cog"></i> Profil & Apps</a>
-                                <a href="index.php?page=admin_landing" class="nav-link dropdown-link <?= $page == 'admin_landing' ? 'active' : '' ?>"><i class="fas fa-globe"></i> Web Profil</a>
-                                <a href="index.php?page=admin_banners" class="nav-link dropdown-link <?= $page == 'admin_banners' ? 'active' : '' ?>"><i class="fas fa-scroll" style="color:var(--warning);"></i> Banner</a>
-                                <a href="index.php?page=admin_backup" class="nav-link dropdown-link <?= $page == 'admin_backup' ? 'active' : '' ?>"><i class="fas fa-shield-alt"></i> Backup</a>
-                            </div>
-                        </div>
-                        
-                        <!-- Dropdown Laporan -->
-                        <div class="nav-dropdown <?= in_array($page, ['admin_reports', 'admin_report_assets', 'admin_partner_dashboard']) ? 'open' : '' ?>">
-                            <div class="nav-link dropdown-toggle" onclick="toggleDropdown(this)">
-                                <span><i class="fas fa-chart-bar"></i> Laporan</span>
-                                <i class="fas fa-chevron-down"></i>
-                            </div>
-                            <div class="dropdown-content">
-                                <a href="index.php?page=admin_reports" class="nav-link dropdown-link <?= $page == 'admin_reports' ? 'active' : '' ?>"><i class="fas fa-chart-line"></i> Keuangan</a>
-                                <a href="index.php?page=admin_report_assets" class="nav-link dropdown-link <?= $page == 'admin_report_assets' ? 'active' : '' ?>"><i class="fas fa-file-contract"></i> Aset</a>
-                                <!-- KPI removed -->
-                            </div>
-                        </div>
-
-                    <?php elseif($_SESSION['user_role'] === 'collector'): ?>
-                        <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">PENAGIHAN LAPANGAN</div>
-                        <a href="index.php?page=collector&tab=summary&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>" class="nav-link <?= $page == 'collector' && ($coll_tab ?? 'summary') == 'summary' ? 'active' : '' ?>"><i class="fas fa-home"></i> Dashboard</a>
-                        <a href="index.php?page=collector&tab=tugas&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>" class="nav-link <?= $page == 'collector' && ($coll_tab ?? '') == 'tugas' ? 'active' : '' ?>"><i class="fas fa-clock" style="color:#ef4444;"></i> Belum Lunas</a>
-                        <a href="index.php?page=collector&tab=lunas&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>" class="nav-link <?= $page == 'collector' && ($coll_tab ?? '') == 'lunas' ? 'active' : '' ?>"><i class="fas fa-check-circle" style="color:#10b981;"></i> Lunas Bayar</a>
-                        <a href="index.php?page=collector&tab=pelanggan&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>" class="nav-link <?= $page == 'collector' && ($coll_tab ?? '') == 'pelanggan' ? 'active' : '' ?>"><i class="fas fa-users"></i> Daftar Pelanggan</a>
-                        
-                        <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">UTILITY</div>
-                        <a href="index.php?page=admin_wa_gateway" class="nav-link <?= $page == 'admin_wa_gateway' ? 'active' : '' ?>">
-                            <i class="fab fa-whatsapp" style="color:#25D366;"></i> WhatsApp Perangkat
-                            <span class="wa-status-sidebar-badge" style="margin-left:auto;"></span>
-                        </a>
-                        <a href="index.php?page=collector_settings" class="nav-link <?= $page == 'collector_settings' ? 'active' : '' ?>"><i class="fas fa-user-cog" style="color:var(--text-secondary);"></i> Profil & WhatsApp</a>
-                        <a href="index.php?page=admin_map" class="nav-link <?= $page == 'admin_map' ? 'active' : '' ?>"><i class="fas fa-map-location-dot"></i> Peta Lokasi</a>
-
-                    <?php elseif($_SESSION['user_role'] === 'partner'): ?>
-                        <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">DASHBOARD MITRA</div>
-                        <a href="index.php?page=partner" class="nav-link <?= $page == 'partner' ? 'active' : '' ?>"><i class="fas fa-home" style="color:var(--primary);"></i> Ringkasan Utama</a>
-                        <a href="index.php?page=partner_collection" class="nav-link <?= $page == 'partner_collection' ? 'active' : '' ?>"><i class="fas fa-motorcycle" style="color:var(--warning);"></i> Penagihan Lapangan</a>
-                        <a href="index.php?page=partner_collection&tab=pelanggan" class="nav-link <?= ($page == 'partner_collection' && ($_GET['tab'] ?? '') == 'pelanggan') ? 'active' : '' ?>"><i class="fas fa-users" style="color:#60a5fa;"></i> Pelanggan Saya</a>
-                        
-                        <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); margin: 20px 0 10px 15px; letter-spacing: 1px; opacity: 0.6;">KEUANGAN & TOOLS</div>
-                        <div class="nav-dropdown <?= in_array($page, ['partner_isp_invoices', 'partner_reports', 'admin_expenses']) ? 'open' : '' ?>">
-                            <div class="nav-link dropdown-toggle" onclick="toggleDropdown(this)">
-                                <span><i class="fas fa-wallet" style="color:#10b981;"></i> Administrasi Keuangan</span>
-                                <i class="fas fa-chevron-down"></i>
-                            </div>
-                            <div class="dropdown-content">
-                                <a href="index.php?page=partner_reports" class="nav-link dropdown-link <?= $page == 'partner_reports' ? 'active' : '' ?>"><i class="fas fa-chart-line" style="color:var(--primary);"></i> Laporan Keuangan</a>
-                                <a href="index.php?page=partner_isp_invoices" class="nav-link dropdown-link <?= $page == 'partner_isp_invoices' ? 'active' : '' ?>"><i class="fas fa-receipt" style="color:#ef4444;"></i> Tagihan Ke ISP</a>
-                                <a href="index.php?page=admin_expenses" class="nav-link dropdown-link <?= $page == 'admin_expenses' ? 'active' : '' ?>"><i class="fas fa-wallet" style="color:var(--warning);"></i> Catat Pengeluaran</a>
-                            </div>
-                        </div>
-
-                        <a href="index.php?page=partner_settings" class="nav-link <?= $page == 'partner_settings' ? 'active' : '' ?>"><i class="fas fa-cog" style="color:var(--text-secondary);"></i> Profil & Branding</a>
-                        <a href="index.php?page=partner_wa_device" class="nav-link <?= $page == 'partner_wa_device' ? 'active' : '' ?>">
-                            <i class="fab fa-whatsapp" style="color:#25D366;"></i> Perangkat WhatsApp
-                            <span class="wa-status-sidebar-badge" style="margin-left:auto;"></span>
-                        </a>
-                    <?php endif; ?>
-                </div>
-            </div>
-            <a href="index.php?page=change_password" class="nav-link"><i class="fas fa-key"></i> Ganti Password</a>
-            <a href="index.php?page=logout" class="nav-link" style="margin-top: auto; margin-bottom: 20px;"><i class="fas fa-sign-out-alt"></i> Logout</a>
-        </aside>
-
-        <main class="main-content">
-            <!-- Topbar (Hidden for Collector as requested) -->
-            <?php if($page !== 'collector'): ?>
-            <?php
-                $topbar_title = '';
-                if($page == 'admin_dashboard') $topbar_title = 'Dashboard Admin';
-                elseif($page == 'admin_customers') $topbar_title = 'Manajemen Pelanggan';
-                elseif($page == 'admin_assets') $topbar_title = 'Manajemen Aset (OLT/ODP)';
-                elseif($page == 'admin_map') $topbar_title = 'Peta Sebaran Jaringan';
-                elseif($page == 'admin_invoices') $topbar_title = 'Manajemen Tagihan';
-                elseif($page == 'admin_expenses') $topbar_title = 'Manajemen Pengeluaran';
-                elseif($page == 'admin_reports') $topbar_title = 'Laporan Keuangan';
-                elseif($page == 'admin_report_assets') $topbar_title = 'Laporan Inventaris Aset';
-                elseif($page == 'admin_updater' || $page == 'admin_updater_run') $topbar_title = 'Update System';
-                elseif($page == 'admin_banners') $topbar_title = 'Manajemen Banner Informasi';
-                elseif($page == 'admin_landing') $topbar_title = 'Pengaturan Web Profil';
-                elseif($page == 'admin_users') $topbar_title = 'Akses Pengguna';
-                elseif($page == 'admin_wa_gateway') $topbar_title = 'Manajemen Perangkat WhatsApp';
-                elseif($page == 'admin_settings') $topbar_title = 'Pengaturan Perusahaan';
-                elseif($page == 'admin_backup') $topbar_title = 'Backup & Restore Database';
-                elseif($page == 'collector') $topbar_title = 'Dashboard Penagih';
-                elseif($page == 'partner') $topbar_title = 'Dashboard Mitra';
-                elseif($page == 'partner_settings') $topbar_title = 'Pengaturan Profil Mitra';
-            ?>
-            <?php if(($_SESSION['user_role'] ?? '') === 'partner'): ?>
-                <div class="topbar partner-topbar" style="display:flex; justify-content:space-between; align-items:center;">
-                    <?php if(!empty($topbar_title)): ?><div class="partner-topbar-title"><?= htmlspecialchars($topbar_title) ?></div><?php endif; ?>
-                </div>
+    <!-- Sidebar: fixed drawer on small screens, static column from lg -->
+    <div id="sidebarOverlay" class="fixed inset-0 z-40 bg-black/50 hidden lg:hidden" onclick="closeSidebar()"></div>
+    <aside id="appSidebar" class="fixed inset-y-0 left-0 z-50 flex w-[256px] -translate-x-full flex-col bg-primary-deep text-white transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0">
+        <div class="flex h-14 shrink-0 items-center gap-3 border-b border-solid border-white/10 px-4">
+            <?php if ($logo_src): ?>
+                <span class="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-md bg-white p-0.5">
+                    <img src="<?= htmlspecialchars($logo_src) ?>" alt="" class="max-h-full max-w-full object-contain">
+                </span>
             <?php else: ?>
-                <div class="topbar glass-panel" style="padding:15px 24px;">
-                    <?php if(!empty($topbar_title)): ?>
-                    <div style="font-weight:600; font-size:18px;"><?= htmlspecialchars($topbar_title) ?></div>
-                    <?php endif; ?>
-                    <div style="display:flex; align-items:center; gap:15px;">
-                        <div class="user-profile">
-                            <div style="text-align:right">
-                                <div style="font-size:14px; font-weight:600;"><?= htmlspecialchars($_SESSION['user_name']) ?></div>
-                                <div style="font-size:12px; color:var(--text-secondary); text-transform:capitalize;"><?= htmlspecialchars($_SESSION['user_role']) ?></div>
-                            </div>
-                        </div>
+                <span class="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-white/10"><i class="fas fa-wifi text-[15px]"></i></span>
+            <?php endif; ?>
+            <div class="min-w-0">
+                <div class="truncate text-[13.5px] font-bold leading-tight"><?= htmlspecialchars($company_name) ?></div>
+                <div class="truncate text-[11px] text-white/50 leading-tight">EinvaBill</div>
+            </div>
+            <button type="button" class="ml-auto grid h-8 w-8 place-items-center rounded-md text-white/70 hover:bg-white/10 lg:hidden" onclick="closeSidebar()" aria-label="Tutup menu"><i class="fas fa-times"></i></button>
+        </div>
+
+        <nav class="app-sidebar-nav flex-1 overflow-y-auto px-3 pb-4">
+            <?php if ($role === 'admin'): ?>
+                <?= nav_heading('Operasional') ?>
+                <?= nav_item('index.php?page=admin_dashboard', 'fas fa-home', 'Dashboard', $page == 'admin_dashboard') ?>
+                <?= nav_item('index.php?page=admin_customers&filter_type=customer', 'fas fa-users', 'Pelanggan Rumahan', $page == 'admin_customers' && ($_GET['filter_type'] ?? '') == 'customer') ?>
+                <?= nav_item('index.php?page=admin_new_customers', 'fas fa-star', 'Pelanggan Baru', $page == 'admin_new_customers') ?>
+                <?= nav_item('index.php?page=admin_customers&filter_type=partner', 'fas fa-handshake', 'Kemitraan (B2B)', $page == 'admin_customers' && ($_GET['filter_type'] ?? '') == 'partner') ?>
+
+                <?= nav_heading('Keuangan') ?>
+                <?= nav_item('index.php?page=admin_invoices&filter_type=customer', 'fas fa-file-invoice-dollar', 'Tagihan Pelanggan', $page == 'admin_invoices' && ($_GET['filter_type'] ?? '') == 'customer' && ($filter_status ?? '') != 'belum') ?>
+                <?= nav_item('index.php?page=admin_invoices&filter_type=partner', 'fas fa-handshake', 'Tagihan Kemitraan', $page == 'admin_invoices' && ($_GET['filter_type'] ?? '') == 'partner') ?>
+                <?= nav_item('index.php?page=admin_create_invoice', 'fas fa-plus-circle', 'Buat Invoice Baru', $page == 'admin_create_invoice') ?>
+                <?= nav_item('index.php?page=admin_expenses', 'fas fa-wallet', 'Pengeluaran / Biaya', $page == 'admin_expenses') ?>
+
+                <?= nav_heading('Infrastruktur') ?>
+                <?= nav_item('index.php?page=admin_router', 'fas fa-network-wired', 'Router', $page == 'admin_router') ?>
+                <?= nav_item('index.php?page=admin_assets', 'fas fa-boxes', 'Aset Perusahaan', $page == 'admin_assets') ?>
+                <?= nav_item('index.php?page=admin_map', 'fas fa-map-location-dot', 'Peta Aset', $page == 'admin_map') ?>
+
+                <?= nav_heading('Data master') ?>
+                <?= nav_item('index.php?page=admin_packages', 'fas fa-box', 'Manajemen Paket', $page == 'admin_packages') ?>
+                <?= nav_item('index.php?page=admin_areas', 'fas fa-map-marker-alt', 'Manajemen Area', $page == 'admin_areas') ?>
+                <?= nav_item('index.php?page=admin_users', 'fas fa-user-shield', 'Akses Pengguna', $page == 'admin_users') ?>
+
+                <?php $settings_pages = ['admin_wa_gateway', 'admin_auto_invoice', 'admin_settings', 'admin_backup', 'admin_banners', 'admin_landing']; ?>
+                <div class="nav-group mt-1 <?= in_array($page, $settings_pages) ? 'open' : '' ?>">
+                    <button type="button" class="nav-item w-full text-left text-white/70 hover:bg-white/5 hover:text-white bg-transparent border-0" onclick="toggleDropdown(this)">
+                        <i class="fas fa-sliders-h w-5 text-center text-[15px]"></i><span class="flex-1">Pengaturan</span><i class="fas fa-chevron-down nav-chevron text-[11px] transition-transform"></i>
+                    </button>
+                    <div class="nav-group-body ml-4 border-l border-solid border-white/10 pl-2">
+                        <?= nav_item('index.php?page=admin_wa_gateway', 'fab fa-whatsapp', 'WA Perangkat', $page == 'admin_wa_gateway', '<span class="wa-status-sidebar-badge ml-auto"></span>') ?>
+                        <?= nav_item('index.php?page=admin_auto_invoice', 'fas fa-magic', 'Auto Tagihan', $page == 'admin_auto_invoice') ?>
+                        <?= nav_item('index.php?page=admin_settings', 'fas fa-cog', 'Profil & Apps', $page == 'admin_settings') ?>
+                        <?= nav_item('index.php?page=admin_landing', 'fas fa-globe', 'Web Profil', $page == 'admin_landing') ?>
+                        <?= nav_item('index.php?page=admin_banners', 'fas fa-scroll', 'Banner', $page == 'admin_banners') ?>
+                        <?= nav_item('index.php?page=admin_backup', 'fas fa-shield-alt', 'Backup', $page == 'admin_backup') ?>
                     </div>
                 </div>
-            <?php endif; ?>
-            <?php endif; ?>
 
-            <!-- Page Content -->
+                <div class="nav-group <?= in_array($page, ['admin_reports', 'admin_report_assets']) ? 'open' : '' ?>">
+                    <button type="button" class="nav-item w-full text-left text-white/70 hover:bg-white/5 hover:text-white bg-transparent border-0" onclick="toggleDropdown(this)">
+                        <i class="fas fa-chart-bar w-5 text-center text-[15px]"></i><span class="flex-1">Laporan</span><i class="fas fa-chevron-down nav-chevron text-[11px] transition-transform"></i>
+                    </button>
+                    <div class="nav-group-body ml-4 border-l border-solid border-white/10 pl-2">
+                        <?= nav_item('index.php?page=admin_reports', 'fas fa-chart-line', 'Keuangan', $page == 'admin_reports') ?>
+                        <?= nav_item('index.php?page=admin_report_assets', 'fas fa-file-contract', 'Aset', $page == 'admin_report_assets') ?>
+                    </div>
+                </div>
+
+            <?php elseif ($role === 'collector'): ?>
+                <?php $cq = "&date_from=" . urlencode($date_from) . "&date_to=" . urlencode($date_to); $ct = $coll_tab ?? 'summary'; ?>
+                <?= nav_heading('Penagihan lapangan') ?>
+                <?= nav_item("index.php?page=collector&tab=summary$cq", 'fas fa-home', 'Dashboard', $page == 'collector' && $ct == 'summary') ?>
+                <?= nav_item("index.php?page=collector&tab=tugas$cq", 'fas fa-clock', 'Belum Lunas', $page == 'collector' && $ct == 'tugas') ?>
+                <?= nav_item("index.php?page=collector&tab=lunas$cq", 'fas fa-check-circle', 'Lunas Bayar', $page == 'collector' && $ct == 'lunas') ?>
+                <?= nav_item("index.php?page=collector&tab=pelanggan$cq", 'fas fa-users', 'Daftar Pelanggan', $page == 'collector' && $ct == 'pelanggan') ?>
+
+                <?= nav_heading('Utility') ?>
+                <?= nav_item('index.php?page=admin_wa_gateway', 'fab fa-whatsapp', 'WhatsApp Perangkat', $page == 'admin_wa_gateway', '<span class="wa-status-sidebar-badge ml-auto"></span>') ?>
+                <?= nav_item('index.php?page=collector_settings', 'fas fa-user-cog', 'Profil & WhatsApp', $page == 'collector_settings') ?>
+                <?= nav_item('index.php?page=admin_map', 'fas fa-map-location-dot', 'Peta Lokasi', $page == 'admin_map') ?>
+
+            <?php elseif ($role === 'partner'): ?>
+                <?= nav_heading('Dashboard mitra') ?>
+                <?= nav_item('index.php?page=partner', 'fas fa-home', 'Ringkasan Utama', $page == 'partner') ?>
+                <?= nav_item('index.php?page=partner_collection', 'fas fa-motorcycle', 'Penagihan Lapangan', $page == 'partner_collection' && ($_GET['tab'] ?? '') != 'pelanggan') ?>
+                <?= nav_item('index.php?page=partner_collection&tab=pelanggan', 'fas fa-users', 'Pelanggan Saya', $page == 'partner_collection' && ($_GET['tab'] ?? '') == 'pelanggan') ?>
+
+                <?= nav_heading('Keuangan & tools') ?>
+                <div class="nav-group <?= in_array($page, ['partner_isp_invoices', 'partner_reports', 'admin_expenses']) ? 'open' : '' ?>">
+                    <button type="button" class="nav-item w-full text-left text-white/70 hover:bg-white/5 hover:text-white bg-transparent border-0" onclick="toggleDropdown(this)">
+                        <i class="fas fa-wallet w-5 text-center text-[15px]"></i><span class="flex-1">Administrasi Keuangan</span><i class="fas fa-chevron-down nav-chevron text-[11px] transition-transform"></i>
+                    </button>
+                    <div class="nav-group-body ml-4 border-l border-solid border-white/10 pl-2">
+                        <?= nav_item('index.php?page=partner_reports', 'fas fa-chart-line', 'Laporan Keuangan', $page == 'partner_reports') ?>
+                        <?= nav_item('index.php?page=partner_isp_invoices', 'fas fa-receipt', 'Tagihan Ke ISP', $page == 'partner_isp_invoices') ?>
+                        <?= nav_item('index.php?page=admin_expenses', 'fas fa-wallet', 'Catat Pengeluaran', $page == 'admin_expenses') ?>
+                    </div>
+                </div>
+                <?= nav_item('index.php?page=partner_settings', 'fas fa-cog', 'Profil & Branding', $page == 'partner_settings') ?>
+                <?= nav_item('index.php?page=partner_wa_device', 'fab fa-whatsapp', 'Perangkat WhatsApp', $page == 'partner_wa_device', '<span class="wa-status-sidebar-badge ml-auto"></span>') ?>
+            <?php endif; ?>
+        </nav>
+
+        <div class="shrink-0 border-t border-solid border-white/10 p-3">
+            <div class="flex items-center gap-3 px-2 pb-2">
+                <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/10 text-xs font-bold"><?= htmlspecialchars(mb_strtoupper(mb_substr($_SESSION['user_name'] ?? 'U', 0, 1))) ?></span>
+                <div class="min-w-0">
+                    <div class="truncate text-[13px] font-semibold"><?= htmlspecialchars($_SESSION['user_name'] ?? '') ?></div>
+                    <div class="truncate text-[11px] capitalize text-white/50"><?= htmlspecialchars($role) ?></div>
+                </div>
+            </div>
+            <?= nav_item('index.php?page=change_password', 'fas fa-key', 'Ganti Password', $page == 'change_password' || $page == 'change_password_post') ?>
+            <?= nav_item('index.php?page=logout', 'fas fa-sign-out-alt', 'Logout', false) ?>
+        </div>
+    </aside>
+
+    <!-- Main column -->
+    <div class="flex min-h-screen min-w-0 flex-col">
+        <?php if ($page !== 'collector'): ?>
+        <header class="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-solid border-border bg-background/90 px-4 backdrop-blur lg:px-8">
+            <button type="button" class="grid h-9 w-9 place-items-center rounded-md border border-solid border-border bg-card text-foreground lg:hidden" onclick="toggleSidebar()" aria-label="Buka menu"><i class="fas fa-bars"></i></button>
+            <div class="min-w-0 flex-1">
+                <div class="truncate text-[15px] font-bold leading-tight lg:text-base"><?= htmlspecialchars($topbar_title ?: $company_name) ?></div>
+                <div class="hidden truncate text-[11px] text-muted-foreground sm:block"><?= htmlspecialchars($company_name) ?></div>
+            </div>
+            <div class="wa-status-indicator hidden sm:block cursor-pointer" onclick="location.href='<?= $role === 'partner' ? 'index.php?page=partner_wa_device' : 'index.php?page=admin_wa_gateway' ?>'" title="Status perangkat WhatsApp"></div>
+            <div class="hidden items-center gap-2 lg:flex">
+                <div class="text-right leading-tight">
+                    <div class="text-[13px] font-semibold"><?= htmlspecialchars($_SESSION['user_name'] ?? '') ?></div>
+                    <div class="text-[11px] capitalize text-muted-foreground"><?= htmlspecialchars($role) ?></div>
+                </div>
+            </div>
+        </header>
+        <?php else: ?>
+        <header class="flex h-12 items-center gap-3 px-4 lg:hidden">
+            <button type="button" class="grid h-9 w-9 place-items-center rounded-md border border-solid border-border bg-card text-foreground" onclick="toggleSidebar()" aria-label="Buka menu"><i class="fas fa-bars"></i></button>
+            <div class="truncate text-[15px] font-bold"><?= htmlspecialchars($company_name) ?></div>
+        </header>
+        <?php endif; ?>
+
+        <main class="app-main flex-1 px-4 pb-24 pt-5 lg:px-8 lg:pb-10 lg:pt-6">
             <?= $content ?? '' ?>
-            
         </main>
     </div>
+</div>
 
-    <!-- Mobile Bottom Navigation -->
-    <nav class="mobile-bottom-nav">
-        <?php if($_SESSION['user_role'] === 'admin'): ?>
-            <a href="index.php?page=admin_dashboard" class="<?= $page == 'admin_dashboard' ? 'active' : '' ?>">
-                <i class="fas fa-home"></i><span>Home</span>
-            </a>
-            <a href="index.php?page=admin_customers" class="<?= $page == 'admin_customers' ? 'active' : '' ?>">
-                <i class="fas fa-users"></i><span>Pelanggan</span>
-            </a>
-            <a href="index.php?page=admin_map" class="<?= $page == 'admin_map' ? 'active' : '' ?>">
-                <i class="fas fa-map-location-dot"></i><span>Peta</span>
-            </a>
-            <a href="index.php?page=admin_invoices" class="<?= $page == 'admin_invoices' ? 'active' : '' ?>">
-                <i class="fas fa-file-invoice-dollar"></i><span>Tagihan</span>
-            </a>
-            <a href="index.php?page=admin_reports" class="<?= $page == 'admin_reports' ? 'active' : '' ?>">
-                <i class="fas fa-chart-line"></i><span>Keuangan</span>
-            </a>
-            <a href="index.php?page=admin_report_assets" class="<?= $page == 'admin_report_assets' ? 'active' : '' ?>">
-                <i class="fas fa-file-contract"></i><span>Aset</span>
-            </a>
-            <a href="#" onclick="toggleMobileMenu(event)" id="mobileMenuToggle">
-                <i class="fas fa-ellipsis-h"></i><span>Lainnya</span>
-            </a>
-        <?php elseif($_SESSION['user_role'] === 'collector'): ?>
-            <a href="index.php?page=collector&tab=tugas&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>" class="<?= $page == 'collector' && ($coll_tab ?? '') == 'tugas' ? 'active' : '' ?>">
-                <i class="fas fa-clock" style="color:#ef4444;"></i><span>Tugas</span>
-            </a>
-            <a href="index.php?page=collector&tab=lunas&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>" class="<?= $page == 'collector' && ($coll_tab ?? '') == 'lunas' ? 'active' : '' ?>">
-                <i class="fas fa-check-circle" style="color:#10b981;"></i><span>Selesai</span>
-            </a>
-            <a href="index.php?page=collector&tab=pengeluaran&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>" class="<?= $page == 'collector' && ($coll_tab ?? '') == 'pengeluaran' ? 'active' : '' ?>">
-                <i class="fas fa-wallet" style="color:#f97316;"></i><span>Biaya</span>
-            </a>
-            <a href="index.php?page=collector&tab=summary&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>" class="<?= $page == 'collector' && ($coll_tab ?? 'summary') == 'summary' ? 'active' : '' ?>">
-                <i class="fas fa-home"></i><span>Home</span>
-            </a>
-            <a href="#" onclick="toggleSidebar(); return false;">
-                <i class="fas fa-bars"></i><span>Menu</span>
-            </a>
-            <a href="index.php?page=logout" style="color:var(--danger);">
-                <i class="fas fa-sign-out-alt"></i><span>Keluar</span>
-            </a>
-        <?php elseif($_SESSION['user_role'] === 'partner'): ?>
-            <a href="index.php?page=partner" class="nav-link <?= $page == 'partner' ? 'active' : '' ?>">
-                <i class="fas fa-home"></i><span>Home</span>
-            </a>
-            <a href="index.php?page=partner_collection" class="nav-link <?= $page == 'partner_collection' ? 'active' : '' ?>">
-                <i class="fas fa-motorcycle"></i><span>Penagihan</span>
-            </a>
-            <a href="index.php?page=partner_collection&tab=pelanggan" class="nav-link <?= ($page == 'partner_collection' && ($_GET['tab'] ?? '') == 'pelanggan') ? 'active' : '' ?>">
-                <i class="fas fa-users"></i><span>Pelanggan</span>
-            </a>
-            <a href="index.php?page=partner_isp_invoices" class="nav-link <?= $page == 'partner_isp_invoices' ? 'active' : '' ?>">
-                <i class="fas fa-receipt"></i><span>Tagihan ISP</span>
-            </a>
-            <a href="#" onclick="toggleSidebar(); return false;">
-                <i class="fas fa-bars"></i><span>Menu</span>
-            </a>
-            <a href="index.php?page=logout" style="color:var(--danger);">
-                <i class="fas fa-sign-out-alt"></i><span>Keluar</span>
-            </a>
-        <?php endif; ?>
-    </nav>
-    
-    <!-- Mobile "More" Menu Overlay (Admin only) -->
-    <?php if($_SESSION['user_role'] === 'admin'): ?>
-    <div id="mobileMenuOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1001; align-items:flex-end; justify-content:center;" onclick="closeMobileMenu()">
-        <div style="width:100%; max-width:500px; padding:16px; padding-bottom:80px; max-height: 100vh; overflow-y: auto; -webkit-overflow-scrolling: touch;" onclick="event.stopPropagation()">
-            <div class="glass-panel" style="padding:16px; border-radius:20px;">
-                <div style="font-size:14px; font-weight:600; color:var(--text-secondary); margin-bottom:12px; padding:0 8px;">Menu Lainnya</div>
-                <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;">
-                    <a href="index.php?page=admin_users" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 8px; border-radius:12px; color:var(--text-primary); text-decoration:none; background:var(--hover-bg); font-size:12px; font-weight:500; transition:all 0.2s;" class="<?= $page == 'admin_users' ? 'active' : '' ?>">
-                        <i class="fas fa-user-shield" style="font-size:22px; color:var(--primary);"></i> Pengguna
-                    </a>
-                    <a href="index.php?page=admin_invoices&filter_status=belum" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 8px; border-radius:12px; color:var(--text-primary); text-decoration:none; background:var(--hover-bg); font-size:12px; font-weight:500; transition:all 0.2s;" class="<?= $page == 'admin_invoices' && ($filter_status ?? '') == 'belum' ? 'active' : '' ?>">
-                        <i class="fas fa-user-clock" style="font-size:22px; color:#f43f5e;"></i> Tunggakan
-                    </a>
-                    <a href="index.php?page=admin_packages" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 8px; border-radius:12px; color:var(--text-primary); text-decoration:none; background:var(--hover-bg); font-size:12px; font-weight:500; transition:all 0.2s;" class="<?= $page == 'admin_packages' ? 'active' : '' ?>">
-                        <i class="fas fa-box" style="font-size:22px; color:#ec4899;"></i> Paket
-                    </a>
-                    <a href="index.php?page=admin_areas" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 8px; border-radius:12px; color:var(--text-primary); text-decoration:none; background:var(--hover-bg); font-size:12px; font-weight:500; transition:all 0.2s;" class="<?= $page == 'admin_areas' ? 'active' : '' ?>">
-                        <i class="fas fa-map-marker-alt" style="font-size:22px; color:#3b82f6;"></i> Area
-                    </a>
-                    <a href="index.php?page=admin_expenses" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 8px; border-radius:12px; color:var(--text-primary); text-decoration:none; background:var(--hover-bg); font-size:12px; font-weight:500; transition:all 0.2s;" class="<?= $page == 'admin_expenses' ? 'active' : '' ?>">
-                        <i class="fas fa-wallet" style="font-size:22px; color:var(--warning);"></i> Pengeluaran
-                    </a>
-                    <a href="index.php?page=admin_router" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 8px; border-radius:12px; color:var(--text-primary); text-decoration:none; background:var(--hover-bg); font-size:12px; font-weight:500; transition:all 0.2s;">
-                        <i class="fas fa-network-wired" style="font-size:22px; color:var(--success);"></i> Router
-                    </a>
-                    <a href="index.php?page=admin_landing" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 8px; border-radius:12px; color:var(--text-primary); text-decoration:none; background:var(--hover-bg); font-size:12px; font-weight:500; transition:all 0.2s;">
-                        <i class="fas fa-globe" style="font-size:22px; color:var(--warning);"></i> Web Profil
-                    </a>
-                    <a href="index.php?page=admin_settings" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 8px; border-radius:12px; color:var(--text-primary); text-decoration:none; background:var(--hover-bg); font-size:12px; font-weight:500; transition:all 0.2s;">
-                        <i class="fas fa-cog" style="font-size:22px; color:var(--text-secondary);"></i> Pengaturan
-                    </a>
-                    <a href="index.php?page=admin_banners" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 8px; border-radius:12px; color:var(--text-primary); text-decoration:none; background:var(--hover-bg); font-size:12px; font-weight:500; transition:all 0.2s;" class="<?= $page == 'admin_banners' ? 'active' : '' ?>">
-                        <i class="fas fa-scroll" style="font-size:22px; color:var(--warning);"></i> Banner
-                    </a>
-                    <a href="index.php?page=admin_backup" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 8px; border-radius:12px; color:var(--text-primary); text-decoration:none; background:var(--hover-bg); font-size:12px; font-weight:500; transition:all 0.2s;">
-                        <i class="fas fa-shield-alt" style="font-size:22px; color:#8b5cf6;"></i> Backup
-                    </a>
-                    <a href="index.php?page=admin_wa_gateway" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 8px; border-radius:12px; color:var(--text-primary); text-decoration:none; background:var(--hover-bg); font-size:12px; font-weight:500; transition:all 0.2s;" class="<?= $page == 'admin_wa_gateway' ? 'active' : '' ?>">
-                        <i class="fab fa-whatsapp" style="font-size:22px; color:#25D366;"></i> WA Perangkat
-                    </a>
-                    <a href="index.php?page=admin_license" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 8px; border-radius:12px; color:var(--text-primary); text-decoration:none; background:var(--hover-bg); font-size:12px; font-weight:500; transition:all 0.2s;">
-                        <i class="fas fa-key" style="font-size:22px; color:#f59e0b;"></i> Lisensi
-                    </a>
-                    <a href="index.php?page=logout" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 8px; border-radius:12px; color:var(--danger); text-decoration:none; background:var(--hover-bg); font-size:12px; font-weight:500; transition:all 0.2s;">
-                        <i class="fas fa-sign-out-alt" style="font-size:22px;"></i> Keluar
-                    </a>
-                </div>
+<!-- Mobile Bottom Navigation -->
+<nav class="fixed inset-x-0 bottom-0 z-30 border-t border-solid border-border bg-card lg:hidden" style="padding-bottom: env(safe-area-inset-bottom);">
+    <?php if ($role === 'admin'): ?>
+    <div class="grid grid-cols-7">
+        <a href="index.php?page=admin_dashboard" class="bottom-nav-item <?= $page == 'admin_dashboard' ? 'active' : '' ?>"><i class="fas fa-home"></i><span>Home</span></a>
+        <a href="index.php?page=admin_customers" class="bottom-nav-item <?= $page == 'admin_customers' ? 'active' : '' ?>"><i class="fas fa-users"></i><span>Pelanggan</span></a>
+        <a href="index.php?page=admin_map" class="bottom-nav-item <?= $page == 'admin_map' ? 'active' : '' ?>"><i class="fas fa-map-location-dot"></i><span>Peta</span></a>
+        <a href="index.php?page=admin_invoices" class="bottom-nav-item <?= $page == 'admin_invoices' ? 'active' : '' ?>"><i class="fas fa-file-invoice-dollar"></i><span>Tagihan</span></a>
+        <a href="index.php?page=admin_reports" class="bottom-nav-item <?= $page == 'admin_reports' ? 'active' : '' ?>"><i class="fas fa-chart-line"></i><span>Keuangan</span></a>
+        <a href="index.php?page=admin_report_assets" class="bottom-nav-item <?= $page == 'admin_report_assets' ? 'active' : '' ?>"><i class="fas fa-file-contract"></i><span>Aset</span></a>
+        <a href="#" class="bottom-nav-item" onclick="toggleMobileMenu(event)" id="mobileMenuToggle"><i class="fas fa-ellipsis-h"></i><span>Lainnya</span></a>
+    </div>
+    <?php elseif ($role === 'collector'): ?>
+    <?php $cq = "&date_from=" . urlencode($date_from) . "&date_to=" . urlencode($date_to); $ct = $coll_tab ?? 'summary'; ?>
+    <div class="grid grid-cols-6">
+        <a href="index.php?page=collector&tab=tugas<?= $cq ?>" class="bottom-nav-item <?= $page == 'collector' && $ct == 'tugas' ? 'active' : '' ?>"><i class="fas fa-clock"></i><span>Tugas</span></a>
+        <a href="index.php?page=collector&tab=lunas<?= $cq ?>" class="bottom-nav-item <?= $page == 'collector' && $ct == 'lunas' ? 'active' : '' ?>"><i class="fas fa-check-circle"></i><span>Selesai</span></a>
+        <a href="index.php?page=collector&tab=pengeluaran<?= $cq ?>" class="bottom-nav-item <?= $page == 'collector' && $ct == 'pengeluaran' ? 'active' : '' ?>"><i class="fas fa-wallet"></i><span>Biaya</span></a>
+        <a href="index.php?page=collector&tab=summary<?= $cq ?>" class="bottom-nav-item <?= $page == 'collector' && $ct == 'summary' ? 'active' : '' ?>"><i class="fas fa-home"></i><span>Home</span></a>
+        <a href="#" class="bottom-nav-item" onclick="toggleSidebar(); return false;"><i class="fas fa-bars"></i><span>Menu</span></a>
+        <a href="index.php?page=logout" class="bottom-nav-item text-danger"><i class="fas fa-sign-out-alt"></i><span>Keluar</span></a>
+    </div>
+    <?php elseif ($role === 'partner'): ?>
+    <div class="grid grid-cols-6">
+        <a href="index.php?page=partner" class="bottom-nav-item <?= $page == 'partner' ? 'active' : '' ?>"><i class="fas fa-home"></i><span>Home</span></a>
+        <a href="index.php?page=partner_collection" class="bottom-nav-item <?= $page == 'partner_collection' && ($_GET['tab'] ?? '') != 'pelanggan' ? 'active' : '' ?>"><i class="fas fa-motorcycle"></i><span>Penagihan</span></a>
+        <a href="index.php?page=partner_collection&tab=pelanggan" class="bottom-nav-item <?= ($page == 'partner_collection' && ($_GET['tab'] ?? '') == 'pelanggan') ? 'active' : '' ?>"><i class="fas fa-users"></i><span>Pelanggan</span></a>
+        <a href="index.php?page=partner_isp_invoices" class="bottom-nav-item <?= $page == 'partner_isp_invoices' ? 'active' : '' ?>"><i class="fas fa-receipt"></i><span>Tagihan ISP</span></a>
+        <a href="#" class="bottom-nav-item" onclick="toggleSidebar(); return false;"><i class="fas fa-bars"></i><span>Menu</span></a>
+        <a href="index.php?page=logout" class="bottom-nav-item text-danger"><i class="fas fa-sign-out-alt"></i><span>Keluar</span></a>
+    </div>
+    <?php endif; ?>
+</nav>
+
+<!-- Mobile "More" sheet (Admin only) -->
+<?php if ($role === 'admin'): ?>
+<div id="mobileMenuOverlay" class="fixed inset-0 z-[1001] hidden items-end justify-center bg-black/50 lg:hidden" onclick="closeMobileMenu()">
+    <div class="w-full max-w-lg p-3 pb-20" onclick="event.stopPropagation()">
+        <div class="ui-card max-h-[80vh] overflow-y-auto p-4">
+            <div class="mb-3 flex items-center justify-between px-1">
+                <div class="text-sm font-semibold">Menu lainnya</div>
+                <button type="button" class="grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted bg-transparent border-0" onclick="closeMobileMenu()" aria-label="Tutup"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="grid grid-cols-3 gap-2">
+                <a href="index.php?page=admin_users" class="sheet-item <?= $page == 'admin_users' ? 'active' : '' ?>"><i class="fas fa-user-shield"></i>Pengguna</a>
+                <a href="index.php?page=admin_invoices&filter_status=belum" class="sheet-item <?= $page == 'admin_invoices' && ($filter_status ?? '') == 'belum' ? 'active' : '' ?>"><i class="fas fa-user-clock" style="color:#B42318"></i>Tunggakan</a>
+                <a href="index.php?page=admin_packages" class="sheet-item <?= $page == 'admin_packages' ? 'active' : '' ?>"><i class="fas fa-box"></i>Paket</a>
+                <a href="index.php?page=admin_areas" class="sheet-item <?= $page == 'admin_areas' ? 'active' : '' ?>"><i class="fas fa-map-marker-alt"></i>Area</a>
+                <a href="index.php?page=admin_expenses" class="sheet-item <?= $page == 'admin_expenses' ? 'active' : '' ?>"><i class="fas fa-wallet"></i>Pengeluaran</a>
+                <a href="index.php?page=admin_router" class="sheet-item <?= $page == 'admin_router' ? 'active' : '' ?>"><i class="fas fa-network-wired"></i>Router</a>
+                <a href="index.php?page=admin_new_customers" class="sheet-item <?= $page == 'admin_new_customers' ? 'active' : '' ?>"><i class="fas fa-star"></i>Pelanggan Baru</a>
+                <a href="index.php?page=admin_create_invoice" class="sheet-item <?= $page == 'admin_create_invoice' ? 'active' : '' ?>"><i class="fas fa-plus-circle"></i>Buat Invoice</a>
+                <a href="index.php?page=admin_assets" class="sheet-item <?= $page == 'admin_assets' ? 'active' : '' ?>"><i class="fas fa-boxes"></i>Aset</a>
+                <a href="index.php?page=admin_auto_invoice" class="sheet-item <?= $page == 'admin_auto_invoice' ? 'active' : '' ?>"><i class="fas fa-magic"></i>Auto Tagihan</a>
+                <a href="index.php?page=admin_landing" class="sheet-item <?= $page == 'admin_landing' ? 'active' : '' ?>"><i class="fas fa-globe"></i>Web Profil</a>
+                <a href="index.php?page=admin_settings" class="sheet-item <?= $page == 'admin_settings' ? 'active' : '' ?>"><i class="fas fa-cog"></i>Pengaturan</a>
+                <a href="index.php?page=admin_banners" class="sheet-item <?= $page == 'admin_banners' ? 'active' : '' ?>"><i class="fas fa-scroll"></i>Banner</a>
+                <a href="index.php?page=admin_backup" class="sheet-item <?= $page == 'admin_backup' ? 'active' : '' ?>"><i class="fas fa-shield-alt"></i>Backup</a>
+                <a href="index.php?page=admin_wa_gateway" class="sheet-item <?= $page == 'admin_wa_gateway' ? 'active' : '' ?>"><i class="fab fa-whatsapp" style="color:#1DA851"></i>WA Perangkat</a>
+                <a href="index.php?page=admin_license" class="sheet-item <?= $page == 'admin_license' ? 'active' : '' ?>"><i class="fas fa-key"></i>Lisensi</a>
+                <a href="index.php?page=change_password" class="sheet-item"><i class="fas fa-user-lock"></i>Ganti Password</a>
+                <a href="index.php?page=logout" class="sheet-item text-danger"><i class="fas fa-sign-out-alt" style="color:#B42318"></i>Keluar</a>
             </div>
         </div>
     </div>
-    <?php endif; ?>
+</div>
+<?php endif; ?>
 
-    <!-- Global Image Modal -->
-    <div id="globalImageModal" class="image-modal" onclick="closeImagePreview()" style="display:none; flex-direction:column; gap:15px;">
-        <span class="image-modal-close" onclick="closeImagePreview()">&times;</span>
-        <div style="max-width:90%; max-height:80%; display:flex; justify-content:center; align-items:center;">
-            <img id="modalImg" src="" alt="Preview">
-        </div>
-        <div style="color:white; font-size:14px; background:rgba(255,255,255,0.1); padding:8px 16px; border-radius:50px; backdrop-filter:blur(10px); pointer-events:none;">
-            <i class="fas fa-mouse-pointer"></i> Klik di mana saja untuk menutup
-        </div>
+<!-- Global Image Modal -->
+<div id="globalImageModal" class="image-modal" onclick="closeImagePreview()" style="display:none; flex-direction:column; gap:15px;">
+    <span class="image-modal-close" onclick="closeImagePreview()">&times;</span>
+    <div style="max-width:90%; max-height:80%; display:flex; justify-content:center; align-items:center;">
+        <img id="modalImg" src="" alt="Preview">
     </div>
+    <div style="color:white; font-size:14px; background:rgba(255,255,255,0.1); padding:8px 16px; border-radius:50px; pointer-events:none;">
+        <i class="fas fa-mouse-pointer"></i> Klik di mana saja untuk menutup
+    </div>
+</div>
 
-    <script>
-    /** UI TOGGLES */
-    window.toggleSidebar = function() {
-        const s = document.querySelector('.sidebar'), o = document.getElementById('sidebarOverlay');
-        if (s && o) {
-            s.classList.toggle('active'); o.classList.toggle('active');
-            document.body.style.overflow = s.classList.contains('active') ? 'hidden' : 'auto';
-        }
-    };
-    window.toggleDropdown = (el) => el && el.parentElement && el.parentElement.classList.toggle('open');
+<script>
+/** WA GATEWAY STATUS POLLING */
+async function checkWAStatus() {
+    if (!['admin', 'partner', 'collector'].some(p => window.location.search.includes('page=' + p))) return;
+    try {
+        const r = await fetch(WAApiProxy + 'status&cid=' + WAGatewayCID);
+        const data = await r.json();
+        if (data.error) console.warn('WA Gateway Error:', data.debug || data.message);
+        updateWAIndicators(data.connected);
+    } catch (e) { console.warn('WA Status check skipped'); }
+}
 
-    /** WA GATEWAY STATUS POLLING */
-    async function checkWAStatus() {
-        if (!['admin', 'partner', 'collector'].some(p => window.location.search.includes('page=' + p))) return;
-        try {
-            const r = await fetch(WAApiProxy + 'status&cid=' + WAGatewayCID);
-            const data = await r.json();
-            if (data.error) console.warn('WA Gateway Error:', data.debug || data.message);
-            updateWAIndicators(data.connected);
-        } catch (e) { console.warn('WA Status check skipped'); }
-    }
-
-    function updateWAIndicators(c) {
-        const statusHtml = c ? 
-            '<span class="badge badge-success" style="background:rgba(16,185,129,0.1); color:#10b981; border:1px solid rgba(16,185,129,0.3); font-size:10px;"><i class="fas fa-link"></i> WA CONNECTED</span>' : 
-            '<span class="status-badge" style="background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.2); padding:2px 8px; border-radius:10px; font-size:10px;"><i class="fas fa-times"></i> WA Disconnected</span>';
-        
-        document.querySelectorAll('.wa-status-indicator').forEach(el => el.innerHTML = statusHtml);
-        document.querySelectorAll('.wa-status-sidebar-badge').forEach(el => {
-            Object.assign(el.style, {
-                width:'8px', height:'8px', borderRadius:'50%', display:'inline-block',
-                background: c ? '#10b981' : '#ef4444', boxShadow: c ? '0 0 10px rgba(16,185,129,0.5)' : 'none'
-            });
+function updateWAIndicators(c) {
+    const statusHtml = c
+        ? '<span class="ui-badge ui-badge-signal"><span class="inline-block h-1.5 w-1.5 rounded-full bg-signal"></span> WA terhubung</span>'
+        : '<span class="ui-badge ui-badge-danger"><span class="inline-block h-1.5 w-1.5 rounded-full bg-danger"></span> WA offline</span>';
+    document.querySelectorAll('.wa-status-indicator').forEach(el => el.innerHTML = statusHtml);
+    document.querySelectorAll('.wa-status-sidebar-badge').forEach(el => {
+        Object.assign(el.style, {
+            width: '8px', height: '8px', borderRadius: '50%', display: 'inline-block',
+            background: c ? '#34D399' : '#F87171', boxShadow: c ? '0 0 8px rgba(52,211,153,.6)' : 'none'
         });
-    }
-
-    window.sendWAGateway = async function(phone, message, fallback, btn) {
-        if (!btn) return;
-        const old = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        try {
-            const r = await fetch(WAApiProxy + 'send', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cid: WAGatewayCID, phone, message })
-            });
-            if ((await r.json()).error) throw new Error();
-            btn.style.color = '#10b981'; btn.innerHTML = '<i class="fas fa-check"></i>';
-            setTimeout(() => { Object.assign(btn, { innerHTML: old, style: { color: '' }, disabled: false }); }, 2000);
-        } catch (e) {
-            window.open(fallback, '_blank'); Object.assign(btn, { innerHTML: old, disabled: false });
-        }
-    };
-
-    /** INIT & PERSISTENCE */
-    window.addEventListener('DOMContentLoaded', () => {
-        const s = document.querySelector('.sidebar'), m = document.querySelector('.main-content');
-        if (s && sessionStorage.getItem('sidebarScroll')) s.scrollTop = sessionStorage.getItem('sidebarScroll');
-        const last = sessionStorage.getItem('lastUrl');
-        if (last && new URL(last).searchParams.get('page') === new URL(window.location.href).searchParams.get('page')) {
-            if (m && sessionStorage.getItem('mainScroll')) m.scrollTop = sessionStorage.getItem('mainScroll');
-            if (sessionStorage.getItem('windowScroll')) window.scrollTo(0, sessionStorage.getItem('windowScroll'));
-        }
-        const p = new URLSearchParams(window.location.search);
-        if (['bulk_paid', 'paid'].includes(p.get('msg'))) {
-            showToast('Pembayaran Berhasil!');
-            window.history.replaceState({}, '', window.location.href.replace(/[&?]msg=(bulk_paid|paid)/, ''));
-        }
-        let waInterval = null;
-        const startPoll = () => { if (!waInterval) { checkWAStatus(); waInterval = setInterval(checkWAStatus, 60000); } };
-        const stopPoll = () => { if (waInterval) { clearInterval(waInterval); waInterval = null; } };
-        document.addEventListener('visibilitychange', () => document.hidden ? stopPoll() : startPoll());
-        startPoll();
     });
+}
 
-    // Close sidebar when a nav link is clicked on small screens
-    document.addEventListener('click', function(ev){
-        try {
-            const link = ev.target.closest && ev.target.closest('.nav-link');
-            if(!link) return;
-            if(window.innerWidth <= 768) {
-                const s = document.querySelector('.sidebar'), o = document.getElementById('sidebarOverlay');
-                if(s && s.classList.contains('active')) {
-                    s.classList.remove('active');
-                    if(o) o.classList.remove('active');
-                    document.body.style.overflow = 'auto';
-                }
-            }
-        } catch(e) { /* ignore */ }
-    }, true);
-
-    window.addEventListener('beforeunload', () => {
-        const s = document.querySelector('.sidebar'), m = document.querySelector('.main-content');
-        if (s) sessionStorage.setItem('sidebarScroll', s.scrollTop);
-        if (m) sessionStorage.setItem('mainScroll', m.scrollTop);
-        sessionStorage.setItem('windowScroll', window.scrollY);
-        sessionStorage.setItem('lastUrl', window.location.href);
-    });
-
-    function showToast(t) {
-        const el = document.createElement('div');
-        el.style.cssText = `position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:#10b981; color:white; padding:12px 24px; border-radius:50px; font-weight:700; box-shadow:0 10px 25px rgba(16,185,129,0.3); z-index:10000; transition:all 0.3s ease; opacity:0;`;
-        el.innerHTML = `<i class="fas fa-check-circle"></i> ${t}`;
-        document.body.appendChild(el);
-        setTimeout(() => { el.style.opacity = '1'; el.style.transform = 'translate(-50%, 0)'; }, 10);
-        setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 3000);
+window.sendWAGateway = async function (phone, message, fallback, btn) {
+    if (!btn) return;
+    const old = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    try {
+        const r = await fetch(WAApiProxy + 'send', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cid: WAGatewayCID, phone, message })
+        });
+        if ((await r.json()).error) throw new Error();
+        btn.style.color = '#1F8A5B'; btn.innerHTML = '<i class="fas fa-check"></i>';
+        setTimeout(() => { Object.assign(btn, { innerHTML: old, style: { color: '' }, disabled: false }); }, 2000);
+    } catch (e) {
+        window.open(fallback, '_blank'); Object.assign(btn, { innerHTML: old, disabled: false });
     }
+};
 
-    /** MODALS & HELPERS */
-    window.toggleMobileMenu = (e) => { if(e) e.preventDefault(); const o = document.getElementById('mobileMenuOverlay'); if(o) o.style.display = o.style.display === 'flex' ? 'none' : 'flex'; };
-    window.closeMobileMenu = () => { const o = document.getElementById('mobileMenuOverlay'); if(o) o.style.display = 'none'; };
-    window.openImagePreview = (src) => { const m = document.getElementById('globalImageModal'), i = document.getElementById('modalImg'); if(m && i) { m.style.display = 'flex'; i.src = src; document.body.style.overflow = 'hidden'; } };
-    window.closeImagePreview = () => { const m = document.getElementById('globalImageModal'); if(m) { m.style.display = 'none'; document.body.style.overflow = 'auto'; } };
-    </script>
+/** INIT & PERSISTENCE */
+window.addEventListener('DOMContentLoaded', () => {
+    const s = document.querySelector('.app-sidebar-nav');
+    if (s && sessionStorage.getItem('sidebarScroll')) s.scrollTop = sessionStorage.getItem('sidebarScroll');
+    const last = sessionStorage.getItem('lastUrl');
+    if (last && new URL(last).searchParams.get('page') === new URL(window.location.href).searchParams.get('page')) {
+        if (sessionStorage.getItem('windowScroll')) window.scrollTo(0, sessionStorage.getItem('windowScroll'));
+    }
+    const p = new URLSearchParams(window.location.search);
+    if (['bulk_paid', 'paid'].includes(p.get('msg'))) {
+        showToast('Pembayaran berhasil');
+        window.history.replaceState({}, '', window.location.href.replace(/[&?]msg=(bulk_paid|paid)/, ''));
+    }
+    let waInterval = null;
+    const startPoll = () => { if (!waInterval) { checkWAStatus(); waInterval = setInterval(checkWAStatus, 60000); } };
+    const stopPoll = () => { if (waInterval) { clearInterval(waInterval); waInterval = null; } };
+    document.addEventListener('visibilitychange', () => document.hidden ? stopPoll() : startPoll());
+    startPoll();
+});
+
+// Close the drawer when a nav link is clicked on small screens
+document.addEventListener('click', function (ev) {
+    try {
+        const link = ev.target.closest && ev.target.closest('#appSidebar a.nav-item');
+        if (!link) return;
+        if (window.innerWidth < 1024) closeSidebar();
+    } catch (e) { /* ignore */ }
+}, true);
+
+window.addEventListener('beforeunload', () => {
+    const s = document.querySelector('.app-sidebar-nav');
+    if (s) sessionStorage.setItem('sidebarScroll', s.scrollTop);
+    sessionStorage.setItem('windowScroll', window.scrollY);
+    sessionStorage.setItem('lastUrl', window.location.href);
+});
+
+function showToast(t) {
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed; bottom:84px; left:50%; transform:translate(-50%, 8px); background:#172026; color:#fff; padding:10px 18px; border-radius:8px; font-weight:600; font-size:14px; box-shadow:0 12px 32px -12px rgba(15,58,71,.4); z-index:10000; transition:all .25s ease; opacity:0; display:flex; align-items:center; gap:8px;';
+    el.innerHTML = '<i class="fas fa-check-circle" style="color:#34D399"></i> ' + t;
+    document.body.appendChild(el);
+    setTimeout(() => { el.style.opacity = '1'; el.style.transform = 'translate(-50%, 0)'; }, 10);
+    setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 3000);
+}
+
+/** MODALS & HELPERS */
+window.toggleMobileMenu = (e) => { if (e) e.preventDefault(); const o = document.getElementById('mobileMenuOverlay'); if (o) { const open = o.classList.contains('hidden'); o.classList.toggle('hidden', !open); o.classList.toggle('flex', open); } };
+window.closeMobileMenu = () => { const o = document.getElementById('mobileMenuOverlay'); if (o) { o.classList.add('hidden'); o.classList.remove('flex'); } };
+window.openImagePreview = (src) => { const m = document.getElementById('globalImageModal'), i = document.getElementById('modalImg'); if (m && i) { m.style.display = 'flex'; i.src = src; document.body.style.overflow = 'hidden'; } };
+window.closeImagePreview = () => { const m = document.getElementById('globalImageModal'); if (m) { m.style.display = 'none'; document.body.style.overflow = ''; } };
+</script>
 </body>
 </html>
