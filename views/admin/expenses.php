@@ -19,7 +19,7 @@ if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Handle UPDATE Expense
 if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $id = $_POST['id'];
+    $id = intval($_POST['id'] ?? 0);
     $category = $_POST['category'];
     $amount = $_POST['amount'];
     $description = $_POST['description'];
@@ -42,7 +42,7 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Handle DELETE Expense
 if ($action === 'delete') {
-    $id = $_GET['id'];
+    $id = intval($_GET['id'] ?? 0);
     
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
     // Ownership Check

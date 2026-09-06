@@ -180,7 +180,7 @@ if ($action === 'delete') {
 }
 
 if ($action === 'edit_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $id = $_POST['id'];
+    $id = intval($_POST['id'] ?? 0);
     $amount = $_POST['amount'];
     $discount = $_POST['discount'] ?? 0;
     $due_date = $_POST['due_date'];

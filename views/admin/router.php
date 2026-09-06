@@ -6,7 +6,7 @@ $u_id = $_SESSION['user_id'];
 $u_role = $_SESSION['user_role'] ?? 'admin';
 
 if ($action === 'save_router' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $id = $_POST['id'] ?? null;
+    $id = isset($_POST['id']) ? intval($_POST['id']) : null;
     $name = $_POST['name'];
     $host = $_POST['host'];
     $port = $_POST['port'] ?: 8728;

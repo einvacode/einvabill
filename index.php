@@ -7,6 +7,11 @@ $page = $_GET['page'] ?? 'home';
 
 // Handle Logout
 if ($page === 'logout') {
+    $_SESSION = [];
+    if (ini_get('session.use_cookies')) {
+        $cp = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 42000, $cp['path'], $cp['domain'], $cp['secure'], $cp['httponly']);
+    }
     session_destroy();
     session_write_close();
     header("Location: index.php?page=login");
@@ -19,10 +24,16 @@ if ($page === 'login_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     $requested_role = $_POST['requested_role'] ?? 'partner';
     
-    $stmt = $db->prepare("SELECT * FROM users WHERE username = ?");
-    $stmt->execute([$username]);
-    $user = $stmt->fetch();
-    
+    $user = false;
+    if (login_is_throttled($db, $username)) {
+        $error = "Terlalu banyak percobaan login. Coba lagi dalam 15 menit.";
+        $page = 'login';
+    } else {
+        $stmt = $db->prepare("SELECT * FROM users WHERE username = ?");
+        $stmt->execute([$username]);
+        $user = $stmt->fetch();
+    }
+
     if ($user && password_verify($password, $user['password'])) {
         // Enforce that login portal matches the user's real role
         if ($requested_role === 'partner' && $user['role'] !== 'partner') {
@@ -32,23 +43,34 @@ if ($page === 'login_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Hanya Staff atau Admin yang boleh masuk melalui Portal Staff.';
             $page = 'login';
         } else {
+            // Fresh session id on privilege change (prevents session fixation).
+            session_regenerate_id(true);
+            login_clear_failures($db, $username);
+
             // Automatically set session and redirect to the CORRECT page based on real role
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['user_role'] = $user['role'];
             $_SESSION['user_name'] = $user['name'];
-            
+
             // Multi-Tenancy: Define tenant_id
             if ($user['role'] === 'admin') {
                 $_SESSION['tenant_id'] = $user['id'];
             } else {
                 $_SESSION['tenant_id'] = $user['tenant_id'] ?: 1; // Fallback to 1 for safety
             }
-            
+
+            // Seeded accounts and accounts still on the default password
+            // must choose a real password before doing anything else.
+            if (!empty($user['must_change_password']) || password_is_default($user['password'])) {
+                $_SESSION['must_change_password'] = 1;
+            }
+
             session_write_close();
             header("Location: index.php");
             exit;
         }
-    } else {
+    } elseif (!isset($error)) {
+        login_record_failure($db, $username);
         $error = "Username atau password salah!";
         $page = 'login';
     }
@@ -67,7 +89,7 @@ if ($page === 'login_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $dbg['session_save_path'] = ini_get('session.save_path');
             $dbg['cookie_params'] = session_get_cookie_params();
             $dbg['headers_sent'] = headers_sent() ? true : false;
-            file_put_contents(__DIR__ . '/app/login_debug.log', json_encode($dbg) . PHP_EOL, FILE_APPEND | LOCK_EX);
+            file_put_contents(app_data_dir() . '/login_debug.log', json_encode($dbg) . PHP_EOL, FILE_APPEND | LOCK_EX);
         } catch (Exception $e) {
             // ignore logging errors
         }
@@ -82,8 +104,15 @@ if (!isset($_SESSION['user_id']) && !in_array($page, $public_pages)) {
     exit;
 }
 
+// Forced password change (default or seeded password)
+if (!empty($_SESSION['must_change_password']) && !in_array($page, ['change_password', 'change_password_post', 'logout'])) {
+    session_write_close();
+    header("Location: index.php?page=change_password");
+    exit;
+}
+
 // License Enforcement Check
-$license_exempt_pages = ['login', 'logout', 'admin_license', 'admin_license_post', 'landing', 'customer_portal'];
+$license_exempt_pages = ['login', 'logout', 'admin_license', 'admin_license_post', 'landing', 'customer_portal', 'change_password', 'change_password_post'];
 if (LICENSE_ST === 'EXPIRED' && !in_array($page, $license_exempt_pages)) {
     session_write_close();
     header("Location: index.php?page=admin_license");
@@ -104,8 +133,8 @@ if ($page === 'home') {
 // Access Control (RBAC)
 $permissions = [
     'admin' => '*', // Full access
-    'collector' => ['collector', 'admin_customers', 'admin_invoices', 'invoice_print', 'router_data', 'admin_areas', 'admin_map', 'admin_wa_gateway', 'collector_settings'],
-    'partner' => ['partner', 'partner_collection', 'partner_settings', 'partner_isp_invoices', 'partner_reports', 'admin_expenses', 'invoice_print', 'admin_invoices', 'partner_wa_device']
+    'collector' => ['collector', 'admin_customers', 'admin_invoices', 'invoice_print', 'router_data', 'admin_areas', 'admin_map', 'admin_wa_gateway', 'collector_settings', 'change_password', 'change_password_post'],
+    'partner' => ['partner', 'partner_collection', 'partner_settings', 'partner_isp_invoices', 'partner_reports', 'admin_expenses', 'invoice_print', 'admin_invoices', 'partner_wa_device', 'change_password', 'change_password_post']
 ];
 
 $user_role = $_SESSION['user_role'] ?? 'guest';
@@ -145,6 +174,10 @@ switch ($page) {
         break;
     case 'login':
         require __DIR__ . '/views/login.php';
+        break;
+    case 'change_password':
+    case 'change_password_post':
+        require __DIR__ . '/views/change_password.php';
         break;
     case 'admin_dashboard':
         require __DIR__ . '/views/admin/dashboard.php';

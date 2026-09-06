@@ -244,6 +244,7 @@ if (!empty($__layout_settings['company_logo'])) {
                     <?php endif; ?>
                 </div>
             </div>
+            <a href="index.php?page=change_password" class="nav-link"><i class="fas fa-key"></i> Ganti Password</a>
             <a href="index.php?page=logout" class="nav-link" style="margin-top: auto; margin-bottom: 20px;"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </aside>
 

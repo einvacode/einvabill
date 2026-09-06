@@ -173,7 +173,7 @@ if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $id = $_POST['id'];
+    $id = intval($_POST['id'] ?? 0);
     $name = $_POST['name'];
     $address = $_POST['address'];
     $contact = $_POST['contact'];

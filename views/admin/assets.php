@@ -121,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$name, $type, $parent_id, $lat, $lng, $total_ports, $brand, $description, $price, $status, $installation_date, $u_id, $tenant_id]);
             $success = "Aset berhasil ditambahkan.";
         } else {
-            $id = $_POST['id'];
+            $id = intval($_POST['id'] ?? 0);
             $tenant_id = $_SESSION['tenant_id'] ?? 1;
             // Ownership Check
             $check = $db->query("SELECT tenant_id FROM infrastructure_assets WHERE id = $id")->fetchColumn();
@@ -474,7 +474,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if ($action === 'delete') {
-    $id = $_GET['id'];
+    $id = intval($_GET['id'] ?? 0);
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
     // Ownership Check
     $check = $db->query("SELECT tenant_id FROM infrastructure_assets WHERE id = $id")->fetchColumn();
