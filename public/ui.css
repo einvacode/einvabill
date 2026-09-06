@@ -213,3 +213,30 @@
 }
 /* Those cards usually also carry a strong tinted background; soften it. */
 .ui-shell .glass-panel[style*="border-left"] { background-color: #FFFFFF !important; }
+
+/* ---------- Global de-cluttering for legacy inline styles ---------- */
+/* Tracked uppercase micro-labels read as template chrome; keep them readable. */
+.ui-shell .stat-title, .ui-shell .summary-label, .ui-shell label, .ui-shell th,
+.ui-shell [style*="text-transform:uppercase"], .ui-shell [style*="text-transform: uppercase"] {
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}
+/* Gradient text (background-clip:text) becomes plain ink. */
+.ui-shell [style*="background-clip"], .ui-shell [style*="-webkit-background-clip"] {
+  background: none !important;
+  -webkit-text-fill-color: #172026 !important;
+  color: #172026 !important;
+}
+/* Oversized radii on inline-styled panels. */
+.ui-shell .glass-panel[style*="border-radius:20px"], .ui-shell .glass-panel[style*="border-radius: 20px"],
+.ui-shell .glass-panel[style*="border-radius:16px"], .ui-shell .glass-panel[style*="border-radius: 16px"] {
+  border-radius: 12px !important;
+}
+/* Hover lifts on inline-styled cards. */
+.ui-shell [style*="transition"]:hover { transform: none !important; }
+/* Legacy modals: neutral overlay and card. */
+.ui-shell .modal-overlay, .ui-shell .image-modal { background: rgba(23, 32, 38, .55) !important; backdrop-filter: none !important; }
+.ui-shell .modal-content, .ui-shell .modal-box { border-radius: 12px !important; box-shadow: 0 12px 32px -12px rgba(15,58,71,.35) !important; }
+/* Icon-only action groups in tables */
+.ui-shell .btn-group { display: inline-flex; gap: 4px; }
+.ui-shell .btn-group .btn { min-width: 32px; }
