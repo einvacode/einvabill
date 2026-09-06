@@ -1,817 +1,425 @@
 <?php
-$site = $db->query("SELECT company_name, company_logo, company_contact, landing_hero_title, landing_hero_text, landing_about_us FROM settings WHERE id=1")->fetch();
+$site = $db->query("SELECT company_name, company_tagline, company_logo, company_contact, company_address, landing_hero_title, landing_hero_text, landing_about_us FROM settings WHERE id=1")->fetch();
 
 $packages = [];
 $partner_logos = [];
-
+$partner_count = 0;
 try {
     $packages = $db->query("SELECT * FROM landing_packages WHERE is_active = 1 ORDER BY sort_order ASC, id ASC")->fetchAll();
     $partner_logos = $db->query("SELECT image_path FROM landing_logos ORDER BY sort_order ASC, id ASC")->fetchAll();
+    $partner_count = (int) $db->query("SELECT COUNT(*) FROM users WHERE role = 'partner'")->fetchColumn();
 } catch (Exception $e) {
-    // Silently fail to keep the page running; admin must configure tables
+    // Keep the page up even if optional tables are missing.
 }
 
-$comp_name = $site['company_name'] ?: 'PT Einva Inti Data';
-$wa_contact = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $site['company_contact'] ?? ''));
-if(empty($wa_contact)) $wa_contact = '6281234567890'; // fallback
+$comp_name = trim((string) ($site['company_name'] ?? '')) ?: 'PT Einva Inti Data';
+$brand     = trim((string) ($site['landing_hero_title'] ?? '')) ?: $comp_name;
+$hero_text = trim((string) ($site['landing_hero_text'] ?? '')) ?: 'Layanan internet fiber untuk rumah, usaha, dan kantor.';
+$address   = trim((string) ($site['company_address'] ?? ''));
+$logo      = trim((string) ($site['company_logo'] ?? ''));
+$phone_raw = preg_replace('/[^0-9]/', '', (string) ($site['company_contact'] ?? ''));
+$wa_contact = preg_replace('/^0/', '62', $phone_raw) ?: '6281234567890';
+$phone_display = $phone_raw ? preg_replace('/(\d{4})(\d{4})(\d+)/', '$1-$2-$3', $phone_raw) : '';
+
+// Split the "about" text into intro, vision and mission when the admin wrote it that way.
+$about_raw = trim((string) ($site['landing_about_us'] ?? ''));
+$about_intro = $about_raw;
+$vision = '';
+$missions = [];
+if (preg_match('/^(.*?)\n\s*Visi\s*\n(.*?)\n\s*Misi\s*\n(.*)$/si', $about_raw, $m)) {
+    $about_intro = trim($m[1]);
+    $vision = trim($m[2]);
+    $missions = array_values(array_filter(array_map('trim', preg_split('/\r?\n/', $m[3]))));
+}
+
+$wa_link = 'https://wa.me/' . $wa_contact . '?text=' . rawurlencode("Halo $brand, saya ingin bertanya tentang pemasangan internet.");
+
+function svg_icon(string $name, string $class = 'h-5 w-5'): string {
+    $paths = [
+        'wifi'    => '<path d="M12 20h.01"/><path d="M8.5 16.4a5 5 0 0 1 7 0"/><path d="M5 12.9a10 10 0 0 1 14 0"/><path d="M2 8.8a15 15 0 0 1 20 0"/>',
+        'check'   => '<path d="M20 6 9 17l-5-5"/>',
+        'chat'    => '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+        'pin'     => '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+        'receipt' => '<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/>',
+        'shield'  => '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+        'users'   => '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+        'clock'   => '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+        'router'  => '<rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6.01 18H6"/><path d="M10.01 18H10"/><path d="M15 10v4"/><path d="M17.84 7.17a4 4 0 0 0-5.66 0"/><path d="M20.66 4.34a8 8 0 0 0-11.31 0"/>',
+        'phone'   => '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>',
+        'menu'    => '<path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/>',
+        'x'       => '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+        'building'=> '<rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/>',
+        'activity'=> '<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>',
+    ];
+    $d = $paths[$name] ?? '';
+    return '<svg class="' . $class . '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . $d . '</svg>';
+}
 ?>
 <!DOCTYPE html>
-<html lang="id" data-theme="light">
+<html lang="id" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($comp_name) ?> - ISP & IT Solutions</title>
-    <link rel="stylesheet" href="public/style.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        /* Landing Page Specific Styles */
-        html, body {
-            overflow-x: hidden;
-            position: relative;
-            width: 100%;
-        }
-        body {
-            scroll-behavior: smooth;
-        }
-        
-        .navbar {
-            position: fixed;
-            top: 0;
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 26px;
-            gap: 18px;
-            background: var(--glass-bg);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-            z-index: 1000;
-            border-bottom: 1px solid var(--glass-border);
-            transition: all 0.3s ease;
-        }
-
-        .navbar .navbar-logo-box {
-            height: 38px;
-            max-width: 180px;
-            margin-right: 8px;
-        }
-
-        .nav-brand {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 16px;
-            font-weight: 700;
-            background: linear-gradient(to right, var(--gradient-text-from), var(--gradient-text-to));
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-decoration: none;
-            min-width: 0;
-            letter-spacing: 0.3px;
-            flex-shrink: 1;
-        }
-
-        .nav-brand span {
-            line-height: 1.15;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 300px;
-        }
-
-        .nav-menu {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-wrap: nowrap;
-            min-width: 0;
-        }
-
-        .nav-menu a {
-            color: var(--text-primary);
-            text-decoration: none;
-            font-weight: 500;
-            font-size: 14px;
-            line-height: 1.2;
-            transition: color 0.3s, background 0.2s ease, border-color 0.2s ease;
-            white-space: nowrap;
-        }
-
-        .nav-link {
-            padding: 8px 10px;
-            border-radius: 10px;
-        }
-
-        .nav-link i {
-            margin-right: 5px;
-            font-size: 13px;
-        }
-
-        .nav-link--billing {
-            color: var(--primary) !important;
-            font-weight: 700;
-        }
-
-        .nav-link--billing i {
-            font-size: 12px;
-        }
-
-        .nav-cta {
-            height: 42px;
-            padding: 0 16px !important;
-            border-radius: 999px !important;
-            font-weight: 700;
-            font-size: 14px;
-        }
-
-        .nav-cta i {
-            font-size: 13px;
-        }
-
-        .nav-cta-partner {
-            border: 1px solid var(--primary) !important;
-            margin-left: 4px;
-        }
-
-        .nav-cta-staff {
-            padding: 0 18px !important;
-            box-shadow: 0 8px 20px rgba(var(--primary-rgb), 0.22);
-        }
-
-        .nav-menu a:hover {
-            color: var(--primary);
-            background: rgba(var(--primary-rgb), 0.07);
-        }
-
-
-        .hero-section {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 118px 20px 56px;
-            position: relative;
-        }
-
-        .hero-shell {
-            z-index: 2;
-            position: relative;
-            animation: fadeIn 1s ease-out;
-            width: 100%;
-            max-width: 920px;
-            margin: 0 auto;
-        }
-
-        .hero-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            padding: 8px 18px;
-            background: rgba(var(--primary-rgb), 0.1);
-            border: 1px solid rgba(var(--primary-rgb), 0.24);
-            border-radius: 999px;
-            color: var(--primary);
-            font-weight: 700;
-            font-size: 13px;
-            margin-bottom: 22px;
-        }
-
-        /* Abstract glowing blobs for hero section */
-        .glow-blob {
-            position: absolute;
-            width: 400px;
-            height: 400px;
-            background: var(--primary);
-            filter: blur(100px);
-            border-radius: 50%;
-            opacity: 0.15;
-            z-index: -1;
-            animation: float 10s infinite alternate ease-in-out;
-        }
-
-        .glow-blob.blue { top: 20%; left: 10%; background: #3b82f6; }
-        .glow-blob.purple { bottom: 10%; right: 10%; background: #a855f7; animation-delay: -5s; }
-
-        @keyframes float {
-            0% { transform: translate(0, 0) scale(1); }
-            100% { transform: translate(50px, 50px) scale(1.2); }
-        }
-
-        .hero-title {
-            font-size: 56px;
-            font-weight: 800;
-            margin-bottom: 20px;
-            line-height: 1.1;
-            background: linear-gradient(135deg, var(--text-primary) 0%, var(--gradient-text-to) 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .hero-subtitle {
-            font-size: 20px;
-            color: var(--text-secondary);
-            max-width: 700px;
-            margin: 0 auto 40px;
-            line-height: 1.6;
-        }
-
-        .hero-actions {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .hero-actions .btn {
-            min-height: 52px;
-            padding: 0 42px !important;
-            font-size: 18px;
-            border-radius: 999px !important;
-            width: 100%;
-            max-width: 380px;
-            box-shadow: 0 15px 30px rgba(var(--primary-rgb), 0.28);
-        }
-
-        .section {
-            padding: 80px 20px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .section-title {
-            font-size: 36px;
-            font-weight: 700;
-            text-align: center;
-            margin-bottom: 50px;
-            position: relative;
-        }
-
-        .section-title::after {
-            content: '';
-            display: block;
-            width: 60px;
-            height: 4px;
-            background: linear-gradient(to right, var(--primary), #a78bfa);
-            margin: 15px auto 0;
-            border-radius: 4px;
-        }
-
-        /* Packages Grid */
-        .pkg-grid {
-            display: flex;
-            gap: 30px;
-            overflow-x: auto;
-            scroll-snap-type: x mandatory;
-            padding: 10px 10px 30px;
-            margin: 0 -10px;
-        }
-
-        .pkg-grid::-webkit-scrollbar {
-            height: 6px;
-        }
-        .pkg-grid::-webkit-scrollbar-track {
-            background: rgba(255,255,255,0.03);
-            border-radius: 10px;
-        }
-        .pkg-grid::-webkit-scrollbar-thumb {
-            background: rgba(96, 165, 250, 0.3);
-            border-radius: 10px;
-        }
-
-        .pkg-card {
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            padding: 40px 30px;
-            text-align: center;
-            transition: all 0.4s ease;
-            position: relative;
-            overflow: hidden;
-            min-width: 300px;
-            flex: 1 0 300px;
-            scroll-snap-align: start;
-        }
-
-        .pkg-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; height: 4px;
-            background: linear-gradient(to right, var(--gradient-text-from), var(--gradient-text-to));
-            opacity: 0;
-            transition: opacity 0.4s ease;
-        }
-
-        .pkg-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-            border-color: rgba(96, 165, 250, 0.3);
-        }
-
-        .pkg-card:hover::before { opacity: 1; }
-
-        .pkg-name {
-            font-size: 20px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            margin-bottom: 15px;
-        }
-
-        .pkg-speed {
-            font-size: 48px;
-            font-weight: 800;
-            margin-bottom: 20px;
-            color: var(--text-primary);
-        }
-
-        .pkg-price {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--primary);
-            margin-bottom: 30px;
-        }
-
-        .pkg-features {
-            list-style: none;
-            padding: 0;
-            margin: 0 0 30px 0;
-            text-align: left;
-        }
-
-        .pkg-features li {
-            padding: 12px 0;
-            border-bottom: 1px solid var(--glass-border);
-            color: var(--text-secondary);
-            display: flex;
-            align-items: center;
-        }
-        
-        .pkg-features li::before {
-            content: '\f058';
-            font-family: 'Font Awesome 6 Free';
-            font-weight: 900;
-            color: var(--success);
-            margin-right: 12px;
-            font-size: 16px;
-        }
-
-        .about-text {
-            font-size: 18px;
-            line-height: 1.8;
-            color: var(--text-secondary);
-            text-align: center;
-            max-width: 900px;
-            margin: 0 auto;
-        }
-
-        footer {
-            background: var(--glass-bg);
-            padding: 60px 20px;
-            text-align: center;
-            border-top: 1px solid var(--glass-border);
-        }
-
-        /* Powered By Section */
-        .powered-section {
-            padding: 60px 0;
-            text-align: center;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .powered-label {
-            font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 4px;
-            color: var(--text-secondary);
-            margin-bottom: 40px;
-            font-weight: 700;
-        }
-
-        .marquee-container {
-            width: 100%;
-            overflow: hidden;
-            position: relative;
-            padding: 20px 0;
-        }
-
-        .marquee-track {
-            display: flex;
-            gap: 40px;
-            width: max-content;
-            animation: marquee 30s linear infinite;
-        }
-
-        @keyframes marquee {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-50%); }
-        }
-
-        .powered-item {
-            flex: 0 0 auto;
-            padding: 25px 35px;
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            transition: all 0.4s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 220px;
-        }
-
-        .powered-item img {
-            max-height: 65px;
-            max-width: 180px;
-            filter: grayscale(100%) brightness(1) contrast(0.5);
-            opacity: 0.4;
-            transition: all 0.4s ease;
-        }
-
-        .marquee-container:hover .marquee-track {
-            animation-play-state: paused;
-        }
-
-        .powered-item:hover {
-            transform: translateY(-8px) scale(1.05);
-            background: rgba(255,255,255,0.08);
-            border-color: var(--primary);
-            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
-        }
-
-        .powered-item:hover img {
-            filter: grayscale(0%) brightness(1.2) contrast(1);
-            opacity: 1;
-        }
-
-        /* Feature Cards */
-        .feature-card {
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            padding: 40px 30px;
-            text-align: center;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .feature-card:hover {
-            transform: translateY(-12px);
-            background: rgba(255,255,255,0.03);
-            border-color: var(--primary);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-        }
-
-        .feature-icon-wrapper {
-            width: 70px;
-            height: 70px;
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            margin-bottom: 5px;
-            transition: transform 0.4s ease;
-        }
-
-        .feature-card:hover .feature-icon-wrapper {
-            transform: scale(1.1) rotate(5deg);
-        }
-
-        .icon-blue { background: rgba(59, 130, 246, 0.1); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.2); }
-        .icon-green { background: rgba(35, 206, 217, 0.1); color: #23CED9; border: 1px solid rgba(35, 206, 217, 0.2); }
-        .icon-purple { background: rgba(167, 139, 250, 0.1); color: #a78bfa; border: 1px solid rgba(167, 139, 250, 0.2); }
-
-        .feature-title {
-            font-size: 22px;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin: 0;
-        }
-
-        .feature-desc {
-            font-size: 15px;
-            color: var(--text-secondary);
-            line-height: 1.6;
-            margin: 0;
-        }
-
-        .mobile-menu-toggle {
-            display: none;
-            background: none;
-            border: none;
-            color: var(--text-primary);
-            font-size: 24px;
-            cursor: pointer;
-            z-index: 1100;
-        }
-
-        .mobile-menu {
-            position: fixed;
-            top: 0;
-            right: -100%;
-            width: min(84vw, 340px);
-            height: 100vh;
-            background: var(--bg-color);
-            z-index: 1050;
-            padding: 86px 18px 24px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: -10px 0 30px rgba(0,0,0,0.5);
-            border-left: 1px solid var(--glass-border);
-        }
-
-        .mobile-menu.active {
-            right: 0;
-        }
-
-        .mobile-menu a {
-            font-size: 15px;
-            font-weight: 600;
-            color: var(--text-primary);
-            text-decoration: none;
-            padding: 11px 12px;
-            border: 1px solid transparent;
-            border-radius: 10px;
-        }
-
-        .mobile-menu a:hover {
-            background: rgba(var(--primary-rgb), 0.08);
-            border-color: rgba(var(--primary-rgb), 0.18);
-            color: var(--primary);
-        }
-
-        .mobile-link-cta {
-            font-weight: 700 !important;
-            border-color: var(--glass-border) !important;
-        }
-
-        .mobile-link-cta.partner {
-            color: var(--primary) !important;
-        }
-
-        .mobile-link-cta.staff {
-            color: #ffffff !important;
-            background: var(--primary);
-            border-color: var(--primary) !important;
-        }
-
-        .mobile-link-cta.staff:hover {
-            color: #ffffff !important;
-            background: var(--primary-hover);
-        }
-
-        .mobile-menu-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100vh;
-            background: rgba(0,0,0,0.5);
-            backdrop-filter: blur(5px);
-            z-index: 1040;
-            display: none;
-        }
-
-        @media (max-width: 1380px) {
-            .navbar { padding: 11px 14px; }
-            .nav-menu { display: none; }
-            .mobile-menu-toggle { display: block; }
-            .navbar .navbar-logo-box { height: 35px; max-width: 160px; }
-            .nav-brand { font-size: 15px; gap: 8px; }
-            .nav-brand span { max-width: 260px; }
-        }
-
-        @media (max-width: 1180px) {
-            .navbar { padding: 11px 16px; }
-            .nav-brand { font-size: 15px; }
-            .nav-menu { gap: 6px; }
-            .nav-link { padding: 7px 8px; font-size: 13px; }
-            .nav-cta { height: 38px; font-size: 13px; padding: 0 12px !important; }
-            .navbar .navbar-logo-box { height: 35px; max-width: 165px; }
-        }
-
-        @media (max-width: 980px) {
-            .nav-brand span { max-width: 220px; }
-            .nav-link { font-size: 12px; padding: 6px 7px; }
-            .nav-link i { margin-right: 4px; }
-            .nav-cta { height: 36px; font-size: 12px; }
-        }
-
-        @media (max-width: 768px) {
-            .navbar { padding: 12px 14px; }
-            .mobile-menu-toggle { display: block; }
-            .navbar .navbar-logo-box { height: 34px; max-width: 150px; }
-            .nav-brand { font-size: 14px; gap: 8px; }
-            .nav-brand span { max-width: 190px; }
-            .hero-title { font-size: 36px; }
-            .hero-subtitle { font-size: 16px; }
-            .hero-actions .btn { min-height: 48px; font-size: 16px; max-width: 320px; }
-            .powered-grid { gap: 25px; }
-            .powered-item img { max-height: 35px; }
-            
-            .pkg-grid {
-                flex-direction: column;
-                overflow-x: visible;
-                padding: 0;
-                margin: 0;
+    <title><?= htmlspecialchars($brand) ?> — Internet fiber untuk rumah dan usaha</title>
+    <meta name="description" content="<?= htmlspecialchars(mb_substr($hero_text, 0, 155)) ?>">
+    <?php if ($logo): ?><link rel="icon" href="<?= htmlspecialchars($logo) ?>"><?php endif; ?>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Design tokens in the shadcn/ui shape, tuned for this brand.
+        tailwind.config = {
+            theme: {
+                container: { center: true, padding: '1.25rem', screens: { '2xl': '1120px' } },
+                extend: {
+                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+                    colors: {
+                        background: '#F5F7F6',
+                        foreground: '#172026',
+                        card: '#FFFFFF',
+                        border: '#D9E0E2',
+                        input: '#D9E0E2',
+                        ring: '#0F3A47',
+                        primary: { DEFAULT: '#0F3A47', foreground: '#FFFFFF', deep: '#0A2A34' },
+                        muted: { DEFAULT: '#E9EEEC', foreground: '#5B6B72' },
+                        accent: { DEFAULT: '#E39B0A', foreground: '#1D1300', soft: '#FFF3D6' },
+                        signal: { DEFAULT: '#1F8A5B', soft: '#E3F3EA' },
+                        wa: { DEFAULT: '#1DA851', hover: '#178A43' },
+                    },
+                    borderRadius: { lg: '0.75rem', md: '0.5rem', sm: '0.375rem' },
+                    boxShadow: { card: '0 1px 2px rgba(23,32,38,.05), 0 1px 0 rgba(23,32,38,.02)', lift: '0 12px 32px -12px rgba(15,58,71,.25)' },
+                }
             }
-            .pkg-card {
-                min-width: 100%;
-                flex: none;
-            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer base {
+            html { -webkit-font-smoothing: antialiased; }
+            body { @apply bg-background text-foreground font-sans; }
+            h1, h2, h3 { @apply tracking-[-0.01em]; text-wrap: balance; }
+            :focus-visible { @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background rounded-sm; }
+            @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+        }
+        @layer components {
+            /* shadcn/ui component recipes, ported to plain classes */
+            .btn { @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4; }
+            .btn-lg { @apply h-11 px-5 text-[15px]; }
+            .btn-primary { @apply bg-primary text-primary-foreground hover:bg-primary-deep; }
+            .btn-outline { @apply border border-border bg-card hover:bg-muted; }
+            .btn-ghost { @apply hover:bg-muted; }
+            .btn-wa { @apply bg-wa text-white hover:bg-wa-hover; }
+            .card { @apply rounded-lg border border-border bg-card shadow-card; }
+            .badge { @apply inline-flex items-center rounded-md border border-border bg-card px-2.5 py-0.5 text-xs font-semibold; }
+            .badge-signal { @apply border-transparent bg-signal-soft text-signal; }
+            .badge-accent { @apply border-transparent bg-accent-soft text-[#7A5000]; }
+            .input { @apply flex h-11 w-full rounded-md border border-input bg-card px-3 py-2 text-[15px] placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2; }
+            .nav-link { @apply text-sm font-medium text-muted-foreground hover:text-foreground transition-colors; }
+            .eyebrow { @apply text-sm font-semibold text-signal; }
+            .fiber-dot { @apply inline-block h-2 w-2 rounded-full bg-accent; box-shadow: 0 0 0 4px #FFF3D6; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Nav -->
-    <nav class="navbar">
-        <a href="#" class="nav-brand">
-            <?php if(!empty($site['company_logo'])): ?>
-                <div class="brand-logo-wrapper navbar-logo-box">
-                    <img src="<?= htmlspecialchars($site['company_logo']) ?>" alt="Logo">
-                </div>
+<!-- Navigation -->
+<header class="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
+    <div class="container flex h-16 items-center justify-between gap-6">
+        <a href="index.php?page=landing" class="flex items-center gap-3 min-w-0">
+            <?php if ($logo): ?>
+                <img src="<?= htmlspecialchars($logo) ?>" alt="<?= htmlspecialchars($brand) ?>" class="h-9 w-auto max-w-[140px] object-contain">
             <?php else: ?>
-                <i class="fas fa-wifi" style="color:var(--primary);"></i>
+                <span class="grid h-9 w-9 place-items-center rounded-md bg-primary text-primary-foreground"><?= svg_icon('wifi', 'h-5 w-5') ?></span>
             <?php endif; ?>
-            <span><?= htmlspecialchars(strtoupper($comp_name)) ?></span>
+            <span class="<?= $logo ? 'sr-only' : 'truncate font-bold text-[17px]' ?>"><?= htmlspecialchars($brand) ?></span>
         </a>
-        <div class="nav-menu">
-            <a href="#about" class="nav-link">Tentang Kami</a>
-            <a href="http://fibernodeinternet.com:3001/status/server" target="_blank" class="nav-link"><i class="fas fa-server"></i> Server Status</a>
-            <a href="http://fibernodeinternet.com:3004" target="_blank" class="nav-link"><i class="fas fa-tachometer-alt"></i> Speedtest</a>
-            <a href="#services" class="nav-link">Layanan</a>
-            <a href="https://wa.me/<?= $wa_contact ?>" target="_blank" class="nav-link"><i class="fab fa-whatsapp" style="color:#25D366;"></i> Hubungi Kami</a>
-            <a href="index.php?page=customer_portal" class="nav-link nav-link--billing"><i class="fas fa-receipt"></i> Cek Tagihan</a>
-            <a href="index.php?page=login&role=partner" class="btn btn-sm btn-ghost nav-cta nav-cta-partner"><i class="fas fa-handshake"></i> Portal Partner</a>
-            <a href="index.php?page=login&role=staff" class="btn btn-sm btn-primary nav-cta nav-cta-staff"><i class="fas fa-shield-alt"></i> Area Staff</a>
+        <nav class="hidden md:flex items-center gap-7">
+            <a href="#paket" class="nav-link">Paket</a>
+            <a href="#cara" class="nav-link">Cara berlangganan</a>
+            <a href="#tentang" class="nav-link">Tentang kami</a>
+            <a href="#tagihan" class="nav-link">Cek tagihan</a>
+        </nav>
+        <div class="hidden md:flex items-center gap-2">
+            <a href="index.php?page=login" class="btn btn-ghost">Masuk</a>
+            <a href="<?= htmlspecialchars($wa_link) ?>" target="_blank" rel="noopener" class="btn btn-wa"><?= svg_icon('chat', 'h-4 w-4') ?> WhatsApp</a>
         </div>
-        <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">
-            <i class="fas fa-bars"></i>
+        <button class="md:hidden btn btn-outline h-10 w-10 px-0" onclick="toggleMobileMenu()" aria-label="Buka menu" aria-expanded="false" id="menuBtn">
+            <span id="menuIconOpen"><?= svg_icon('menu', 'h-5 w-5') ?></span>
+            <span id="menuIconClose" class="hidden"><?= svg_icon('x', 'h-5 w-5') ?></span>
         </button>
-    </nav>
+    </div>
+    <div id="mobileMenu" class="hidden md:hidden border-t border-border bg-card">
+        <nav class="container flex flex-col py-3">
+            <a href="#paket" class="py-3 text-[15px] font-medium border-b border-border" onclick="toggleMobileMenu()">Paket</a>
+            <a href="#cara" class="py-3 text-[15px] font-medium border-b border-border" onclick="toggleMobileMenu()">Cara berlangganan</a>
+            <a href="#tentang" class="py-3 text-[15px] font-medium border-b border-border" onclick="toggleMobileMenu()">Tentang kami</a>
+            <a href="#tagihan" class="py-3 text-[15px] font-medium border-b border-border" onclick="toggleMobileMenu()">Cek tagihan</a>
+            <div class="flex gap-2 pt-4">
+                <a href="index.php?page=login" class="btn btn-outline flex-1">Masuk</a>
+                <a href="<?= htmlspecialchars($wa_link) ?>" target="_blank" rel="noopener" class="btn btn-wa flex-1"><?= svg_icon('chat', 'h-4 w-4') ?> WhatsApp</a>
+            </div>
+        </nav>
+    </div>
+</header>
 
-    <div class="mobile-menu-overlay" onclick="toggleMobileMenu()"></div>
-    <div class="mobile-menu" id="mobileMenu">
-        <a href="#about" onclick="toggleMobileMenu()">Tentang Kami</a>
-        <a href="http://fibernodeinternet.com:3001/status/server" target="_blank" onclick="toggleMobileMenu()"><i class="fas fa-server"></i> Server Status</a>
-        <a href="http://fibernodeinternet.com:3004" target="_blank" onclick="toggleMobileMenu()"><i class="fas fa-tachometer-alt"></i> Speedtest</a>
-        <a href="#services" onclick="toggleMobileMenu()">Layanan</a>
-        <a href="index.php?page=customer_portal" onclick="toggleMobileMenu()" class="mobile-link-cta"><i class="fas fa-receipt"></i> Cek Tagihan</a>
-        <a href="index.php?page=login&role=partner" onclick="toggleMobileMenu()" class="mobile-link-cta partner"><i class="fas fa-handshake"></i> Portal Partner</a>
-        <a href="index.php?page=login&role=staff" onclick="toggleMobileMenu()" class="mobile-link-cta staff"><i class="fas fa-shield-alt"></i> Area Staff</a>
-        <a href="https://wa.me/<?= $wa_contact ?>" target="_blank"><i class="fab fa-whatsapp" style="color:#25D366;"></i> Hubungi Kami</a>
+<main>
+
+<!-- Hero -->
+<section class="container grid gap-12 py-14 md:py-20 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+    <div class="max-w-[38rem]">
+        <p class="eyebrow flex items-center gap-2"><span class="fiber-dot"></span> Internet fiber optik untuk rumah, usaha, dan kantor</p>
+        <h1 class="mt-4 text-[2.4rem] leading-[1.08] font-extrabold sm:text-5xl lg:text-[3.4rem]">
+            Koneksi yang dipasang rapi, dijaga tiap hari, dan tagihannya jelas.
+        </h1>
+        <p class="mt-6 text-lg leading-relaxed text-muted-foreground max-w-[34rem]">
+            <?= htmlspecialchars($hero_text) ?>
+        </p>
+        <div class="mt-8 flex flex-wrap items-center gap-3">
+            <a href="<?= htmlspecialchars($wa_link) ?>" target="_blank" rel="noopener" class="btn btn-wa btn-lg"><?= svg_icon('chat', 'h-5 w-5') ?> Tanya pemasangan via WhatsApp</a>
+            <a href="#paket" class="btn btn-outline btn-lg">Lihat paket dan harga</a>
+        </div>
+        <?php if ($phone_display): ?>
+        <p class="mt-5 text-sm text-muted-foreground">Atau telepon langsung <a href="tel:+<?= htmlspecialchars($wa_contact) ?>" class="font-semibold text-foreground"><?= htmlspecialchars($phone_display) ?></a>.</p>
+        <?php endif; ?>
     </div>
 
-    <!-- Hero -->
-    <section class="hero-section">
-        <div class="hero-shell">
-            <div class="hero-badge">
-                <i class="fas fa-bolt"></i> Internet Cepat Tanpa Batas
+    <!-- Installation slip: the one memorable object on the page -->
+    <div class="card shadow-lift p-6 sm:p-7 lg:ml-auto lg:max-w-[26rem] w-full">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <p class="text-sm text-muted-foreground">Pemasangan baru</p>
+                <h2 class="mt-1 text-xl font-bold">Yang Anda dapat</h2>
             </div>
-            <h1 class="hero-title"><?= htmlspecialchars($site['landing_hero_title'] ?? 'Koneksi Super Cepat & Stabil') ?></h1>
-            <p class="hero-subtitle"><?= htmlspecialchars($site['landing_hero_text'] ?? 'Solusi internet dan IT untuk kebutuhan personal dan korporasi.') ?></p>
-            <div class="hero-actions">
-                <a href="#services" class="btn btn-primary">Lihat Paket <i class="fas fa-arrow-right" style="margin-left:10px;"></i></a>
-            </div>
+            <span class="badge badge-signal"><?= svg_icon('check', 'h-3.5 w-3.5 mr-1') ?> Tanpa biaya survei</span>
         </div>
-    </section>
+        <ul class="mt-6 divide-y divide-border">
+            <li class="flex items-center gap-4 py-3.5">
+                <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-muted text-primary"><?= svg_icon('router') ?></span>
+                <div class="min-w-0"><p class="font-semibold">Perangkat ONT dan router WiFi</p><p class="text-sm text-muted-foreground">Dipasang teknisi kami, siap pakai hari itu juga.</p></div>
+            </li>
+            <li class="flex items-center gap-4 py-3.5">
+                <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-muted text-primary"><?= svg_icon('activity') ?></span>
+                <div class="min-w-0"><p class="font-semibold">Jalur fiber sampai ke rumah</p><p class="text-sm text-muted-foreground">Bukan wireless. Stabil saat hujan dan jam sibuk.</p></div>
+            </li>
+            <li class="flex items-center gap-4 py-3.5">
+                <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-muted text-primary"><?= svg_icon('receipt') ?></span>
+                <div class="min-w-0"><p class="font-semibold">Tagihan tetap tiap bulan</p><p class="text-sm text-muted-foreground">Bisa dicek online dengan kode pelanggan.</p></div>
+            </li>
+            <li class="flex items-center gap-4 py-3.5">
+                <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-muted text-primary"><?= svg_icon('phone') ?></span>
+                <div class="min-w-0"><p class="font-semibold">Teknisi lokal yang bisa dihubungi</p><p class="text-sm text-muted-foreground">Gangguan ditangani orang yang tahu jaringannya.</p></div>
+            </li>
+        </ul>
+        <div class="mt-5 flex items-center justify-between rounded-md bg-primary px-4 py-3 text-primary-foreground">
+            <span class="text-sm">Mulai dari</span>
+            <?php $min_price = $packages ? min(array_map(fn($p) => (int) $p['price'], $packages)) : 0; ?>
+            <span class="text-lg font-bold tabular-nums"><?= $min_price > 0 ? 'Rp ' . number_format($min_price, 0, ',', '.') . '<span class="text-sm font-medium opacity-80">/bulan</span>' : 'Hubungi kami' ?></span>
+        </div>
+    </div>
+</section>
 
-    <!-- Powered By (Auto-Scrolling Marquee) -->
-    <?php if(count($partner_logos) > 0): ?>
-    <section class="powered-section">
-        <div class="powered-label">Didukung Oleh</div>
-        <div class="marquee-container">
-            <div class="marquee-track">
-                <?php 
-                // Render logos twice for seamless infinite loop
-                for($i=0; $i<2; $i++):
-                    foreach($partner_logos as $p): ?>
-                    <div class="powered-item">
-                        <img src="<?= htmlspecialchars($p['image_path']) ?>" alt="Partner Logo">
-                    </div>
-                <?php endforeach; endfor; ?>
-            </div>
+<!-- Trust facts -->
+<section class="border-y border-border bg-card">
+    <div class="container grid gap-8 py-10 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="flex gap-4">
+            <span class="text-primary shrink-0"><?= svg_icon('building', 'h-6 w-6') ?></span>
+            <div><p class="font-semibold">Badan hukum resmi</p><p class="mt-1 text-sm text-muted-foreground leading-relaxed"><?= htmlspecialchars($comp_name) ?>, penyelenggara jasa jual kembali telekomunikasi.</p></div>
         </div>
-    </section>
+        <div class="flex gap-4">
+            <span class="text-primary shrink-0"><?= svg_icon('shield', 'h-6 w-6') ?></span>
+            <div><p class="font-semibold">Terhubung ke jaringan nasional</p><p class="mt-1 text-sm text-muted-foreground leading-relaxed">Bandwidth dari penyedia tulang punggung, bukan berbagi dari koneksi rumahan.</p></div>
+        </div>
+        <div class="flex gap-4">
+            <span class="text-primary shrink-0"><?= svg_icon('users', 'h-6 w-6') ?></span>
+            <div><p class="font-semibold"><?= $partner_count > 0 ? $partner_count . ' mitra desa' : 'Mitra desa' ?></p><p class="mt-1 text-sm text-muted-foreground leading-relaxed">Titik layanan dikelola bersama warga setempat, termasuk BUMDes.</p></div>
+        </div>
+        <div class="flex gap-4">
+            <span class="text-primary shrink-0"><?= svg_icon('clock', 'h-6 w-6') ?></span>
+            <div><p class="font-semibold">Dipantau setiap hari</p><p class="mt-1 text-sm text-muted-foreground leading-relaxed">Perangkat jaringan dan trafik pelanggan diawasi dari pusat kendali kami.</p></div>
+        </div>
+    </div>
+</section>
+
+<!-- Packages -->
+<section id="paket" class="container py-16 md:py-20">
+    <div class="max-w-[36rem]">        <h2 class="mt-3 text-3xl font-bold sm:text-4xl">Satu harga, tanpa biaya tersembunyi.</h2>
+        <p class="mt-4 text-muted-foreground leading-relaxed">Harga di bawah sudah termasuk pajak. Tidak ada kuota, tidak ada pembatasan jam. Biaya pemasangan dibicarakan saat survei, tergantung jarak ke tiang terdekat.</p>
+    </div>
+
+    <?php if (count($packages) > 0): ?>
+    <div class="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        <?php foreach ($packages as $i => $pkg):
+            $feats = array_values(array_filter(array_map('trim', explode(',', (string) $pkg['features']))));
+            $pkg_wa = 'https://wa.me/' . $wa_contact . '?text=' . rawurlencode("Halo $brand, saya tertarik paket {$pkg['name']} ({$pkg['speed']}). Alamat saya: ");
+        ?>
+        <article class="card flex flex-col p-6">
+            <div class="flex items-baseline justify-between gap-3">
+                <h3 class="text-lg font-bold"><?= htmlspecialchars($pkg['name']) ?></h3>
+                <span class="badge"><?= htmlspecialchars($pkg['speed']) ?></span>
+            </div>
+            <p class="mt-5 text-3xl font-extrabold tabular-nums">
+                <?php if ((int) $pkg['price'] > 0): ?>
+                    Rp <?= number_format((int) $pkg['price'], 0, ',', '.') ?><span class="text-base font-medium text-muted-foreground">/bulan</span>
+                <?php else: ?>
+                    <span class="text-xl">Hubungi kami</span>
+                <?php endif; ?>
+            </p>
+            <ul class="mt-6 space-y-2.5 text-[15px]">
+                <?php foreach ($feats as $f): ?>
+                <li class="flex items-start gap-2.5"><span class="mt-0.5 text-signal"><?= svg_icon('check', 'h-4 w-4') ?></span><span><?= htmlspecialchars($f) ?></span></li>
+                <?php endforeach; ?>
+            </ul>
+            <a href="<?= htmlspecialchars($pkg_wa) ?>" target="_blank" rel="noopener" class="btn <?= $i === 1 ? 'btn-primary' : 'btn-outline' ?> mt-auto pt-0 w-full" style="margin-top:2rem">Pasang <?= htmlspecialchars($pkg['name']) ?></a>
+        </article>
+        <?php endforeach; ?>
+    </div>
+    <?php else: ?>
+    <div class="card mt-10 p-10 text-center text-muted-foreground">Daftar paket sedang disiapkan. Hubungi kami lewat WhatsApp untuk harga terbaru.</div>
     <?php endif; ?>
 
-    <!-- About / Features -->
-    <section id="about" class="section">
-        <div style="text-align: center; margin-bottom: 60px;">
-            <div style="display:inline-block; padding:6px 15px; background:rgba(35, 206, 217, 0.1); border:1px solid rgba(35, 206, 217, 0.2); border-radius:50px; color:#23CED9; font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:2px; margin-bottom:20px;">
-                Eksplorasi Keunggulan
-            </div>
-            <h2 class="section-title" style="margin-bottom:20px;">Kenapa Memilih Kami?</h2>
-            <p class="about-text" style="opacity:0.8;">
-                <?= nl2br(htmlspecialchars($site['landing_about_us'] ?? 'PT Einva Inti Data hadir untuk memberikan layanan yang andal.')) ?>
-            </p>
-        </div>
-        
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:30px;">
-            <div class="feature-card">
-                <div class="feature-icon-wrapper icon-blue">
-                    <i class="fas fa-tachometer-alt"></i>
-                </div>
-                <h4 class="feature-title">Koneksi Stabil</h4>
-                <p class="feature-desc">99% Uptime dengan perangkat jaringan mutakhir serta monitoring real-time untuk memastikan bisnis Anda tetap berjalan lancar.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon-wrapper icon-green">
-                    <i class="fas fa-headset"></i>
-                </div>
-                <h4 class="feature-title">Bantuan 24/7</h4>
-                <p class="feature-desc">Tim teknis kami yang berpengalaman siap sedia menangani setiap keluhan dan kebutuhan teknis Anda kapanpun dibutuhkan.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon-wrapper icon-purple">
-                    <i class="fas fa-shield-alt"></i>
-                </div>
-                <h4 class="feature-title">Aman & Terenkripsi</h4>
-                <p class="feature-desc">Perlindungan berlapis pada seluruh infrastruktur kami untuk menjamin keamanan data dan privasi setiap pelanggan kami.</p>
-            </div>
-        </div>
-    </section>
+    <p class="mt-6 text-sm text-muted-foreground">Butuh kecepatan lebih tinggi untuk kantor, sekolah, atau RT/RW Net? <a href="<?= htmlspecialchars($wa_link) ?>" target="_blank" rel="noopener" class="font-semibold text-foreground underline underline-offset-4">Minta penawaran khusus.</a></p>
+</section>
 
-    <!-- Services / Packages -->
-    <section id="services" class="section">
-        <h2 class="section-title">Pilih Kecepatanmu</h2>
-        <div class="pkg-grid">
-            <?php foreach($packages as $pkg): 
-                $feats = array_map('trim', explode(',', $pkg['features']));
-            ?>
-            <div class="pkg-card">
-                <div class="pkg-name"><?= htmlspecialchars($pkg['name']) ?></div>
-                <div class="pkg-speed"><?= htmlspecialchars($pkg['speed']) ?></div>
-                <div class="pkg-price"><?= $pkg['price'] > 0 ? 'Rp ' . number_format($pkg['price'], 0, ',', '.') . '<span style="font-size:14px; font-weight:normal; color:#94a3b8;">/bln</span>' : 'Hubungi Kami' ?></div>
-                
-                <ul class="pkg-features">
-                    <?php foreach($feats as $f): if(empty($f)) continue; ?>
-                        <li><?= htmlspecialchars($f) ?></li>
-                    <?php endforeach; ?>
-                </ul>
-                
-                <a href="https://wa.me/<?= $wa_contact ?>?text=Halo%20Admin%20<?= urlencode($comp_name) ?>,%20saya%20tertarik%20berlangganan%20solusi%20<?= urlencode($pkg['name']) ?>" target="_blank" class="btn btn-primary" style="width:100%; border-radius:50px; margin-top:20px;">Pesan Sekarang</a>
+<!-- How to subscribe: a real sequence, so it is numbered -->
+<section id="cara" class="border-y border-border bg-card">
+    <div class="container py-16 md:py-20">
+        <div class="max-w-[36rem]">            <h2 class="mt-3 text-3xl font-bold sm:text-4xl">Dari tanya sampai online, biasanya dalam beberapa hari.</h2>
+        </div>
+        <ol class="mt-10 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+            <li class="relative">
+                <span class="grid h-9 w-9 place-items-center rounded-md bg-primary text-primary-foreground text-sm font-bold">1</span>
+                <h3 class="mt-4 font-semibold">Kirim alamat lewat WhatsApp</h3>
+                <p class="mt-2 text-sm text-muted-foreground leading-relaxed">Kami cek apakah jalur fiber sudah lewat depan rumah Anda dan beri tahu perkiraan waktunya.</p>
+            </li>
+            <li>
+                <span class="grid h-9 w-9 place-items-center rounded-md bg-primary text-primary-foreground text-sm font-bold">2</span>
+                <h3 class="mt-4 font-semibold">Survei lokasi</h3>
+                <p class="mt-2 text-sm text-muted-foreground leading-relaxed">Teknisi datang mengukur jarak ke tiang dan titik terbaik untuk router. Gratis.</p>
+            </li>
+            <li>
+                <span class="grid h-9 w-9 place-items-center rounded-md bg-primary text-primary-foreground text-sm font-bold">3</span>
+                <h3 class="mt-4 font-semibold">Pemasangan</h3>
+                <p class="mt-2 text-sm text-muted-foreground leading-relaxed">Kabel ditarik rapi, ONT dan router dipasang, kecepatan diuji di depan Anda.</p>
+            </li>
+            <li>
+                <span class="grid h-9 w-9 place-items-center rounded-md bg-primary text-primary-foreground text-sm font-bold">4</span>
+                <h3 class="mt-4 font-semibold">Aktif dan tagihan bulanan</h3>
+                <p class="mt-2 text-sm text-muted-foreground leading-relaxed">Anda mendapat kode pelanggan untuk cek tagihan. Bayar lewat mitra desa atau transfer.</p>
+            </li>
+        </ol>
+    </div>
+</section>
+
+<!-- About -->
+<section id="tentang" class="container grid gap-12 py-16 md:py-20 lg:grid-cols-[1fr_1fr]">
+    <div>        <h2 class="mt-3 text-3xl font-bold sm:text-4xl"><?= htmlspecialchars($comp_name) ?></h2>
+        <p class="mt-5 text-muted-foreground leading-relaxed"><?= nl2br(htmlspecialchars($about_intro)) ?></p>
+        <?php if ($address): ?>
+        <p class="mt-6 flex items-start gap-2.5 text-[15px]"><span class="mt-0.5 text-primary"><?= svg_icon('pin', 'h-5 w-5') ?></span><span><?= htmlspecialchars($address) ?></span></p>
+        <?php endif; ?>
+    </div>
+    <div class="grid gap-5 content-start">
+        <?php if ($vision): ?>
+        <div class="card p-6">
+            <h3 class="font-bold">Visi</h3>
+            <p class="mt-2 text-muted-foreground leading-relaxed"><?= htmlspecialchars($vision) ?></p>
+        </div>
+        <?php endif; ?>
+        <?php if ($missions): ?>
+        <div class="card p-6">
+            <h3 class="font-bold">Misi</h3>
+            <ul class="mt-3 space-y-2.5">
+                <?php foreach ($missions as $ms): ?>
+                <li class="flex items-start gap-2.5 text-[15px]"><span class="mt-0.5 text-signal"><?= svg_icon('check', 'h-4 w-4') ?></span><span><?= htmlspecialchars($ms) ?></span></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+        <?php endif; ?>
+    </div>
+</section>
+
+<!-- Network partners -->
+<?php if (count($partner_logos) > 0): ?>
+<section class="bg-primary-deep text-primary-foreground">
+    <div class="container py-12">
+        <p class="text-center text-sm font-medium text-white/70">Jaringan, asosiasi, dan penyedia yang menopang layanan kami</p>
+        <div class="mt-8 flex flex-wrap items-center justify-center gap-4">
+            <?php foreach ($partner_logos as $p): ?>
+            <div class="flex h-16 w-[calc(50%-0.5rem)] items-center justify-center rounded-md bg-white/[.06] px-5 sm:w-44">
+                <img src="<?= htmlspecialchars($p['image_path']) ?>" alt="Logo mitra jaringan" class="max-h-10 w-auto max-w-full object-contain" loading="lazy">
             </div>
             <?php endforeach; ?>
-            
-            <?php if(count($packages) == 0): ?>
-                <div style="grid-column: 1/-1; text-align:center; padding: 40px; color:var(--text-secondary);">
-                    Etalase produk sedang disusun oleh administrator.
-                </div>
+        </div>
+    </div>
+</section>
+<?php endif; ?>
+
+<!-- Bill check -->
+<section id="tagihan" class="container py-16 md:py-20">
+    <div class="card grid gap-8 p-7 sm:p-10 lg:grid-cols-[1fr_auto] lg:items-center">
+        <div class="max-w-[34rem]">
+            <p class="eyebrow">Sudah jadi pelanggan?</p>
+            <h2 class="mt-3 text-2xl font-bold sm:text-3xl">Cek tagihan bulan ini tanpa login.</h2>
+            <p class="mt-3 text-muted-foreground leading-relaxed">Masukkan kode pelanggan yang tertera di nota atau pesan WhatsApp dari kami, contohnya <span class="font-semibold text-foreground">CUST-123456</span>.</p>
+        </div>
+        <form action="index.php" method="get" class="flex w-full flex-col gap-2 sm:flex-row lg:w-[26rem]">
+            <input type="hidden" name="page" value="customer_portal">
+            <label for="kode" class="sr-only">Kode pelanggan</label>
+            <input id="kode" name="code" class="input" placeholder="Kode pelanggan" required autocomplete="off" pattern="[A-Za-z0-9\-]+">
+            <button type="submit" class="btn btn-primary h-11 px-5 shrink-0"><?= svg_icon('receipt', 'h-4 w-4') ?> Lihat tagihan</button>
+        </form>
+    </div>
+</section>
+
+</main>
+
+<footer class="border-t border-border bg-card">
+    <div class="container grid gap-10 py-14 md:grid-cols-[1.4fr_1fr_1fr]">
+        <div class="max-w-[28rem]">
+            <div class="flex items-center gap-3">
+                <?php if ($logo): ?><img src="<?= htmlspecialchars($logo) ?>" alt="" class="h-8 w-auto object-contain"><?php endif; ?>
+                <span class="font-bold text-lg"><?= htmlspecialchars($brand) ?></span>
+            </div>
+            <p class="mt-3 text-sm text-muted-foreground leading-relaxed"><?= htmlspecialchars($comp_name) ?><?= $address ? '. ' . htmlspecialchars($address) : '' ?>.</p>
+            <?php if ($phone_display): ?>
+            <p class="mt-3 text-sm">WhatsApp dan telepon: <a href="<?= htmlspecialchars($wa_link) ?>" target="_blank" rel="noopener" class="font-semibold"><?= htmlspecialchars($phone_display) ?></a></p>
             <?php endif; ?>
         </div>
-    </section>
+        <div>
+            <p class="font-semibold">Pelanggan</p>
+            <ul class="mt-3 space-y-2 text-sm text-muted-foreground">
+                <li><a href="#tagihan" class="hover:text-foreground">Cek tagihan</a></li>
+                <li><a href="#paket" class="hover:text-foreground">Paket dan harga</a></li>
+                <li><a href="http://fibernodeinternet.com:3004" target="_blank" rel="noopener" class="hover:text-foreground">Tes kecepatan</a></li>
+                <li><a href="http://fibernodeinternet.com:3001/status/server" target="_blank" rel="noopener" class="hover:text-foreground">Status jaringan</a></li>
+            </ul>
+        </div>
+        <div>
+            <p class="font-semibold">Mitra dan staf</p>
+            <ul class="mt-3 space-y-2 text-sm text-muted-foreground">
+                <li><a href="index.php?page=login&role=partner" class="hover:text-foreground">Portal mitra</a></li>
+                <li><a href="index.php?page=login&role=staff" class="hover:text-foreground">Area staf</a></li>
+                <li><a href="<?= htmlspecialchars($wa_link) ?>" target="_blank" rel="noopener" class="hover:text-foreground">Ingin jadi mitra desa?</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="border-t border-border">
+        <div class="container flex flex-col gap-2 py-5 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+            <span>&copy; <?= date('Y') ?> <?= htmlspecialchars($comp_name) ?>. Hak cipta dilindungi.</span>
+            <span>Layanan dan penagihan dikelola dengan EinvaBill.</span>
+        </div>
+    </div>
+</footer>
 
-    <footer>
-        <div style="font-size:24px; font-weight:700; background: linear-gradient(to right, var(--gradient-text-from), var(--gradient-text-to)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; margin-bottom:15px;">
-            <?= htmlspecialchars(strtoupper($comp_name)) ?>
-        </div>
-        <p style="color:var(--text-secondary); max-width:500px; margin: 0 auto 30px;">
-            Inovasi Digital untuk Masa Depan yang Lebih Baik. Connect. Empower. Evolve.
-        </p>
-        <div style="display:flex; justify-content:center; gap:20px; margin-bottom:30px;">
-            <a href="#" style="color:var(--text-secondary); font-size:20px; transition:color 0.3s;"><i class="fab fa-facebook"></i></a>
-            <a href="#" style="color:var(--text-secondary); font-size:20px; transition:color 0.3s;"><i class="fab fa-instagram"></i></a>
-            <a href="https://wa.me/<?= $wa_contact ?>" style="color:var(--text-secondary); font-size:20px; transition:color 0.3s;"><i class="fab fa-whatsapp"></i></a>
-        </div>
-        <div style="margin-bottom:20px; font-size:16px; font-weight:700;">
-            Kontak Penjualan: <a href="https://wa.me/6282346268845?text=Halo,%20saya%20ingin%20memesan%20lisensi" target="_blank" style="color:var(--primary);">0823-4626-8845</a>
-        </div>
-        <div style="border-top:1px solid rgba(255,255,255,0.05); padding-top:20px; color:var(--text-secondary); font-size:14px;">
-            &copy; <?= date('Y') ?> <?= htmlspecialchars($comp_name) ?>. Hak Cipta Dilindungi Undang-Undang.<br>
-            Aplikasi Billing & Profil Web Internal Terintegrasi.
-        </div>
-    </footer>
-
-    <script>
-    function toggleMobileMenu() {
-        const menu = document.getElementById('mobileMenu');
-        const overlay = document.querySelector('.mobile-menu-overlay');
-        const icon = document.querySelector('.mobile-menu-toggle i');
-        
-        menu.classList.toggle('active');
-        if (menu.classList.contains('active')) {
-            overlay.style.display = 'block';
-            icon.classList.replace('fa-bars', 'fa-times');
-            document.body.style.overflow = 'hidden';
-        } else {
-            overlay.style.display = 'none';
-            icon.classList.replace('fa-times', 'fa-bars');
-            document.body.style.overflow = 'auto';
-        }
-    }
-    </script>
+<script>
+function toggleMobileMenu() {
+    const menu = document.getElementById('mobileMenu');
+    const btn = document.getElementById('menuBtn');
+    const open = menu.classList.toggle('hidden') === false;
+    document.getElementById('menuIconOpen').classList.toggle('hidden', open);
+    document.getElementById('menuIconClose').classList.toggle('hidden', !open);
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+</script>
 </body>
 </html>
