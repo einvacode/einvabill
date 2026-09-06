@@ -132,47 +132,55 @@ if ($is_print) {
     <?php exit;
 } ?>
 
-<div class="glass-panel" style="padding:24px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; flex-wrap:wrap; gap:15px;">
-        <h3 style="margin:0;"><i class="fas fa-file-contract text-primary"></i> Laporan Inventaris Aset Perusahaan</h3>
-        <a href="index.php?page=admin_report_assets&action=print" target="_blank" class="btn btn-primary compact-header-btn"><i class="fas fa-print"></i> Cetak Laporan Formal</a>
+<!-- Page header -->
+<div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h2 class="m-0 text-xl font-bold sm:text-2xl">Laporan inventaris aset perusahaan</h2>
+        <p class="m-0 mt-1 text-sm text-muted-foreground">Unit perangkat, utilisasi kapasitas, dan nilai perolehan aset.</p>
     </div>
+    <div class="flex flex-wrap gap-2">
+        <a href="index.php?page=admin_report_assets&action=print" target="_blank" class="ui-btn ui-btn-primary"><i class="fas fa-print"></i> Cetak laporan formal</a>
+    </div>
+</div>
 
-    <!-- Metrics Breakdown -->
-    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:20px; margin-bottom:30px;">
-        <div class="glass-panel" style="padding:20px; border-left:4px solid var(--primary);">
-            <div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">TOTAL UNIT ASET</div>
-            <div style="font-size:24px; font-weight:800;"><?= array_sum($stats_raw) ?> <span style="font-size:14px; font-weight:inset;">Pcs</span></div>
-            <div style="display:flex; gap:10px; margin-top:10px; font-size:11px; font-weight:600;">
-                <span style="color:#3b82f6;">Kategori 1: <?= $stats_raw['OLT']??0 ?></span>
-                <span style="color:#a855f7;">Kategori 2: <?= $stats_raw['ODC']??0 ?></span>
-                <span style="color:#ec4899;">Kategori 3: <?= $stats_raw['ODP']??0 ?></span>
-            </div>
-        </div>
-        <div class="glass-panel" style="padding:20px; border-left:4px solid var(--success);">
-            <div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">UTILISASI KAPASITAS</div>
-            <div style="font-size:24px; font-weight:800; color:var(--success);"><?= $total_ports_used ?> <span style="font-size:14px; color:var(--text-secondary); font-weight:normal;">/ <?= $total_ports_capacity ?> Unit</span></div>
-            <div style="width:100%; height:6px; background:rgba(255,255,255,0.05); border-radius:10px; margin-top:15px; overflow:hidden;">
-                <div style="width:<?= ($total_ports_capacity > 0) ? ($total_ports_used / $total_ports_capacity) * 100 : 0 ?>%; height:100%; background:var(--success);"></div>
-            </div>
-        </div>
-        <div class="glass-panel" style="padding:20px; border-left:4px solid #f59e0b;">
-            <div style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">VALUASI ASET PERUSAHAAN</div>
-            <div style="font-size:24px; font-weight:800; color:#f59e0b;">Rp <?= number_format($total_investment, 0, ',', '.') ?></div>
-            <div style="font-size:11px; color:var(--text-secondary); margin-top:10px;">Berdasarkan total harga perolehan yang terinput.</div>
+<!-- Stats -->
+<div class="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <div class="ui-card p-4">
+        <div class="text-xs font-medium text-muted-foreground">Total unit aset</div>
+        <div class="mt-1 text-xl font-extrabold leading-tight tabular-nums sm:text-2xl"><?= array_sum($stats_raw) ?> <span class="text-sm font-medium text-muted-foreground">pcs</span></div>
+        <div class="text-xs text-muted-foreground">Kategori 1: <?= $stats_raw['OLT']??0 ?> · Kategori 2: <?= $stats_raw['ODC']??0 ?> · Kategori 3: <?= $stats_raw['ODP']??0 ?></div>
+    </div>
+    <div class="ui-card p-4">
+        <div class="text-xs font-medium text-muted-foreground">Utilisasi kapasitas</div>
+        <div class="mt-1 text-xl font-extrabold leading-tight tabular-nums sm:text-2xl"><?= $total_ports_used ?> <span class="text-sm font-medium text-muted-foreground">/ <?= $total_ports_capacity ?> unit</span></div>
+        <div class="mt-2 h-1.5 w-full overflow-hidden rounded-sm bg-muted">
+            <div class="h-full bg-primary" style="width:<?= ($total_ports_capacity > 0) ? ($total_ports_used / $total_ports_capacity) * 100 : 0 ?>%;"></div>
         </div>
     </div>
+    <div class="ui-card p-4">
+        <div class="text-xs font-medium text-muted-foreground">Valuasi aset perusahaan</div>
+        <div class="mt-1 text-xl font-extrabold leading-tight tabular-nums sm:text-2xl">Rp <?= number_format($total_investment, 0, ',', '.') ?></div>
+        <div class="text-xs text-muted-foreground">Berdasarkan total harga perolehan yang terinput.</div>
+    </div>
+</div>
 
-    <!-- Detailed Table -->
-    <div class="table-container shadow-sm">
-        <table class="table-hover">
+<!-- Detailed table -->
+<section class="ui-card overflow-hidden">
+    <div class="flex items-center justify-between gap-3 border-b border-solid border-border px-4 py-3 sm:px-5">
+        <div>
+            <h3 class="m-0 text-[15px] font-bold">Daftar aset</h3>
+            <p class="m-0 text-xs text-muted-foreground">Kapasitas terpakai dan nilai perolehan tiap perangkat</p>
+        </div>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-sm">
             <thead>
-                <tr>
-                    <th>Detail Aset</th>
-                    <th>Kategori</th>
-                    <th>Status Kapasitas</th>
-                    <th>Sisa Kapasitas</th>
-                    <th style="text-align:right;">Nilai Aset</th>
+                <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                    <th class="px-4 py-2.5 font-semibold sm:px-5">Detail aset</th>
+                    <th class="px-3 py-2.5 font-semibold">Kategori</th>
+                    <th class="px-3 py-2.5 font-semibold">Status kapasitas</th>
+                    <th class="px-3 py-2.5 font-semibold">Sisa kapasitas</th>
+                    <th class="px-4 py-2.5 text-right font-semibold sm:px-5">Nilai aset</th>
                 </tr>
             </thead>
             <tbody>
@@ -183,37 +191,40 @@ if ($is_print) {
                     $usage_c = $db->prepare("SELECT COUNT(*) FROM customers WHERE odp_id = ? AND tenant_id = ?");
                     $usage_c->execute([$a['id'], $tenant_id]);
                     $c_count = $usage_c->fetchColumn();
-                    
+
                     $usage_a = $db->prepare("SELECT COUNT(*) FROM infrastructure_assets WHERE parent_id = ? AND tenant_id = ?");
                     $usage_a->execute([$a['id'], $tenant_id]);
                     $a_count = $usage_a->fetchColumn();
-                    
+
                     $total_u = $c_count + $a_count;
                     $rem = $a['total_ports'] - $total_u;
                     $pct = ($a['total_ports'] > 0) ? ($total_u / $a['total_ports']) * 100 : 0;
                 ?>
-                <tr>
-                    <td>
-                        <div style="font-weight:700;"><?= htmlspecialchars($a['name']) ?></div>
-                        <div style="font-size:11px; color:var(--text-secondary);">Parent: <?= htmlspecialchars($a['parent_name'] ?: 'ROOT') ?></div>
+                <tr class="border-t border-solid border-border">
+                    <td class="px-4 py-3 sm:px-5">
+                        <div class="font-semibold"><?= htmlspecialchars($a['name']) ?></div>
+                        <div class="text-xs text-muted-foreground">Parent: <?= htmlspecialchars($a['parent_name'] ?: 'ROOT') ?></div>
                     </td>
-                    <td><span class="badge" style="background:rgba(255,255,255,0.05); color:var(--text-primary); border:1px solid var(--glass-border);"><?= $a['type'] ?></span></td>
-                    <td>
-                        <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px;">
-                            <span><?= $total_u ?> / <?= $a['total_ports'] ?> Port</span>
-                            <span style="font-weight:700; color:<?= $pct > 90 ? 'var(--danger)' : 'var(--success)' ?>"><?= round($pct) ?>%</span>
+                    <td class="px-3 py-3"><span class="ui-badge ui-badge-muted"><?= $a['type'] ?></span></td>
+                    <td class="px-3 py-3">
+                        <div class="flex items-center justify-between gap-3 text-xs">
+                            <span class="tabular-nums"><?= $total_u ?> / <?= $a['total_ports'] ?> port</span>
+                            <span class="font-semibold tabular-nums <?= $pct > 90 ? 'text-danger' : '' ?>"><?= round($pct) ?>%</span>
                         </div>
-                        <div style="width:100px; height:4px; background:rgba(255,255,255,0.05); border-radius:10px; overflow:hidden;">
-                            <div style="width:<?= $pct ?>%; height:100%; background:<?= $pct > 90 ? 'var(--danger)' : 'var(--success)' ?>;"></div>
+                        <div class="mt-1 h-1 w-28 overflow-hidden rounded-sm bg-muted">
+                            <div class="h-full <?= $pct > 90 ? 'bg-danger' : 'bg-primary' ?>" style="width:<?= $pct ?>%;"></div>
                         </div>
                     </td>
-                    <td>
-                        <div style="font-weight:700; color:<?= $rem <= 1 ? 'var(--danger)' : 'var(--text-primary)' ?>;"><?= $rem ?> Port Tersedia</div>
+                    <td class="px-3 py-3">
+                        <div class="font-semibold tabular-nums <?= $rem <= 1 ? 'text-danger' : '' ?>"><?= $rem ?> port tersedia</div>
                     </td>
-                    <td style="text-align:right; font-weight:700;">Rp <?= number_format($a['price'], 0, ',', '.') ?></td>
+                    <td class="whitespace-nowrap px-4 py-3 text-right font-bold tabular-nums sm:px-5">Rp <?= number_format($a['price'], 0, ',', '.') ?></td>
                 </tr>
                 <?php endforeach; ?>
+                <?php if(count($assets) == 0): ?>
+                    <tr><td colspan="5" class="px-5 py-10 text-center text-sm text-muted-foreground">Belum ada data aset.</td></tr>
+                <?php endif; ?>
             </tbody>
         </table>
     </div>
-</div>
+</section>

@@ -859,308 +859,276 @@ if ($action === 'print') {
 }
 ?>
 
-<div class="glass-panel" style="padding: 24px;">
-    <div class="grid-header">
+<!-- Page header -->
+<div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h2 class="m-0 text-xl font-bold sm:text-2xl">Laporan keuangan</h2>
+        <p class="m-0 mt-1 text-sm text-muted-foreground">Ringkasan performa bisnis dan arus kas periode <?= $period_display ?>.</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a href="index.php?page=admin_reports&action=export&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&user_id=<?= $filter_user ?>" class="ui-btn ui-btn-outline"><i class="fas fa-file-excel"></i> Ekspor</a>
+        <a href="index.php?page=admin_reports&action=print_balance_sheet&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&user_id=<?= $filter_user ?>&year=<?= $filter_year ?>" target="_blank" class="ui-btn ui-btn-outline">Neraca &amp; laba rugi</a>
+        <?php if ($u_role === 'admin'): ?>
+        <a href="index.php?page=admin_report_assets" class="ui-btn ui-btn-outline">Aset</a>
+        <?php endif; ?>
+        <a href="index.php?page=admin_reports&action=print&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&user_id=<?= $filter_user ?>" target="_blank" class="ui-btn ui-btn-primary"><i class="fas fa-print"></i> Cetak</a>
+    </div>
+</div>
+
+<!-- Source navigation -->
+<div class="mb-5 flex w-fit flex-wrap gap-1 rounded-md bg-muted p-1">
+    <a href="index.php?page=admin_customers" class="rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground no-underline hover:text-foreground">Pelanggan</a>
+    <a href="index.php?page=admin_invoices" class="rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground no-underline hover:text-foreground">Tagihan</a>
+    <a href="index.php?page=admin_reports" class="rounded-sm bg-card px-3 py-1.5 text-sm font-semibold text-foreground no-underline shadow-card" aria-current="page">Laporan</a>
+</div>
+
+<!-- Filter bar -->
+<form method="GET" action="index.php" class="ui-card mb-5 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_140px_1fr_auto] lg:items-end">
+    <input type="hidden" name="page" value="admin_reports">
+
+    <label class="block">
+        <span class="mb-1 block text-xs font-medium text-muted-foreground">Dari tanggal</span>
+        <input type="date" name="date_from" class="form-control" value="<?= $date_from ?>">
+    </label>
+
+    <label class="block">
+        <span class="mb-1 block text-xs font-medium text-muted-foreground">Sampai tanggal</span>
+        <input type="date" name="date_to" class="form-control" value="<?= $date_to ?>">
+    </label>
+
+    <label class="block">
+        <span class="mb-1 block text-xs font-medium text-muted-foreground">Tahun</span>
+        <select name="year" class="form-control">
+            <?php for ($y = date('Y') - 2; $y <= date('Y') + 1; $y++): ?>
+                <option value="<?= $y ?>" <?= $filter_year == $y ? 'selected' : '' ?>><?= $y ?></option>
+            <?php endfor; ?>
+        </select>
+    </label>
+
+    <?php if ($u_role === 'admin'): ?>
+    <label class="block">
+        <span class="mb-1 block text-xs font-medium text-muted-foreground">Diterima oleh</span>
+        <select name="user_id" class="form-control">
+            <option value="all">Semua</option>
+            <?php foreach($available_users as $u): ?>
+                <option value="<?= $u['id'] ?>" <?= $filter_user == $u['id'] ? 'selected' : '' ?>><?= $u['name'] ?> (<?= ucfirst($u['role']) ?>)</option>
+            <?php endforeach; ?>
+        </select>
+    </label>
+    <?php else: ?>
+    <div class="hidden lg:block"></div>
+    <?php endif; ?>
+
+    <div class="flex gap-2">
+        <button type="submit" class="ui-btn ui-btn-primary w-full sm:w-auto">Terapkan filter</button>
+    </div>
+</form>
+
+<!-- Stats -->
+<div class="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3">
+    <div class="ui-card p-4">
+        <div class="text-xs font-medium text-muted-foreground">Total pendapatan terkumpul</div>
+        <div class="mt-1 text-xl font-extrabold leading-tight tabular-nums text-signal sm:text-2xl">Rp <?= number_format($lunas_tepat + $tunggakan_dibayar, 0, ',', '.') ?></div>
+        <div class="text-xs text-muted-foreground">Total uang masuk periode ini.</div>
+    </div>
+    <div class="ui-card p-4">
+        <div class="text-xs font-medium text-muted-foreground">Pelunasan berjalan</div>
+        <div class="mt-1 text-xl font-extrabold leading-tight tabular-nums sm:text-2xl">Rp <?= number_format($lunas_tepat, 0, ',', '.') ?></div>
+        <div class="text-xs text-muted-foreground">Tagihan jatuh tempo saat ini.</div>
+    </div>
+    <div class="ui-card p-4">
+        <div class="text-xs font-medium text-muted-foreground">Pelunasan tunggakan</div>
+        <div class="mt-1 text-xl font-extrabold leading-tight tabular-nums sm:text-2xl">Rp <?= number_format($tunggakan_dibayar, 0, ',', '.') ?></div>
+        <div class="text-xs text-muted-foreground">Pembayaran atas hutang lama.</div>
+    </div>
+    <div class="ui-card p-4">
+        <div class="text-xs font-medium text-muted-foreground">Total pengeluaran</div>
+        <div class="mt-1 text-xl font-extrabold leading-tight tabular-nums text-danger sm:text-2xl">Rp <?= number_format($total_expenses, 0, ',', '.') ?></div>
+        <div class="text-xs text-muted-foreground">Biaya operasional &amp; belanja.</div>
+    </div>
+    <div class="ui-card p-4">
+        <div class="text-xs font-medium text-muted-foreground">Piutang berjalan</div>
+        <div class="mt-1 text-xl font-extrabold leading-tight tabular-nums text-danger sm:text-2xl">Rp <?= number_format($belum_bayar, 0, ',', '.') ?></div>
+        <div class="text-xs text-muted-foreground">Tagihan yang belum terselesaikan.</div>
+    </div>
+    <div class="ui-card p-4">
+        <div class="text-xs font-medium text-muted-foreground">Estimasi laba bersih</div>
+        <div class="mt-1 text-xl font-extrabold leading-tight tabular-nums sm:text-2xl <?= (($lunas_tepat + $tunggakan_dibayar) - $total_expenses) < 0 ? 'text-danger' : 'text-signal' ?>">Rp <?= number_format(($lunas_tepat + $tunggakan_dibayar) - $total_expenses, 0, ',', '.') ?></div>
+        <div class="text-xs text-muted-foreground">Income bersih (terkumpul - belanja).</div>
+    </div>
+</div>
+
+<!-- Activity list -->
+<section class="ui-card overflow-hidden">
+    <div class="flex items-center justify-between gap-3 border-b border-solid border-border px-4 py-3 sm:px-5">
         <div>
-            <h3 style="font-size:22px; font-weight:800; margin:0; display:flex; align-items:center; gap:12px;">
-                <i class="fas fa-chart-line text-primary"></i> Laporan Keuangan
-            </h3>
-            <div style="font-size:12px; color:var(--text-secondary); margin-top:4px; opacity:0.8;">
-                Ringkasan performa bisnis dan arus kas periode ini.
-            </div>
+            <h3 class="m-0 text-[15px] font-bold">Rincian aktivitas</h3>
+            <p class="m-0 text-xs text-muted-foreground">Periode <?= $period_display ?></p>
         </div>
-        <div class="grid-actions">
-            <div class="btn-group">
-                <a href="index.php?page=admin_reports&action=print&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&user_id=<?= $filter_user ?>" target="_blank" class="btn btn-sm btn-primary">
-                    <i class="fas fa-print"></i> <span>Cetak</span>
-                </a>
-                <a href="index.php?page=admin_reports&action=print_balance_sheet&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&user_id=<?= $filter_user ?>&year=<?= $filter_year ?>" target="_blank" class="btn btn-sm btn-info" style="background:#0ea5e9; border:none; color:white;">
-                    <i class="fas fa-file-contract"></i> <span>Neraca & Laba Rugi</span>
-                </a>
-                <a href="index.php?page=admin_reports&action=export&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&user_id=<?= $filter_user ?>" class="btn btn-sm btn-success" style="background:#10b981; border:none; color:white;">
-                    <i class="fas fa-file-excel"></i> <span>Export</span>
-                </a>
-                <?php if ($u_role === 'admin'): ?>
-                <a href="index.php?page=admin_report_assets" class="btn btn-sm btn-ghost" style="border: 1px solid var(--glass-border);">
-                    <i class="fas fa-boxes"></i> <span>Aset</span>
-                </a>
-                <?php endif; ?>
-            </div>
-        </div>
+        <span class="ui-badge ui-badge-muted"><?= count($report_data) ?> transaksi</span>
     </div>
 
-    <div class="source-nav">
-        <a class="source-nav-link" href="index.php?page=admin_customers"><i class="fas fa-users"></i> Pelanggan</a>
-        <a class="source-nav-link" href="index.php?page=admin_invoices"><i class="fas fa-file-invoice"></i> Tagihan</a>
-        <a class="source-nav-link active" href="index.php?page=admin_reports"><i class="fas fa-chart-line"></i> Laporan</a>
-    </div>
-
-    <!-- Standardized Filter Bar -->
-    <div class="filter-panel">
-        <form method="GET" action="index.php" class="grid-filters">
-            <input type="hidden" name="page" value="admin_reports">
-            
-            <div class="filter-group">
-                <label><i class="fas fa-calendar-alt"></i> Dari Tanggal</label>
-                <div class="filter-control-with-icon">
-                    <i class="fas fa-calendar filter-input-icon"></i>
-                    <input type="date" name="date_from" class="form-control filter-control" value="<?= $date_from ?>">
-                </div>
-            </div>
-
-            <div class="filter-group">
-                <label><i class="fas fa-calendar-check"></i> Sampai Tanggal</label>
-                <div class="filter-control-with-icon">
-                    <i class="fas fa-calendar filter-input-icon"></i>
-                    <input type="date" name="date_to" class="form-control filter-control" value="<?= $date_to ?>">
-                </div>
-            </div>
-
-            <div class="filter-group">
-                <label><i class="fas fa-calendar"></i> Tahun</label>
-                <select name="year" class="form-control filter-control">
-                    <?php for ($y = date('Y') - 2; $y <= date('Y') + 1; $y++): ?>
-                        <option value="<?= $y ?>" <?= $filter_year == $y ? 'selected' : '' ?>><?= $y ?></option>
-                    <?php endfor; ?>
-                </select>
-            </div>
-
-            <?php if ($u_role === 'admin'): ?>
-            <div class="filter-group">
-                <label><i class="fas fa-user-tie"></i> Diterima Oleh</label>
-                <select name="user_id" class="form-control filter-control">
-                    <option value="all">-- Semua --</option>
-                    <?php foreach($available_users as $u): ?>
-                        <option value="<?= $u['id'] ?>" <?= $filter_user == $u['id'] ? 'selected' : '' ?>><?= $u['name'] ?> (<?= ucfirst($u['role']) ?>)</option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <?php endif; ?>
-
-            <div class="grid-actions filter-actions">
-                <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-sync-alt"></i> Apply Filter</button>
-            </div>
-        </form>
-    </div>
-
-    <!-- Summary Cards -->
-    <!-- Metrics Dashboard -->
-    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px;">
-        <div class="stat-card glass-panel" style="background:linear-gradient(135deg, rgba(35, 206, 217, 0.15), rgba(35, 206, 217, 0.05)); border: 2px solid var(--primary); padding: 20px;">
-            <div class="stat-title" style="color:var(--primary); font-weight:800; font-size:11px; text-transform:uppercase; letter-spacing:0.5px;"><i class="fas fa-wallet"></i> Total Pendapatan Terkumpul</div>
-            <div class="stat-value" style="color:var(--primary); font-size:22px; margin-top:5px;">Rp <?= number_format($lunas_tepat + $tunggakan_dibayar, 0, ',', '.') ?></div>
-            <div style="font-size:11px; color:var(--text-secondary); margin-top:8px; opacity:0.7;">Total uang masuk periode ini.</div>
-        </div>
-
-        <div class="stat-card glass-panel" style="background:rgba(16, 185, 129, 0.08); border-color: rgba(16, 185, 129, 0.2); padding: 20px;">
-            <div class="stat-title" style="color:var(--success); font-size:11px; font-weight:700; text-transform:uppercase;"><i class="fas fa-check-circle"></i> Pelunasan Berjalan</div>
-            <div class="stat-value text-success" style="font-size:22px; margin-top:5px;">Rp <?= number_format($lunas_tepat, 0, ',', '.') ?></div>
-            <div style="font-size:11px; color:var(--text-secondary); margin-top:8px; opacity:0.7;">Tagihan jatuh tempo saat ini.</div>
-        </div>
-        
-        <div class="stat-card glass-panel" style="background:rgba(59, 130, 246, 0.08); border-color: rgba(59, 130, 246, 0.2); padding: 20px;">
-            <div class="stat-title" style="color:#60a5fa; font-size:11px; font-weight:700; text-transform:uppercase;"><i class="fas fa-hand-holding-usd"></i> Pelunasan Tunggakan</div>
-            <div class="stat-value" style="color:#60a5fa; font-size:22px; margin-top:5px;">Rp <?= number_format($tunggakan_dibayar, 0, ',', '.') ?></div>
-            <div style="font-size:11px; color:var(--text-secondary); margin-top:8px; opacity:0.7;">Pembayaran atas hutang lama.</div>
-        </div>
-
-        <div class="stat-card glass-panel" style="background:rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.2); padding: 20px;">
-            <div class="stat-title" style="color:var(--danger); font-size:11px; font-weight:700; text-transform:uppercase;"><i class="fas fa-money-bill-wave"></i> Total Pengeluaran</div>
-            <div class="stat-value text-danger" style="font-size:22px; margin-top:5px;">Rp <?= number_format($total_expenses, 0, ',', '.') ?></div>
-            <div style="font-size:11px; color:var(--text-secondary); margin-top:8px; opacity:0.7;">Biaya operasional & belanja.</div>
-        </div>
-
-        <div class="stat-card glass-panel" style="background:rgba(245, 158, 11, 0.08); border-color: rgba(245, 158, 11, 0.2); padding: 20px;">
-            <div class="stat-title" style="color:var(--warning); font-size:11px; font-weight:700; text-transform:uppercase;"><i class="fas fa-hourglass-half"></i> Piutang Berjalan</div>
-            <div class="stat-value text-warning" style="font-size:22px; margin-top:5px;">Rp <?= number_format($belum_bayar, 0, ',', '.') ?></div>
-            <div style="font-size:11px; color:var(--text-secondary); margin-top:8px; opacity:0.7;">Tagihan yang belum terselesaikan.</div>
-        </div>
-
-        <div class="stat-card glass-panel" style="background:linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05)); border: 2px solid var(--success); padding: 20px;">
-            <div class="stat-title" style="color:var(--success); font-weight:800; font-size:11px; text-transform:uppercase; letter-spacing:0.5px;"><i class="fas fa-trophy"></i> Estimasi Laba Bersih</div>
-            <div class="stat-value text-success" style="font-size:22px; margin-top:5px;">Rp <?= number_format(($lunas_tepat + $tunggakan_dibayar) - $total_expenses, 0, ',', '.') ?></div>
-            <div style="font-size:11px; color:var(--text-secondary); margin-top:8px; opacity:0.7;">Income Bersih (Terkumpul - Belanja).</div>
-        </div>
-    </div>
-    
-    <!-- Activity List View -->
-    <div class="grid-header" style="margin-top:30px; border-top:1px solid var(--glass-border); padding-top:20px;">
-        <h4 style="margin:0; font-weight:800; display:flex; align-items:center; gap:10px;">
-            <i class="fas fa-list-ul text-primary"></i> Rincian Aktivitas Periode: <?= $period_display ?>
-        </h4>
-        <span class="badge" style="background:var(--nav-active-bg); color:var(--primary); font-size:11px;"><?= count($report_data) ?> Transaksi</span>
-    </div>
-
-    <!-- Mobile View: Task Cards -->
-    <div class="mobile-only" style="display:none; margin-top:15px;">
-        <?php foreach($report_data as $row): 
+    <!-- Mobile view: stacked rows -->
+    <div class="md:hidden">
+        <?php foreach($report_data as $row):
             $is_incoming = ($row['activity_type'] == 'Pembayaran Masuk');
             $is_debt = ($is_incoming && date('Y-m', strtotime($row['due_date'])) < date('Y-m', strtotime($row['activity_date'])));
         ?>
-        <div class="glass-panel" style="padding:16px; margin-bottom:12px; border-left:4px solid <?= $is_incoming ? 'var(--success)' : 'var(--warning)' ?>;">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
-                <div>
-                    <div style="font-size:10px; font-weight:700; color:<?= $is_incoming ? 'var(--success)' : 'var(--warning)' ?>; text-transform:uppercase;"><?= $row['activity_type'] ?></div>
-                    <div style="font-weight:700; font-size:15px; margin-top:2px;"><?= htmlspecialchars($row['customer_name']) ?></div>
+        <div class="border-t border-solid border-border px-4 py-3">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <div class="text-xs font-medium text-muted-foreground"><?= $row['activity_type'] ?> · <?= date('d/m/Y', strtotime($row['activity_date'])) ?></div>
+                    <div class="mt-0.5 truncate text-sm font-semibold"><?= htmlspecialchars($row['customer_name']) ?></div>
+                    <div class="mt-0.5 font-mono text-xs text-muted-foreground">INV-<?= str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT) ?></div>
                 </div>
-                <div style="text-align:right;">
-                    <div style="font-size:14px; font-weight:800; color:var(--stat-value-color);">Rp <?= number_format($row['amount'], 0, ',', '.') ?></div>
-                    <div style="font-size:10px; color:var(--text-secondary);"><?= date('d/m/Y', strtotime($row['activity_date'])) ?></div>
-                </div>
-            </div>
-            
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; opacity:0.8; padding-top:8px; border-top:1px solid rgba(255,255,255,0.05);">
-                <div style="font-family:monospace;">INV-<?= str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT) ?></div>
-                <div>
-                    <?php if($is_debt): ?>
-                        <span class="badge" style="background:#fff7ed; color:#c2410c; border:1px solid #fdba74; font-size:9px; padding:1px 4px;">TUNGGAKAN</span>
-                    <?php endif; ?>
-                    <span class="badge <?= $row['status'] == 'Lunas' ? 'badge-success' : 'badge-danger' ?>" style="font-size:9px; padding:1px 6px;">
-                        <?= strtoupper($row['status']) ?>
-                    </span>
-                    <?php if($row['status'] == 'Lunas'): 
-                        $tenant_id = $_SESSION['tenant_id'] ?? 1;
-                        $settings = $db->query("SELECT wa_template_paid, company_name, site_url FROM settings WHERE tenant_id = $tenant_id")->fetch();
-                        if (!$settings) $settings = ['wa_template_paid' => '', 'company_name' => 'ISP', 'site_url' => ''];
-                        $wa_num = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $row['contact']));
-                        $cust_id_display = $row['customer_code'] ?: str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT);
-                        $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . $cust_id_display;
-                        $receipt_msg = str_replace(
-                            ['{nama}', '{total_bayar}', '{bulan}', '{link_tagihan}', '{perusahaan}'], 
-                            [$row['customer_name'], 'Rp ' . number_format($row['amount'], 0, ',', '.'), date('m/Y', strtotime($row['due_date'])), $portal_link, $settings['company_name']], 
-                            $settings['wa_template_paid'] ?: "Halo {nama}, pembayaran {total_bayar} sudah lunas. Cek nota: {link_tagihan}"
-                        );
-                        $wa_link = "https://api.whatsapp.com/send?phone=$wa_num&text=" . urlencode($receipt_msg);
-                    ?>
-                        <span class="compact-inline-actions">
-                        <button onclick="sendWAGateway('<?= $wa_num ?>', <?= htmlspecialchars(json_encode($receipt_msg)) ?>, '<?= $wa_link ?>', this)" style="margin-left:5px; color:#25D366; background:none; border:none; padding:0; cursor:pointer;"><i class="fab fa-whatsapp" style="font-size:14px;"></i></button>
-                        <a href="index.php?page=invoice_print&id=<?= $row['invoice_id'] ?>" target="_blank" style="margin-left:8px; color:var(--primary);"><i class="fas fa-print"></i></a>
-                        <?php if($_SESSION['user_role'] === 'admin'): ?>
-                            <?php if($row['activity_type'] == 'Pembayaran Masuk' && !empty($row['payment_id'])): ?>
-                                <a data-method="post" href="index.php?page=admin_reports&action=delete_tx&tx=payment&id=<?= intval($row['payment_id']) ?>" onclick="return confirm('Hapus pembayaran ini?')" style="margin-left:8px; color:#ef4444;"><i class="fas fa-trash"></i></a>
-                            <?php else: ?>
-                                <a data-method="post" href="index.php?page=admin_reports&action=delete_tx&tx=invoice&id=<?= intval($row['invoice_id']) ?>" onclick="return confirm('Hapus invoice ini beserta item dan pembayaran terkait?')" style="margin-left:8px; color:#ef4444;"><i class="fas fa-trash"></i></a>
-                            <?php endif; ?>
+                <div class="shrink-0 text-right">
+                    <div class="text-sm font-bold tabular-nums <?= $is_incoming ? 'text-signal' : '' ?>">Rp <?= number_format($row['amount'], 0, ',', '.') ?></div>
+                    <div class="mt-1 flex flex-wrap justify-end gap-1">
+                        <?php if($is_debt): ?>
+                            <span class="ui-badge ui-badge-accent">Tunggakan</span>
                         <?php endif; ?>
-                        </span>
-                    <?php endif; ?>
+                        <span class="ui-badge <?= $row['status'] == 'Lunas' ? 'ui-badge-signal' : 'ui-badge-danger' ?>"><?= $row['status'] == 'Lunas' ? 'Lunas' : 'Belum lunas' ?></span>
+                    </div>
                 </div>
             </div>
+            <?php if($row['status'] == 'Lunas'):
+                $tenant_id = $_SESSION['tenant_id'] ?? 1;
+                $settings = $db->query("SELECT wa_template_paid, company_name, site_url FROM settings WHERE tenant_id = $tenant_id")->fetch();
+                if (!$settings) $settings = ['wa_template_paid' => '', 'company_name' => 'ISP', 'site_url' => ''];
+                $wa_num = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $row['contact']));
+                $cust_id_display = $row['customer_code'] ?: str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT);
+                $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . $cust_id_display;
+                $receipt_msg = str_replace(
+                    ['{nama}', '{total_bayar}', '{bulan}', '{link_tagihan}', '{perusahaan}'],
+                    [$row['customer_name'], 'Rp ' . number_format($row['amount'], 0, ',', '.'), date('m/Y', strtotime($row['due_date'])), $portal_link, $settings['company_name']],
+                    $settings['wa_template_paid'] ?: "Halo {nama}, pembayaran {total_bayar} sudah lunas. Cek nota: {link_tagihan}"
+                );
+                $wa_link = "https://api.whatsapp.com/send?phone=$wa_num&text=" . urlencode($receipt_msg);
+            ?>
+            <div class="mt-2 flex justify-end gap-1.5">
+                <button type="button" onclick="sendWAGateway('<?= $wa_num ?>', <?= htmlspecialchars(json_encode($receipt_msg)) ?>, '<?= $wa_link ?>', this)" class="ui-btn ui-btn-sm ui-btn-outline text-wa" title="Kirim ulang nota"><i class="fab fa-whatsapp"></i></button>
+                <a href="index.php?page=invoice_print&id=<?= $row['invoice_id'] ?>" target="_blank" class="ui-btn ui-btn-sm ui-btn-outline" title="Cetak kuitansi"><i class="fas fa-print"></i></a>
+                <?php if($_SESSION['user_role'] === 'admin'): ?>
+                    <?php if($row['activity_type'] == 'Pembayaran Masuk' && !empty($row['payment_id'])): ?>
+                        <a data-method="post" href="index.php?page=admin_reports&action=delete_tx&tx=payment&id=<?= intval($row['payment_id']) ?>" onclick="return confirm('Hapus pembayaran ini?')" class="ui-btn ui-btn-sm ui-btn-outline text-danger" title="Hapus pembayaran"><i class="fas fa-trash"></i></a>
+                    <?php else: ?>
+                        <a data-method="post" href="index.php?page=admin_reports&action=delete_tx&tx=invoice&id=<?= intval($row['invoice_id']) ?>" onclick="return confirm('Hapus invoice ini beserta item dan pembayaran terkait?')" class="ui-btn ui-btn-sm ui-btn-outline text-danger" title="Hapus invoice"><i class="fas fa-trash"></i></a>
+                    <?php endif; ?>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
         </div>
         <?php endforeach; ?>
+        <?php if(count($report_data) == 0): ?>
+            <div class="px-5 py-10 text-center text-sm text-muted-foreground">Tidak ada transaksi pembayaran atau tagihan di periode ini.</div>
+        <?php endif; ?>
     </div>
 
-    <!-- Desktop View: Professional Table -->
-    <div class="table-container desktop-only">
-        <table style="width:100%; border-collapse:collapse;">
+    <!-- Desktop view: table -->
+    <div class="hidden overflow-x-auto md:block">
+        <table class="w-full border-collapse text-sm">
             <thead>
-                <tr>
-                    <th style="padding:15px;">Waktu / Transaksi</th>
-                    <th>Nama Pelanggan / Mitra</th>
-                    <th>Nomor Invoice</th>
-                    <th style="text-align:right;">Nominal</th>
-                    <th style="text-align:center;">Status</th>
+                <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                    <th class="px-4 py-2.5 font-semibold sm:px-5">Waktu / transaksi</th>
+                    <th class="px-3 py-2.5 font-semibold">Nama pelanggan / mitra</th>
+                    <th class="px-3 py-2.5 font-semibold">Nomor invoice</th>
+                    <th class="px-3 py-2.5 text-right font-semibold">Nominal</th>
+                    <th class="px-4 py-2.5 text-right font-semibold sm:px-5">Status</th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach($report_data as $row): ?>
-                <tr>
-                    <td style="padding:15px;">
-                        <div style="font-weight:700; color: <?= $row['activity_type'] == 'Pembayaran Masuk' ? 'var(--success)' : 'var(--warning)' ?>;"><?= $row['activity_type'] ?></div>
-                        <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;"><?= date('d/m/Y', strtotime($row['activity_date'])) ?></div>
+                <tr class="border-t border-solid border-border">
+                    <td class="px-4 py-3 sm:px-5">
+                        <div class="font-semibold"><?= $row['activity_type'] ?></div>
+                        <div class="text-xs text-muted-foreground"><?= date('d/m/Y', strtotime($row['activity_date'])) ?></div>
                         <?php if($row['activity_type'] == 'Pembayaran Masuk' && date('Y-m', strtotime($row['due_date'])) < date('Y-m', strtotime($row['activity_date']))): ?>
-                            <div style="margin-top:6px;"><span class="badge" style="background:rgba(245,158,11,0.1); color:var(--warning); border:1px solid rgba(245,158,11,0.2); font-size:9px; padding:2px 5px;">PELUNASAN TUNGGAKAN</span></div>
+                            <div class="mt-1"><span class="ui-badge ui-badge-accent">Pelunasan tunggakan</span></div>
                         <?php endif; ?>
                     </td>
-                    <td>
-                        <div style="font-weight:600; font-size:15px; color:var(--text-primary);"><?= htmlspecialchars($row['customer_name']) ?></div>
-                        <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
-                            <?php if($row['customer_type']=='partner') echo '<span class="badge" style="background:rgba(35,206,217,0.1); color:var(--primary); font-size:9px; padding:1px 5px; border:1px solid rgba(35,206,217,0.2);">MITRA</span>'; ?>
+                    <td class="px-3 py-3">
+                        <div class="font-semibold"><?= htmlspecialchars($row['customer_name']) ?></div>
+                        <div class="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+                            <?php if($row['customer_type']=='partner') echo '<span class="ui-badge ui-badge-muted">Mitra</span>'; ?>
                             <?php if($u_role === 'admin'): ?>
-                                <span style="font-size:11px; color:var(--text-secondary); opacity:0.7;"><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($row['area'] ?: '-') ?></span>
+                                <span><?= htmlspecialchars($row['area'] ?: '-') ?></span>
                             <?php endif; ?>
                         </div>
                     </td>
-                    <td>
-                        <div style="font-family:monospace; font-weight:600; opacity:0.8;">Invoice-<?= str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT) ?></div>
-                        <div style="font-size:11px; color:var(--text-secondary); margin-top:2px;">Jatuh Tempo: <?= date('d/m/Y', strtotime($row['due_date'])) ?></div>
+                    <td class="px-3 py-3">
+                        <div class="font-mono text-[13px] font-semibold">Invoice-<?= str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT) ?></div>
+                        <div class="text-xs text-muted-foreground">Jatuh tempo: <?= date('d/m/Y', strtotime($row['due_date'])) ?></div>
                     </td>
-                    <td style="font-weight:800; font-size:16px; text-align:right; color:var(--stat-value-color);">
+                    <td class="whitespace-nowrap px-3 py-3 text-right font-bold tabular-nums <?= $row['activity_type'] == 'Pembayaran Masuk' ? 'text-signal' : '' ?>">
                         Rp <?= number_format($row['amount'], 0, ',', '.') ?>
                     </td>
-                    <td style="text-align:center;">
-                        <span class="badge <?= $row['status'] == 'Lunas' ? 'badge-success' : 'badge-danger' ?>" style="padding:5px 12px; border-radius:50px;">
-                            <?= strtoupper($row['status']) ?>
-                        </span>
-                        <?php if($row['status'] == 'Lunas'): 
+                    <td class="px-4 py-3 sm:px-5">
+                        <div class="flex items-center justify-end gap-1.5">
+                        <span class="ui-badge <?= $row['status'] == 'Lunas' ? 'ui-badge-signal' : 'ui-badge-danger' ?>"><?= $row['status'] == 'Lunas' ? 'Lunas' : 'Belum lunas' ?></span>
+                        <?php if($row['status'] == 'Lunas'):
                             $settings = $db->query("SELECT wa_template_paid, company_name, site_url FROM settings WHERE id=1")->fetch();
                             $wa_num = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $row['contact']));
                             $cust_id_display = $row['customer_code'] ?: str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT);
                             $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . $cust_id_display;
                             $receipt_msg = str_replace(
-                                ['{nama}', '{total_bayar}', '{bulan}', '{link_tagihan}', '{perusahaan}'], 
-                                [$row['customer_name'], 'Rp ' . number_format($row['amount'], 0, ',', '.'), date('m/Y', strtotime($row['due_date'])), $portal_link, $settings['company_name']], 
+                                ['{nama}', '{total_bayar}', '{bulan}', '{link_tagihan}', '{perusahaan}'],
+                                [$row['customer_name'], 'Rp ' . number_format($row['amount'], 0, ',', '.'), date('m/Y', strtotime($row['due_date'])), $portal_link, $settings['company_name']],
                                 $settings['wa_template_paid'] ?: "Halo {nama}, pembayaran {total_bayar} sudah lunas. Cek nota: {link_tagihan}"
                             );
                             $wa_link = "https://api.whatsapp.com/send?phone=$wa_num&text=" . urlencode($receipt_msg);
                         ?>
-                            <button onclick="sendWAGateway('<?= $wa_num ?>', <?= htmlspecialchars(json_encode($receipt_msg)) ?>, '<?= $wa_link ?>', this)" class="btn btn-xs btn-ghost" style="color:#25D366; margin-left:8px;" title="Kirim Ulang Nota">
-                                <i class="fab fa-whatsapp"></i>
-                            </button>
-                            <a href="index.php?page=invoice_print&id=<?= $row['invoice_id'] ?>" target="_blank" class="btn btn-xs btn-ghost" style="color:var(--primary); margin-left:8px;" title="Cetak Kuitansi">
-                                <i class="fas fa-print"></i>
-                            </a>
+                            <button type="button" onclick="sendWAGateway('<?= $wa_num ?>', <?= htmlspecialchars(json_encode($receipt_msg)) ?>, '<?= $wa_link ?>', this)" class="ui-btn ui-btn-sm ui-btn-outline text-wa" title="Kirim ulang nota"><i class="fab fa-whatsapp"></i></button>
+                            <a href="index.php?page=invoice_print&id=<?= $row['invoice_id'] ?>" target="_blank" class="ui-btn ui-btn-sm ui-btn-outline" title="Cetak kuitansi"><i class="fas fa-print"></i></a>
                                 <?php if($_SESSION['user_role'] === 'admin'): ?>
                                     <?php if($row['activity_type'] == 'Pembayaran Masuk' && !empty($row['payment_id'])): ?>
-                                        <a data-method="post" href="index.php?page=admin_reports&action=delete_tx&tx=payment&id=<?= intval($row['payment_id']) ?>" class="btn btn-xs btn-danger" style="margin-left:8px;" onclick="return confirm('Hapus pembayaran ini? Semua perubahan akan permanent.')" title="Hapus Pembayaran"><i class="fas fa-trash"></i></a>
+                                        <a data-method="post" href="index.php?page=admin_reports&action=delete_tx&tx=payment&id=<?= intval($row['payment_id']) ?>" class="ui-btn ui-btn-sm ui-btn-outline text-danger" onclick="return confirm('Hapus pembayaran ini? Semua perubahan akan permanent.')" title="Hapus pembayaran"><i class="fas fa-trash"></i></a>
                                     <?php else: ?>
-                                        <a data-method="post" href="index.php?page=admin_reports&action=delete_tx&tx=invoice&id=<?= intval($row['invoice_id']) ?>" class="btn btn-xs btn-danger" style="margin-left:8px;" onclick="return confirm('Hapus invoice ini beserta item dan pembayaran terkait?')" title="Hapus Invoice"><i class="fas fa-trash"></i></a>
+                                        <a data-method="post" href="index.php?page=admin_reports&action=delete_tx&tx=invoice&id=<?= intval($row['invoice_id']) ?>" class="ui-btn ui-btn-sm ui-btn-outline text-danger" onclick="return confirm('Hapus invoice ini beserta item dan pembayaran terkait?')" title="Hapus invoice"><i class="fas fa-trash"></i></a>
                                     <?php endif; ?>
                                 <?php endif; ?>
                         <?php endif; ?>
                         <?php if($row['status'] == 'Belum Lunas'): ?>
-                            <a href="index.php?page=invoice_print&id=<?= $row['invoice_id'] ?>" target="_blank" class="btn btn-xs btn-ghost" style="color:var(--text-secondary); margin-left:8px;" title="Cetak Tagihan">
-                                <i class="fas fa-print"></i>
-                            </a>
+                            <a href="index.php?page=invoice_print&id=<?= $row['invoice_id'] ?>" target="_blank" class="ui-btn ui-btn-sm ui-btn-outline" title="Cetak tagihan"><i class="fas fa-print"></i></a>
                         <?php endif; ?>
+                        </div>
                     </td>
                 </tr>
                 <?php endforeach; ?>
                 <?php if(count($report_data) == 0): ?>
-                    <tr><td colspan="5" style="text-align:center; padding: 50px; opacity:0.5; color:var(--text-secondary);">Tidak ada transaksi pembayaran atau tagihan di periode ini.</td></tr>
+                    <tr><td colspan="5" class="px-5 py-10 text-center text-sm text-muted-foreground">Tidak ada transaksi pembayaran atau tagihan di periode ini.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>
     </div>
 
-    <!-- Pagination Navigation -->
+    <!-- Pagination -->
     <?php if ($total_pages > 1): ?>
-        <div class="pagination-nav" style="margin:24px 0;">
-            <?php 
-                $params = $_GET; 
-                unset($params['p']); 
+        <div class="flex flex-wrap items-center justify-center gap-1.5 border-t border-solid border-border px-4 py-3">
+            <?php
+                $params = $_GET;
+                unset($params['p']);
                 $query_str = http_build_query($params);
                 $base_p_url = "index.php?" . $query_str . "&p=";
             ?>
-            
+
             <?php if($current_page > 1): ?>
-                <a href="<?= $base_p_url . ($current_page - 1) ?>" class="btn btn-sm btn-ghost">&laquo;</a>
+                <a href="<?= $base_p_url . ($current_page - 1) ?>" class="ui-btn ui-btn-sm ui-btn-outline">&laquo;</a>
             <?php endif; ?>
 
-            <?php 
+            <?php
                 $start_p = max(1, $current_page - 2);
                 $end_p = min($total_pages, $current_page + 2);
-                for($i = $start_p; $i <= $end_p; $i++): 
+                for($i = $start_p; $i <= $end_p; $i++):
             ?>
-                <a href="<?= $base_p_url . $i ?>" class="btn btn-sm <?= $i == $current_page ? 'btn-primary' : 'btn-ghost' ?>"><?= $i ?></a>
+                <a href="<?= $base_p_url . $i ?>" class="ui-btn ui-btn-sm <?= $i == $current_page ? 'ui-btn-primary' : 'ui-btn-outline' ?>"><?= $i ?></a>
             <?php endfor; ?>
 
             <?php if($current_page < $total_pages): ?>
-                <a href="<?= $base_p_url . ($current_page + 1) ?>" class="btn btn-sm btn-ghost">&raquo;</a>
+                <a href="<?= $base_p_url . ($current_page + 1) ?>" class="ui-btn ui-btn-sm ui-btn-outline">&raquo;</a>
             <?php endif; ?>
         </div>
     <?php endif; ?>
-</div>
+</section>
 
 <script>
     // Function to send message via Gateway

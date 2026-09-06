@@ -64,24 +64,26 @@ if (!function_exists('formatBytes')) {
         $routers = $db->query("SELECT * FROM routers $scope_where")->fetchAll();
     } catch(Exception $e) { $routers = []; } 
 ?>
-<div class="glass-panel" style="padding:24px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-        <h3 style="margin:0;"><i class="fas fa-network-wired"></i> Manajemen Router</h3>
-        <button class="btn btn-primary" onclick="document.getElementById('addRouterModal').style.display='flex'"><i class="fas fa-plus"></i> Tambah Router</button>
+<div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h2 class="m-0 text-xl font-bold sm:text-2xl">Manajemen router</h2>
     </div>
-    
-    <div class="table-container">
-        <table>
+    <button class="ui-btn ui-btn-primary w-full sm:w-auto" onclick="document.getElementById('addRouterModal').style.display='flex'"><i class="fas fa-plus"></i> Tambah router</button>
+</div>
+
+<section class="ui-card overflow-hidden">
+    <div class="table-container overflow-x-auto">
+        <table class="w-full border-collapse text-sm">
             <thead>
-                <tr>
-                    <th>Label Perangkat</th>
-                    <th>IP / Host</th>
-                    <th>Status API</th>
-                    <th>Aksi</th>
+                <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                    <th class="px-4 py-2.5 font-semibold">Label perangkat</th>
+                    <th class="px-4 py-2.5 font-semibold">IP / host</th>
+                    <th class="px-4 py-2.5 font-semibold">Status API</th>
+                    <th class="px-4 py-2.5 text-right font-semibold">Aksi</th>
                 </tr>
             </thead>
             <tbody>
-                <?php foreach($routers as $rt): 
+                <?php foreach($routers as $rt):
                     $api = new RouterosAPI();
                     $api->debug = false;
                     $api->port = $rt['port'];
@@ -89,61 +91,68 @@ if (!function_exists('formatBytes')) {
                     $isCon = @$api->connect($rt['host'], $rt['username'], $rt['password']);
                     if($isCon) $api->disconnect();
                 ?>
-                <tr>
-                    <td><strong style="color:var(--primary);"><?= htmlspecialchars($rt['name']) ?></strong></td>
-                    <td style="font-family:monospace;"><?= htmlspecialchars($rt['host']) ?>:<?= htmlspecialchars($rt['port']) ?></td>
-                    <td>
+                <tr class="border-t border-solid border-border">
+                    <td class="px-4 py-3 font-semibold"><?= htmlspecialchars($rt['name']) ?></td>
+                    <td class="px-4 py-3 font-mono text-xs"><?= htmlspecialchars($rt['host']) ?>:<?= htmlspecialchars($rt['port']) ?></td>
+                    <td class="px-4 py-3">
                         <?php if($isCon): ?>
-                            <span class="badge badge-success"><i class="fas fa-check-circle"></i> Connected</span>
+                            <span class="ui-badge ui-badge-signal">Connected</span>
                         <?php else: ?>
-                            <span class="badge badge-danger" style="background:rgba(239,68,68,0.2); color:#ef4444;"><i class="fas fa-times-circle"></i> Disconnected</span>
+                            <span class="ui-badge ui-badge-danger">Disconnected</span>
                         <?php endif; ?>
                     </td>
-                    <td>
-                        <a href="index.php?page=admin_router&action=view&id=<?= $rt['id'] ?>" class="btn btn-sm btn-primary">Dashboard</a>
-                        <a href="#" onclick="editRouter(<?= htmlspecialchars(json_encode($rt)) ?>)" class="btn btn-sm" style="background:#f59e0b; color:white;">Edit</a>
-                        <a data-method="post" href="index.php?page=admin_router&action=delete_router&id=<?= $rt['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus router ini permanen?')">Hapus</a>
+                    <td class="px-4 py-3 text-right">
+                        <div class="inline-flex flex-wrap justify-end gap-1">
+                            <a href="index.php?page=admin_router&action=view&id=<?= $rt['id'] ?>" class="ui-btn ui-btn-sm ui-btn-primary">Dashboard</a>
+                            <a href="#" onclick="editRouter(<?= htmlspecialchars(json_encode($rt)) ?>)" class="ui-btn ui-btn-sm ui-btn-outline">Edit</a>
+                            <a data-method="post" href="index.php?page=admin_router&action=delete_router&id=<?= $rt['id'] ?>" class="ui-btn ui-btn-sm ui-btn-outline text-danger" onclick="return confirm('Hapus router ini permanen?')">Hapus</a>
+                        </div>
                     </td>
                 </tr>
                 <?php endforeach; ?>
                 <?php if(count($routers) == 0): ?>
-                    <tr><td colspan="4" style="text-align:center; padding:30px;">Belum ada perangkat router yang dimasukkan. <br><div style="font-size:12px; margin-top:5px; color:#64748b;">(Jalankan app/migrate8.php jika sebelumnya sudah pernah instal)</div></td></tr>
+                    <tr class="border-t border-solid border-border"><td colspan="4" class="px-5 py-10 text-center text-sm text-muted-foreground">Belum ada perangkat router yang dimasukkan. <br><div class="mt-1 text-xs">(Jalankan app/migrate8.php jika sebelumnya sudah pernah instal)</div></td></tr>
                 <?php endif; ?>
             </tbody>
         </table>
     </div>
-</div>
+</section>
 
 <!-- Modal Router -->
-<div id="addRouterModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:9999;">
-    <div class="glass-panel" style="width:100%; max-width:400px; padding:24px;">
-        <h3 id="modalTitle" style="margin-bottom:20px;">Tambah Router Baru</h3>
+<div id="addRouterModal" class="fixed inset-0 z-[9999] items-center justify-center bg-black/50 p-4" style="display:none;">
+    <div class="ui-card w-full max-w-md p-5 sm:p-6">
+        <div class="mb-4 flex items-start justify-between gap-4">
+            <h3 id="modalTitle" class="m-0 text-lg font-bold">Tambah router baru</h3>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-ghost" onclick="document.getElementById('addRouterModal').style.display='none'" aria-label="Tutup">✕</button>
+        </div>
         <form action="index.php?page=admin_router&action=save_router" method="POST">
 <?= csrf_field() ?>
             <input type="hidden" name="id" id="rt_id">
-            <div class="form-group">
-                <label>Nama Label (Misal: Mikrotik Pusat Server)</label>
-                <input type="text" name="name" id="rt_name" class="form-control" required>
+            <div class="grid gap-4">
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Nama label (misal: Mikrotik Pusat Server)</span>
+                    <input type="text" name="name" id="rt_name" class="form-control" required>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Alamat IP / host API</span>
+                    <input type="text" name="host" id="rt_host" class="form-control" required>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Port API (default: 8728)</span>
+                    <input type="number" name="port" id="rt_port" class="form-control" value="8728" required>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Username router</span>
+                    <input type="text" name="username" id="rt_user" class="form-control" required>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Password router</span>
+                    <input type="password" name="password" id="rt_pass" class="form-control">
+                </label>
             </div>
-            <div class="form-group">
-                <label>Alamat IP / Host API</label>
-                <input type="text" name="host" id="rt_host" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label>Port API (Default: 8728)</label>
-                <input type="number" name="port" id="rt_port" class="form-control" value="8728" required>
-            </div>
-            <div class="form-group">
-                <label>Username Router</label>
-                <input type="text" name="username" id="rt_user" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label>Password Router</label>
-                <input type="password" name="password" id="rt_pass" class="form-control">
-            </div>
-            <div class="form-actions-row" style="margin-top:20px;">
-                <button type="button" class="btn btn-ghost" onclick="document.getElementById('addRouterModal').style.display='none'">Batal</button>
-                <button type="submit" class="btn btn-primary">Simpan Router</button>
+            <div class="form-actions-row mt-6 flex justify-end gap-2">
+                <button type="button" class="ui-btn ui-btn-outline" onclick="document.getElementById('addRouterModal').style.display='none'">Batal</button>
+                <button type="submit" class="ui-btn ui-btn-primary">Simpan router</button>
             </div>
         </form>
     </div>
@@ -207,60 +216,53 @@ function editRouter(rt) {
     }
 ?>
 <div class="router-dashboard">
-    <div style="margin-bottom:20px;">
-        <a href="index.php?page=admin_router" class="btn btn-sm btn-ghost"><i class="fas fa-arrow-left"></i> Kembali ke List Router</a>
+    <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div>
+            <h2 class="m-0 text-xl font-bold sm:text-2xl">Monitoring: <?= htmlspecialchars($router['name']) ?></h2>
+            <?php if($connected): ?><p class="m-0 mt-1 font-mono text-sm text-muted-foreground"><?= htmlspecialchars($router['host']) ?></p><?php endif; ?>
+        </div>
+        <a href="index.php?page=admin_router" class="ui-btn ui-btn-outline"><i class="fas fa-arrow-left"></i> Kembali ke list router</a>
     </div>
 
     <?php if(!$connected): ?>
-        <div class="glass-panel" style="padding: 24px; max-width:600px; margin:0 auto; text-align:center;">
-            <i class="fas fa-exclamation-triangle" style="font-size: 40px; color: var(--danger-color); margin-bottom:15px;"></i>
-            <h3>Koneksi Router Gagal</h3>
-            <p style="color:var(--text-secondary); margin-bottom:20px;"><?= htmlspecialchars($error_msg) ?></p>
+        <div class="ui-card mx-auto max-w-xl border-danger/40 p-5 text-sm sm:p-6">
+            <span class="font-semibold text-danger">Koneksi router gagal.</span> <?= htmlspecialchars($error_msg) ?>
         </div>
     <?php else: ?>
-        <div style="margin-bottom:20px;">
-            <h2 style="margin:0; font-size:24px;">Monitoring: <?= htmlspecialchars($router['name']) ?></h2>
-            <div style="color:var(--text-secondary); font-family:monospace;"><?= htmlspecialchars($router['host']) ?></div>
-        </div>
-        
-        <div class="metrics-grid">
-            <div class="metric-card glass-panel text-center">
-                <div class="metric-title">CPU Load</div>
-                <div class="metric-value"><?= htmlspecialchars($resources['cpu-load'] ?? 0) ?>%</div>
-                <div class="metric-icon"><i class="fas fa-microchip"></i></div>
+        <div class="metrics-grid mb-5 grid grid-cols-2 gap-3 xl:grid-cols-4">
+            <div class="metric-card ui-card p-4">
+                <div class="metric-title text-xs font-medium text-muted-foreground">CPU load</div>
+                <div class="metric-value mt-1 text-2xl font-extrabold tabular-nums"><?= htmlspecialchars($resources['cpu-load'] ?? 0) ?>%</div>
             </div>
-            <div class="metric-card glass-panel text-center">
-                <div class="metric-title">Uptime</div>
-                <div class="metric-value" style="font-size: 20px;"><?= htmlspecialchars($resources['uptime'] ?? '-') ?></div>
-                <div class="metric-icon"><i class="fas fa-clock"></i></div>
+            <div class="metric-card ui-card p-4">
+                <div class="metric-title text-xs font-medium text-muted-foreground">Uptime</div>
+                <div class="metric-value mt-1 text-xl font-extrabold tabular-nums"><?= htmlspecialchars($resources['uptime'] ?? '-') ?></div>
             </div>
-            <div class="metric-card glass-panel text-center">
-                <div class="metric-title">Sisa Memori</div>
-                <div class="metric-value"><?= formatBytes($resources['free-memory'] ?? 0) ?></div>
-                <div class="metric-icon"><i class="fas fa-memory"></i></div>
+            <div class="metric-card ui-card p-4">
+                <div class="metric-title text-xs font-medium text-muted-foreground">Sisa memori</div>
+                <div class="metric-value mt-1 text-2xl font-extrabold tabular-nums"><?= formatBytes($resources['free-memory'] ?? 0) ?></div>
             </div>
-            <div class="metric-card glass-panel text-center">
-                <div class="metric-title">Koneksi Aktif PPPoE</div>
-                <div class="metric-value"><?= count($active_ppp) ?></div>
-                <div class="metric-icon"><i class="fas fa-network-wired"></i></div>
+            <div class="metric-card ui-card p-4">
+                <div class="metric-title text-xs font-medium text-muted-foreground">Koneksi aktif PPPoE</div>
+                <div class="metric-value mt-1 text-2xl font-extrabold tabular-nums"><?= count($active_ppp) ?></div>
             </div>
         </div>
 
-        <div style="display:flex; gap:20px; flex-wrap:wrap; margin-top:20px;">
-            <div class="glass-panel" style="flex:1; min-width:400px; padding: 20px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
-                    <h3 style="margin:0;"><i class="fas fa-chart-line"></i> Live Traffic</h3>
-                    <select id="interfaceSelect" class="form-control" style="width: auto; display:inline-block;" onchange="changeInterface()">
-                        <?php foreach($interfaces as $iface): ?>
-                            <option value="<?= htmlspecialchars($iface['name']) ?>"><?= htmlspecialchars($iface['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
+        <section class="ui-card mb-5 overflow-hidden">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-solid border-border px-4 py-3 sm:px-5">
+                <h3 class="m-0 text-[15px] font-bold">Live traffic</h3>
+                <select id="interfaceSelect" class="form-control w-auto" onchange="changeInterface()">
+                    <?php foreach($interfaces as $iface): ?>
+                        <option value="<?= htmlspecialchars($iface['name']) ?>"><?= htmlspecialchars($iface['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="p-4 sm:p-5">
                 <div style="position: relative; height: 300px; width: 100%;">
                     <canvas id="trafficChart"></canvas>
                 </div>
             </div>
-        </div>
+        </section>
 
         <?php
             // Cross-reference secrets with active connections
@@ -269,82 +271,69 @@ function editRouter(rt) {
                 $active_names[$act['name']] = $act;
             }
         ?>
-        <div class="glass-panel" style="margin-top:20px; padding:20px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
-                <h3 style="margin:0;"><i class="fas fa-users-cog"></i> Registri PPPoE Secrets — <span style="color:var(--primary);"><?= count($all_secrets) ?></span> Total | <span style="color:var(--success);"><?= count($active_ppp) ?></span> Online</h3>
-                <div style="display:flex; gap:10px;">
-                    <span class="badge badge-success" style="font-size:13px; padding:6px 14px;"><i class="fas fa-circle" style="font-size:8px;"></i> Online <?= count($active_ppp) ?></span>
-                    <span class="badge" style="background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.4); font-size:13px; padding:6px 14px;"><i class="fas fa-circle" style="font-size:8px;"></i> Offline <?= count($all_secrets) - count($active_ppp) ?></span>
+        <section class="ui-card overflow-hidden">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-solid border-border px-4 py-3 sm:px-5">
+                <div>
+                    <h3 class="m-0 text-[15px] font-bold">Registri PPPoE secrets</h3>
+                    <p class="m-0 text-xs text-muted-foreground"><span class="tabular-nums"><?= count($all_secrets) ?></span> total | <span class="tabular-nums"><?= count($active_ppp) ?></span> online</p>
+                </div>
+                <div class="flex gap-2">
+                    <span class="ui-badge ui-badge-signal">Online <?= count($active_ppp) ?></span>
+                    <span class="ui-badge ui-badge-muted">Offline <?= count($all_secrets) - count($active_ppp) ?></span>
                 </div>
             </div>
-            <div style="overflow-x:auto;">
-                <table class="table" style="width:100%">
+            <div class="overflow-x-auto">
+                <table class="table w-full border-collapse text-sm">
                     <thead>
-                        <tr>
-                            <th>No</th>
-                            <th>PPPoE Name / Secret</th>
-                            <th>Profile</th>
-                            <th style="text-align:center;">Status</th>
-                            <th>IP Address</th>
-                            <th>Uptime</th>
+                        <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                            <th class="px-4 py-2.5 font-semibold">No</th>
+                            <th class="px-4 py-2.5 font-semibold">PPPoE name / secret</th>
+                            <th class="px-4 py-2.5 font-semibold">Profile</th>
+                            <th class="px-4 py-2.5 text-center font-semibold">Status</th>
+                            <th class="px-4 py-2.5 font-semibold">IP address</th>
+                            <th class="px-4 py-2.5 font-semibold">Uptime</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if(count($all_secrets) > 0): ?>
-                            <?php $no=1; foreach($all_secrets as $secret): 
+                            <?php $no=1; foreach($all_secrets as $secret):
                                 $name = $secret['name'] ?? '';
                                 $isOnline = isset($active_names[$name]);
                                 $activeData = $isOnline ? $active_names[$name] : null;
                             ?>
-                                <tr style="<?= $isOnline ? 'background:rgba(16,185,129,0.04);' : '' ?>">
-                                    <td><?= $no++ ?></td>
-                                    <td style="font-weight:bold; color:<?= $isOnline ? 'var(--success)' : 'var(--text-secondary)' ?>;">
-                                        <?php if($isOnline): ?>
-                                            <i class="fas fa-signal" style="margin-right:5px;"></i>
-                                        <?php else: ?>
-                                            <i class="fas fa-user" style="margin-right:5px; opacity:0.4;"></i>
-                                        <?php endif; ?>
+                                <tr class="border-t border-solid border-border">
+                                    <td class="px-4 py-3 tabular-nums text-muted-foreground"><?= $no++ ?></td>
+                                    <td class="px-4 py-3 font-semibold <?= $isOnline ? 'text-foreground' : 'text-muted-foreground' ?>">
                                         <?= htmlspecialchars($name) ?>
                                     </td>
-                                    <td>
-                                        <span style="font-family:monospace; background:rgba(0,0,0,0.2); padding:2px 8px; border-radius:4px; font-size:12px;">
+                                    <td class="px-4 py-3">
+                                        <span class="rounded-md bg-muted px-2 py-0.5 font-mono text-xs">
                                             <?= htmlspecialchars($secret['profile'] ?? '-') ?>
                                         </span>
                                     </td>
-                                    <td style="text-align:center;">
+                                    <td class="px-4 py-3 text-center">
                                         <?php if($isOnline): ?>
-                                            <span class="badge badge-success" style="animation: pulse 2s infinite;">
-                                                <i class="fas fa-check-circle"></i> Online
-                                            </span>
+                                            <span class="ui-badge ui-badge-signal">Online</span>
                                         <?php else: ?>
-                                            <span class="badge" style="background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.4);">
-                                                <i class="fas fa-times-circle"></i> Offline
-                                            </span>
+                                            <span class="ui-badge ui-badge-muted">Offline</span>
                                         <?php endif; ?>
                                     </td>
-                                    <td style="font-family:monospace; font-size:13px;">
-                                        <?= $isOnline ? htmlspecialchars($activeData['address'] ?? '-') : '<span style="opacity:0.3;">—</span>' ?>
+                                    <td class="px-4 py-3 font-mono text-xs">
+                                        <?= $isOnline ? htmlspecialchars($activeData['address'] ?? '-') : '<span class="text-muted-foreground">—</span>' ?>
                                     </td>
-                                    <td style="font-size:13px;">
-                                        <?= $isOnline ? htmlspecialchars($activeData['uptime'] ?? '-') : '<span style="opacity:0.3;">—</span>' ?>
+                                    <td class="px-4 py-3 text-xs tabular-nums">
+                                        <?= $isOnline ? htmlspecialchars($activeData['uptime'] ?? '-') : '<span class="text-muted-foreground">—</span>' ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <tr><td colspan="6" style="text-align:center; padding:20px;">Tidak ada PPPoE Secret terdaftar di router ini.</td></tr>
+                            <tr class="border-t border-solid border-border"><td colspan="6" class="px-5 py-10 text-center text-sm text-muted-foreground">Tidak ada PPPoE Secret terdaftar di router ini.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
             </div>
-        </div>
+        </section>
 
-        <style>
-            @keyframes pulse {
-                0%, 100% { opacity: 1; }
-                50% { opacity: 0.7; }
-            }
-        </style>
-        
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script>
             let trafficChart;

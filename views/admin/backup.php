@@ -131,122 +131,107 @@ function formatSize($bytes) {
 }
 ?>
 
+<div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h2 class="m-0 text-xl font-bold sm:text-2xl">Backup dan restore</h2>
+        <p class="m-0 mt-1 text-sm text-muted-foreground">Salin, pulihkan, atau bersihkan database aplikasi.</p>
+    </div>
+</div>
+
 <?php if($msg === 'saved'): ?>
-    <div style="padding:12px 20px; background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.4); border-radius:10px; margin-bottom:20px; color:var(--success);">
-        <i class="fas fa-check-circle"></i> Backup berhasil disimpan: <strong><?= htmlspecialchars($_GET['file'] ?? '') ?></strong>
-    </div>
+    <div class="ui-card mb-5 p-4 text-sm"><span class="font-semibold text-signal">Tersimpan.</span> Backup disimpan sebagai <strong><?= htmlspecialchars($_GET['file'] ?? '') ?></strong>.</div>
 <?php elseif($msg === 'restored'): ?>
-    <div style="padding:12px 20px; background:rgba(59,130,246,0.15); border:1px solid rgba(59,130,246,0.4); border-radius:10px; margin-bottom:20px; color:var(--primary);">
-        <i class="fas fa-undo"></i> Database berhasil di-restore! Data sebelumnya otomatis di-backup sebagai keamanan.
-    </div>
+    <div class="ui-card mb-5 p-4 text-sm"><span class="font-semibold text-signal">Berhasil.</span> Database dipulihkan. Data sebelumnya otomatis di-backup sebagai pengaman.</div>
 <?php elseif($msg === 'invalid'): ?>
-    <div style="padding:12px 20px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); border-radius:10px; margin-bottom:20px; color:var(--danger);">
-        <i class="fas fa-times-circle"></i> File yang diupload bukan database SQLite billing yang valid!
-    </div>
+    <div class="ui-card mb-5 p-4 text-sm border-danger/40"><span class="font-semibold text-danger">Gagal.</span> File yang diunggah bukan database SQLite billing yang valid.</div>
 <?php elseif($msg === 'deleted'): ?>
-    <div style="padding:12px 20px; background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.4); border-radius:10px; margin-bottom:20px; color:var(--warning);">
-        <i class="fas fa-trash"></i> File backup telah dihapus.
-    </div>
+    <div class="ui-card mb-5 p-4 text-sm"><span class="font-semibold">Terhapus.</span> File backup telah dihapus.</div>
 <?php elseif($msg === 'error'): ?>
-    <div style="padding:12px 20px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); border-radius:10px; margin-bottom:20px; color:var(--danger);">
-        <i class="fas fa-exclamation-triangle"></i> Terjadi kesalahan. Pastikan file valid dan coba lagi.
-    </div>
+    <div class="ui-card mb-5 p-4 text-sm border-danger/40"><span class="font-semibold text-danger">Gagal.</span> Terjadi kesalahan. Pastikan file valid dan coba lagi.</div>
 <?php elseif($msg === 'reset_complete'): ?>
-    <div style="padding:12px 20px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); border-radius:10px; margin-bottom:20px; color:var(--danger); font-weight:700;">
-        <i class="fas fa-biohazard"></i> RESET DATA BERHASIL! Database pelanggan dan transaksi telah dibersihkan.
-    </div>
+    <div class="ui-card mb-5 p-4 text-sm border-danger/40"><span class="font-semibold text-danger">Reset selesai.</span> Database pelanggan dan transaksi telah dibersihkan.</div>
 <?php endif; ?>
 
 <!-- Info Database Aktif -->
-<div class="glass-panel" style="padding:24px; margin-bottom:20px;">
-    <h3 style="margin-bottom:20px;"><i class="fas fa-database"></i> Informasi Database Aktif</h3>
-    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:15px;">
-        <div style="padding:16px; background:rgba(0,0,0,0.15); border-radius:10px; text-align:center;">
-            <div style="font-size:28px; font-weight:700; color:var(--primary);"><?= formatSize($db_size) ?></div>
-            <div style="font-size:13px; color:var(--text-secondary); margin-top:5px;">Ukuran Database</div>
-        </div>
-        <div style="padding:16px; background:rgba(0,0,0,0.15); border-radius:10px; text-align:center;">
-            <div style="font-size:28px; font-weight:700; color:var(--success);"><?= $customer_count ?></div>
-            <div style="font-size:13px; color:var(--text-secondary); margin-top:5px;">Total Pelanggan</div>
-        </div>
-        <div style="padding:16px; background:rgba(0,0,0,0.15); border-radius:10px; text-align:center;">
-            <div style="font-size:28px; font-weight:700; color:var(--warning);"><?= $invoice_count ?></div>
-            <div style="font-size:13px; color:var(--text-secondary); margin-top:5px;">Total Tagihan</div>
-        </div>
+<div class="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <div class="ui-card p-4">
+        <div class="text-xs font-medium text-muted-foreground">Ukuran database</div>
+        <div class="mt-1 text-2xl font-extrabold tabular-nums"><?= formatSize($db_size) ?></div>
+    </div>
+    <div class="ui-card p-4">
+        <div class="text-xs font-medium text-muted-foreground">Total pelanggan</div>
+        <div class="mt-1 text-2xl font-extrabold tabular-nums"><?= $customer_count ?></div>
+    </div>
+    <div class="ui-card p-4">
+        <div class="text-xs font-medium text-muted-foreground">Total tagihan</div>
+        <div class="mt-1 text-2xl font-extrabold tabular-nums"><?= $invoice_count ?></div>
     </div>
 </div>
 
 <!-- Backup Actions -->
-<div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
+<div class="mb-5 grid grid-cols-1 gap-4 md:grid-cols-2">
     <!-- Backup -->
-    <div class="glass-panel" style="padding:24px;">
-        <h3 style="margin-bottom:5px; color:var(--success);"><i class="fas fa-download"></i> Backup</h3>
-        <p style="color:var(--text-secondary); font-size:13px; margin-bottom:20px;">Simpan salinan database Anda agar bisa dipulihkan sewaktu-waktu.</p>
-        
-        <div style="display:flex; flex-direction:column; gap:10px;">
-            <a data-method="post" href="index.php?page=admin_backup&action=download" class="btn btn-primary" style="border-radius:10px; display:flex; align-items:center; justify-content:center; gap:8px;">
-                <i class="fas fa-cloud-download-alt"></i> Download ke Perangkat
-            </a>
-            <a data-method="post" href="index.php?page=admin_backup&action=save_local" class="btn btn-success" style="border-radius:10px; display:flex; align-items:center; justify-content:center; gap:8px;" onclick="return confirm('Simpan backup ke folder server?')">
-                <i class="fas fa-server"></i> Simpan di Server
-            </a>
+    <section class="ui-card p-5">
+        <h3 class="m-0 text-[15px] font-bold">Backup</h3>
+        <p class="m-0 mt-1 mb-4 text-sm text-muted-foreground">Simpan salinan database agar bisa dipulihkan sewaktu-waktu.</p>
+        <div class="flex flex-col gap-2">
+            <a data-method="post" href="index.php?page=admin_backup&action=download" class="ui-btn ui-btn-primary w-full"><i class="fas fa-download"></i> Download ke perangkat</a>
+            <a data-method="post" href="index.php?page=admin_backup&action=save_local" class="ui-btn ui-btn-outline w-full" onclick="return confirm('Simpan backup ke folder server?')"><i class="fas fa-server"></i> Simpan di server</a>
         </div>
-        <small style="color:var(--text-secondary); display:block; margin-top:10px; font-size:11px;"><i class="fas fa-info-circle"></i> Disarankan backup rutin sebelum melakukan perubahan besar.</small>
-    </div>
+        <p class="m-0 mt-3 text-xs text-muted-foreground">Disarankan backup rutin sebelum melakukan perubahan besar.</p>
+    </section>
 
     <!-- Restore -->
-    <div class="glass-panel" style="padding:24px;">
-        <h3 style="margin-bottom:5px; color:var(--warning);"><i class="fas fa-upload"></i> Restore</h3>
-        <p style="color:var(--text-secondary); font-size:13px; margin-bottom:20px;">Pulihkan database dari file backup yang sudah pernah disimpan.</p>
-        
+    <section class="ui-card p-5">
+        <h3 class="m-0 text-[15px] font-bold">Restore</h3>
+        <p class="m-0 mt-1 mb-4 text-sm text-muted-foreground">Pulihkan database dari file backup yang pernah disimpan.</p>
         <form action="index.php?page=admin_backup&action=restore_upload" method="POST" enctype="multipart/form-data" onsubmit="return confirm('PERINGATAN!\n\nData saat ini akan DITIMPA dengan file backup yang Anda upload.\nData sekarang akan di-backup otomatis sebagai pengaman.\n\nLanjutkan restore?')">
 <?= csrf_field() ?>
-            <div style="background:rgba(0,0,0,0.15); border:2px dashed var(--glass-border); border-radius:10px; padding:20px; text-align:center; margin-bottom:10px; transition:border-color 0.3s;" onmouseover="this.style.borderColor='var(--warning)'" onmouseout="this.style.borderColor='var(--glass-border)'">
-                <i class="fas fa-file-upload" style="font-size:24px; color:var(--text-secondary); margin-bottom:8px;"></i>
-                <div style="font-size:13px; color:var(--text-secondary); margin-bottom:10px;">Pilih file .sqlite backup</div>
-                <input type="file" name="restore_file" accept=".sqlite,.db" required class="form-control" style="font-size:13px;">
-            </div>
-            <button type="submit" class="btn btn-warning" style="width:100%; border-radius:10px; display:flex; align-items:center; justify-content:center; gap:8px;">
-                <i class="fas fa-undo"></i> Restore dari File
-            </button>
+            <label class="block">
+                <span class="mb-1 block text-xs font-medium text-muted-foreground">File backup (.sqlite)</span>
+                <input type="file" name="restore_file" accept=".sqlite,.db" required class="form-control">
+            </label>
+            <button type="submit" class="ui-btn ui-btn-outline mt-3 w-full"><i class="fas fa-undo"></i> Restore dari file</button>
         </form>
-    </div>
+    </section>
 </div>
 
 <!-- Daftar Backup Server -->
-<div class="glass-panel" style="padding:24px;">
-    <h3 style="margin-bottom:20px;"><i class="fas fa-history"></i> Riwayat Backup di Server (<?= count($backups) ?>)</h3>
-    
+<section class="ui-card mb-5 overflow-hidden">
+    <div class="flex items-center justify-between gap-3 border-b border-solid border-border px-4 py-3 sm:px-5">
+        <div>
+            <h3 class="m-0 text-[15px] font-bold">Riwayat backup di server</h3>
+            <p class="m-0 text-xs text-muted-foreground"><?= count($backups) ?> file tersimpan</p>
+        </div>
+    </div>
+
     <?php if(count($backups) > 0): ?>
-    <div class="table-container">
-        <table>
+    <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-sm">
             <thead>
-                <tr>
-                    <th>Nama File</th>
-                    <th>Ukuran</th>
-                    <th>Tanggal</th>
-                    <th>Aksi</th>
+                <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                    <th class="px-4 py-2.5 font-semibold sm:px-5">Nama file</th>
+                    <th class="px-3 py-2.5 font-semibold">Ukuran</th>
+                    <th class="px-3 py-2.5 font-semibold">Tanggal</th>
+                    <th class="px-4 py-2.5 text-right font-semibold sm:px-5">Aksi</th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach($backups as $b): ?>
-                <tr>
-                    <td>
-                        <i class="fas fa-file" style="color:var(--primary); margin-right:8px;"></i>
-                        <strong><?= htmlspecialchars($b['name']) ?></strong>
+                <tr class="border-t border-solid border-border">
+                    <td class="px-4 py-3 sm:px-5">
+                        <span class="font-semibold"><?= htmlspecialchars($b['name']) ?></span>
                         <?php if(strpos($b['name'], 'pre_restore') !== false): ?>
-                            <span class="badge" style="background:rgba(245,158,11,0.15); color:var(--warning); border:1px solid rgba(245,158,11,0.3); font-size:10px; margin-left:5px;">Otomatis</span>
+                            <span class="ui-badge ui-badge-muted ml-1">Otomatis</span>
                         <?php endif; ?>
                     </td>
-                    <td><?= formatSize($b['size']) ?></td>
-                    <td style="font-size:13px; color:var(--text-secondary);"><?= $b['date'] ?></td>
-                    <td style="white-space:nowrap;">
-                        <a data-method="post" href="index.php?page=admin_backup&action=restore_local&file=<?= urlencode($b['name']) ?>" class="btn btn-sm btn-warning" onclick="return confirm('Restore database dari backup ini?\n\n<?= htmlspecialchars($b['name']) ?>\n\nData saat ini akan di-backup otomatis sebelum ditimpa.')">
-                            <i class="fas fa-undo"></i> Restore
-                        </a>
-                        <a data-method="post" href="index.php?page=admin_backup&action=delete_backup&file=<?= urlencode($b['name']) ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus file backup ini permanen?')">
-                            <i class="fas fa-trash"></i>
-                        </a>
+                    <td class="px-3 py-3 tabular-nums"><?= formatSize($b['size']) ?></td>
+                    <td class="px-3 py-3 text-xs text-muted-foreground"><?= $b['date'] ?></td>
+                    <td class="px-4 py-3 text-right sm:px-5 whitespace-nowrap">
+                        <div class="inline-flex gap-1">
+                            <a data-method="post" href="index.php?page=admin_backup&action=restore_local&file=<?= urlencode($b['name']) ?>" class="ui-btn ui-btn-sm ui-btn-outline" onclick="return confirm('Restore database dari backup ini?\n\n<?= htmlspecialchars($b['name']) ?>\n\nData saat ini akan di-backup otomatis sebelum ditimpa.')"><i class="fas fa-undo"></i><span class="hidden sm:inline">Restore</span></a>
+                            <a data-method="post" href="index.php?page=admin_backup&action=delete_backup&file=<?= urlencode($b['name']) ?>" class="ui-btn ui-btn-sm ui-btn-outline text-danger" title="Hapus" onclick="return confirm('Hapus file backup ini permanen?')"><i class="fas fa-trash"></i><span class="hidden sm:inline">Hapus</span></a>
+                        </div>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -254,32 +239,30 @@ function formatSize($bytes) {
         </table>
     </div>
     <?php else: ?>
-    <div style="text-align:center; padding:30px; color:var(--text-secondary);">
-        <i class="fas fa-inbox" style="font-size:40px; opacity:0.3; margin-bottom:10px;"></i>
+    <div class="px-5 py-10 text-center text-sm text-muted-foreground">
         <div>Belum ada file backup tersimpan di server.</div>
-        <div style="font-size:12px; margin-top:5px;">Klik "Simpan di Server" untuk membuat backup pertama Anda.</div>
+        <div class="mt-1 text-xs">Klik "Simpan di server" untuk membuat backup pertama Anda.</div>
     </div>
     <?php endif; ?>
+</section>
+
 <!-- Danger Zone -->
-<div class="glass-panel" style="padding:24px; border: 1px solid rgba(239,68,68,0.3); background: rgba(239,68,68,0.05); margin-top:20px;">
-    <h3 style="margin-bottom:15px; color:#ef4444;"><i class="fas fa-biohazard"></i> Zona Bahaya (Danger Zone)</h3>
-    <div style="display:grid; grid-template-columns: 1fr 250px; gap:20px; align-items:center;">
-        <div style="font-size:13px; color:var(--text-secondary); line-height:1.6;">
-            Fitur ini akan menghapus <strong>SELURUH</strong> data pelanggan, tagihan, pembayaran, pengeluaran, area, dan paket layanan.<br>
-            <span style="color:#ef4444; font-weight:700;">Tindakan ini tidak dapat dibatalkan, namun sistem akan membuat backup otomatis sebelum penghapusan.</span><br>
-            <br>
-            <strong>Yang tetap aman:</strong> Akun Admin, License Key, Profil Perusahaan, dan Konfigurasi Router.
+<section class="ui-card border-danger/40 p-5">
+    <h3 class="m-0 text-[15px] font-bold text-danger">Zona bahaya</h3>
+    <div class="mt-3 grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto] md:items-center">
+        <div class="text-sm text-muted-foreground leading-relaxed">
+            Fitur ini menghapus <strong>seluruh</strong> data pelanggan, tagihan, pembayaran, pengeluaran, area, dan paket layanan.
+            <span class="font-semibold text-danger">Tindakan ini tidak dapat dibatalkan, namun sistem membuat backup otomatis sebelum penghapusan.</span>
+            <br><strong>Yang tetap aman:</strong> akun admin, license key, profil perusahaan, dan konfigurasi router.
         </div>
         <div>
             <form id="resetForm" action="index.php?page=admin_backup&action=reset_data" method="POST">
 <?= csrf_field() ?>
-                <button type="button" class="btn btn-danger" style="width:100%; padding:15px; border-radius:12px; font-weight:700; gap:8px;" onclick="handleReset()">
-                    <i class="fas fa-trash-alt"></i> RESET SEMUA DATA
-                </button>
+                <button type="button" class="ui-btn ui-btn-outline text-danger w-full md:w-auto" onclick="handleReset()"><i class="fas fa-trash-alt"></i> Reset semua data</button>
             </form>
         </div>
     </div>
-</div>
+</section>
 
 <script>
 function handleReset() {
@@ -295,11 +278,3 @@ function handleReset() {
     }
 }
 </script>
-
-<style>
-@media (max-width: 768px) {
-    div[style*="grid-template-columns: 1fr 1fr"] {
-        grid-template-columns: 1fr !important;
-    }
-}
-</style>

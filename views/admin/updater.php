@@ -48,97 +48,73 @@ if ($page === 'admin_updater_run' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
-<div class="glass-panel" style="padding: 24px;">
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <div style="width: 40px; height: 40px; background: rgba(var(--primary-rgb), 0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                <i class="fas fa-sync-alt" style="font-size: 18px; color: var(--primary);"></i>
-            </div>
-            <div>
-                <h3 style="margin: 0; font-size: 18px; font-weight: 800;">Update Sistem</h3>
-                <p style="color: var(--text-secondary); font-size: 12px; margin: 0; opacity: 0.7;">Sinkronisasi otomatis dengan repository GitHub</p>
-            </div>
+<div class="mx-auto max-w-3xl">
+    <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div>
+            <h2 class="m-0 text-xl font-bold sm:text-2xl">Update sistem</h2>
+            <p class="m-0 mt-1 text-sm text-muted-foreground">Sinkronisasi otomatis dengan repository GitHub.</p>
         </div>
-        <a href="index.php?page=admin_settings" class="btn btn-sm btn-ghost" style="font-size: 12px;"><i class="fas fa-arrow-left"></i> Kembali</a>
+        <div class="flex flex-wrap gap-2">
+            <a href="index.php?page=admin_settings" class="ui-btn ui-btn-outline"><i class="fas fa-arrow-left"></i> Kembali</a>
+        </div>
     </div>
 
     <?php if (!$git_available): ?>
-        <div style="padding: 16px; background: rgba(244, 63, 94, 0.1); border: 1px solid rgba(244, 63, 94, 0.2); color: var(--danger); border-radius: 12px; font-size: 13px;">
-            <i class="fas fa-exclamation-triangle"></i> <strong>Git Tidak Terdeteksi!</strong> Update otomatis tidak tersedia.
-        </div>
+        <div class="ui-card mb-5 p-4 text-sm border-danger/40"><span class="font-semibold text-danger">Git tidak terdeteksi.</span> Update otomatis tidak tersedia di server ini.</div>
     <?php else: ?>
-        <div class="glass-panel" style="background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); padding: 20px; border-radius: 16px;">
-            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
-                <div style="display: flex; align-items: center; gap: 25px;">
+        <section class="ui-card p-5">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex flex-wrap items-center gap-6">
                     <div>
-                        <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 4px;">Versi Aplikasi</div>
-                        <div style="font-size: 20px; font-weight: 900; font-family: monospace; letter-spacing: 1px;">v<?= APP_VERSION ?></div>
+                        <div class="text-xs font-medium text-muted-foreground">Versi aplikasi</div>
+                        <div class="mt-1 font-mono text-lg font-bold">v<?= APP_VERSION ?></div>
                     </div>
-                    
-                    <div style="height: 30px; border-left: 1px solid var(--glass-border);"></div>
-                    
                     <div>
-                        <div style="font-size: 10px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 6px;">Status Sistem</div>
-                        <?php if ($update_available): ?>
-                            <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); padding: 4px 10px; font-size: 10px; font-weight: 800;">
-                                <i class="fas fa-arrow-circle-up"></i> UPDATE TERSEDIA
-                            </span>
-                        <?php elseif ($up_to_date): ?>
-                            <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); padding: 4px 10px; font-size: 10px; font-weight: 800;">
-                                <i class="fas fa-check-circle"></i> VERSI TERBARU
-                            </span>
-                        <?php else: ?>
-                            <span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-secondary); border: 1px solid var(--glass-border); padding: 4px 10px; font-size: 10px;">
-                                MENGECEK...
-                            </span>
-                        <?php endif; ?>
+                        <div class="text-xs font-medium text-muted-foreground">Status sistem</div>
+                        <div class="mt-1.5">
+                            <?php if ($update_available): ?>
+                                <span class="ui-badge ui-badge-accent">Update tersedia</span>
+                            <?php elseif ($up_to_date): ?>
+                                <span class="ui-badge ui-badge-signal">Versi terbaru</span>
+                            <?php else: ?>
+                                <span class="ui-badge ui-badge-muted">Mengecek...</span>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
 
-                <div style="display: flex; gap: 10px;">
+                <div class="flex flex-wrap gap-2">
                     <?php if ($update_available): ?>
                         <form action="index.php?page=admin_updater_run" method="POST">
 <?= csrf_field() ?>
-                            <button type="submit" class="btn btn-primary btn-sm" style="font-weight: 800; padding: 10px 20px;">
-                                <i class="fas fa-download"></i> UPDATE SEKARANG
-                            </button>
+                            <button type="submit" class="ui-btn ui-btn-primary"><i class="fas fa-download"></i> Update sekarang</button>
                         </form>
                     <?php endif; ?>
-                    
+
                     <form action="index.php?page=admin_updater" method="POST">
 <?= csrf_field() ?>
-                        <button type="submit" class="btn btn-ghost btn-sm" style="border: 1px solid var(--glass-border); padding: 10px 15px; font-weight: 700;">
-                            <i class="fas fa-sync-alt" style="font-size: 11px;"></i> CEK UPDATE
-                        </button>
+                        <button type="submit" class="ui-btn ui-btn-outline"><i class="fas fa-sync-alt"></i> Cek update</button>
                     </form>
                 </div>
             </div>
-        </div>
 
-        <?php if ($update_output): ?>
-            <div style="margin-top: 24px;">
-                <div style="font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-terminal"></i> Log Konsol Pembaruan
+            <?php if ($update_output): ?>
+                <div class="mt-5">
+                    <div class="mb-2 text-xs font-medium text-muted-foreground">Log pembaruan</div>
+                    <div class="overflow-x-auto rounded-md border border-solid border-border bg-muted p-4 font-mono text-xs leading-relaxed text-foreground">
+                        <span class="text-muted-foreground">$ git pull origin main</span><br>
+                        <?= nl2br(htmlspecialchars($update_output)) ?>
+                    </div>
                 </div>
-                <div style="background: #000; color: #0f0; padding: 16px; border-radius: 12px; font-family: 'Consolas', monospace; font-size: 12px; line-height: 1.5; overflow-x: auto; border: 1px solid #333; opacity: 0.9;">
-                    <span style="color: #666;">$ git pull origin main</span><br>
-                    <?= nl2br(htmlspecialchars($update_output)) ?>
-                </div>
-            </div>
-        <?php endif; ?>
+            <?php endif; ?>
 
-        <?php if ($update_error): ?>
-            <div style="margin-top: 20px; padding: 12px 16px; background: rgba(244, 63, 94, 0.05); border: 1px dashed rgba(244, 63, 94, 0.3); color: var(--danger); border-radius: 10px; font-size: 12px; font-family: monospace;">
-                <i class="fas fa-info-circle"></i> DEBUG: <?= htmlspecialchars($update_error) ?>
-            </div>
-        <?php endif; ?>
+            <?php if ($update_error): ?>
+                <div class="mt-4 overflow-x-auto rounded-md border border-solid border-danger/40 bg-danger-soft p-3 font-mono text-xs text-danger">Debug: <?= htmlspecialchars($update_error) ?></div>
+            <?php endif; ?>
 
-        <div style="margin-top: 25px; padding: 16px; background: rgba(var(--primary-rgb), 0.03); border-radius: 12px; border: 1px solid rgba(var(--primary-rgb), 0.1); display: flex; gap: 12px; align-items: flex-start;">
-            <i class="fas fa-lightbulb" style="color: var(--primary); margin-top: 3px;"></i>
-            <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
-                <strong style="color: var(--text-primary);">Tentang Update:</strong> 
-                Fitur ini akan menarik kode terbaru dari repository resmi secara aman. Perbaikan bug dan fitur baru akan langsung diterapkan tanpa menghapus data Anda.
-            </div>
-        </div>
+            <p class="m-0 mt-5 border-t border-solid border-border pt-4 text-xs leading-relaxed text-muted-foreground">
+                <strong class="text-foreground">Tentang update:</strong> fitur ini menarik kode terbaru dari repository resmi secara aman. Perbaikan bug dan fitur baru langsung diterapkan tanpa menghapus data Anda.
+            </p>
+        </section>
     <?php endif; ?>
 </div>

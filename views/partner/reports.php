@@ -5,10 +5,9 @@ $tenant_id = $_SESSION['tenant_id'] ?? 1;
 
 // Only partners can access this specific view
 if ($u_role !== 'partner') {
-    echo "<div class='glass-panel' style='padding:40px; text-align:center;'>
-            <i class='fas fa-user-lock fa-3x' style='opacity:0.3; margin-bottom:15px;'></i>
-            <h3>Akses Terbatas</h3>
-            <p>Halaman ini hanya dapat diakses oleh akun mitra.</p>
+    echo "<div class='ui-card px-5 py-10 text-center'>
+            <h3 class='m-0 text-lg font-bold'>Akses terbatas</h3>
+            <p class='m-0 mt-1 text-sm text-muted-foreground'>Halaman ini hanya dapat diakses oleh akun mitra.</p>
           </div>";
     return;
 }
@@ -29,9 +28,9 @@ $scope_inv = " AND i.tenant_id = $tenant_id ";
 
 // 1. Total Collections (Cash In)
 $q_collected = $db->prepare("
-    SELECT SUM(p.amount) FROM payments p 
-    JOIN invoices i ON p.invoice_id = i.id 
-    JOIN customers c ON i.customer_id = c.id 
+    SELECT SUM(p.amount) FROM payments p
+    JOIN invoices i ON p.invoice_id = i.id
+    JOIN customers c ON i.customer_id = c.id
     WHERE p.payment_date BETWEEN ? AND ? $scope_where
 ");
 $q_collected->execute([$sql_date_from, $sql_date_to]);
@@ -39,8 +38,8 @@ $total_collected = $q_collected->fetchColumn() ?: 0;
 
 // 2. Outstanding Receivables (Piutang)
 $q_piutang = $db->prepare("
-    SELECT SUM(i.amount - i.discount) FROM invoices i 
-    JOIN customers c ON i.customer_id = c.id 
+    SELECT SUM(i.amount - i.discount) FROM invoices i
+    JOIN customers c ON i.customer_id = c.id
     WHERE i.status = 'Belum Lunas' AND i.due_date <= ? $scope_where
 ");
 $q_piutang->execute([$date_to]);
@@ -48,7 +47,7 @@ $total_piutang = $q_piutang->fetchColumn() ?: 0;
 
 // 3. New Customers this period
 $q_new_cust = $db->prepare("
-    SELECT COUNT(*) FROM customers c 
+    SELECT COUNT(*) FROM customers c
     WHERE c.registration_date BETWEEN ? AND ? $scope_where
 ");
 $q_new_cust->execute([$date_from, $date_to]);
@@ -56,7 +55,7 @@ $new_customers = $q_new_cust->fetchColumn() ?: 0;
 
 // 4. Estimasi MRR (Monthly Recurring Revenue)
 $q_mrr = $db->prepare("
-    SELECT SUM(monthly_fee) FROM customers c 
+    SELECT SUM(monthly_fee) FROM customers c
     WHERE 1=1 $scope_where
 ");
 $q_mrr->execute();
@@ -64,7 +63,7 @@ $est_mrr = $q_mrr->fetchColumn() ?: 0;
 
 // --- DETAIL DATA (UNION) ---
 $sql_report = "
-    SELECT 
+    SELECT
         'Pembayaran' as activity_type,
         p.payment_date as activity_date,
         c.name as customer_name,
@@ -78,7 +77,7 @@ $sql_report = "
 
     UNION ALL
 
-    SELECT 
+    SELECT
         'Tagihan' as activity_type,
         i.due_date as activity_date,
         c.name as customer_name,
@@ -98,7 +97,7 @@ if ($action === 'export') {
     $output = fopen('php://output', 'w');
     fputs($output, chr(0xEF) . chr(0xBB) . chr(0xBF)); // BOM for Excel
     fputcsv($output, ['Tipe', 'Tanggal', 'Pelanggan', 'No Invoice', 'Nominal', 'Status']);
-    
+
     $stmt = $db->prepare($sql_report);
     $stmt->execute([$sql_date_from, $sql_date_to, $date_from, $date_to]);
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -120,119 +119,111 @@ $stmt_list->execute([$sql_date_from, $sql_date_to, $date_from, $date_to]);
 $report_items = $stmt_list->fetchAll();
 ?>
 
-<div style="margin-bottom: 25px; display:flex; justify-content:space-between; align-items:center;">
+<!-- Page header -->
+<div class="mb-5 flex flex-wrap items-end justify-between gap-3">
     <div>
-        <h2 style="margin:0; font-weight:800; color:var(--text-primary);"><i class="fas fa-chart-pie text-primary"></i> Laporan Keuangan Mitra</h2>
-        <p style="margin:5px 0 0; font-size:13px; color:var(--text-secondary);">Pantau arus kas dan performa penagihan pelanggan Anda.</p>
+        <h2 class="m-0 text-xl font-bold sm:text-2xl">Laporan keuangan mitra</h2>
+        <p class="m-0 mt-1 text-sm text-muted-foreground">Pantau arus kas dan performa penagihan pelanggan Anda.</p>
     </div>
-    <div style="display:flex; gap:10px;">
-        <a href="index.php?page=partner_reports&action=export&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>" class="btn btn-sm btn-ghost" style="color:var(--success); border-color:var(--success);">
-            <i class="fas fa-file-excel"></i> Export CSV
-        </a>
+    <div class="flex flex-wrap gap-2">
+        <a href="index.php?page=partner_reports&action=export&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>" class="ui-btn ui-btn-outline"><i class="fas fa-file-excel"></i> Ekspor CSV</a>
     </div>
 </div>
 
 <!-- Filter Bar -->
-<div class="filter-panel">
-    <form method="GET" class="grid-filters">
-        <input type="hidden" name="page" value="partner_reports">
-        <div class="filter-group">
-            <label>Dari Tanggal</label>
-            <input type="date" name="date_from" class="form-control filter-control" value="<?= $date_from ?>">
-        </div>
-        <div class="filter-group">
-            <label>Sampai Tanggal</label>
-            <input type="date" name="date_to" class="form-control filter-control" value="<?= $date_to ?>">
-        </div>
-        <div class="grid-actions filter-actions">
-            <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter"></i> Update Laporan</button>
-        </div>
-    </form>
-</div>
+<form method="GET" class="ui-card mb-5 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-[180px_180px_auto] lg:items-end">
+    <input type="hidden" name="page" value="partner_reports">
+    <label class="block">
+        <span class="mb-1 block text-xs font-medium text-muted-foreground">Dari tanggal</span>
+        <input type="date" name="date_from" class="form-control w-full" value="<?= $date_from ?>">
+    </label>
+    <label class="block">
+        <span class="mb-1 block text-xs font-medium text-muted-foreground">Sampai tanggal</span>
+        <input type="date" name="date_to" class="form-control w-full" value="<?= $date_to ?>">
+    </label>
+    <div class="flex gap-2">
+        <button type="submit" class="ui-btn ui-btn-primary"><i class="fas fa-filter"></i> Perbarui laporan</button>
+    </div>
+</form>
 
 <!-- Stats Cards -->
-<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:20px; margin-bottom:30px;">
+<div class="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
     <!-- Pendapatan Terkumpul -->
-    <div class="glass-panel" style="padding:20px; border-left:5px solid var(--success); background:linear-gradient(135deg, rgba(16,185,129,0.1), transparent);">
-        <div style="font-size:11px; font-weight:800; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px;">Pendapatan Terkumpul</div>
-        <div style="font-size:24px; font-weight:900; color:var(--success); margin:8px 0;">Rp <?= number_format($total_collected, 0, ',', '.') ?></div>
-        <div style="font-size:11px; opacity:0.7;">Periode terpilih</div>
+    <div class="ui-card p-4">
+        <div class="text-xs font-medium text-muted-foreground">Pendapatan terkumpul</div>
+        <div class="mt-1 text-xl font-extrabold tabular-nums text-signal sm:text-2xl">Rp <?= number_format($total_collected, 0, ',', '.') ?></div>
+        <div class="text-xs text-muted-foreground">Periode terpilih</div>
     </div>
-    
+
     <!-- Piutang Berjalan -->
-    <div class="glass-panel" style="padding:20px; border-left:5px solid var(--danger); background:linear-gradient(135deg, rgba(239,68,68,0.1), transparent);">
-        <div style="font-size:11px; font-weight:800; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px;">Total Piutang Berjalan</div>
-        <div style="font-size:24px; font-weight:900; color:var(--danger); margin:8px 0;">Rp <?= number_format($total_piutang, 0, ',', '.') ?></div>
-        <div style="font-size:11px; opacity:0.7;">Dari seluruh pelanggan saya</div>
+    <div class="ui-card p-4">
+        <div class="text-xs font-medium text-muted-foreground">Total piutang berjalan</div>
+        <div class="mt-1 text-xl font-extrabold tabular-nums text-danger sm:text-2xl">Rp <?= number_format($total_piutang, 0, ',', '.') ?></div>
+        <div class="text-xs text-muted-foreground">Dari seluruh pelanggan saya</div>
     </div>
 
     <!-- Estimasi MRR -->
-    <div class="glass-panel" style="padding:20px; border-left:5px solid var(--primary); background:linear-gradient(135deg, rgba(37,99,235,0.1), transparent);">
-        <div style="font-size:11px; font-weight:800; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px;">Potensi MRR</div>
-        <div style="font-size:24px; font-weight:900; color:var(--primary); margin:8px 0;">Rp <?= number_format($est_mrr, 0, ',', '.') ?></div>
-        <div style="font-size:11px; opacity:0.7;">Total biaya bulanan paket</div>
+    <div class="ui-card p-4">
+        <div class="text-xs font-medium text-muted-foreground">Potensi MRR</div>
+        <div class="mt-1 text-xl font-extrabold tabular-nums sm:text-2xl">Rp <?= number_format($est_mrr, 0, ',', '.') ?></div>
+        <div class="text-xs text-muted-foreground">Total biaya bulanan paket</div>
     </div>
 
     <!-- Pelanggan Baru -->
-    <div class="glass-panel" style="padding:20px; border-left:5px solid var(--warning); background:linear-gradient(135deg, rgba(245,158,11,0.1), transparent);">
-        <div style="font-size:11px; font-weight:800; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px;">Pelanggan Baru</div>
-        <div style="font-size:24px; font-weight:900; color:var(--warning); margin:8px 0;"><?= $new_customers ?> <span style="font-size:14px; font-weight:600;">Member</span></div>
-        <div style="font-size:11px; opacity:0.7;">Bergabung periode ini</div>
+    <div class="ui-card p-4">
+        <div class="text-xs font-medium text-muted-foreground">Pelanggan baru</div>
+        <div class="mt-1 text-xl font-extrabold tabular-nums sm:text-2xl"><?= $new_customers ?> <span class="text-sm font-semibold text-muted-foreground">member</span></div>
+        <div class="text-xs text-muted-foreground">Bergabung periode ini</div>
     </div>
 </div>
 
 <!-- Transaction Table -->
-<div class="glass-panel" style="padding:0; overflow:hidden; border:1px solid var(--glass-border);">
-    <div style="padding:20px; border-bottom:1px solid var(--glass-border); display:flex; justify-content:space-between; align-items:center;">
-        <h4 style="margin:0;"><i class="fas fa-list-ul text-primary"></i> Rincian Aktivitas Transaksi</h4>
-        <span style="font-size:12px; color:var(--text-secondary); font-weight:600;"><?= count($report_items) ?> Transaksi Ditemukan</span>
+<section class="ui-card overflow-hidden">
+    <div class="flex items-center justify-between gap-3 border-b border-solid border-border px-4 py-3 sm:px-5">
+        <div>
+            <h3 class="m-0 text-[15px] font-bold">Rincian aktivitas transaksi</h3>
+            <p class="m-0 text-xs text-muted-foreground"><?= count($report_items) ?> transaksi ditemukan</p>
+        </div>
     </div>
-    <div class="table-container">
-        <table style="width:100%;">
+    <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-sm">
             <thead>
-                <tr style="background:rgba(255,255,255,0.02);">
-                    <th style="padding:15px; font-size:11px; text-align:left;">TANGGAL</th>
-                    <th style="padding:15px; font-size:11px; text-align:left;">PELANGGAN</th>
-                    <th style="padding:15px; font-size:11px; text-align:left;">KETERANGAN</th>
-                    <th style="padding:15px; font-size:11px; text-align:right;">NOMINAL</th>
-                    <th style="padding:15px; font-size:11px; text-align:center;">STATUS</th>
+                <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                    <th class="px-4 py-2.5 font-semibold sm:px-5">Tanggal</th>
+                    <th class="px-4 py-2.5 font-semibold">Pelanggan</th>
+                    <th class="px-4 py-2.5 font-semibold">Keterangan</th>
+                    <th class="px-4 py-2.5 text-right font-semibold">Nominal</th>
+                    <th class="px-4 py-2.5 text-right font-semibold sm:px-5">Status</th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach($report_items as $item): ?>
-                <tr style="border-bottom:1px solid var(--glass-border); transition:all 0.2s;">
-                    <td style="padding:15px; font-size:13px;"><?= date('d/m/Y', strtotime($item['activity_date'])) ?></td>
-                    <td style="padding:15px;">
-                        <div style="font-weight:700; font-size:14px;"><?= htmlspecialchars($item['customer_name']) ?></div>
+                <tr class="border-t border-solid border-border">
+                    <td class="px-4 py-3 tabular-nums text-muted-foreground whitespace-nowrap sm:px-5"><?= date('d/m/Y', strtotime($item['activity_date'])) ?></td>
+                    <td class="px-4 py-3 font-semibold"><?= htmlspecialchars($item['customer_name']) ?></td>
+                    <td class="px-4 py-3">
+                        <div><?= $item['activity_type'] ?></div>
+                        <div class="text-xs text-muted-foreground tabular-nums">INV-<?= str_pad($item['invoice_id'], 5, "0", STR_PAD_LEFT) ?></div>
                     </td>
-                    <td style="padding:15px; font-size:13px;">
-                        <span style="color:var(--text-secondary); font-weight:600;"><?= $item['activity_type'] ?></span><br>
-                        <small style="opacity:0.6;">INV-<?= str_pad($item['invoice_id'], 5, "0", STR_PAD_LEFT) ?></small>
-                    </td>
-                    <td style="padding:15px; text-align:right; font-weight:800; font-size:14px; color:<?= $item['activity_type'] == 'Pembayaran' ? 'var(--success)' : 'var(--text-primary)' ?>;">
+                    <td class="px-4 py-3 text-right font-bold tabular-nums whitespace-nowrap <?= $item['activity_type'] == 'Pembayaran' ? 'text-signal' : 'text-foreground' ?>">
                         <?= $item['activity_type'] == 'Pembayaran' ? '+' : '' ?>Rp <?= number_format($item['amount'], 0, ',', '.') ?>
                     </td>
-                    <td style="padding:15px; text-align:center; display:flex; justify-content:center; gap:5px;">
-                        <span class="badge <?= $item['status'] == 'Lunas' ? 'badge-success' : 'badge-danger' ?>" style="font-size:10px; padding:4px 10px; border-radius:6px;">
-                            <?= strtoupper($item['status']) ?>
-                        </span>
-                        <?php if($item['status'] == 'Lunas'): ?>
-                            <a href="index.php?page=invoice_print&id=<?= $item['invoice_id'] ?>&format=thermal" target="_blank" class="btn btn-ghost" style="width:30px; height:30px; padding:0; border-radius:6px; display:flex; align-items:center; justify-content:center; border:1px solid rgba(var(--primary-rgb), 0.2);" title="Cetak Kuitansi">
-                                <i class="fas fa-print" style="font-size:12px;"></i>
-                            </a>
-                        <?php endif; ?>
+                    <td class="px-4 py-3 sm:px-5">
+                        <div class="flex items-center justify-end gap-1.5">
+                            <span class="ui-badge <?= $item['status'] == 'Lunas' ? 'ui-badge-signal' : 'ui-badge-danger' ?>"><?= htmlspecialchars($item['status']) ?></span>
+                            <?php if($item['status'] == 'Lunas'): ?>
+                                <a href="index.php?page=invoice_print&id=<?= $item['invoice_id'] ?>&format=thermal" target="_blank" class="ui-btn ui-btn-sm ui-btn-outline" title="Cetak kuitansi"><i class="fas fa-print"></i></a>
+                            <?php endif; ?>
+                        </div>
                     </td>
                 </tr>
                 <?php endforeach; ?>
                 <?php if(empty($report_items)): ?>
                 <tr>
-                    <td colspan="5" style="padding:60px; text-align:center;">
-                        <i class="fas fa-inbox fa-3x" style="opacity:0.1; margin-bottom:15px; display:block;"></i>
-                        <span style="opacity:0.5;">Belum ada data transaksi untuk filter ini.</span>
-                    </td>
+                    <td colspan="5" class="px-5 py-10 text-center text-sm text-muted-foreground">Belum ada data transaksi untuk filter ini.</td>
                 </tr>
                 <?php endif; ?>
             </tbody>
         </table>
     </div>
-</div>
+</section>

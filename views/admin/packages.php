@@ -82,44 +82,41 @@ if ($action === 'sync_all') {
 ?>
 
 <?php if (isset($_GET['msg']) && $_GET['msg'] === 'updated_sync'): ?>
-<div class="glass-panel" style="margin-bottom:20px; border-left:4px solid var(--success); padding:15px; background:rgba(16,185,129,0.1); color:var(--success); display:flex; align-items:center; gap:10px;">
-    <i class="fas fa-check-circle"></i> Berhasil! Paket telah diperbarui dan seluruh tagihan pelanggan terkait telah disesuaikan otomatis.
-</div>
+<div class="ui-card mb-5 p-4 text-sm"><span class="font-semibold text-signal">Tersimpan.</span> Paket diperbarui dan tagihan pelanggan terkait disesuaikan otomatis.</div>
 <?php endif; ?>
 
 <?php if (isset($_GET['msg']) && $_GET['msg'] === 'all_synced'): ?>
-<div class="glass-panel" style="margin-bottom:20px; border-left:4px solid var(--info); padding:15px; background:rgba(59,130,246,0.1); color:var(--info); display:flex; align-items:center; gap:10px;">
-    <i class="fas fa-info-circle"></i> Berhasil menyelaraskan harga untuk <strong><?= intval($_GET['count']) ?></strong> pelanggan sesuai paket mereka saat ini.
-</div>
+<div class="ui-card mb-5 p-4 text-sm"><span class="font-semibold text-signal">Selesai.</span> Harga <strong><?= intval($_GET['count']) ?></strong> pelanggan diselaraskan dengan paket mereka saat ini.</div>
 <?php endif; ?>
 
 <?php if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_deleted'): ?>
-<div class="glass-panel" style="margin-bottom:20px; border-left:4px solid var(--danger); padding:15px; background:rgba(239,68,68,0.1); color:var(--danger); display:flex; align-items:center; gap:10px;">
-    <i class="fas fa-trash-alt"></i> Berhasil menghapus paket yang dipilih.
-</div>
+<div class="ui-card mb-5 p-4 text-sm"><span class="font-semibold text-signal">Terhapus.</span> Paket yang dipilih berhasil dihapus.</div>
 <?php endif; ?>
 
-<div class="glass-panel" style="padding: 24px;">
-    <div style="display:flex; justify-content:space-between; margin-bottom:20px; align-items:center;">
-        <h3 style="font-size:20px;"><i class="fas fa-box text-primary"></i> Manajemen Paket Layanan</h3>
-        <div style="display:flex; gap:10px;">
-            <button id="btnBulkDelete" onclick="submitBulkDelete()" class="btn btn-danger btn-sm" style="display:none;"><i class="fas fa-trash"></i> Hapus Masal (<span id="selectedCount">0</span>)</button>
-            <a href="index.php?page=admin_packages&action=sync_all" class="btn btn-ghost btn-sm" onclick="return confirm('Sinkronkan SEMUA harga pelanggan dengan harga paket terbaru?')" title="Selaraskan Semua Harga"><i class="fas fa-sync"></i> Sync Semua</a>
-            <button onclick="document.getElementById('addPackageModal').style.display='flex'" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Tambah Paket</button>
-        </div>
+<div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h2 class="m-0 text-xl font-bold sm:text-2xl">Paket layanan</h2>
+        <p class="m-0 mt-1 text-sm text-muted-foreground">Daftar paket dan biaya bulanan yang dipakai pelanggan.</p>
     </div>
+    <div class="flex flex-wrap gap-2">
+        <button id="btnBulkDelete" onclick="submitBulkDelete()" class="ui-btn ui-btn-outline text-danger" style="display:none;"><i class="fas fa-trash"></i> Hapus terpilih (<span id="selectedCount">0</span>)</button>
+        <a href="index.php?page=admin_packages&action=sync_all" class="ui-btn ui-btn-outline" onclick="return confirm('Sinkronkan SEMUA harga pelanggan dengan harga paket terbaru?')" title="Selaraskan semua harga"><i class="fas fa-sync"></i> Sinkronkan harga</a>
+        <button onclick="document.getElementById('addPackageModal').style.display='flex'" class="ui-btn ui-btn-primary"><i class="fas fa-plus"></i> Tambah paket</button>
+    </div>
+</div>
 
-    <div class="table-container">
-        <form id="bulkDeleteForm" action="index.php?page=admin_packages&action=bulk_delete" method="POST">
+<section class="ui-card overflow-hidden">
+    <form id="bulkDeleteForm" action="index.php?page=admin_packages&action=bulk_delete" method="POST">
 <?= csrf_field() ?>
-        <table>
+    <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-sm">
             <thead>
-                <tr>
-                    <th style="width:40px; text-align:center;"><input type="checkbox" id="checkAll" style="transform:scale(1.2); cursor:pointer;"></th>
-                    <th>Nama Paket</th>
-                    <th>Biaya Bulanan</th>
-                    <th>Tanggal Dibuat</th>
-                    <th>Aksi</th>
+                <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                    <th class="w-10 px-4 py-2.5 text-center font-semibold"><input type="checkbox" id="checkAll" class="h-4 w-4 cursor-pointer align-middle"></th>
+                    <th class="px-3 py-2.5 font-semibold">Nama paket</th>
+                    <th class="px-3 py-2.5 font-semibold">Biaya bulanan</th>
+                    <th class="px-3 py-2.5 font-semibold">Tanggal dibuat</th>
+                    <th class="px-4 py-2.5 text-right font-semibold sm:px-5">Aksi</th>
                 </tr>
             </thead>
             <tbody>
@@ -129,73 +126,83 @@ if ($action === 'sync_all') {
                 $packages = $db->query("SELECT * FROM packages $scope_where ORDER BY fee ASC")->fetchAll();
                 foreach($packages as $p):
                 ?>
-                <tr>
-                    <td style="text-align:center;">
-                        <input type="checkbox" name="ids[]" value="<?= $p['id'] ?>" class="package-checkbox" style="transform:scale(1.2); cursor:pointer;">
+                <tr class="border-t border-solid border-border">
+                    <td class="px-4 py-3 text-center">
+                        <input type="checkbox" name="ids[]" value="<?= $p['id'] ?>" class="package-checkbox h-4 w-4 cursor-pointer align-middle">
                     </td>
-                    <td style="font-weight:600;"><?= htmlspecialchars($p['name']) ?></td>
-                    <td style="font-weight:bold; color:var(--primary);">Rp <?= number_format($p['fee'], 0, ',', '.') ?></td>
-                    <td style="font-size:12px; color:var(--text-secondary);"><?= date('d M Y', strtotime($p['created_at'])) ?></td>
-                    <td>
-                        <div style="display:flex; gap:8px;">
-                            <button type="button" onclick="editPackage(<?= $p['id'] ?>, '<?= addslashes($p['name']) ?>', <?= $p['fee'] ?>)" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></button>
-                            <a data-method="post" href="index.php?page=admin_packages&action=delete&id=<?= $p['id'] ?>" onclick="return confirm('Hapus paket ini?')" class="btn btn-sm btn-danger" title="Hapus"><i class="fas fa-trash"></i></a>
+                    <td class="px-3 py-3 font-semibold"><?= htmlspecialchars($p['name']) ?></td>
+                    <td class="px-3 py-3 font-semibold tabular-nums">Rp <?= number_format($p['fee'], 0, ',', '.') ?></td>
+                    <td class="px-3 py-3 text-xs text-muted-foreground"><?= date('d M Y', strtotime($p['created_at'])) ?></td>
+                    <td class="px-4 py-3 text-right sm:px-5">
+                        <div class="inline-flex gap-1">
+                            <button type="button" onclick="editPackage(<?= $p['id'] ?>, '<?= addslashes($p['name']) ?>', <?= $p['fee'] ?>)" class="ui-btn ui-btn-sm ui-btn-outline" title="Edit"><i class="fas fa-edit"></i><span class="hidden sm:inline">Edit</span></button>
+                            <a data-method="post" href="index.php?page=admin_packages&action=delete&id=<?= $p['id'] ?>" onclick="return confirm('Hapus paket ini?')" class="ui-btn ui-btn-sm ui-btn-outline text-danger" title="Hapus"><i class="fas fa-trash"></i><span class="hidden sm:inline">Hapus</span></a>
                         </div>
                     </td>
                 </tr>
                 <?php endforeach; ?>
                 <?php if(count($packages) == 0): ?>
-                    <tr><td colspan="5" style="text-align:center; padding:30px;">Belum ada paket. Klik "Tambah Paket" untuk memulai.</td></tr>
+                    <tr class="border-t border-solid border-border"><td colspan="5" class="px-5 py-10 text-center text-sm text-muted-foreground">Belum ada paket. Klik "Tambah paket" untuk memulai.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>
-        </form>
     </div>
-</div>
+    </form>
+</section>
 
 <!-- Add Package Modal -->
-<div id="addPackageModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:9999;">
-    <div class="glass-panel" style="width:100%; max-width:400px; padding:24px; margin:20px;">
-        <h3 style="margin-bottom:20px;">Tambah Paket Baru</h3>
+<div id="addPackageModal" class="fixed inset-0 z-[1000] items-center justify-center bg-black/50 p-4" style="display:none;">
+    <div class="ui-card w-full max-w-md p-5 sm:p-6">
+        <div class="mb-4 flex items-start justify-between gap-4">
+            <h3 class="m-0 text-lg font-bold">Tambah paket baru</h3>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-ghost" onclick="document.getElementById('addPackageModal').style.display='none'" aria-label="Tutup"><i class="fas fa-times"></i></button>
+        </div>
         <form action="index.php?page=admin_packages&action=add" method="POST">
 <?= csrf_field() ?>
-            <div class="form-group">
-                <label>Nama Paket (Contoh: 10 Mbps)</label>
-                <input type="text" name="name" class="form-control" placeholder="Contoh: 10 Mbps" required>
+            <div class="grid gap-4">
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Nama paket</span>
+                    <input type="text" name="name" class="form-control" placeholder="Contoh: 10 Mbps" required>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Biaya bulanan (Rp)</span>
+                    <input type="number" name="fee" class="form-control" placeholder="Contoh: 150000" required>
+                </label>
             </div>
-            <div class="form-group">
-                <label>Biaya Bulanan (Rp)</label>
-                <input type="number" name="fee" class="form-control" placeholder="Contoh: 150000" required>
-            </div>
-            <div class="form-actions-row" style="margin-top:20px;">
-                <button type="button" class="btn btn-sm btn-ghost" onclick="document.getElementById('addPackageModal').style.display='none'">Batal</button>
-                <button type="submit" class="btn btn-sm btn-primary">Simpan Paket</button>
+            <div class="mt-6 flex justify-end gap-2">
+                <button type="button" class="ui-btn ui-btn-outline" onclick="document.getElementById('addPackageModal').style.display='none'">Batal</button>
+                <button type="submit" class="ui-btn ui-btn-primary">Simpan paket</button>
             </div>
         </form>
     </div>
 </div>
 
 <!-- Edit Package Modal -->
-<div id="editPackageModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:9999;">
-    <div class="glass-panel" style="width:100%; max-width:400px; padding:24px; margin:20px;">
-        <h3 style="margin-bottom:20px;">Edit Paket</h3>
+<div id="editPackageModal" class="fixed inset-0 z-[1000] items-center justify-center bg-black/50 p-4" style="display:none;">
+    <div class="ui-card w-full max-w-md p-5 sm:p-6">
+        <div class="mb-4 flex items-start justify-between gap-4">
+            <h3 class="m-0 text-lg font-bold">Edit paket</h3>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-ghost" onclick="document.getElementById('editPackageModal').style.display='none'" aria-label="Tutup"><i class="fas fa-times"></i></button>
+        </div>
         <form action="index.php?page=admin_packages&action=update" method="POST">
 <?= csrf_field() ?>
             <input type="hidden" name="id" id="editPkgId">
-            <div class="form-group">
-                <label>Nama Paket</label>
-                <input type="text" name="name" id="editPkgName" class="form-control" required>
+            <div class="grid gap-4">
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Nama paket</span>
+                    <input type="text" name="name" id="editPkgName" class="form-control" required>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Biaya bulanan (Rp)</span>
+                    <input type="number" name="fee" id="editPkgFee" class="form-control" required>
+                </label>
             </div>
-            <div class="form-group">
-                <label>Biaya Bulanan (Rp)</label>
-                <input type="number" name="fee" id="editPkgFee" class="form-control" required>
+            <div class="mt-4 rounded-md border border-solid border-danger/40 bg-danger-soft p-3 text-xs text-danger">
+                <strong>Penting:</strong> mengubah paket ini akan otomatis memperbarui biaya bulanan seluruh pelanggan yang memakai paket ini.
             </div>
-            <div style="font-size:11px; color:var(--danger); background:rgba(239, 68, 68, 0.1); padding:10px; border-radius:8px; margin-top:15px; border-left:3px solid var(--danger);">
-                <i class="fas fa-exclamation-triangle"></i> <strong>PENTING:</strong> Mengubah paket ini akan otomatis memperbarui biaya bulanan seluruh pelanggan yang terdaftar menggunakan paket ini.
-            </div>
-            <div class="form-actions-row" style="margin-top:20px;">
-                <button type="button" class="btn btn-sm btn-ghost" onclick="document.getElementById('editPackageModal').style.display='none'">Batal</button>
-                <button type="submit" class="btn btn-sm btn-primary">Update Paket</button>
+            <div class="mt-6 flex justify-end gap-2">
+                <button type="button" class="ui-btn ui-btn-outline" onclick="document.getElementById('editPackageModal').style.display='none'">Batal</button>
+                <button type="submit" class="ui-btn ui-btn-primary">Update paket</button>
             </div>
         </form>
     </div>

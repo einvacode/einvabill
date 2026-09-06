@@ -109,65 +109,55 @@ foreach($targets as $t) {
 }
 ?>
 
-<div class="glass-panel" style="padding: 24px; margin-bottom: 30px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px; margin-bottom:15px;">
-        <div style="flex:1; min-width:300px;">
-            <h3 style="font-size:18px; color:#25D366; margin:0;"><i class="fab fa-whatsapp"></i> Broadcast Pengingat WhatsApp</h3>
-            <p style="font-size:13px; color:var(--text-secondary); margin-top:5px; line-height:1.4;">Mengirim tagihan H-3 jatuh tempo secara massal ke WA Web.</p>
-            
-            <div style="margin-top:10px; display:flex; align-items:center; gap:8px;">
-                <label class="switch" style="position:relative; display:inline-block; width:34px; height:20px;">
-                    <input type="checkbox" id="manualMode" style="opacity:0; width:0; height:0;">
-                    <span style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#ccc; transition:.4s; border-radius:34px;"></span>
-                </label>
-                <span style="font-size:12px; color:var(--text-primary); font-weight:600;">Mode Konfirmasi Manual (Lebih Akurat)</span>
-            </div>
+<section class="ui-card mb-6 p-4 sm:p-5">
+    <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div class="min-w-0 flex-1">
+            <h3 class="m-0 text-[15px] font-bold">Broadcast pengingat WhatsApp</h3>
+            <p class="m-0 mt-1 text-xs text-muted-foreground">Mengirim tagihan H-3 jatuh tempo secara massal ke WA Web.</p>
+
+            <label class="switch mt-3 inline-flex cursor-pointer items-center gap-2">
+                <input type="checkbox" id="manualMode" class="peer sr-only">
+                <span class="relative inline-block h-5 w-9 rounded-full bg-muted transition-colors before:absolute before:bottom-[3px] before:left-[3px] before:h-3.5 before:w-3.5 before:rounded-full before:bg-white before:shadow before:transition-transform before:content-[''] peer-checked:bg-primary peer-checked:before:translate-x-4"></span>
+                <span class="text-xs font-medium text-foreground">Mode konfirmasi manual (lebih akurat)</span>
+            </label>
         </div>
         <?php if(count($broadcast_data) > 0): ?>
-            <button id="btnStartBroadcast" class="btn btn-sm" style="background:#25D366; color:white; border:none; padding:12px 24px; font-weight:700; box-shadow: 0 4px 14px rgba(37,211,102,0.3);" onclick="startBroadcast()">
-                <i class="fas fa-paper-plane"></i> Mulai (<?= count($broadcast_data) ?> Antrean)
+            <button id="btnStartBroadcast" class="ui-btn ui-btn-wa w-full sm:w-auto" onclick="startBroadcast()">
+                <i class="fas fa-paper-plane"></i> Mulai (<?= count($broadcast_data) ?> antrean)
             </button>
         <?php endif; ?>
     </div>
-    
-    <style>
-        #manualMode:checked + span { background-color: #25D366; }
-        #manualMode:checked + span:before { transform: translateX(14px); }
-        .switch span:before { position:absolute; content:""; height:14px; width:14px; left:3px; bottom:3px; background-color:white; transition:.4s; border-radius:50%; }
-        .btn-confirm { background:#3b82f6; color:white; border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:700; }
-        .btn-confirm:hover { background:#2563eb; }
-    </style>
-    
+
     <?php if(count($broadcast_data) == 0): ?>
-        <div style="padding:15px; background:rgba(37, 211, 102, 0.05); color:var(--success); border-radius:12px; text-align:center; border: 1px dashed rgba(37, 211, 102, 0.3);">
-            Tidak ada tagihan mendesak. Semua terpantau aman!
+        <div class="rounded-lg border border-solid border-border px-5 py-8 text-center text-sm text-muted-foreground">
+            Tidak ada tagihan mendesak. Semua terpantau aman.
         </div>
     <?php else: ?>
-        <div id="broadcastStatusArea" style="display:none; padding:15px; background:var(--bg-color); border-radius:12px; margin-bottom:15px; border: 1px solid var(--glass-border);">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <div style="font-size:13px;"><strong id="statusLabel" style="color:var(--warning)">STATUS:</strong> <span id="broadcastStatusText" style="color:var(--text-primary);">Menyiapkan antrean...</span></div>
+        <div id="broadcastStatusArea" class="mb-4 rounded-lg border border-solid border-border bg-muted p-4" style="display:none;">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="text-[13px]"><strong id="statusLabel" class="text-accent-ink">STATUS:</strong> <span id="broadcastStatusText" class="text-foreground">Menyiapkan antrean...</span></div>
                 <div id="manualActionArea" style="display:none;">
-                    <button class="btn-confirm" onclick="confirmSent()"><i class="fas fa-check"></i> Sudah Terkirim & Lanjut</button>
+                    <button class="ui-btn ui-btn-sm ui-btn-primary" onclick="confirmSent()"><i class="fas fa-check"></i> Sudah terkirim, lanjut</button>
                 </div>
             </div>
-            <div style="width:100%; background:var(--progress-bg); height:6px; border-radius:10px; overflow:hidden; margin-top:12px;">
-                <div id="broadcastProgressBar" style="width:0%; height:100%; background:#25D366; transition: width 0.3s ease;"></div>
+            <div class="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-border">
+                <div id="broadcastProgressBar" class="h-full bg-signal transition-[width] duration-300" style="width:0%;"></div>
             </div>
         </div>
-        
-        <div class="table-container" style="max-height: 250px; overflow-y:auto; border:1px solid var(--glass-border);">
-            <table style="width:100%; margin:0;">
+
+        <div class="table-container max-h-64 overflow-y-auto rounded-lg border border-solid border-border">
+            <table class="w-full border-collapse text-sm" style="margin:0;">
                 <?php foreach($broadcast_data as $idx => $bd): ?>
-                <tr id="bc_row_<?= $idx ?>" style="transition:all 0.3s;">
-                    <td style="padding:12px; width:40px; text-align:center;"><i id="bc_icon_<?= $idx ?>" class="fas fa-clock" style="color:var(--text-secondary);"></i></td>
-                    <td style="padding:12px;"><strong style="color:var(--text-primary);"><?= $bd['name'] ?></strong></td>
-                    <td style="padding:12px; font-family:monospace; color:var(--text-secondary); text-align:right; font-size:12px;"><?= '+' . $bd['phone'] ?></td>
+                <tr id="bc_row_<?= $idx ?>" class="border-t border-solid border-border first:border-t-0">
+                    <td class="w-10 px-3 py-2.5 text-center"><i id="bc_icon_<?= $idx ?>" class="fas fa-clock text-muted-foreground"></i></td>
+                    <td class="px-3 py-2.5 font-semibold text-foreground"><?= $bd['name'] ?></td>
+                    <td class="px-3 py-2.5 text-right font-mono text-xs tabular-nums text-muted-foreground"><?= '+' . $bd['phone'] ?></td>
                 </tr>
                 <?php endforeach; ?>
             </table>
         </div>
     <?php endif; ?>
-</div>
+</section>
 
 <script>
 const broadcastData = <?= json_encode($broadcast_data) ?>;

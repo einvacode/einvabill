@@ -106,147 +106,161 @@ $packages = $db->query("SELECT * FROM landing_packages WHERE tenant_id=$tenant_i
 $partner_logos = $db->query("SELECT * FROM landing_logos WHERE tenant_id=$tenant_id ORDER BY sort_order ASC, id ASC")->fetchAll();
 ?>
 
-<div class="glass-panel" style="padding: 24px; margin-bottom:20px;">
-    <h3 style="font-size:20px; margin-bottom:20px;"><i class="fas fa-edit"></i> Pengaturan Konten Web Profil (Landing Page)</h3>
+<div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h2 class="m-0 text-xl font-bold sm:text-2xl">Pengaturan konten web profil (landing page)</h2>
+    </div>
+    <a href="index.php?page=landing" target="_blank" class="ui-btn ui-btn-outline"><i class="fas fa-external-link-alt"></i> Lihat hasil web</a>
+</div>
+
+<div class="ui-card mb-5 p-5 sm:p-6">
     <form action="index.php?page=admin_landing&action=update_profile" method="POST">
 <?= csrf_field() ?>
-        <div class="form-group">
-            <label>Judul Utama (Hero Title)</label>
-            <input type="text" name="landing_hero_title" class="form-control" value="<?= htmlspecialchars($site_settings['landing_hero_title'] ?? '') ?>" placeholder="Misal: Era Baru Koneksi Super Cepat & Stabil">
+        <div class="grid gap-4">
+            <label class="block">
+                <span class="mb-1 block text-xs font-medium text-muted-foreground">Judul utama (hero title)</span>
+                <input type="text" name="landing_hero_title" class="form-control" value="<?= htmlspecialchars($site_settings['landing_hero_title'] ?? '') ?>" placeholder="Misal: Era Baru Koneksi Super Cepat & Stabil">
+            </label>
+            <label class="block">
+                <span class="mb-1 block text-xs font-medium text-muted-foreground">Sub-teks (hero subtitle)</span>
+                <input type="text" name="landing_hero_text" class="form-control" value="<?= htmlspecialchars($site_settings['landing_hero_text'] ?? '') ?>" placeholder="Misal: Menyediakan layanan internet handal...">
+            </label>
+            <label class="block">
+                <span class="mb-1 block text-xs font-medium text-muted-foreground">Tentang kami (about us)</span>
+                <textarea name="landing_about_us" class="form-control" rows="4" placeholder="Ceritakan latar belakang profil perusahaan Anda di sini..."><?= htmlspecialchars($site_settings['landing_about_us'] ?? '') ?></textarea>
+            </label>
         </div>
-        <div class="form-group">
-            <label>Sub-teks (Hero Subtitle)</label>
-            <input type="text" name="landing_hero_text" class="form-control" value="<?= htmlspecialchars($site_settings['landing_hero_text'] ?? '') ?>" placeholder="Misal: Menyediakan layanan internet handal...">
+        <div class="mt-6 flex justify-end gap-2">
+            <button type="submit" class="ui-btn ui-btn-primary w-full sm:w-auto"><i class="fas fa-save"></i> Simpan profil perusahaan</button>
         </div>
-        <div class="form-group">
-            <label>Tentang Kami (About Us)</label>
-            <textarea name="landing_about_us" class="form-control" rows="4" placeholder="Ceritakan latar belakang profil perusahaan Anda di sini..."><?= htmlspecialchars($site_settings['landing_about_us'] ?? '') ?></textarea>
-        </div>
-        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Simpan Profil Perusahaan</button>
-        <a href="index.php?page=landing" target="_blank" class="btn btn-ghost"><i class="fas fa-external-link-alt"></i> Lihat Hasil Web</a>
     </form>
 </div>
 
-<div class="glass-panel" style="padding: 24px;">
-    <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
-        <h3 style="font-size:18px; margin:0;"><i class="fas fa-box"></i> Etalase Paket Internet / Layanan</h3>
-        <button onclick="document.getElementById('modalPackage').style.display='flex';" class="btn btn-sm btn-primary"><i class="fas fa-plus"></i> Tambah Layanan</button>
+<section class="ui-card mb-5 overflow-hidden">
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-solid border-border px-4 py-3 sm:px-5">
+        <h3 class="m-0 text-[15px] font-bold">Etalase paket internet / layanan</h3>
+        <button onclick="document.getElementById('modalPackage').style.display='flex';" class="ui-btn ui-btn-sm ui-btn-outline"><i class="fas fa-plus"></i> Tambah layanan</button>
     </div>
-    
-    <div class="table-container">
-        <table>
+
+    <div class="table-container overflow-x-auto">
+        <table class="w-full border-collapse text-sm">
             <thead>
-                <tr>
-                    <th style="width:50px;">Urutan</th>
-                    <th>Nama Paket/Layanan</th>
-                    <th>Kecepatan</th>
-                    <th>Harga (Rp)</th>
-                    <th>Status</th>
-                    <th>Aksi</th>
+                <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                    <th class="w-[60px] px-4 py-2.5 text-center font-semibold">Urutan</th>
+                    <th class="px-4 py-2.5 font-semibold">Nama paket/layanan</th>
+                    <th class="px-4 py-2.5 font-semibold">Kecepatan</th>
+                    <th class="px-4 py-2.5 font-semibold">Harga (Rp)</th>
+                    <th class="px-4 py-2.5 font-semibold">Status</th>
+                    <th class="px-4 py-2.5 text-right font-semibold">Aksi</th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach($packages as $pkg): ?>
-                <tr>
-                    <td style="text-align:center;"><?= $pkg['sort_order'] ?></td>
-                    <td style="font-weight:600;"><?= htmlspecialchars($pkg['name']) ?></td>
-                    <td><span class="badge" style="background:rgba(59,130,246,0.2); color:#60a5fa;"><?= htmlspecialchars($pkg['speed']) ?></span></td>
-                    <td style="font-weight:bold;">
+                <tr class="border-t border-solid border-border">
+                    <td class="px-4 py-3 text-center tabular-nums"><?= $pkg['sort_order'] ?></td>
+                    <td class="px-4 py-3 font-semibold"><?= htmlspecialchars($pkg['name']) ?></td>
+                    <td class="px-4 py-3"><span class="ui-badge ui-badge-muted"><?= htmlspecialchars($pkg['speed']) ?></span></td>
+                    <td class="px-4 py-3 font-semibold tabular-nums">
                         <?= $pkg['price'] > 0 ? 'Rp ' . number_format($pkg['price'], 0, ',', '.') : 'Hubungi Kami' ?>
                     </td>
-                    <td>
-                        <?= $pkg['is_active'] ? '<span class="badge badge-success">Aktif / Tampil</span>' : '<span class="badge badge-danger">Disembunyikan</span>' ?>
+                    <td class="px-4 py-3">
+                        <?= $pkg['is_active'] ? '<span class="ui-badge ui-badge-signal">Aktif / tampil</span>' : '<span class="ui-badge ui-badge-muted">Disembunyikan</span>' ?>
                     </td>
-                    <td>
-                        <button onclick="editPackage(<?= htmlspecialchars(json_encode($pkg)) ?>)" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i> Edit</button>
-                        <a data-method="post" href="index.php?page=admin_landing&action=delete_package&id=<?= $pkg['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus etalase layanan ini?')"><i class="fas fa-trash"></i></a>
+                    <td class="px-4 py-3 text-right">
+                        <div class="inline-flex gap-1">
+                            <button onclick="editPackage(<?= htmlspecialchars(json_encode($pkg)) ?>)" class="ui-btn ui-btn-sm ui-btn-outline" title="Edit"><i class="fas fa-edit"></i><span class="hidden sm:inline">Edit</span></button>
+                            <a data-method="post" href="index.php?page=admin_landing&action=delete_package&id=<?= $pkg['id'] ?>" class="ui-btn ui-btn-sm ui-btn-outline text-danger" title="Hapus" onclick="return confirm('Hapus etalase layanan ini?')"><i class="fas fa-trash"></i></a>
+                        </div>
                     </td>
                 </tr>
                 <?php endforeach; ?>
                 <?php if(count($packages) == 0): ?>
-                    <tr><td colspan="6" style="text-align:center;">Belum ada etalase layanan/paket yang ditambahkan.</td></tr>
+                    <tr class="border-t border-solid border-border"><td colspan="6" class="px-5 py-10 text-center text-sm text-muted-foreground">Belum ada etalase layanan/paket yang ditambahkan.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>
     </div>
-</div>
+</section>
 
 <!-- Modal Dialog -->
-<div id="modalPackage" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center; backdrop-filter:blur(5px);">
-    <div class="glass-panel" style="width:100%; max-width:500px; padding:24px; position:relative;">
-        <h3 id="modalTitle" style="margin-bottom:20px;">Tambah Paket / Layanan</h3>
+<div id="modalPackage" class="fixed inset-0 z-[1000] items-center justify-center bg-black/50 p-4" style="display:none;">
+    <div class="ui-card w-full max-w-lg p-5 sm:p-6">
+        <div class="mb-4 flex items-start justify-between gap-4">
+            <h3 id="modalTitle" class="m-0 text-lg font-bold">Tambah paket / layanan</h3>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-ghost" onclick="document.getElementById('modalPackage').style.display='none';" aria-label="Tutup">✕</button>
+        </div>
         <form action="index.php?page=admin_landing&action=save_package" method="POST">
 <?= csrf_field() ?>
             <input type="hidden" name="id" id="pkg_id">
-            
-            <div class="form-group">
-                <label>Nama Paket (Misal: Paket Keluarga, atau Corporate Dedicated)</label>
-                <input type="text" name="name" id="pkg_name" class="form-control" required>
-            </div>
-            
-            <div class="flex" style="gap:15px;">
-                <div class="form-group" style="flex:1;">
-                    <label>Kecepatan (Misal: 20 Mbps)</label>
-                    <input type="text" name="speed" id="pkg_speed" class="form-control">
+
+            <div class="grid gap-4">
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Nama paket (misal: Paket Keluarga, atau Corporate Dedicated)</span>
+                    <input type="text" name="name" id="pkg_name" class="form-control" required>
+                </label>
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Kecepatan (misal: 20 Mbps)</span>
+                        <input type="text" name="speed" id="pkg_speed" class="form-control">
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Harga per bulan (angka, 0 = hubungi kami)</span>
+                        <input type="number" name="price" id="pkg_price" class="form-control" value="0">
+                    </label>
                 </div>
-                <div class="form-group" style="flex:1;">
-                    <label>Harga per Bulan (Angka, 0=Hubungi Kami)</label>
-                    <input type="number" name="price" id="pkg_price" class="form-control" value="0">
+
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Fitur & keunggulan (pisahkan dengan koma)</span>
+                    <input type="text" name="features" id="pkg_features" class="form-control" placeholder="100% Fiber Optic, Bantuan 24 Jam, Tanpa FUP">
+                    <small class="mt-1 block text-xs text-muted-foreground">Contoh: Fiber Optic, Bantuan 24 Jam, Tanpa FUP</small>
+                </label>
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Nomor urut tampil</span>
+                        <input type="number" name="sort_order" id="pkg_sort" class="form-control" value="1">
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Status tayang</span>
+                        <select name="is_active" id="pkg_active" class="form-control">
+                            <option value="1">Aktif / Tampil</option>
+                            <option value="0">Sembunyikan</option>
+                        </select>
+                    </label>
                 </div>
             </div>
-            
-            <div class="form-group">
-                <label>Fitur & Keunggulan (Pisahkan dengan Koma)</label>
-                <input type="text" name="features" id="pkg_features" class="form-control" placeholder="100% Fiber Optic, Bantuan 24 Jam, Tanpa FUP">
-                <small style="color:var(--text-secondary);">Contoh: Fiber Optic, Bantuan 24 Jam, Tanpa FUP</small>
-            </div>
-            
-            <div class="flex" style="gap:15px;">
-                <div class="form-group" style="flex:1;">
-                    <label>Nomor Urut Tampil</label>
-                    <input type="number" name="sort_order" id="pkg_sort" class="form-control" value="1">
-                </div>
-                <div class="form-group" style="flex:1;">
-                    <label>Status Tayang</label>
-                    <select name="is_active" id="pkg_active" class="form-control">
-                        <option value="1">Aktif / Tampil</option>
-                        <option value="0">Sembunyikan</option>
-                    </select>
-                </div>
-            </div>
-            
-            <div class="form-actions-row" style="margin-top:10px;">
-                <button type="button" class="btn btn-ghost" onclick="document.getElementById('modalPackage').style.display='none';">Batal</button>
-                <button type="submit" class="btn btn-primary">Simpan Etalase</button>
+
+            <div class="form-actions-row mt-6 flex justify-end gap-2">
+                <button type="button" class="ui-btn ui-btn-outline" onclick="document.getElementById('modalPackage').style.display='none';">Batal</button>
+                <button type="submit" class="ui-btn ui-btn-primary">Simpan etalase</button>
             </div>
         </form>
     </div>
 </div>
 
 <!-- Powered By Logos Panel -->
-<div class="glass-panel" style="padding: 24px; margin-top: 20px;">
-    <h3 style="font-size:18px; margin-bottom:8px;"><i class="fas fa-handshake"></i> Logo "Didukung Oleh" (Powered By)</h3>
-    <p style="color:var(--text-secondary); font-size:13px; margin-bottom:20px;">Upload logo mitra/vendor yang akan ditampilkan di halaman landing page publik Anda (Tidak terbatas).</p>
-    
-    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:20px; margin-bottom:20px;">
+<div class="ui-card p-5 sm:p-6">
+    <h3 class="m-0 text-[15px] font-bold">Logo "Didukung oleh" (powered by)</h3>
+    <p class="m-0 mb-4 mt-1 text-xs text-muted-foreground">Upload logo mitra/vendor yang akan ditampilkan di halaman landing page publik Anda (tidak terbatas).</p>
+
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <?php foreach($partner_logos as $p): ?>
-        <div style="background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); border-radius:12px; padding:20px; text-align:center; position:relative;">
-            <img src="<?= htmlspecialchars($p['image_path']) ?>" style="max-height:60px; max-width:100%; margin-bottom:15px; filter:none;" alt="Logo">
-            <br>
-            <a data-method="post" href="index.php?page=admin_landing&action=delete_logo&id=<?= $p['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus logo ini?')" style="font-size:11px; width:100%;">
+        <div class="flex flex-col items-center rounded-lg border border-solid border-border p-4 text-center">
+            <img src="<?= htmlspecialchars($p['image_path']) ?>" class="mb-4 max-h-[60px] max-w-full" alt="Logo">
+            <a data-method="post" href="index.php?page=admin_landing&action=delete_logo&id=<?= $p['id'] ?>" class="ui-btn ui-btn-sm ui-btn-outline text-danger mt-auto w-full" onclick="return confirm('Hapus logo ini?')">
                 <i class="fas fa-trash"></i> Hapus
             </a>
         </div>
         <?php endforeach; ?>
 
         <!-- Form Tambah Baru -->
-        <div style="background:rgba(59,130,246,0.05); border:2px dashed var(--primary); border-radius:12px; padding:20px; text-align:center; display:flex; flex-direction:column; justify-content:center; align-items:center; min-height:140px;">
-            <form action="index.php?page=admin_landing&action=add_logo" method="POST" enctype="multipart/form-data" id="form-new-logo" style="width:100%;">
+        <div class="flex min-h-[140px] flex-col items-center justify-center rounded-lg border border-dashed border-border p-4 text-center">
+            <form action="index.php?page=admin_landing&action=add_logo" method="POST" enctype="multipart/form-data" id="form-new-logo" class="w-full">
 <?= csrf_field() ?>
-                <i class="fas fa-plus-circle" style="font-size:24px; color:var(--primary); margin-bottom:10px;"></i>
-                <div style="font-size:12px; font-weight:700; color:var(--primary); margin-bottom:10px;">TAMBAH LOGO BARU</div>
-                <input type="file" name="logo_file" accept="image/*" class="form-control" style="font-size:11px; margin-bottom:10px;" onchange="this.form.submit()">
-                <div style="font-size:9px; color:var(--text-secondary);">Pilih file untuk upload otomatis</div>
+                <div class="mb-2 text-xs font-semibold text-foreground">Tambah logo baru</div>
+                <input type="file" name="logo_file" accept="image/*" class="form-control mb-2 text-xs" onchange="this.form.submit()">
+                <div class="text-[11px] text-muted-foreground">Pilih file untuk upload otomatis</div>
             </form>
         </div>
     </div>

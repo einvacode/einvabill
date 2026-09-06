@@ -73,161 +73,167 @@ if ($action === 'edit' && isset($_GET['id'])) {
 ?>
 
 <div class="container-fluid">
-    <div class="top-actions-row" style="margin-bottom:25px;">
-        <?php if($action !== 'add' && $action !== 'edit'): ?>
-            <a href="index.php?page=admin_banners&action=add" class="btn btn-primary">
-                <i class="fas fa-plus"></i> Tambah Banner Baru
-            </a>
-        <?php endif; ?>
-    </div>
-
     <?php if($action === 'add' || $action === 'edit'): ?>
-        <div class="glass-panel" style="max-width:800px; margin: 0 auto; padding:30px; border-radius:20px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px;">
-                <h3 style="font-size:20px; font-weight:600;"><?= $action === 'edit' ? 'Edit Banner' : 'Buat Banner Baru' ?></h3>
-                <a href="index.php?page=admin_banners" class="btn btn-ghost btn-sm">Batal</a>
+        <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+            <div>
+                <h2 class="m-0 text-xl font-bold sm:text-2xl"><?= $action === 'edit' ? 'Edit banner' : 'Buat banner baru' ?></h2>
             </div>
+            <a href="index.php?page=admin_banners" class="ui-btn ui-btn-outline">Batal</a>
+        </div>
 
+        <div class="ui-card mx-auto max-w-3xl p-5 sm:p-6">
             <form action="index.php?page=admin_banners&action=save" method="POST" enctype="multipart/form-data">
 <?= csrf_field() ?>
                 <input type="hidden" name="id" value="<?= $editing['id'] ?? '' ?>">
                 <input type="hidden" name="existing_image" value="<?= $editing['image_path'] ?? '' ?>">
-                
-                <div class="form-group mb-4">
-                    <label style="display:block; margin-bottom:8px; font-weight:500;">Judul Banner</label>
-                    <input type="text" name="title" class="form-control" placeholder="Contoh: Pemeliharaan Jaringan Rutin" value="<?= htmlspecialchars($editing['title'] ?? '') ?>" required>
-                </div>
 
-                <div class="form-group mb-4">
-                    <label style="display:block; margin-bottom:8px; font-weight:500;">Isi Informasi</label>
-                    <textarea name="content" class="form-control" rows="4" placeholder="Tulis rincian informasi di sini..." required style="resize:none;"><?= htmlspecialchars($editing['content'] ?? '') ?></textarea>
-                </div>
+                <div class="grid gap-4">
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Judul banner</span>
+                        <input type="text" name="title" class="form-control" placeholder="Contoh: Pemeliharaan jaringan rutin" value="<?= htmlspecialchars($editing['title'] ?? '') ?>" required>
+                    </label>
 
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-                    <div class="form-group mb-4">
-                        <label style="display:block; margin-bottom:8px; font-weight:500;">Target Portal</label>
-                        <select name="target_role" class="form-control" required>
-                            <option value="all" <?= ($editing['target_role'] ?? '') == 'all' ? 'selected' : '' ?>>Semua (Pelanggan, Mitra & Penagih)</option>
-                            <option value="partner" <?= ($editing['target_role'] ?? '') == 'partner' ? 'selected' : '' ?>>Hanya Mitra</option>
-                            <option value="customer" <?= ($editing['target_role'] ?? '') == 'customer' ? 'selected' : '' ?>>Hanya Pelanggan</option>
-                            <option value="collector" <?= ($editing['target_role'] ?? '') == 'collector' ? 'selected' : '' ?>>Hanya Tukang Tagih</option>
-                        </select>
-                    </div>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Isi informasi</span>
+                        <textarea name="content" class="form-control resize-none" rows="4" placeholder="Tulis rincian informasi di sini..." required><?= htmlspecialchars($editing['content'] ?? '') ?></textarea>
+                    </label>
 
-                    <div class="form-group mb-4">
-                        <label style="display:block; margin-bottom:8px; font-weight:500;">Status Aktif</label>
-                        <div style="display:flex; align-items:center; height:45px;">
-                            <label class="switch">
-                                <input type="checkbox" name="is_active" <?= (!isset($editing) || ($editing['is_active'] ?? 0)) ? 'checked' : '' ?>>
-                                <span class="slider round"></span>
-                            </label>
-                            <span style="margin-left:12px; font-size:14px; color:var(--text-secondary);">Tampilkan di dashboard</span>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-medium text-muted-foreground">Target portal</span>
+                            <select name="target_role" class="form-control" required>
+                                <option value="all" <?= ($editing['target_role'] ?? '') == 'all' ? 'selected' : '' ?>>Semua (Pelanggan, Mitra & Penagih)</option>
+                                <option value="partner" <?= ($editing['target_role'] ?? '') == 'partner' ? 'selected' : '' ?>>Hanya Mitra</option>
+                                <option value="customer" <?= ($editing['target_role'] ?? '') == 'customer' ? 'selected' : '' ?>>Hanya Pelanggan</option>
+                                <option value="collector" <?= ($editing['target_role'] ?? '') == 'collector' ? 'selected' : '' ?>>Hanya Tukang Tagih</option>
+                            </select>
+                        </label>
+
+                        <div class="block">
+                            <span class="mb-1 block text-xs font-medium text-muted-foreground">Status aktif</span>
+                            <div class="flex h-10 items-center">
+                                <label class="switch">
+                                    <input type="checkbox" name="is_active" <?= (!isset($editing) || ($editing['is_active'] ?? 0)) ? 'checked' : '' ?>>
+                                    <span class="slider round"></span>
+                                </label>
+                                <span class="ml-3 text-sm text-muted-foreground">Tampilkan di dashboard</span>
+                            </div>
                         </div>
                     </div>
+
+                    <div class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Gambar banner (opsional)</span>
+                        <?php if(!empty($editing['image_path'])): ?>
+                            <div class="mb-2">
+                                <img src="<?= $editing['image_path'] ?>" class="h-[60px] w-[100px] cursor-pointer rounded-md border border-solid border-border object-cover" onclick="openImagePreview(this.src)" title="Perbesar">
+                                <p class="m-0 mt-1 text-[11px] text-muted-foreground">Gambar saat ini</p>
+                            </div>
+                        <?php endif; ?>
+                        <input type="file" name="image" class="form-control" accept="image/*">
+                        <p class="m-0 mt-1 text-xs text-muted-foreground">Rekomendasi ukuran: 1200x400 (aspek rasio lebar).</p>
+                    </div>
                 </div>
 
-                <div class="form-group mb-4">
-                    <label style="display:block; margin-bottom:8px; font-weight:500;">Gambar Banner (Opsional)</label>
-                    <?php if(!empty($editing['image_path'])): ?>
-                        <div style="margin-bottom:10px;">
-                            <img src="<?= $editing['image_path'] ?>" style="width:100px; height:60px; object-fit:cover; border-radius:8px; border:1px solid var(--glass-border); cursor:pointer;" onclick="openImagePreview(this.src)" title="Perbesar">
-                            <p style="font-size:11px; color:var(--text-secondary);">Gambar saat ini</p>
-                        </div>
-                    <?php endif; ?>
-                    <input type="file" name="image" class="form-control" accept="image/*">
-                    <p style="font-size:12px; color:var(--text-secondary); margin-top:5px;">Rekomendasi ukuran: 1200x400 (aspek rasio lebar).</p>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="submit" class="ui-btn ui-btn-primary w-full sm:w-auto">Simpan banner</button>
                 </div>
-
-                <button type="submit" class="btn btn-primary" style="width:100%; padding:14px;">Simpan Banner</button>
             </form>
         </div>
     <?php else: ?>
-        <div class="glass-panel" style="padding:0; border-radius:20px; overflow:hidden;">
-            <table class="table" style="margin-bottom:0;">
-                <thead>
-                    <tr>
-                        <th style="padding:15px 24px;">Informasi</th>
-                        <th style="padding:15px 24px;">Target</th>
-                        <th style="padding:15px 24px;">Status</th>
-                        <th style="padding:15px 24px; text-align:right;">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach($banners as $b): ?>
-                    <tr>
-                        <td style="padding:15px 24px;">
-                            <div style="display:flex; gap:15px; align-items:center;">
-                                <?php if($b['image_path']): ?>
-                                    <img src="<?= $b['image_path'] ?>" style="width:60px; height:40px; object-fit:cover; border-radius:6px; cursor:pointer;" onclick="openImagePreview(this.src)" title="Perbesar">
-                                <?php else: ?>
-                                    <div style="width:60px; height:40px; background:rgba(255,255,255,0.05); border-radius:6px; display:flex; align-items:center; justify-content:center;">
-                                        <i class="fas fa-image" style="opacity:0.3;"></i>
-                                    </div>
-                                <?php endif; ?>
-                                <div>
-                                    <div style="font-weight:600; color:var(--text-primary);"><?= htmlspecialchars($b['title']) ?></div>
-                                    <div style="font-size:12px; color:var(--text-secondary); max-width:300px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                                        <?= htmlspecialchars($b['content']) ?>
+        <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+            <div>
+                <h2 class="m-0 text-xl font-bold sm:text-2xl">Banner informasi</h2>
+            </div>
+            <a href="index.php?page=admin_banners&action=add" class="ui-btn ui-btn-primary w-full sm:w-auto">
+                <i class="fas fa-plus"></i> Tambah banner baru
+            </a>
+        </div>
+
+        <section class="ui-card overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse text-sm">
+                    <thead>
+                        <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                            <th class="px-4 py-2.5 font-semibold">Informasi</th>
+                            <th class="px-4 py-2.5 font-semibold">Target</th>
+                            <th class="px-4 py-2.5 font-semibold">Status</th>
+                            <th class="px-4 py-2.5 text-right font-semibold">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach($banners as $b): ?>
+                        <tr class="border-t border-solid border-border">
+                            <td class="px-4 py-3">
+                                <div class="flex items-center gap-3">
+                                    <?php if($b['image_path']): ?>
+                                        <img src="<?= $b['image_path'] ?>" class="h-10 w-[60px] shrink-0 cursor-pointer rounded-md border border-solid border-border object-cover" onclick="openImagePreview(this.src)" title="Perbesar">
+                                    <?php else: ?>
+                                        <div class="flex h-10 w-[60px] shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                                            <i class="fas fa-image"></i>
+                                        </div>
+                                    <?php endif; ?>
+                                    <div class="min-w-0">
+                                        <div class="font-semibold text-foreground"><?= htmlspecialchars($b['title']) ?></div>
+                                        <div class="max-w-[300px] truncate text-xs text-muted-foreground">
+                                            <?= htmlspecialchars($b['content']) ?>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </td>
-                        <td style="padding:15px 24px;">
-                            <?php if($b['target_role'] == 'all'): ?>
-                                <span class="badge" style="background:rgba(59, 130, 246, 0.1); color:#3b82f6; border:1px solid rgba(59,130,246,0.2);">Semua</span>
-                            <?php elseif($b['target_role'] == 'partner'): ?>
-                                <span class="badge" style="background:rgba(168, 85, 247, 0.1); color:#a855f7; border:1px solid rgba(168,85,247,0.2);">Mitra</span>
-                            <?php elseif($b['target_role'] == 'customer'): ?>
-                                <span class="badge" style="background:rgba(52, 211, 153, 0.1); color:#10b981; border:1px solid rgba(52,211,153,0.2);">Pelanggan</span>
-                            <?php elseif($b['target_role'] == 'collector'): ?>
-                                <span class="badge" style="background:rgba(245, 158, 11, 0.1); color:#f59e0b; border:1px solid rgba(245,158,11,0.2);">Tukang Tagih</span>
-                            <?php endif; ?>
-                        </td>
-                        <td style="padding:15px 24px;">
-                            <a data-method="post" href="index.php?page=admin_banners&action=toggle&id=<?= $b['id'] ?>" style="text-decoration:none;">
-                                <?php if($b['is_active']): ?>
-                                    <span class="badge badge-success"><i class="fas fa-check"></i> Aktif</span>
-                                <?php else: ?>
-                                    <span class="badge" style="background:rgba(148,163,184,0.1); color:#94a3b8; border:1px solid rgba(148,163,184,0.2);">Non-Aktif</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <?php if($b['target_role'] == 'all'): ?>
+                                    <span class="ui-badge ui-badge-muted">Semua</span>
+                                <?php elseif($b['target_role'] == 'partner'): ?>
+                                    <span class="ui-badge ui-badge-muted">Mitra</span>
+                                <?php elseif($b['target_role'] == 'customer'): ?>
+                                    <span class="ui-badge ui-badge-muted">Pelanggan</span>
+                                <?php elseif($b['target_role'] == 'collector'): ?>
+                                    <span class="ui-badge ui-badge-muted">Tukang tagih</span>
                                 <?php endif; ?>
-                            </a>
-                        </td>
-                        <td style="padding:15px 24px; text-align:right;">
-                            <div class="compact-action-icons" style="justify-content:flex-end; gap:8px;">
-                                <a href="index.php?page=admin_banners&action=edit&id=<?= $b['id'] ?>" class="btn btn-sm btn-ghost" title="Edit">
-                                    <i class="fas fa-edit"></i>
+                            </td>
+                            <td class="px-4 py-3">
+                                <a data-method="post" href="index.php?page=admin_banners&action=toggle&id=<?= $b['id'] ?>" class="no-underline" title="Ubah status">
+                                    <?php if($b['is_active']): ?>
+                                        <span class="ui-badge ui-badge-signal">Aktif</span>
+                                    <?php else: ?>
+                                        <span class="ui-badge ui-badge-muted">Nonaktif</span>
+                                    <?php endif; ?>
                                 </a>
-                                <a data-method="post" href="index.php?page=admin_banners&action=delete&id=<?= $b['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus banner ini?')">
-                                    <i class="fas fa-trash"></i>
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                    <?php if(empty($banners)): ?>
-                        <tr>
-                            <td colspan="4" style="text-align:center; padding:50px; color:var(--text-secondary);">
-                                <i class="fas fa-scroll" style="font-size:40px; opacity:0.1; display:block; margin-bottom:15px;"></i>
-                                Belum ada banner yang dibuat.
+                            </td>
+                            <td class="px-4 py-3 text-right">
+                                <div class="compact-action-icons inline-flex gap-1">
+                                    <a href="index.php?page=admin_banners&action=edit&id=<?= $b['id'] ?>" class="ui-btn ui-btn-sm ui-btn-outline" title="Edit">
+                                        <i class="fas fa-edit"></i><span class="hidden sm:inline">Edit</span>
+                                    </a>
+                                    <a data-method="post" href="index.php?page=admin_banners&action=delete&id=<?= $b['id'] ?>" class="ui-btn ui-btn-sm ui-btn-outline text-danger" title="Hapus" onclick="return confirm('Hapus banner ini?')">
+                                        <i class="fas fa-trash"></i><span class="hidden sm:inline">Hapus</span>
+                                    </a>
+                                </div>
                             </td>
                         </tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
+                        <?php endforeach; ?>
+                        <?php if(empty($banners)): ?>
+                            <tr class="border-t border-solid border-border">
+                                <td colspan="4" class="px-5 py-10 text-center text-sm text-muted-foreground">
+                                    Belum ada banner yang dibuat.
+                                </td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </section>
     <?php endif; ?>
 </div>
 
 <style>
-/* Modern Switch Toggle */
+/* Switch toggle */
 .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
 .switch input { opacity: 0; width: 0; height: 0; }
-.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.1); transition: .4s; }
-.slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #D9E0E2; transition: background-color .15s ease; }
+.slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: transform .15s ease; }
 input:checked + .slider { background-color: var(--primary); }
 input:checked + .slider:before { transform: translateX(20px); }
 .slider.round { border-radius: 34px; }
 .slider.round:before { border-radius: 50%; }
-
-.mb-4 { margin-bottom: 1.5rem; }
 </style>

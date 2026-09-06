@@ -57,84 +57,69 @@ try {
 } catch (Exception $e) {}
 ?>
 
-<div class="glass-panel" style="padding:30px; margin-bottom:30px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:30px;">
-        <div>
-            <h2 style="margin:0; font-size:24px; font-weight:800;"><i class="fas fa-star text-warning"></i> Pelanggan Baru</h2>
-            <p style="margin:8px 0 0; font-size:13px; color:var(--text-secondary);">Pelanggan yang terdaftar di <?= date('F Y', strtotime($current_month . '-01')) ?></p>
-        </div>
-        <div style="display:flex; gap:10px;">
-            <a href="index.php?page=admin_customers&filter_month=<?= date('Y-m') ?>" class="btn btn-sm btn-secondary">
-                <i class="fas fa-filter"></i> Filter di Manajemen Pelanggan
-            </a>
-            <a href="index.php?page=admin_dashboard" class="btn btn-sm btn-ghost">
-                <i class="fas fa-arrow-left"></i> Kembali
-            </a>
-        </div>
+<div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h2 class="m-0 text-xl font-bold sm:text-2xl">Pelanggan baru</h2>
+        <p class="m-0 mt-1 text-sm text-muted-foreground">Pelanggan yang terdaftar di <?= date('F Y', strtotime($current_month . '-01')) ?></p>
     </div>
+    <div class="flex flex-wrap gap-2">
+        <a href="index.php?page=admin_dashboard" class="ui-btn ui-btn-outline"><i class="fas fa-arrow-left"></i> Kembali</a>
+        <a href="index.php?page=admin_customers&filter_month=<?= date('Y-m') ?>" class="ui-btn ui-btn-outline"><i class="fas fa-filter"></i> Filter di manajemen pelanggan</a>
+    </div>
+</div>
 
-    <!-- Stats -->
-    <div style="background:rgba(59, 130, 246, 0.1); border:1px solid rgba(59, 130, 246, 0.3); border-radius:12px; padding:20px; margin-bottom:30px;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div>
-                <div style="font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; margin-bottom:5px;">Total Pelanggan Baru</div>
-                <div style="font-size:32px; font-weight:800; color:#3b82f6;"><?= $total ?></div>
-            </div>
-            <div style="text-align:right; font-size:12px; color:var(--text-secondary);">
-                Bulan: <strong><?= date('M Y', strtotime($current_month . '-01')) ?></strong><br>
-                Menampilkan <strong><?= min($items_per_page, count($new_customers)) ?></strong> dari <strong><?= $total ?></strong>
-            </div>
+<div class="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+    <div class="ui-card p-4">
+        <div class="text-xs font-medium text-muted-foreground">Total pelanggan baru</div>
+        <div class="mt-1 text-2xl font-extrabold tabular-nums"><?= $total ?></div>
+        <div class="text-xs text-muted-foreground">Bulan <?= date('M Y', strtotime($current_month . '-01')) ?></div>
+    </div>
+    <div class="ui-card p-4">
+        <div class="text-xs font-medium text-muted-foreground">Ditampilkan</div>
+        <div class="mt-1 text-2xl font-extrabold tabular-nums"><?= min($items_per_page, count($new_customers)) ?></div>
+        <div class="text-xs text-muted-foreground">dari <?= $total ?> pelanggan</div>
+    </div>
+</div>
+
+<section class="ui-card overflow-hidden">
+    <div class="flex items-center justify-between gap-3 border-b border-solid border-border px-4 py-3 sm:px-5">
+        <div>
+            <h3 class="m-0 text-[15px] font-bold">Daftar pelanggan baru</h3>
+            <p class="m-0 text-xs text-muted-foreground">Urut dari tanggal daftar terbaru</p>
         </div>
     </div>
 
     <?php if (empty($new_customers)): ?>
-    <div style="text-align:center; padding:60px 30px; color:var(--text-secondary);">
-        <i class="fas fa-inbox" style="font-size:48px; opacity:0.3; display:block; margin-bottom:15px;"></i>
-        <h3 style="margin:0 0 8px; color:var(--text-secondary);">Tidak Ada Pelanggan Baru</h3>
-        <p style="margin:0; font-size:13px;">Belum ada pelanggan yang terdaftar di bulan ini.</p>
-    </div>
+    <div class="px-5 py-10 text-center text-sm text-muted-foreground">Belum ada pelanggan yang terdaftar di bulan ini.</div>
     <?php else: ?>
 
-    <!-- Table -->
-    <div style="border-radius:10px; border:1px solid var(--glass-border); overflow-x:auto;">
-        <table style="width:100%; font-size:12px;">
+    <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-sm">
             <thead>
-                <tr style="background:rgba(var(--primary-rgb), 0.05); border-bottom:1px solid var(--glass-border);">
-                    <th style="padding:12px; text-align:left; font-weight:700; color:var(--text-secondary);">Kode</th>
-                    <th style="padding:12px; text-align:left; font-weight:700; color:var(--text-secondary);">Nama Pelanggan</th>
-                    <th style="padding:12px; text-align:left; font-weight:700; color:var(--text-secondary);">Kontak</th>
-                    <th style="padding:12px; text-align:left; font-weight:700; color:var(--text-secondary);">Paket</th>
-                    <th style="padding:12px; text-align:right; font-weight:700; color:var(--text-secondary);">Biaya</th>
-                    <th style="padding:12px; text-align:center; font-weight:700; color:var(--text-secondary);">Tgl Daftar</th>
-                    <th style="padding:12px; text-align:center; font-weight:700; color:var(--text-secondary);">Action</th>
+                <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                    <th class="px-4 py-2.5 font-semibold">Kode</th>
+                    <th class="px-4 py-2.5 font-semibold">Nama pelanggan</th>
+                    <th class="px-4 py-2.5 font-semibold">Kontak</th>
+                    <th class="px-4 py-2.5 font-semibold">Paket</th>
+                    <th class="px-4 py-2.5 text-right font-semibold">Biaya</th>
+                    <th class="px-4 py-2.5 text-center font-semibold">Tgl daftar</th>
+                    <th class="px-4 py-2.5 text-right font-semibold">Aksi</th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach ($new_customers as $cust): ?>
-                <tr style="border-bottom:1px solid var(--glass-border); hover:background:rgba(var(--primary-rgb), 0.02);">
-                    <td style="padding:12px; font-family:monospace; font-weight:600; color:var(--primary);">
-                        <?= htmlspecialchars($cust['customer_code']) ?>
+                <tr class="border-t border-solid border-border">
+                    <td class="px-4 py-3 font-mono text-xs text-muted-foreground"><?= htmlspecialchars($cust['customer_code']) ?></td>
+                    <td class="px-4 py-3">
+                        <div class="font-semibold"><?= htmlspecialchars($cust['name']) ?></div>
+                        <div class="text-xs text-muted-foreground">ID: <?= $cust['id'] ?></div>
                     </td>
-                    <td style="padding:12px;">
-                        <strong><?= htmlspecialchars($cust['name']) ?></strong>
-                        <br><span style="font-size:10px; color:var(--text-secondary); opacity:0.7;">ID: <?= $cust['id'] ?></span>
-                    </td>
-                    <td style="padding:12px; font-size:11px;">
-                        <?= htmlspecialchars($cust['contact'] ?? '-') ?>
-                    </td>
-                    <td style="padding:12px; font-size:11px;">
-                        <?= htmlspecialchars($cust['package_name'] ?? '-') ?>
-                    </td>
-                    <td style="padding:12px; text-align:right; font-weight:600;">
-                        Rp <?= number_format($cust['monthly_fee'] ?? 0, 0, ',', '.') ?>
-                    </td>
-                    <td style="padding:12px; text-align:center; font-size:11px;">
-                        <?= date('d/m/Y', strtotime($cust['registration_date'])) ?>
-                    </td>
-                    <td style="padding:12px; text-align:center;">
-                        <a href="index.php?page=admin_customers&action=details&id=<?= $cust['id'] ?>" class="btn btn-xs btn-primary" style="padding:5px 8px; font-size:11px;">
-                            <i class="fas fa-eye"></i> Detail
-                        </a>
+                    <td class="px-4 py-3"><?= htmlspecialchars($cust['contact'] ?? '-') ?></td>
+                    <td class="px-4 py-3"><?= htmlspecialchars($cust['package_name'] ?? '-') ?></td>
+                    <td class="px-4 py-3 text-right font-semibold tabular-nums">Rp <?= number_format($cust['monthly_fee'] ?? 0, 0, ',', '.') ?></td>
+                    <td class="px-4 py-3 text-center tabular-nums"><?= date('d/m/Y', strtotime($cust['registration_date'])) ?></td>
+                    <td class="px-4 py-3 text-right">
+                        <a href="index.php?page=admin_customers&action=details&id=<?= $cust['id'] ?>" class="ui-btn ui-btn-sm ui-btn-outline" title="Detail"><i class="fas fa-eye"></i><span class="hidden sm:inline">Detail</span></a>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -142,32 +127,21 @@ try {
         </table>
     </div>
 
-    <!-- Pagination -->
     <?php if ($total_pages > 1): ?>
-    <div style="margin-top:20px; display:flex; justify-content:center; gap:5px;">
+    <div class="flex flex-wrap items-center justify-center gap-1.5 border-t border-solid border-border px-4 py-3">
         <?php if ($page > 1): ?>
-        <a href="index.php?page=admin_new_customers&page=1" class="btn btn-sm btn-ghost">
-            <i class="fas fa-chevron-left"></i> Pertama
-        </a>
-        <a href="index.php?page=admin_new_customers&page=<?= $page - 1 ?>" class="btn btn-sm btn-ghost">
-            <i class="fas fa-chevron-left"></i> Sebelumnya
-        </a>
+        <a href="index.php?page=admin_new_customers&page=1" class="ui-btn ui-btn-sm ui-btn-outline"><i class="fas fa-chevron-left"></i> Pertama</a>
+        <a href="index.php?page=admin_new_customers&page=<?= $page - 1 ?>" class="ui-btn ui-btn-sm ui-btn-outline">Sebelumnya</a>
         <?php endif; ?>
 
-        <span style="padding:8px 12px; color:var(--text-secondary); font-size:12px;">
-            Halaman <?= $page ?> dari <?= $total_pages ?>
-        </span>
+        <span class="px-3 text-xs text-muted-foreground">Halaman <?= $page ?> dari <?= $total_pages ?></span>
 
         <?php if ($page < $total_pages): ?>
-        <a href="index.php?page=admin_new_customers&page=<?= $page + 1 ?>" class="btn btn-sm btn-ghost">
-            Berikutnya <i class="fas fa-chevron-right"></i>
-        </a>
-        <a href="index.php?page=admin_new_customers&page=<?= $total_pages ?>" class="btn btn-sm btn-ghost">
-            Terakhir <i class="fas fa-chevron-right"></i>
-        </a>
+        <a href="index.php?page=admin_new_customers&page=<?= $page + 1 ?>" class="ui-btn ui-btn-sm ui-btn-outline">Berikutnya</a>
+        <a href="index.php?page=admin_new_customers&page=<?= $total_pages ?>" class="ui-btn ui-btn-sm ui-btn-outline">Terakhir <i class="fas fa-chevron-right"></i></a>
         <?php endif; ?>
     </div>
     <?php endif; ?>
 
     <?php endif; ?>
-</div>
+</section>

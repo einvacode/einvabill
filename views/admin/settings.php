@@ -71,165 +71,167 @@ if (!$settings) {
 }
 ?>
 
-<div class="glass-panel" style="padding: 24px; max-width:700px; margin:0 auto; margin-bottom:40px;">
-    <h3 style="font-size:20px; margin-bottom:20px;"><i class="fas fa-cog text-primary"></i> Pengaturan Aplikasi</h3>
-    
-    <?php if(isset($success)): ?>
-        <div class="badge badge-success" style="display:block; margin-bottom:20px; padding:12px; border-radius:10px; font-weight:700; text-align:center;">
-            <i class="fas fa-check-circle"></i> <?= htmlspecialchars($success) ?>
+<div class="mx-auto max-w-3xl">
+    <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div>
+            <h2 class="m-0 text-xl font-bold sm:text-2xl">Pengaturan aplikasi</h2>
+            <p class="m-0 mt-1 text-sm text-muted-foreground">Profil perusahaan, template WhatsApp, integrasi router, dan sistem.</p>
         </div>
-    <?php endif; ?>
-
-    <div class="settings-tabs" style="display:flex; gap:10px; margin-bottom:25px; border-bottom:1px solid var(--glass-border); overflow-x:auto; padding-bottom:5px;">
-        <button type="button" class="settings-tab active btn btn-sm btn-ghost" onclick="switchTab(this, 'profil')" style="border-radius:10px; white-space:nowrap; padding:10px 20px;"><i class="fas fa-building"></i> Profil</button>
-        <button type="button" class="settings-tab btn btn-sm btn-ghost" onclick="switchTab(this, 'whatsapp')" style="border-radius:10px; white-space:nowrap; padding:10px 20px;"><i class="fab fa-whatsapp"></i> Template WhatsApp</button>
-        <button type="button" class="settings-tab btn btn-sm btn-ghost" onclick="switchTab(this, 'router')" style="border-radius:10px; white-space:nowrap; padding:10px 20px;"><i class="fas fa-server"></i> Integrasi Router</button>
-        <button type="button" class="settings-tab btn btn-sm btn-ghost" onclick="switchTab(this, 'system')" style="border-radius:10px; white-space:nowrap; padding:10px 20px;"><i class="fas fa-microchip"></i> Sistem</button>
     </div>
 
-    <form method="POST" enctype="multipart/form-data">
+    <?php if(isset($success)): ?>
+        <div class="ui-card mb-5 p-4 text-sm"><span class="font-semibold text-signal">Tersimpan.</span> <?= htmlspecialchars($success) ?></div>
+    <?php endif; ?>
+    <?php if(isset($error)): ?>
+        <div class="ui-card mb-5 p-4 text-sm border-danger/40"><span class="font-semibold text-danger">Gagal.</span> <?= htmlspecialchars($error) ?></div>
+    <?php endif; ?>
+
+    <div class="settings-tabs mb-5 flex w-fit max-w-full flex-wrap gap-1 rounded-md border border-solid border-border bg-card p-1">
+        <button type="button" class="settings-tab active cursor-pointer whitespace-nowrap rounded-sm border-0 bg-transparent px-3 py-1.5 text-sm font-medium text-muted-foreground" onclick="switchTab(this, 'profil')">Profil</button>
+        <button type="button" class="settings-tab cursor-pointer whitespace-nowrap rounded-sm border-0 bg-transparent px-3 py-1.5 text-sm font-medium text-muted-foreground" onclick="switchTab(this, 'whatsapp')">Template WhatsApp</button>
+        <button type="button" class="settings-tab cursor-pointer whitespace-nowrap rounded-sm border-0 bg-transparent px-3 py-1.5 text-sm font-medium text-muted-foreground" onclick="switchTab(this, 'router')">Integrasi router</button>
+        <button type="button" class="settings-tab cursor-pointer whitespace-nowrap rounded-sm border-0 bg-transparent px-3 py-1.5 text-sm font-medium text-muted-foreground" onclick="switchTab(this, 'system')">Sistem</button>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data" class="ui-card p-5 sm:p-6">
 <?= csrf_field() ?>
         <!-- PROFIL SECTION -->
         <div id="profil" class="settings-section active-section">
-            <div class="form-group">
-                <label>Nama Perusahaan / Branding</label>
-                <input type="text" name="company_name" class="form-control" value="<?= htmlspecialchars($settings['company_name']) ?>" required>
-            </div>
-            <div class="form-group">
-                <label>Slogan (Tagline)</label>
-                <input type="text" name="company_tagline" class="form-control" value="<?= htmlspecialchars($settings['company_tagline']) ?>">
-            </div>
-            <div class="form-group">
-                <label>WhatsApp Utama (Pusat Bantuan)</label>
-                <input type="text" name="company_contact" class="form-control" value="<?= htmlspecialchars($settings['company_contact']) ?>" required>
-            </div>
-            <div class="form-group">
-                <label>Alamat Kantor</label>
-                <textarea name="company_address" class="form-control" rows="2"><?= htmlspecialchars($settings['company_address']) ?></textarea>
-            </div>
-            <div class="form-group">
-                <label>Domain / URL Aplikasi (Untuk Link WA)</label>
-                <input type="text" name="site_url" class="form-control" value="<?= htmlspecialchars($settings['site_url'] ?? 'http://fibernodeinternet.com') ?>" placeholder="http://domainanda.com">
-                <small style="color:var(--text-secondary);">Gunakan domain Anda untuk membuat link otomatis di pesan WhatsApp.</small>
-            </div>
-            <div class="form-group" style="background:var(--hover-bg); padding:15px; border-radius:12px; border:1px solid var(--glass-border);">
-                <label style="margin-bottom:10px; display:flex; align-items:center; gap:8px;">
-                    <i class="fas fa-image"></i> Logo Perusahaan (Auto-Fit)
+            <div class="grid gap-4">
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Nama perusahaan / branding</span>
+                    <input type="text" name="company_name" class="form-control" value="<?= htmlspecialchars($settings['company_name']) ?>" required>
                 </label>
-                
-                <div class="logo-preview-area" style="overflow: hidden; pointer-events: none; height: 160px; display: flex; align-items: center; justify-content: center;">
-                    <?php if(!empty($settings['company_logo'])): ?>
-                        <div class="brand-logo-wrapper" style="width:100%; height:100%; max-height: 100%;">
-                            <img src="<?= htmlspecialchars($settings['company_logo']) ?>" alt="Preview" style="max-height: 100%; object-fit: contain;">
-                        </div>
-                    <?php else: ?>
-                        <div style="text-align:center; color:var(--text-secondary); opacity:0.5;">
-                            <i class="fas fa-plus-circle" style="font-size:30px; margin-bottom:5px;"></i><br>
-                            <span style="font-size:12px;">Belum Ada Logo</span>
-                        </div>
-                    <?php endif; ?>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Slogan (tagline)</span>
+                    <input type="text" name="company_tagline" class="form-control" value="<?= htmlspecialchars($settings['company_tagline']) ?>">
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">WhatsApp utama (pusat bantuan)</span>
+                    <input type="text" name="company_contact" class="form-control" value="<?= htmlspecialchars($settings['company_contact']) ?>" required>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Alamat kantor</span>
+                    <textarea name="company_address" class="form-control" rows="2"><?= htmlspecialchars($settings['company_address']) ?></textarea>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Domain / URL aplikasi (untuk link WA)</span>
+                    <input type="text" name="site_url" class="form-control" value="<?= htmlspecialchars($settings['site_url'] ?? 'http://fibernodeinternet.com') ?>" placeholder="http://domainanda.com">
+                    <span class="mt-1 block text-xs text-muted-foreground">Gunakan domain Anda untuk membuat link otomatis di pesan WhatsApp.</span>
+                </label>
+
+                <div class="rounded-md border border-solid border-border bg-background p-4">
+                    <div class="mb-3 text-sm font-semibold">Logo perusahaan</div>
+                    <div class="mb-3 flex h-40 items-center justify-center overflow-hidden rounded-md border border-solid border-border bg-card p-3">
+                        <?php if(!empty($settings['company_logo'])): ?>
+                            <img src="<?= htmlspecialchars($settings['company_logo']) ?>" alt="Preview" class="max-h-full max-w-full object-contain">
+                        <?php else: ?>
+                            <span class="text-xs text-muted-foreground">Belum ada logo</span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
+                        <input type="file" name="logo_file" class="form-control" accept="image/*">
+                        <button type="button" class="ui-btn ui-btn-outline" onclick="document.querySelector('[name=company_logo]').value=''" title="Hapus URL"><i class="fas fa-times"></i> Hapus URL</button>
+                    </div>
+                    <input type="text" name="company_logo" class="form-control mt-2" value="<?= htmlspecialchars($settings['company_logo'] ?? '') ?>" placeholder="Atau tempel URL logo di sini">
+                    <p class="m-0 mt-2 text-xs text-muted-foreground">Logo kotak maupun persegi panjang akan disesuaikan otomatis.</p>
                 </div>
 
-                <div style="display:grid; grid-template-columns: 1fr auto; gap:10px; align-items:center;">
-                    <input type="file" name="logo_file" class="form-control" accept="image/*" style="padding:10px; height:auto; background:var(--input-bg);">
-                    <button type="button" class="btn btn-sm btn-ghost" onclick="document.querySelector('[name=company_logo]').value=''" title="Hapus URL" style="height:44px;"><i class="fas fa-times"></i></button>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Info rekening pembayaran</span>
+                    <textarea name="bank_account" class="form-control" rows="2" placeholder="BCA: 123xxxx a/n Nama"><?= htmlspecialchars($settings['bank_account'] ?? '') ?></textarea>
+                </label>
+
+                <div class="rounded-md border border-solid border-border bg-background p-4">
+                    <div class="mb-3 text-sm font-semibold">Foto QRIS pembayaran</div>
+                    <?php if(!empty($settings['company_qris'])): ?>
+                        <div class="mb-3 flex max-h-52 items-center justify-center overflow-hidden rounded-md border border-solid border-border bg-card p-3">
+                            <img src="<?= htmlspecialchars($settings['company_qris']) ?>" alt="QRIS" class="max-h-48 max-w-full object-contain">
+                        </div>
+                    <?php endif; ?>
+                    <input type="file" name="qris_file" class="form-control" accept="image/*">
+                    <input type="text" name="company_qris" class="form-control mt-2" value="<?= htmlspecialchars($settings['company_qris'] ?? '') ?>" placeholder="Atau tempel URL QRIS di sini">
+                    <p class="m-0 mt-2 text-xs text-muted-foreground">Unggah foto QRIS perusahaan Anda agar pelanggan bisa membayar dengan memindai.</p>
                 </div>
-                <input type="text" name="company_logo" class="form-control" value="<?= htmlspecialchars($settings['company_logo'] ?? '') ?>" placeholder="Atau paste URL Logo di sini" style="margin-top:10px; font-size:12px; padding:12px; height:auto;">
-                <small style="color:var(--text-secondary); margin-top:8px; display:block; font-size:11px; line-height:1.4;">
-                    <i class="fas fa-info-circle"></i> Sistem akan otomatis menyesuaikan logo <strong>Kotak</strong> atau <strong>Persegi Panjang</strong> agar tetap terlihat profesional.
-                </small>
-            </div>
-            <div class="form-group">
-                <label>Info Rekening Pembayaran</label>
-                <textarea name="bank_account" class="form-control" rows="2" placeholder="BCA: 123xxxx a/n Nama"><?= htmlspecialchars($settings['bank_account'] ?? '') ?></textarea>
-            </div>
-            <div class="form-group" style="background:var(--hover-bg); padding:15px; border-radius:12px; border:1px solid var(--glass-border); margin-top:15px;">
-                <label style="margin-bottom:10px; display:block;"><i class="fas fa-qrcode"></i> Foto QRIS Pembayaran</label>
-                <?php if(!empty($settings['company_qris'])): ?>
-                    <div class="logo-preview-area" style="max-height: 200px; height: auto; overflow: hidden; pointer-events: none; margin-bottom: 12px; border-style: solid; border-width: 1px;">
-                        <img src="<?= htmlspecialchars($settings['company_qris']) ?>" style="max-height:100%; max-width: 100%; object-fit: contain; border-radius: 8px;">
-                    </div>
-                <?php endif; ?>
-                <input type="file" name="qris_file" class="form-control" accept="image/*">
-                <input type="text" name="company_qris" class="form-control" value="<?= htmlspecialchars($settings['company_qris'] ?? '') ?>" placeholder="Atau paste URL QRIS di sini" style="margin-top:10px;">
-                <small style="color:var(--text-secondary); margin-top:5px; display:block;">Unggah foto QRIS PT Anda agar pelanggan bisa melakukan scan pembayaran.</small>
             </div>
         </div>
 
         <!-- WHATSAPP SECTION -->
         <div id="whatsapp" class="settings-section" style="display:none;">
-            <div class="form-group">
-                <label>Template Pesan (Belum Lunas)</label>
-                <textarea name="wa_template" class="form-control" rows="5"><?= htmlspecialchars($settings['wa_template'] ?? '') ?></textarea>
-                <small style="color:var(--text-secondary); margin-top:5px; display:block; font-size:11px;">Variabel: {nama}, {id_cust}, {paket}, {bulan}, {tagihan}, {jatuh_tempo}, {rekening}, {tunggakan}, {total_harus}, {link_tagihan}, {perusahaan}</small>
-            </div>
-            <div class="form-group">
-                <label style="font-weight: 700; font-size: 13px; margin-bottom: 8px; display: block;">Template Kuitansi (Lunas/Sudah Bayar)</label>
-                <textarea name="wa_template_paid" class="form-control" style="height: 120px; font-size: 13px;" placeholder="Gunakan: {nama}, {tagihan}, {id_cust}, {link_tagihan}"><?= htmlspecialchars($settings['wa_template_paid'] ?? '') ?></textarea>
-                <small style="color:var(--text-secondary); margin-top:5px; display:block; font-size:11px;">Variabel: {nama}, {id_cust}, {paket}, {bulan}, {tagihan}, {total_bayar}, {tunggakan}, {sisa_tunggakan}, {status_pembayaran}, {waktu_bayar}, {admin}, {link_tagihan}</small>
+            <div class="grid gap-4">
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Template pesan (belum lunas)</span>
+                    <textarea name="wa_template" class="form-control" rows="5"><?= htmlspecialchars($settings['wa_template'] ?? '') ?></textarea>
+                    <span class="mt-1 block text-xs text-muted-foreground">Variabel: {nama}, {id_cust}, {paket}, {bulan}, {tagihan}, {jatuh_tempo}, {rekening}, {tunggakan}, {total_harus}, {link_tagihan}, {perusahaan}</span>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Template kuitansi (lunas / sudah bayar)</span>
+                    <textarea name="wa_template_paid" class="form-control" rows="5" placeholder="Gunakan: {nama}, {tagihan}, {id_cust}, {link_tagihan}"><?= htmlspecialchars($settings['wa_template_paid'] ?? '') ?></textarea>
+                    <span class="mt-1 block text-xs text-muted-foreground">Variabel: {nama}, {id_cust}, {paket}, {bulan}, {tagihan}, {total_bayar}, {tunggakan}, {sisa_tunggakan}, {status_pembayaran}, {waktu_bayar}, {admin}, {link_tagihan}</span>
+                </label>
             </div>
         </div>
 
         <!-- ROUTER SECTION -->
         <div id="router" class="settings-section" style="display:none;">
-            <div class="form-group">
-                <label>IP Mikrotik / Host</label>
-                <input type="text" name="router_ip" class="form-control" value="<?= htmlspecialchars($settings['router_ip'] ?? '') ?>">
-            </div>
-            <div class="flex" style="gap:10px;">
-                 <div class="form-group" style="flex:1;">
-                    <label>Username API</label>
-                    <input type="text" name="router_user" class="form-control" value="<?= htmlspecialchars($settings['router_user'] ?? '') ?>">
+            <div class="grid gap-4">
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">IP Mikrotik / host</span>
+                    <input type="text" name="router_ip" class="form-control" value="<?= htmlspecialchars($settings['router_ip'] ?? '') ?>">
+                </label>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Username API</span>
+                        <input type="text" name="router_user" class="form-control" value="<?= htmlspecialchars($settings['router_user'] ?? '') ?>">
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Port (default 8728)</span>
+                        <input type="text" name="router_port" class="form-control" value="<?= htmlspecialchars($settings['router_port'] ?? '8728') ?>">
+                    </label>
                 </div>
-                <div class="form-group" style="flex:1;">
-                    <label>Port (Default 8728)</label>
-                    <input type="text" name="router_port" class="form-control" value="<?= htmlspecialchars($settings['router_port'] ?? '8728') ?>">
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Password API</label>
-                <input type="password" name="router_pass" class="form-control" value="<?= htmlspecialchars($settings['router_pass'] ?? '') ?>">
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Password API</span>
+                    <input type="password" name="router_pass" class="form-control" value="<?= htmlspecialchars($settings['router_pass'] ?? '') ?>">
+                </label>
             </div>
         </div>
 
         <!-- SYSTEM SECTION -->
         <div id="system" class="settings-section" style="display:none;">
-            <div style="background: rgba(59, 130, 246, 0.05); padding: 25px; border-radius: 15px; border: 1px dashed var(--primary); text-align: center;">
-                <i class="fas fa-sync-alt" style="font-size: 32px; color: var(--primary); margin-bottom: 15px;"></i>
-                <h4 style="margin-bottom: 10px;">Update Aplikasi Otomatis</h4>
-                <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 20px;">
-                    Dapatkan fitur terbaru, perbaikan bug, dan optimasi performa langsung dari pusat pembaruan.
-                </p>
-                <a href="index.php?page=admin_updater" class="btn btn-primary" style="width: 100%; padding: 12px;">Buka Pengelola Update</a>
+            <div class="flex flex-col gap-3 rounded-md border border-solid border-border bg-background p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <div class="text-sm font-semibold">Update aplikasi otomatis</div>
+                    <p class="m-0 mt-1 text-xs text-muted-foreground">Fitur terbaru, perbaikan bug, dan optimasi performa langsung dari pusat pembaruan.</p>
+                </div>
+                <a href="index.php?page=admin_updater" class="ui-btn ui-btn-outline w-full sm:w-auto">Buka pengelola update</a>
             </div>
 
-            <div style="margin-top:20px; background: rgba(59, 130, 246, 0.05); padding: 20px; border-radius: 12px; border: 1px solid var(--glass-border);">
-                <h5 style="margin-bottom:15px;"><i class="fas fa-satellite-dish"></i> Konfigurasi TR-069 (GenieACS)</h5>
-                <div class="form-group">
-                    <label>GenieACS API URL</label>
-                    <input type="text" name="acs_url" class="form-control" value="<?= htmlspecialchars($settings['acs_url'] ?? '') ?>" placeholder="http://1.2.3.4:7557">
-                    <small style="color:var(--text-secondary);">Gunakan port default GenieACS (7557).</small>
-                </div>
-                <div class="flex" style="gap:10px;">
-                    <div class="form-group" style="flex:1;">
-                        <label>Username API (Opsional)</label>
-                        <input type="text" name="acs_user" class="form-control" value="<?= htmlspecialchars($settings['acs_user'] ?? '') ?>">
-                    </div>
-                    <div class="form-group" style="flex:1;">
-                        <label>Password API (Opsional)</label>
-                        <input type="password" name="acs_pass" class="form-control" value="<?= htmlspecialchars($settings['acs_pass'] ?? '') ?>">
+            <div class="mt-4 rounded-md border border-solid border-border bg-background p-4">
+                <div class="mb-3 text-sm font-semibold">Konfigurasi TR-069 (GenieACS)</div>
+                <div class="grid gap-4">
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">GenieACS API URL</span>
+                        <input type="text" name="acs_url" class="form-control" value="<?= htmlspecialchars($settings['acs_url'] ?? '') ?>" placeholder="http://1.2.3.4:7557">
+                        <span class="mt-1 block text-xs text-muted-foreground">Gunakan port default GenieACS (7557).</span>
+                    </label>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-medium text-muted-foreground">Username API (opsional)</span>
+                            <input type="text" name="acs_user" class="form-control" value="<?= htmlspecialchars($settings['acs_user'] ?? '') ?>">
+                        </label>
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-medium text-muted-foreground">Password API (opsional)</span>
+                            <input type="password" name="acs_pass" class="form-control" value="<?= htmlspecialchars($settings['acs_pass'] ?? '') ?>">
+                        </label>
                     </div>
                 </div>
             </div>
-            
-            <div style="margin-top: 20px; text-align: center; font-size: 11px; color: var(--text-secondary);">
-                Versi Saat Ini: v1.5.0-Stable <br>
-                License: <?= LICENSE_ST ?>
-            </div>
+
+            <p class="m-0 mt-4 text-xs text-muted-foreground">Versi saat ini: v1.5.0-Stable · Lisensi: <?= LICENSE_ST ?></p>
         </div>
 
-        <div style="margin-top: 30px; padding-top:20px; border-top:1px solid var(--glass-border);">
-            <button type="submit" class="btn btn-primary" style="width:100%; font-weight:800; font-size:18px;"><i class="fas fa-save"></i> SIMPAN SEMUA</button>
+        <div class="mt-6 flex justify-end gap-2 border-t border-solid border-border pt-4">
+            <button type="submit" class="ui-btn ui-btn-primary w-full sm:w-auto"><i class="fas fa-save"></i> Simpan semua</button>
         </div>
     </form>
 </div>

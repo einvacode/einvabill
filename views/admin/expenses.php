@@ -68,157 +68,177 @@ $end_month = date('Y-m-t');
 $total_expense_month = $db->query("SELECT SUM(amount) FROM expenses e $scope_where AND e.date BETWEEN '$start_month' AND '$end_month'")->fetchColumn() ?: 0;
 ?>
 
-<div class="glass-panel" style="padding: 24px;">
-    <div style="display:flex; justify-content:space-between; margin-bottom:20px; align-items:center; flex-wrap:wrap; gap:15px;">
-        <h3 style="font-size:20px;"><i class="fas fa-wallet text-primary"></i> Manajemen Pengeluaran</h3>
-        <div style="display:flex; gap:10px;">
-            <div style="background:rgba(244, 63, 94, 0.1); padding:8px 15px; border-radius:10px; border:1px solid rgba(244, 63, 94, 0.2); display:flex; align-items:center; gap:10px;">
-                <span style="font-size:12px; color:var(--text-secondary);">Bulan Ini:</span>
-                <span style="font-weight:700; color:#f43f5e;">Rp <?= number_format($total_expense_month, 0, ',', '.') ?></span>
-            </div>
-            <button onclick="document.getElementById('addExpenseModal').style.display='flex'" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Tambah Pengeluaran</button>
+<!-- Page header -->
+<div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h2 class="m-0 text-xl font-bold sm:text-2xl">Manajemen pengeluaran</h2>
+        <p class="m-0 mt-1 text-sm text-muted-foreground">Catatan biaya operasional, belanja barang, dan insentif.</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <button type="button" onclick="document.getElementById('addExpenseModal').style.display='flex'" class="ui-btn ui-btn-primary w-full sm:w-auto"><i class="fas fa-plus"></i> Tambah pengeluaran</button>
+    </div>
+</div>
+
+<?php if(isset($_GET['msg'])): ?>
+    <div class="ui-card mb-5 p-4 text-sm font-semibold text-signal">
+        <?php
+            if($_GET['msg'] == 'added') echo "Pengeluaran berhasil ditambahkan.";
+            if($_GET['msg'] == 'updated') echo "Data pengeluaran diperbarui.";
+            if($_GET['msg'] == 'deleted') echo "Catatan pengeluaran dihapus.";
+        ?>
+    </div>
+<?php endif; ?>
+
+<!-- Stats -->
+<div class="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+    <div class="ui-card p-4">
+        <div class="text-xs font-medium text-muted-foreground">Pengeluaran bulan ini</div>
+        <div class="mt-1 text-xl font-extrabold leading-tight tabular-nums text-danger sm:text-2xl">Rp <?= number_format($total_expense_month, 0, ',', '.') ?></div>
+        <div class="text-xs text-muted-foreground"><?= date('d/m/Y', strtotime($start_month)) ?> - <?= date('d/m/Y', strtotime($end_month)) ?></div>
+    </div>
+</div>
+
+<!-- Expense list -->
+<section class="ui-card overflow-hidden">
+    <div class="flex items-center justify-between gap-3 border-b border-solid border-border px-4 py-3 sm:px-5">
+        <div>
+            <h3 class="m-0 text-[15px] font-bold">Daftar pengeluaran</h3>
+            <p class="m-0 text-xs text-muted-foreground">Seratus catatan terakhir</p>
         </div>
     </div>
-
-    <?php if(isset($_GET['msg'])): ?>
-        <div class="glass-panel" style="padding:12px 20px; margin-bottom:20px; background:rgba(16, 185, 129, 0.1); border-left:4px solid var(--success); color:var(--success); font-weight:600; font-size:14px;">
-            <i class="fas fa-check-circle"></i> 
-            <?php 
-                if($_GET['msg'] == 'added') echo "Pengeluaran berhasil ditambahkan.";
-                if($_GET['msg'] == 'updated') echo "Data pengeluaran diperbarui.";
-                if($_GET['msg'] == 'deleted') echo "Catatan pengeluaran dihapus.";
-            ?>
-        </div>
-    <?php endif; ?>
-
-    <div class="table-container">
-        <table>
+    <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-sm">
             <thead>
-                <tr>
-                    <th>Tanggal</th>
-                    <th>Kategori</th>
-                    <th>Keterangan</th>
-                    <th>Jumlah</th>
-                    <th>Aksi</th>
+                <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                    <th class="px-4 py-2.5 font-semibold sm:px-5">Tanggal</th>
+                    <th class="px-3 py-2.5 font-semibold">Kategori</th>
+                    <th class="px-3 py-2.5 font-semibold">Keterangan</th>
+                    <th class="px-3 py-2.5 text-right font-semibold">Jumlah</th>
+                    <th class="px-4 py-2.5 text-right font-semibold sm:px-5">Aksi</th>
                 </tr>
             </thead>
             <tbody>
                 <?php
                 $expenses = $db->query("
-                    SELECT e.*, u.name as creator_name, u.role as creator_role 
+                    SELECT e.*, u.name as creator_name, u.role as creator_role
                     FROM expenses e
                     LEFT JOIN users u ON e.created_by = u.id
-                    $scope_where 
-                    ORDER BY e.date DESC, e.id DESC 
+                    $scope_where
+                    ORDER BY e.date DESC, e.id DESC
                     LIMIT 100
                 ")->fetchAll();
-                
+
                 foreach($expenses as $e):
                     $catColor = '#3b82f6';
                     if($e['category'] == 'Operasional') $catColor = '#10b981';
                     if($e['category'] == 'Belanja Barang') $catColor = '#f59e0b';
                     if($e['category'] == 'Insentif') $catColor = '#8b5cf6';
-                    
+
                     $roleLabel = ($e['creator_role'] === 'admin') ? 'Admin' : 'Petugas';
                     $roleColor = ($e['creator_role'] === 'admin') ? 'var(--primary)' : 'var(--text-secondary)';
                 ?>
-                <tr>
-                    <td style="font-size:13px;">
-                        <?= date('d/m/Y', strtotime($e['date'])) ?>
-                        <div style="font-size:9px; color:<?= $roleColor ?>; font-weight:700; text-transform:uppercase; margin-top:4px;">
-                            By: <?= htmlspecialchars($e['creator_name'] ?: 'System') ?>
-                        </div>
+                <tr class="border-t border-solid border-border">
+                    <td class="whitespace-nowrap px-4 py-3 sm:px-5">
+                        <div class="font-semibold tabular-nums"><?= date('d/m/Y', strtotime($e['date'])) ?></div>
+                        <div class="text-xs text-muted-foreground">Oleh: <?= htmlspecialchars($e['creator_name'] ?: 'System') ?></div>
                     </td>
-                    <td>
-                        <span class="badge" style="background:<?= $catColor ?>22; color:<?= $catColor ?>; border:1px solid <?= $catColor ?>44;">
-                            <?= htmlspecialchars($e['category']) ?>
-                        </span>
+                    <td class="px-3 py-3">
+                        <span class="ui-badge ui-badge-muted"><?= htmlspecialchars($e['category']) ?></span>
                     </td>
-                    <td style="font-size:13px; color:var(--text-secondary);"><?= htmlspecialchars($e['description'] ?: '-') ?></td>
-                    <td style="font-weight:700; color:#f43f5e;">Rp <?= number_format($e['amount'], 0, ',', '.') ?></td>
-                    <td>
-
-                        <div style="display:flex; gap:8px;">
-                            <button onclick="editExpense(<?= htmlspecialchars(json_encode($e)) ?>)" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></button>
-                            <a data-method="post" href="index.php?page=admin_expenses&action=delete&id=<?= $e['id'] ?>" onclick="return confirm('Hapus catatan ini?')" class="btn btn-sm btn-danger" title="Hapus"><i class="fas fa-trash"></i></a>
+                    <td class="px-3 py-3 text-muted-foreground"><?= htmlspecialchars($e['description'] ?: '-') ?></td>
+                    <td class="whitespace-nowrap px-3 py-3 text-right font-bold tabular-nums">Rp <?= number_format($e['amount'], 0, ',', '.') ?></td>
+                    <td class="px-4 py-3 sm:px-5">
+                        <div class="flex justify-end gap-1.5">
+                            <button type="button" onclick="editExpense(<?= htmlspecialchars(json_encode($e)) ?>)" class="ui-btn ui-btn-sm ui-btn-outline" title="Edit"><i class="fas fa-edit"></i><span class="hidden sm:inline">Edit</span></button>
+                            <a data-method="post" href="index.php?page=admin_expenses&action=delete&id=<?= $e['id'] ?>" onclick="return confirm('Hapus catatan ini?')" class="ui-btn ui-btn-sm ui-btn-outline text-danger" title="Hapus"><i class="fas fa-trash"></i><span class="hidden sm:inline">Hapus</span></a>
                         </div>
                     </td>
                 </tr>
                 <?php endforeach; ?>
                 <?php if(count($expenses) == 0): ?>
-                    <tr><td colspan="5" style="text-align:center; padding:40px; color:var(--text-secondary);">Belum ada data pengeluaran.</td></tr>
+                    <tr><td colspan="5" class="px-5 py-10 text-center text-sm text-muted-foreground">Belum ada data pengeluaran.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>
     </div>
-</div>
+</section>
 
 <!-- Add Modal -->
-<div id="addExpenseModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(5px); align-items:center; justify-content:center; z-index:9999;">
-    <div class="glass-panel" style="width:100%; max-width:450px; padding:24px; margin:20px;">
-        <h3 style="margin-bottom:20px;"><i class="fas fa-plus-circle text-primary"></i> Tambah Pengeluaran</h3>
+<div id="addExpenseModal" class="fixed inset-0 z-[1000] items-center justify-center bg-black/50 p-4" style="display:none;">
+    <div class="ui-card w-full max-w-lg p-5 sm:p-6">
+        <div class="mb-4 flex items-start justify-between gap-4">
+            <h3 class="m-0 text-lg font-bold">Tambah pengeluaran</h3>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-ghost" onclick="document.getElementById('addExpenseModal').style.display='none'" aria-label="Tutup">&#x2715;</button>
+        </div>
         <form action="index.php?page=admin_expenses&action=add" method="POST">
 <?= csrf_field() ?>
-            <div class="form-group">
-                <label>Tanggal</label>
-                <input type="date" name="date" class="form-control" value="<?= date('Y-m-d') ?>" required>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Tanggal</span>
+                    <input type="date" name="date" class="form-control" value="<?= date('Y-m-d') ?>" required>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Jumlah (Rp)</span>
+                    <input type="number" name="amount" class="form-control" placeholder="0" required>
+                </label>
+                <label class="block sm:col-span-2">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Kategori</span>
+                    <select name="category" class="form-control" required>
+                        <option value="Operasional">Operasional (Listrik, Sewa, dll)</option>
+                        <option value="Belanja Barang">Belanja Barang (Alat Teknik, Kabel, dll)</option>
+                        <option value="Insentif">Insentif / Gaji</option>
+                        <option value="Lain-lain">Lain-lain</option>
+                    </select>
+                </label>
+                <label class="block sm:col-span-2">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Keterangan</span>
+                    <textarea name="description" class="form-control" rows="3" placeholder="Detail pengeluaran..."></textarea>
+                </label>
             </div>
-            <div class="form-group">
-                <label>Kategori</label>
-                <select name="category" class="form-control" required>
-                    <option value="Operasional">Operasional (Listrik, Sewa, dll)</option>
-                    <option value="Belanja Barang">Belanja Barang (Alat Teknik, Kabel, dll)</option>
-                    <option value="Insentif">Insentif / Gaji</option>
-                    <option value="Lain-lain">Lain-lain</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Jumlah (Rp)</label>
-                <input type="number" name="amount" class="form-control" placeholder="0" required>
-            </div>
-            <div class="form-group">
-                <label>Keterangan</label>
-                <textarea name="description" class="form-control" rows="3" placeholder="Detail pengeluaran..."></textarea>
-            </div>
-            <div class="form-actions-row" style="margin-top:25px;">
-                <button type="button" class="btn btn-ghost" onclick="document.getElementById('addExpenseModal').style.display='none'">Batal</button>
-                <button type="submit" class="btn btn-primary">Simpan Data</button>
+            <div class="mt-6 flex justify-end gap-2">
+                <button type="button" class="ui-btn ui-btn-outline" onclick="document.getElementById('addExpenseModal').style.display='none'">Batal</button>
+                <button type="submit" class="ui-btn ui-btn-primary">Simpan data</button>
             </div>
         </form>
     </div>
 </div>
 
 <!-- Edit Modal -->
-<div id="editExpenseModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(5px); align-items:center; justify-content:center; z-index:9999;">
-    <div class="glass-panel" style="width:100%; max-width:450px; padding:24px; margin:20px;">
-        <h3 style="margin-bottom:20px;"><i class="fas fa-edit text-warning"></i> Edit Pengeluaran</h3>
+<div id="editExpenseModal" class="fixed inset-0 z-[1000] items-center justify-center bg-black/50 p-4" style="display:none;">
+    <div class="ui-card w-full max-w-lg p-5 sm:p-6">
+        <div class="mb-4 flex items-start justify-between gap-4">
+            <h3 class="m-0 text-lg font-bold">Edit pengeluaran</h3>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-ghost" onclick="document.getElementById('editExpenseModal').style.display='none'" aria-label="Tutup">&#x2715;</button>
+        </div>
         <form action="index.php?page=admin_expenses&action=update" method="POST">
 <?= csrf_field() ?>
             <input type="hidden" name="id" id="editId">
-            <div class="form-group">
-                <label>Tanggal</label>
-                <input type="date" name="date" id="editDate" class="form-control" required>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Tanggal</span>
+                    <input type="date" name="date" id="editDate" class="form-control" required>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Jumlah (Rp)</span>
+                    <input type="number" name="amount" id="editAmount" class="form-control" required>
+                </label>
+                <label class="block sm:col-span-2">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Kategori</span>
+                    <select name="category" id="editCategory" class="form-control" required>
+                        <option value="Operasional">Operasional</option>
+                        <option value="Belanja Barang">Belanja Barang</option>
+                        <option value="Insentif">Insentif</option>
+                        <option value="Lain-lain">Lain-lain</option>
+                    </select>
+                </label>
+                <label class="block sm:col-span-2">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Keterangan</span>
+                    <textarea name="description" id="editDescription" class="form-control" rows="3"></textarea>
+                </label>
             </div>
-            <div class="form-group">
-                <label>Kategori</label>
-                <select name="category" id="editCategory" class="form-control" required>
-                    <option value="Operasional">Operasional</option>
-                    <option value="Belanja Barang">Belanja Barang</option>
-                    <option value="Insentif">Insentif</option>
-                    <option value="Lain-lain">Lain-lain</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Jumlah (Rp)</label>
-                <input type="number" name="amount" id="editAmount" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label>Keterangan</label>
-                <textarea name="description" id="editDescription" class="form-control" rows="3"></textarea>
-            </div>
-            <div class="form-actions-row" style="margin-top:25px;">
-                <button type="button" class="btn btn-ghost" onclick="document.getElementById('editExpenseModal').style.display='none'">Batal</button>
-                <button type="submit" class="btn btn-warning">Update Data</button>
+            <div class="mt-6 flex justify-end gap-2">
+                <button type="button" class="ui-btn ui-btn-outline" onclick="document.getElementById('editExpenseModal').style.display='none'">Batal</button>
+                <button type="submit" class="ui-btn ui-btn-primary">Update data</button>
             </div>
         </form>
     </div>

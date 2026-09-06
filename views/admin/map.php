@@ -145,27 +145,27 @@ $existing_customers = $db->query("SELECT id, name, customer_code FROM customers 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <?php if(isset($_GET['success'])): ?>
-    <div id="notif" class="glass-panel" style="position:fixed; top:80px; right:20px; z-index:2000; padding:15px 25px; background:var(--success); color:white; border-radius:12px; animation: slideIn 0.3s ease;">
-        <i class="fas fa-check-circle"></i> Berhasil menambahkan <?= $_GET['success'] == 'asset' ? 'Aset' : 'Pelanggan' ?> baru! 
+    <div id="notif" class="ui-card fixed right-5 top-20 z-[2000] px-5 py-3 text-sm">
+        <span class="font-semibold text-signal">Berhasil.</span> Berhasil menambahkan <?= $_GET['success'] == 'asset' ? 'aset' : 'pelanggan' ?> baru!
     </div>
     <script>setTimeout(() => { document.getElementById('notif').style.display='none'; }, 3000);</script>
 <?php endif; ?>
 
-<div class="glass-panel" style="padding:0; overflow:hidden; position:relative; height: calc(100vh - 150px); min-height: 500px;">
+<div class="glass-panel ui-card relative overflow-hidden p-0" style="height: calc(100vh - 150px); min-height: 500px;">
     <!-- Map Control HUD -->
-    <div style="position:absolute; top:20px; right:20px; z-index:1000; background:rgba(0,0,0,0.6); padding:15px; border-radius:12px; backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.1); width:220px;">
-        <h4 style="margin:0 0 10px 0; font-size:14px; color:white;"><i class="fas fa-layer-group"></i> Legend Aset</h4>
-        <div style="display:flex; flex-direction:column; gap:8px; font-size:12px; color:rgba(255,255,255,0.9);">
-                <div style="display:flex; align-items:center; gap:8px;"><span style="width:18px; height:18px; background:#ef4444; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:10px; color:white; border:1.5px solid white;">M</span> Aset Utama</div>
-                <div style="display:flex; align-items:center; gap:8px;"><span style="width:18px; height:18px; background:#0ea5e9; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:10px; color:white; border:1.5px solid white;">S</span> Aset Pendukung / Pelanggan</div>
-            <hr style="border:0; border-top:1px solid rgba(255,255,255,0.2); margin:5px 0;">
-            <div style="display:flex; align-items:center; gap:8px;"><span style="width:15px; height:3px; background:#0ea5e9; box-shadow: 0 0 5px #0ea5e9;"></span> Jalur Aktif</div>
+    <div class="ui-card absolute right-4 top-4 z-[1000] w-[220px] p-4">
+        <h4 class="m-0 mb-2 text-sm font-bold">Legend aset</h4>
+        <div class="flex flex-col gap-2 text-xs text-foreground">
+            <div class="flex items-center gap-2"><span class="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] border-solid border-white text-[10px] font-bold text-white" style="background:#ef4444;">M</span> Aset utama</div>
+            <div class="flex items-center gap-2"><span class="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] border-solid border-white text-[10px] font-bold text-white" style="background:#0ea5e9;">S</span> Aset pendukung / pelanggan</div>
+            <hr class="my-1 border-0 border-t border-solid border-border">
+            <div class="flex items-center gap-2"><span class="inline-block h-[3px] w-[15px]" style="background:#0ea5e9;"></span> Jalur aktif</div>
         </div>
-        <div style="margin-top:15px; font-size:10px; color:rgba(255,255,255,0.6); text-align:center;">
-            Mode Pemetaan Aset
+        <div class="mt-3 text-center text-[11px] text-muted-foreground">
+            Mode pemetaan aset
         </div>
-        <div style="margin-top:10px;">
-            <button class="btn btn-sm" style="width:100%; font-size:11px; background:rgba(255,255,255,0.2); color:white; border:none;" onclick="centerMap()">Center Map</button>
+        <div class="mt-2">
+            <button class="ui-btn ui-btn-sm ui-btn-outline w-full" onclick="centerMap()">Center map</button>
         </div>
     </div>
 
@@ -174,135 +174,142 @@ $existing_customers = $db->query("SELECT id, name, customer_code FROM customers 
 </div>
 
 <!-- Modal Quick Add -->
-<div id="quickModal" class="modal" style="display:none; position:fixed; z-index:2001; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.8); backdrop-filter:blur(5px);">
-    <div class="glass-panel" style="width:90%; max-width:400px; margin:10% auto; padding:25px;">
-        <h3 id="mTitle" style="margin-bottom:15px; font-size:18px;">Tambah Objek</h3>
+<div id="quickModal" class="modal fixed inset-0 z-[2001] overflow-y-auto bg-black/50 p-4" style="display:none;">
+    <div class="ui-card mx-auto my-[8vh] w-full max-w-md p-5 sm:p-6">
+        <div class="mb-4 flex items-start justify-between gap-4">
+            <h3 id="mTitle" class="m-0 text-lg font-bold">Tambah objek</h3>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-ghost" onclick="closeQuickModal()" aria-label="Tutup">✕</button>
+        </div>
         <form method="POST" id="qForm">
 <?= csrf_field() ?>
             <input type="hidden" name="quick_action" id="qAction">
             <input type="hidden" name="lat" id="qLat">
             <input type="hidden" name="lng" id="qLng">
-            
-            <div style="font-size:10px; color:var(--text-secondary); margin-bottom:15px; padding:8px; background:rgba(255,255,255,0.05); border-radius:6px; border-left:3px solid var(--primary);">
-                <i class="fas fa-info-circle"></i> Tips: Setelah dipasang, anda bisa menggeser posisi ikon di peta untuk mencari lokasi yang lebih pas.
-            </div>
-            
+
+            <p class="m-0 mb-4 rounded-md bg-muted p-3 text-xs text-muted-foreground">
+                Tips: Setelah dipasang, anda bisa menggeser posisi ikon di peta untuk mencari lokasi yang lebih pas.
+            </p>
+
             <div id="fields_asset">
-                <div class="form-group">
-                    <label>Nama Aset</label>
-                    <input type="text" name="name" class="form-control" placeholder="Contoh: ODP-01">
-                </div>
-                <div class="form-group">
-                    <label>Tipe</label>
-                    <select name="type" class="form-control">
-                        <option value="Peralatan Kantor">Peralatan Kantor</option>
-                        <option value="Komputer & IT">Komputer & IT</option>
-                        <option value="Kendaraan">Kendaraan</option>
-                        <option value="Furniture">Furniture</option>
-                        <option value="Bangunan">Bangunan</option>
-                        <option value="Lainnya">Lainnya</option>
-                    </select>
-                </div>
-                <div class="flex" style="gap:10px;">
-                    <div class="form-group" style="flex:1;">
-                        <label>Jumlah Unit</label>
-                        <input type="number" name="ports" class="form-control" value="1">
-                    </div>
-                    <div class="form-group" style="flex:2;">
-                        <label>Aset Induk (Sumber)</label>
-                        <select name="parent_id" class="form-control">
-                            <option value="0">Tidak ada</option>
-                            <?php 
-                            $tenant_id = $_SESSION['tenant_id'] ?? 1;
-                            $parents = $db->query("SELECT id, name, type FROM infrastructure_assets WHERE type != 'ODP' AND tenant_id = $tenant_id ORDER BY type DESC, name ASC")->fetchAll();
-                            foreach($parents as $p) echo "<option value='{$p['id']}'>{$p['type']}: {$p['name']}</option>";
-                            ?>
+                <div class="grid gap-4">
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Nama aset</span>
+                        <input type="text" name="name" class="form-control" placeholder="Contoh: ODP-01">
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Tipe</span>
+                        <select name="type" class="form-control">
+                            <option value="Peralatan Kantor">Peralatan Kantor</option>
+                            <option value="Komputer & IT">Komputer & IT</option>
+                            <option value="Kendaraan">Kendaraan</option>
+                            <option value="Furniture">Furniture</option>
+                            <option value="Bangunan">Bangunan</option>
+                            <option value="Lainnya">Lainnya</option>
                         </select>
+                    </label>
+                    <div class="grid gap-4 sm:grid-cols-[1fr_2fr]">
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-medium text-muted-foreground">Jumlah unit</span>
+                            <input type="number" name="ports" class="form-control" value="1">
+                        </label>
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-medium text-muted-foreground">Aset induk (sumber)</span>
+                            <select name="parent_id" class="form-control">
+                                <option value="0">Tidak ada</option>
+                                <?php
+                                $tenant_id = $_SESSION['tenant_id'] ?? 1;
+                                $parents = $db->query("SELECT id, name, type FROM infrastructure_assets WHERE type != 'ODP' AND tenant_id = $tenant_id ORDER BY type DESC, name ASC")->fetchAll();
+                                foreach($parents as $p) echo "<option value='{$p['id']}'>{$p['type']}: {$p['name']}</option>";
+                                ?>
+                            </select>
+                        </label>
                     </div>
-                </div>
-                <div class="form-group">
-                    <label>Harga Perolehan (Rp)</label>
-                    <input type="number" name="price" class="form-control" value="0">
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Harga perolehan (Rp)</span>
+                        <input type="number" name="price" class="form-control" value="0">
+                    </label>
                 </div>
             </div>
 
             <div id="fields_customer" style="display:none;">
-                <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; margin-bottom:15px; border:1px solid rgba(255,255,255,0.1); display:flex; gap:15px;">
-                    <label style="cursor:pointer; display:flex; align-items:center; gap:5px; font-size:12px;">
-                        <input type="radio" name="cust_mode" value="new" checked onclick="toggleCustMode('new')"> Daftar Baru
+                <div class="mb-4 flex gap-4 rounded-md bg-muted p-3">
+                    <label class="flex cursor-pointer items-center gap-1.5 text-xs">
+                        <input type="radio" name="cust_mode" value="new" checked onclick="toggleCustMode('new')"> Daftar baru
                     </label>
-                    <label style="cursor:pointer; display:flex; align-items:center; gap:5px; font-size:12px;">
-                        <input type="radio" name="cust_mode" value="existing" onclick="toggleCustMode('existing')"> Ambil dari Data
+                    <label class="flex cursor-pointer items-center gap-1.5 text-xs">
+                        <input type="radio" name="cust_mode" value="existing" onclick="toggleCustMode('existing')"> Ambil dari data
                     </label>
                 </div>
 
                 <div id="new_cust_fields">
-                    <div class="form-group">
-                        <label>Nama Pelanggan / Mitra</label>
-                        <input type="text" name="name" class="form-control" placeholder="Nama Lengkap">
-                    </div>
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:15px;">
-                        <div class="form-group">
-                            <label>Tipe</label>
-                            <select name="type" class="form-control">
-                                <option value="customer">Rumahan</option>
-                                <option value="partner">Mitra</option>
-                            </select>
+                    <div class="grid gap-4">
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-medium text-muted-foreground">Nama pelanggan / mitra</span>
+                            <input type="text" name="name" class="form-control" placeholder="Nama Lengkap">
+                        </label>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <label class="block">
+                                <span class="mb-1 block text-xs font-medium text-muted-foreground">Tipe</span>
+                                <select name="type" class="form-control">
+                                    <option value="customer">Rumahan</option>
+                                    <option value="partner">Mitra</option>
+                                </select>
+                            </label>
+                            <label class="block">
+                                <span class="mb-1 block text-xs font-medium text-muted-foreground">Nomor WhatsApp</span>
+                                <input type="text" name="contact" class="form-control" placeholder="08xxx">
+                            </label>
                         </div>
-                        <div class="form-group">
-                            <label>Nomor WhatsApp</label>
-                            <input type="text" name="contact" class="form-control" placeholder="08xxx">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Alamat Lengkap</label>
-                        <input type="text" name="address" class="form-control" placeholder="Detail Alamat">
-                    </div>
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:15px;">
-                        <div class="form-group">
-                            <label>Paket Layanan</label>
-                            <select name="package_id" class="form-control">
-                                <option value="">-- Pilih Paket --</option>
-                                <?php foreach($packages_all as $pkg): ?>
-                                    <option value="<?= $pkg['id'] ?>"><?= htmlspecialchars($pkg['name']) ?> (Rp <?= number_format($pkg['fee'],0,',','.') ?>)</option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Tanggal Tagihan (1-28)</label>
-                            <input type="number" name="billing_date" class="form-control" min="1" max="28" value="1">
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-medium text-muted-foreground">Alamat lengkap</span>
+                            <input type="text" name="address" class="form-control" placeholder="Detail Alamat">
+                        </label>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <label class="block">
+                                <span class="mb-1 block text-xs font-medium text-muted-foreground">Paket layanan</span>
+                                <select name="package_id" class="form-control">
+                                    <option value="">-- Pilih Paket --</option>
+                                    <?php foreach($packages_all as $pkg): ?>
+                                        <option value="<?= $pkg['id'] ?>"><?= htmlspecialchars($pkg['name']) ?> (Rp <?= number_format($pkg['fee'],0,',','.') ?>)</option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </label>
+                            <label class="block">
+                                <span class="mb-1 block text-xs font-medium text-muted-foreground">Tanggal tagihan (1-28)</span>
+                                <input type="number" name="billing_date" class="form-control" min="1" max="28" value="1">
+                            </label>
                         </div>
                     </div>
                 </div>
 
                 <div id="existing_cust_fields" style="display:none;">
-                    <div class="form-group">
-                        <label>Pilih Pelanggan</label>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Pilih pelanggan</span>
                         <select name="customer_id" class="form-control">
                             <option value="0">-- Pilih Pelanggan --</option>
                             <?php foreach($existing_customers as $ec): ?>
                                 <option value="<?= $ec['id'] ?>"><?= htmlspecialchars($ec['name']) ?> (<?= $ec['customer_code'] ?>)</option>
                             <?php endforeach; ?>
                         </select>
-                    </div>
+                    </label>
                 </div>
 
-                <div class="form-group">
-                    <label>Sumber Koneksi (Sumber Alat)</label>
+                <label class="mt-4 block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Sumber koneksi (sumber alat)</span>
                     <select name="odp_id" class="form-control">
                         <option value="0">-- Pilih Sumber --</option>
-                        <?php 
+                        <?php
                         $tenant_id = $_SESSION['tenant_id'] ?? 1;
                         $opts = $db->query("SELECT id, name, type FROM infrastructure_assets WHERE tenant_id = $tenant_id ORDER BY type DESC, name ASC")->fetchAll();
                         foreach($opts as $o) echo "<option value='{$o['id']}'>{$o['type']}: {$o['name']}</option>";
                         ?>
                     </select>
-                </div>
+                </label>
             </div>
 
-            <div class="form-actions-row" style="margin-top:20px;">
-                <button type="button" class="btn btn-ghost" onclick="closeQuickModal()">Batal</button>
-                <button type="submit" class="btn btn-primary">Simpan Sekarang</button>
+            <div class="form-actions-row mt-6 flex justify-end gap-2">
+                <button type="button" class="ui-btn ui-btn-outline" onclick="closeQuickModal()">Batal</button>
+                <button type="submit" class="ui-btn ui-btn-primary">Simpan sekarang</button>
             </div>
         </form>
     </div>
@@ -739,11 +746,12 @@ $existing_customers = $db->query("SELECT id, name, customer_code FROM customers 
 
 <style>
 #network-map { cursor: crosshair; }
-@keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
 @keyframes fadeInUp { from { transform: translate(-50%, 20px); opacity:0; } to { transform: translate(-50%, 0); opacity:1; } }
 @keyframes fadeOutDown { from { transform: translate(-50%, 0); opacity:1; } to { transform: translate(-50%, 20px); opacity:0; } }
-.leaflet-popup-content-wrapper { border-radius:12px; padding:5px; background:rgba(0,0,0,0.9); color:white; backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.1); }
-.leaflet-popup-tip { background:rgba(0,0,0,0.9); }
+.leaflet-popup-content-wrapper { border-radius: 8px; padding: 5px; }
+/* Path editor panel is created by JS with white text; keep it readable on the white card. */
+#path-editor-ui { background: #FFFFFF; border: 1px solid #D9E0E2; border-radius: 12px; }
+#path-editor-ui h5, #path-editor-ui p { color: #172026 !important; }
 
 /* Connection Flow Animation */
 .flowing-line {

@@ -10,66 +10,55 @@ if ($_SESSION['user_role'] !== 'partner') {
 }
 ?>
 
-<div class="glass-panel" style="padding:30px; margin-bottom:30px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px;">
-        <div style="display:flex; align-items:center; gap:15px;">
-            <div style="width:50px; height:50px; background:rgba(37, 211, 102, 0.1); border-radius:12px; display:flex; align-items:center; justify-content:center;">
-                <i class="fab fa-whatsapp" style="font-size:28px; color:#25D366;"></i>
-            </div>
-            <div>
-                <h2 style="margin:0; font-size:22px;">WhatsApp Perangkat Saya</h2>
-                <div class="wa-status-indicator" style="margin-top:4px;">Mengecek Status...</div>
-            </div>
-        </div>
-        <a href="index.php?page=partner" class="btn btn-sm btn-ghost"><i class="fas fa-arrow-left"></i> Kembali</a>
+<!-- Page header -->
+<div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h2 class="m-0 text-xl font-bold sm:text-2xl">Perangkat WhatsApp saya</h2>
+        <div class="wa-status-indicator mt-1 text-sm text-muted-foreground">Mengecek status...</div>
     </div>
+    <div class="flex flex-wrap gap-2">
+        <a href="index.php?page=partner" class="ui-btn ui-btn-outline"><i class="fas fa-arrow-left"></i> Kembali</a>
+    </div>
+</div>
 
-    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:25px;">
-        <!-- QR Code Section -->
-        <div class="glass-panel" style="padding:25px; border:1px solid var(--glass-border); background:rgba(255,255,255,0.02); text-align:center;">
-            <div id="qr-container" style="background:#fff; padding:20px; border-radius:15px; display:inline-block; margin-bottom:20px; min-width:240px; min-height:240px; border:4px solid #f1f5f9;">
-                <div id="qrcode" style="display:flex; justify-content:center; align-items:center; height:200px;">
-                    <div style="color:#64748b; font-size:13px;"><i class="fas fa-spinner fa-spin"></i> Memuat QR Code...</div>
-                </div>
-            </div>
-            
-            <div id="wa-connection-tip" style="color:var(--text-secondary); font-size:13px; line-height:1.6; max-width:280px; margin:0 auto;">
-                <p><i class="fas fa-camera"></i> Silakan scan QR Code di atas menggunakan menu <strong>Perangkat Tertaut</strong> pada WhatsApp HP Anda.</p>
-            </div>
-            
-            <div id="wa-connected-box" style="display:none; padding:20px;">
-                <i class="fas fa-check-circle" style="font-size:64px; color:#10b981; margin-bottom:15px;"></i>
-                <h4 style="color:#10b981; font-weight:800; margin-bottom:10px;">TERHUBUNG!</h4>
-                <p style="font-size:13px; color:var(--text-secondary);">Anda sekarang bisa mengirim tagihan ke pelanggan melalui WhatsApp.</p>
-                <button onclick="logoutWA()" class="btn btn-danger btn-sm" style="margin-top:20px;"><i class="fas fa-sign-out-alt"></i> Putuskan Koneksi</button>
+<div class="grid gap-5 lg:grid-cols-2">
+    <!-- QR Code Section -->
+    <section class="ui-card p-5 text-center">
+        <div id="qr-container" class="mb-4 inline-block min-h-[240px] min-w-[240px] rounded-md border border-solid border-border bg-white p-5">
+            <div id="qrcode" class="flex h-[200px] items-center justify-center">
+                <div class="text-sm text-muted-foreground"><i class="fas fa-spinner fa-spin"></i> Memuat QR code...</div>
             </div>
         </div>
 
-        <!-- Info & Stats Section -->
-        <div style="display:flex; flex-direction:column; gap:20px;">
-            <div class="glass-panel" style="padding:20px; background:rgba(37, 211, 102, 0.08);">
-                <h5 style="margin:0 0 12px; font-weight:800; font-size:14px; text-transform:uppercase; letter-spacing:1px; color:#25D366;"><i class="fas fa-info-circle"></i> Cara Kerja</h5>
-                <ul style="padding-left:20px; font-size:12px; color:var(--text-secondary); line-height:1.8; margin:0;">
-                    <li>Scan QR Code untuk menghubungkan WhatsApp Anda dengan portal.</li>
-                    <li>Setelah terhubung, Anda bisa mengirim tagihan ke pelanggan melalui WhatsApp.</li>
-                    <li>Sistem otomatis menambahkan delay 10 detik antar pesan untuk keamanan nomor Anda.</li>
-                    <li>Koneksi aman - sistem tidak menyimpan password WhatsApp Anda.</li>
-                </ul>
-            </div>
-
-            <div class="glass-panel" style="padding:20px; background:rgba(0,0,0,0.2);">
-                <h5 style="margin:0 0 12px; font-weight:800; font-size:14px; text-transform:uppercase; letter-spacing:1px;"><i class="fas fa-list-ul"></i> Aktivitas Terakhir</h5>
-                <style>
-                    #wa-logs::-webkit-scrollbar { width: 4px; }
-                    #wa-logs::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
-                    #wa-logs::-webkit-scrollbar-thumb { background: rgba(37, 211, 102, 0.3); border-radius: 10px; }
-                    #wa-logs::-webkit-scrollbar-thumb:hover { background: rgba(37, 211, 102, 0.5); }
-                </style>
-                <div id="wa-logs" style="font-family:monospace; font-size:11px; color:#25D366; max-height:200px; overflow-y:auto; line-height:1.6; padding-right:5px;">
-                    <div style="opacity:0.6;">> Menunggu aktivitas perangkat...</div>
-                </div>
-            </div>
+        <div id="wa-connection-tip" class="mx-auto max-w-[280px] text-sm leading-relaxed text-muted-foreground">
+            <p class="m-0">Silakan scan QR code di atas menggunakan menu <strong class="text-foreground">Perangkat tertaut</strong> pada WhatsApp HP Anda.</p>
         </div>
+
+        <div id="wa-connected-box" class="p-5" style="display:none;">
+            <h4 class="m-0 mb-2 text-lg font-bold text-signal">Terhubung</h4>
+            <p class="m-0 text-sm text-muted-foreground">Anda sekarang bisa mengirim tagihan ke pelanggan melalui WhatsApp.</p>
+            <button onclick="logoutWA()" class="ui-btn ui-btn-outline text-danger mt-5"><i class="fas fa-sign-out-alt"></i> Putuskan koneksi</button>
+        </div>
+    </section>
+
+    <!-- Info & Stats Section -->
+    <div class="flex flex-col gap-5">
+        <section class="ui-card p-5">
+            <h3 class="m-0 mb-3 text-[15px] font-bold">Cara kerja</h3>
+            <ul class="m-0 list-disc pl-5 text-sm leading-relaxed text-muted-foreground">
+                <li>Scan QR code untuk menghubungkan WhatsApp Anda dengan portal.</li>
+                <li>Setelah terhubung, Anda bisa mengirim tagihan ke pelanggan melalui WhatsApp.</li>
+                <li>Sistem otomatis menambahkan delay 10 detik antar pesan untuk keamanan nomor Anda.</li>
+                <li>Koneksi aman: sistem tidak menyimpan password WhatsApp Anda.</li>
+            </ul>
+        </section>
+
+        <section class="ui-card p-5">
+            <h3 class="m-0 mb-3 text-[15px] font-bold">Aktivitas terakhir</h3>
+            <div id="wa-logs" class="max-h-[200px] overflow-y-auto rounded-md bg-muted p-3 font-mono text-[11px] leading-relaxed text-foreground">
+                <div class="text-muted-foreground">> Menunggu aktivitas perangkat...</div>
+            </div>
+        </section>
     </div>
 </div>
 
@@ -89,7 +78,7 @@ async function refreshGateway() {
     try {
         const response = await fetch(WAApiProxy + 'status&cid=' + WAGatewayCID);
         const data = await response.json();
-        
+
         if (data.error) {
             qrcodeEl.innerHTML = `<div style="color:#ef4444; font-size:12px; font-weight:700;"><i class="fas fa-exclamation-triangle"></i> GATEWAY OFFLINE<br><span style="font-weight:400; opacity:0.7;">${data.debug?.curl_error || 'Node.js server not responding'}</span></div>`;
             statusEl.innerHTML = '<i class="fas fa-times-circle" style="color:#ef4444;"></i> <span style="color:#ef4444;">Gateway Offline</span>';
@@ -109,7 +98,7 @@ async function refreshGateway() {
             if (data.qr_available) {
                 const qrResponse = await fetch(WAApiProxy + 'qr&cid=' + WAGatewayCID);
                 const qrData = await qrResponse.json();
-                
+
                 if (qrData.qr) {
                     qrcodeEl.innerHTML = '';
                     if (!qrcodeObj) {
@@ -129,7 +118,7 @@ async function refreshGateway() {
         const logsResponse = await fetch(WAApiProxy + 'logs&cid=' + WAGatewayCID);
         const logsData = await logsResponse.json();
         if (logsData.logs && Array.isArray(logsData.logs)) {
-            const logHTML = logsData.logs.slice(-10).map(log => 
+            const logHTML = logsData.logs.slice(-10).map(log =>
                 `<div>[${log.timestamp}] ${log.msg}</div>`
             ).join('');
             logsEl.innerHTML = logHTML || '<div style="opacity:0.6;">> Tidak ada aktivitas</div>';

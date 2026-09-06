@@ -27,87 +27,96 @@ if ($action === 'delete') {
 }
 ?>
 
-<div class="glass-panel" style="padding: 24px;">
-    <div style="display:flex; justify-content:space-between; margin-bottom:20px; align-items:center;">
-        <h3 style="font-size:20px;"><i class="fas fa-map-marker-alt text-primary"></i> Manajemen Area Penagihan</h3>
-        <button onclick="document.getElementById('addAreaModal').style.display='flex'" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Tambah Area</button>
+<div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h2 class="m-0 text-xl font-bold sm:text-2xl">Area penagihan</h2>
+        <p class="m-0 mt-1 text-sm text-muted-foreground">Wilayah untuk mengelompokkan pelanggan dan penagih.</p>
     </div>
+    <div class="flex flex-wrap gap-2">
+        <button onclick="document.getElementById('addAreaModal').style.display='flex'" class="ui-btn ui-btn-primary w-full sm:w-auto"><i class="fas fa-plus"></i> Tambah area</button>
+    </div>
+</div>
 
-    <div class="table-container">
-        <table>
+<section class="ui-card overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-sm">
             <thead>
-                <tr>
-                    <th>Nama Area</th>
-                    <th>Jumlah Pelanggan</th>
-                    <th>Tanggal Dibuat</th>
-                    <th>Aksi</th>
+                <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                    <th class="px-4 py-2.5 font-semibold sm:px-5">Nama area</th>
+                    <th class="px-3 py-2.5 font-semibold">Jumlah pelanggan</th>
+                    <th class="px-3 py-2.5 font-semibold">Tanggal dibuat</th>
+                    <th class="px-4 py-2.5 text-right font-semibold sm:px-5">Aksi</th>
                 </tr>
             </thead>
             <tbody>
                 <?php
                 $tenant_id = $_SESSION['tenant_id'] ?? 1;
                 $areas = $db->query("
-                    SELECT a.*, (SELECT COUNT(*) FROM customers WHERE area = a.name AND tenant_id = $tenant_id) as total_customers 
-                    FROM areas a 
+                    SELECT a.*, (SELECT COUNT(*) FROM customers WHERE area = a.name AND tenant_id = $tenant_id) as total_customers
+                    FROM areas a
                     WHERE a.tenant_id = $tenant_id
                     ORDER BY a.name ASC
                 ")->fetchAll();
                 foreach($areas as $a):
                 ?>
-                <tr>
-                    <td style="font-weight:600;"><?= htmlspecialchars($a['name']) ?></td>
-                    <td>
-                        <span class="badge badge-success"><?= $a['total_customers'] ?> Pelanggan</span>
-                    </td>
-                    <td style="font-size:12px; color:var(--text-secondary);"><?= date('d M Y', strtotime($a['created_at'])) ?></td>
-                    <td>
-                        <div style="display:flex; gap:8px;">
-                            <button onclick="editArea(<?= $a['id'] ?>, '<?= addslashes($a['name']) ?>')" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></button>
-                            <a data-method="post" href="index.php?page=admin_areas&action=delete&id=<?= $a['id'] ?>" onclick="return confirm('Hapus area ini?')" class="btn btn-sm btn-danger" title="Hapus"><i class="fas fa-trash"></i></a>
+                <tr class="border-t border-solid border-border">
+                    <td class="px-4 py-3 font-semibold sm:px-5"><?= htmlspecialchars($a['name']) ?></td>
+                    <td class="px-3 py-3 tabular-nums"><?= $a['total_customers'] ?> pelanggan</td>
+                    <td class="px-3 py-3 text-xs text-muted-foreground"><?= date('d M Y', strtotime($a['created_at'])) ?></td>
+                    <td class="px-4 py-3 text-right sm:px-5">
+                        <div class="inline-flex gap-1">
+                            <button onclick="editArea(<?= $a['id'] ?>, '<?= addslashes($a['name']) ?>')" class="ui-btn ui-btn-sm ui-btn-outline" title="Edit"><i class="fas fa-edit"></i><span class="hidden sm:inline">Edit</span></button>
+                            <a data-method="post" href="index.php?page=admin_areas&action=delete&id=<?= $a['id'] ?>" onclick="return confirm('Hapus area ini?')" class="ui-btn ui-btn-sm ui-btn-outline text-danger" title="Hapus"><i class="fas fa-trash"></i><span class="hidden sm:inline">Hapus</span></a>
                         </div>
                     </td>
                 </tr>
                 <?php endforeach; ?>
                 <?php if(count($areas) == 0): ?>
-                    <tr><td colspan="4" style="text-align:center; padding:30px;">Belum ada area. Klik "Tambah Area" untuk memulai.</td></tr>
+                    <tr class="border-t border-solid border-border"><td colspan="4" class="px-5 py-10 text-center text-sm text-muted-foreground">Belum ada area. Klik "Tambah area" untuk memulai.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>
     </div>
-</div>
+</section>
 
 <!-- Add Area Modal -->
-<div id="addAreaModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:9999;">
-    <div class="glass-panel" style="width:100%; max-width:400px; padding:24px; margin:20px;">
-        <h3 style="margin-bottom:20px;">Tambah Area Baru</h3>
+<div id="addAreaModal" class="fixed inset-0 z-[1000] items-center justify-center bg-black/50 p-4" style="display:none;">
+    <div class="ui-card w-full max-w-md p-5 sm:p-6">
+        <div class="mb-4 flex items-start justify-between gap-4">
+            <h3 class="m-0 text-lg font-bold">Tambah area baru</h3>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-ghost" onclick="document.getElementById('addAreaModal').style.display='none'" aria-label="Tutup"><i class="fas fa-times"></i></button>
+        </div>
         <form action="index.php?page=admin_areas&action=add" method="POST">
 <?= csrf_field() ?>
-            <div class="form-group">
-                <label>Nama Area (Contoh: RT 01 / Blok A)</label>
-                <input type="text" name="name" class="form-control" placeholder="Contoh: Blok A" required>
-            </div>
-            <div class="form-actions-row" style="margin-top:20px;">
-                <button type="button" class="btn btn-sm btn-ghost" onclick="document.getElementById('addAreaModal').style.display='none'">Batal</button>
-                <button type="submit" class="btn btn-sm btn-primary">Simpan Area</button>
+            <label class="block">
+                <span class="mb-1 block text-xs font-medium text-muted-foreground">Nama area</span>
+                <input type="text" name="name" class="form-control" placeholder="Contoh: RT 01 / Blok A" required>
+            </label>
+            <div class="mt-6 flex justify-end gap-2">
+                <button type="button" class="ui-btn ui-btn-outline" onclick="document.getElementById('addAreaModal').style.display='none'">Batal</button>
+                <button type="submit" class="ui-btn ui-btn-primary">Simpan area</button>
             </div>
         </form>
     </div>
 </div>
 
 <!-- Edit Area Modal -->
-<div id="editAreaModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:9999;">
-    <div class="glass-panel" style="width:100%; max-width:400px; padding:24px; margin:20px;">
-        <h3 style="margin-bottom:20px;">Edit Area</h3>
+<div id="editAreaModal" class="fixed inset-0 z-[1000] items-center justify-center bg-black/50 p-4" style="display:none;">
+    <div class="ui-card w-full max-w-md p-5 sm:p-6">
+        <div class="mb-4 flex items-start justify-between gap-4">
+            <h3 class="m-0 text-lg font-bold">Edit area</h3>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-ghost" onclick="document.getElementById('editAreaModal').style.display='none'" aria-label="Tutup"><i class="fas fa-times"></i></button>
+        </div>
         <form action="index.php?page=admin_areas&action=update" method="POST">
 <?= csrf_field() ?>
             <input type="hidden" name="id" id="editAreaId">
-            <div class="form-group">
-                <label>Nama Area</label>
+            <label class="block">
+                <span class="mb-1 block text-xs font-medium text-muted-foreground">Nama area</span>
                 <input type="text" name="name" id="editAreaName" class="form-control" required>
-            </div>
-            <div class="form-actions-row" style="margin-top:20px;">
-                <button type="button" class="btn btn-sm btn-ghost" onclick="document.getElementById('editAreaModal').style.display='none'">Batal</button>
-                <button type="submit" class="btn btn-sm btn-primary">Update Area</button>
+            </label>
+            <div class="mt-6 flex justify-end gap-2">
+                <button type="button" class="ui-btn ui-btn-outline" onclick="document.getElementById('editAreaModal').style.display='none'">Batal</button>
+                <button type="submit" class="ui-btn ui-btn-primary">Update area</button>
             </div>
         </form>
     </div>

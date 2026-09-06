@@ -36,45 +36,37 @@ if (isset($_GET['sid'])) {
 ?>
 
 <?php if($success_data): ?>
-<div class="glass-panel" style="margin-bottom:20px; border-left:4px solid var(--success); padding:20px; background:rgba(16,185,129,0.1);">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
+<div class="ui-card mb-5 p-4 sm:p-5">
+    <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
-            <h3 style="margin:0; color:var(--success); font-size:16px;"><i class="fas fa-check-circle"></i> Pembayaran Berhasil!</h3>
-            <p style="margin:0; font-size:12px; color:var(--text-secondary);">Pelanggan <strong><?= htmlspecialchars($success_data['name']) ?></strong> telah diupdate.</p>
+            <div class="text-[15px] font-bold text-signal">Pembayaran berhasil</div>
+            <p class="m-0 mt-1 text-sm text-muted-foreground">Pelanggan <strong class="text-foreground"><?= htmlspecialchars($success_data['name']) ?></strong> telah diupdate.</p>
         </div>
-        <button onclick="sendWAGateway('<?= $wa_num_paid ?>', <?= htmlspecialchars(json_encode($receipt_msg)) ?>, '<?= $success_data['wa_link'] ?>', this)" class="btn btn-sm btn-success"><i class="fab fa-whatsapp"></i> Kirim WA</button>
+        <button onclick="sendWAGateway('<?= $wa_num_paid ?>', <?= htmlspecialchars(json_encode($receipt_msg)) ?>, '<?= $success_data['wa_link'] ?>', this)" class="ui-btn ui-btn-sm ui-btn-wa"><i class="fab fa-whatsapp"></i> Kirim WA</button>
     </div>
 </div>
 <?php endif; ?>
 
 <!-- Error Messages for Delete Prevention -->
-<?php if ($_GET['msg'] === 'has_invoices'): 
+<?php if ($_GET['msg'] === 'has_invoices'):
     $invoice_count = intval($_GET['invoice_count'] ?? 0);
     $cust_id = intval($_GET['cust_id'] ?? 0);
     $customer = $db->query("SELECT name FROM customers WHERE id = $cust_id")->fetch();
 ?>
-<div class="glass-panel" style="margin-bottom:20px; border-left:4px solid #ef4444; padding:20px; background:rgba(239,68,68,0.1);">
-    <h3 style="margin:0; color:#991b1b;"><i class="fas fa-exclamation-circle"></i> Tidak Bisa Menghapus Pelanggan</h3>
-    <p style="margin:8px 0 0 0; color:#991b1b;">
-        Pelanggan <strong><?= htmlspecialchars($customer['name'] ?? 'Unknown') ?></strong> memiliki <strong><?= $invoice_count ?></strong> tagihan yang masih ada.
-    </p>
-    <p style="margin:8px 0 0 0; font-size:12px; color:#dc2626;">
-        Untuk menghapus pelanggan, hapus atau lunasi semua tagihannya terlebih dahulu.
-    </p>
+<div class="ui-card mb-5 border-danger/40 p-4 text-sm">
+    <span class="font-semibold text-danger">Tidak bisa menghapus pelanggan.</span>
+    Pelanggan <strong><?= htmlspecialchars($customer['name'] ?? 'Unknown') ?></strong> memiliki <strong><?= $invoice_count ?></strong> tagihan yang masih ada.
+    <p class="m-0 mt-1 text-xs text-muted-foreground">Untuk menghapus pelanggan, hapus atau lunasi semua tagihannya terlebih dahulu.</p>
 </div>
 <?php endif; ?>
 
-<?php if ($_GET['msg'] === 'bulk_has_invoices'): 
+<?php if ($_GET['msg'] === 'bulk_has_invoices'):
     $blocked_count = intval($_GET['blocked_count'] ?? 0);
 ?>
-<div class="glass-panel" style="margin-bottom:20px; border-left:4px solid #f59e0b; padding:20px; background:rgba(245,158,11,0.1);">
-    <h3 style="margin:0; color:#92400e;"><i class="fas fa-exclamation-triangle"></i> Sebagian Pelanggan Tidak Bisa Dihapus</h3>
-    <p style="margin:8px 0 0 0; color:#92400e;">
-        <strong><?= $blocked_count ?></strong> pelanggan yang dipilih memiliki tagihan aktif dan tidak bisa dihapus.
-    </p>
-    <p style="margin:8px 0 0 0; font-size:12px; color:#d97706;">
-        Silakan hapus atau lunasi tagihan mereka terlebih dahulu, atau pilih pelanggan lain yang tidak memiliki tagihan.
-    </p>
+<div class="ui-card mb-5 border-danger/40 p-4 text-sm">
+    <span class="font-semibold text-danger">Sebagian pelanggan tidak bisa dihapus.</span>
+    <strong><?= $blocked_count ?></strong> pelanggan yang dipilih memiliki tagihan aktif dan tidak bisa dihapus.
+    <p class="m-0 mt-1 text-xs text-muted-foreground">Silakan hapus atau lunasi tagihan mereka terlebih dahulu, atau pilih pelanggan lain yang tidak memiliki tagihan.</p>
 </div>
 <?php endif; ?>
 
@@ -653,40 +645,33 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 
 <?php if ($action === 'list'): ?>
-<div class="glass-panel" style="padding: 24px;">
     <?php
     $filter_type = $_GET['filter_type'] ?? '';
     $create_url = "index.php?page=admin_customers&action=create" . ($filter_type ? "&type=$filter_type" : "");
     $export_url = "index.php?page=admin_customers&action=export" . ($filter_type ? "&type=$filter_type" : "");
-    $page_title = $filter_type === 'partner' ? 'Manajemen Kemitraan (B2B)' : ($filter_type === 'customer' ? 'Manajemen Pelanggan Rumahan' : 'Pelanggan & Mitra');
-    $title_icon = $filter_type === 'partner' ? 'fa-handshake' : 'fa-users';
+    $page_title = $filter_type === 'partner' ? 'Manajemen kemitraan (B2B)' : ($filter_type === 'customer' ? 'Manajemen pelanggan rumahan' : 'Pelanggan & mitra');
     ?>
-    <div class="grid-header">
+    <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-            <h3 style="font-size:20px; font-weight:800; margin:0;"><i class="fas <?= $title_icon ?> text-primary"></i> <?= $page_title ?></h3>
-            <div style="font-size:12px; color:var(--text-secondary); margin-top:4px; opacity:0.8;">
-                Manajemen data pelanggan & konfigurasi layanan
-            </div>
+            <h2 class="m-0 text-xl font-bold sm:text-2xl"><?= $page_title ?></h2>
+            <p class="m-0 mt-1 text-sm text-muted-foreground">Manajemen data pelanggan & konfigurasi layanan</p>
         </div>
-        <div class="grid-actions">
-            <div class="btn-group customers-top-actions">
-                <a href="<?= $export_url ?>" class="btn btn-sm btn-ghost" style="color:var(--success);"><i class="fas fa-arrow-down"></i> <span class="hide-mobile">Export</span></a>
-                <a href="index.php?page=admin_customers&action=import_view" class="btn btn-sm btn-ghost" style="color:var(--success);"><i class="fas fa-arrow-up"></i> <span class="hide-mobile">Import</span></a>
-                <a href="<?= $create_url ?>" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Tambah</a>
-            </div>
+        <div class="flex flex-wrap gap-2">
+            <a href="<?= $export_url ?>" class="ui-btn ui-btn-outline"><i class="fas fa-arrow-down"></i> <span class="hidden sm:inline">Export</span></a>
+            <a href="index.php?page=admin_customers&action=import_view" class="ui-btn ui-btn-outline"><i class="fas fa-arrow-up"></i> <span class="hidden sm:inline">Import</span></a>
+            <a href="<?= $create_url ?>" class="ui-btn ui-btn-primary"><i class="fas fa-plus"></i> Tambah</a>
         </div>
     </div>
 
-    <div class="source-nav">
-        <a class="source-nav-link active" href="index.php?page=admin_customers"><i class="fas fa-users"></i> Pelanggan</a>
-        <a class="source-nav-link" href="index.php?page=admin_invoices"><i class="fas fa-file-invoice"></i> Tagihan</a>
-        <a class="source-nav-link" href="index.php?page=admin_reports"><i class="fas fa-chart-line"></i> Laporan</a>
+    <div class="mb-5 flex w-fit flex-wrap gap-1 rounded-md bg-muted p-1">
+        <a href="index.php?page=admin_customers" class="rounded-sm bg-card px-3 py-1.5 text-sm font-semibold text-foreground shadow-card no-underline" aria-current="page">Pelanggan</a>
+        <a href="index.php?page=admin_invoices" class="rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground no-underline hover:text-foreground">Tagihan</a>
+        <a href="index.php?page=admin_reports" class="rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground no-underline hover:text-foreground">Laporan</a>
     </div>
-    
+
     <?php if(isset($_GET['msg'])): ?>
-        <div class="glass-panel" style="padding:15px; margin-bottom:20px; background:rgba(16, 185, 129, 0.1); border-left:4px solid var(--success); display:flex; align-items:center; gap:12px;">
-            <i class="fas fa-check-circle" style="color:var(--success); font-size:20px;"></i>
-            <div style="font-weight:600; color:var(--success);">
+        <div class="ui-card mb-5 p-4 text-sm">
+            <span class="font-semibold text-signal">
                 <?php
                 if($_GET['msg'] == 'added') echo "Berhasil menambah pelanggan.";
                 if($_GET['msg'] == 'import_success') echo "Berhasil mengimpor " . intval($_GET['count'] ?? 0) . " data pelanggan ke akun Anda.";
@@ -694,10 +679,10 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 if($_GET['msg'] == 'bulk_partner_assigned') echo "Berhasil memindahkan " . intval($_GET['count'] ?? 0) . " pelanggan ke akun mitra terpilih.";
                 if($_GET['msg'] == 'bulk_partner_failed') echo "Gagal memindahkan pelanggan ke mitra. Pastikan mitra tujuan valid.";
                 ?>
-            </div>
+            </span>
         </div>
     <?php endif; ?>
-    
+
     <?php
     $filter_type = $_GET['filter_type'] ?? '';
     $filter_collector = $_GET['filter_collector'] ?? '';
@@ -762,295 +747,289 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     ?>
 
     <!-- Stats Section -->
-    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:25px;">
-        <div class="glass-panel" style="padding:15px; border-left:4px solid var(--primary); background:linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(37, 99, 235, 0.05));">
-            <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">Total <?= $filter_type == 'partner' ? 'Mitra' : 'Pelanggan' ?></div>
-            <div style="font-size:24px; font-weight:800; color:var(--primary);"><?= number_format($total_rows) ?></div>
+    <?php
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $stats_q = "SELECT SUM(monthly_fee) as total_mrr, AVG(monthly_fee) as avg_fee FROM customers WHERE tenant_id = $tenant_id $where_type $where_collector $where_search $scope_where";
+    $stats_data = $db->query($stats_q)->fetch();
+    ?>
+    <div class="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3">
+        <div class="ui-card p-4">
+            <div class="text-xs font-medium text-muted-foreground">Total <?= $filter_type == 'partner' ? 'mitra' : 'pelanggan' ?></div>
+            <div class="mt-1 text-2xl font-extrabold tabular-nums"><?= number_format($total_rows) ?></div>
         </div>
-        <?php
-        $tenant_id = $_SESSION['tenant_id'] ?? 1;
-        $stats_q = "SELECT SUM(monthly_fee) as total_mrr, AVG(monthly_fee) as avg_fee FROM customers WHERE tenant_id = $tenant_id $where_type $where_collector $where_search $scope_where";
-        $stats_data = $db->query($stats_q)->fetch();
-        ?>
-        <div class="glass-panel" style="padding:15px; border-left:4px solid var(--success); background:linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));">
-            <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">Estimasi MRR</div>
-            <div style="font-size:24px; font-weight:800; color:var(--success);">Rp <?= number_format($stats_data['total_mrr'] ?? 0, 0, ',', '.') ?></div>
+        <div class="ui-card p-4">
+            <div class="text-xs font-medium text-muted-foreground">Estimasi MRR</div>
+            <div class="mt-1 text-2xl font-extrabold tabular-nums">Rp <?= number_format($stats_data['total_mrr'] ?? 0, 0, ',', '.') ?></div>
         </div>
-        <div class="glass-panel" style="padding:15px; border-left:4px solid var(--warning); background:linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));">
-            <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">Rata-rata ARPU</div>
-            <div style="font-size:24px; font-weight:800; color:var(--warning);">Rp <?= number_format($stats_data['avg_fee'] ?? 0, 0, ',', '.') ?></div>
+        <div class="ui-card p-4">
+            <div class="text-xs font-medium text-muted-foreground">Rata-rata ARPU</div>
+            <div class="mt-1 text-2xl font-extrabold tabular-nums">Rp <?= number_format($stats_data['avg_fee'] ?? 0, 0, ',', '.') ?></div>
         </div>
     </div>
 
     <!-- Filter Bar -->
-    <div class="filter-panel">
-        <form method="GET" class="grid-filters">
-            <input type="hidden" name="page" value="admin_customers">
-            
-            <div class="filter-group">
-                <label><i class="fas fa-search"></i> Cari Pelanggan</label>
-                <div class="filter-control-with-icon">
-                    <i class="fas fa-search filter-input-icon"></i>
-                    <input type="text" name="search" class="form-control filter-control" placeholder="Nama / Kode / HP..." value="<?= htmlspecialchars($search) ?>">
-                </div>
-            </div>
+    <form method="GET" class="ui-card mb-5 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-[1fr_180px_180px_auto] lg:items-end">
+        <input type="hidden" name="page" value="admin_customers">
 
-            <?php if ($u_role === 'admin'): ?>
-            <div class="filter-group">
-                <label><i class="fas fa-user-tag"></i> Tipe</label>
-                <select name="filter_type" class="form-control filter-control">
-                    <option value="">Semua Tipe</option>
-                    <option value="customer" <?= $filter_type == 'customer' ? 'selected' : '' ?>>Rumahan</option>
-                    <option value="partner" <?= $filter_type == 'partner' ? 'selected' : '' ?>>Mitra / B2B</option>
-                </select>
-            </div>
+        <label class="block">
+            <span class="mb-1 block text-xs font-medium text-muted-foreground">Cari pelanggan</span>
+            <input type="text" name="search" class="form-control" placeholder="Nama, kode, atau nomor HP" value="<?= htmlspecialchars($search) ?>">
+        </label>
+
+        <?php if ($u_role === 'admin'): ?>
+        <label class="block">
+            <span class="mb-1 block text-xs font-medium text-muted-foreground">Tipe</span>
+            <select name="filter_type" class="form-control">
+                <option value="">Semua tipe</option>
+                <option value="customer" <?= $filter_type == 'customer' ? 'selected' : '' ?>>Rumahan</option>
+                <option value="partner" <?= $filter_type == 'partner' ? 'selected' : '' ?>>Mitra / B2B</option>
+            </select>
+        </label>
+        <?php endif; ?>
+
+        <?php if ($u_role === 'admin'): ?>
+        <label class="block">
+            <span class="mb-1 block text-xs font-medium text-muted-foreground">Penagih</span>
+            <select name="filter_collector" class="form-control">
+                <option value="">Semua penagih</option>
+                <?php foreach($collectors as $coll): ?>
+                    <option value="<?= $coll['id'] ?>" <?= $filter_collector == $coll['id'] ? 'selected' : '' ?>><?= htmlspecialchars($coll['name']) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </label>
+        <?php endif; ?>
+
+        <div class="flex gap-2">
+            <button type="submit" class="ui-btn ui-btn-primary w-full sm:w-auto"><i class="fas fa-search"></i> Cari</button>
+            <?php if($search || $filter_type || $filter_collector): ?>
+                <a href="index.php?page=admin_customers" class="ui-btn ui-btn-outline" title="Reset filter"><i class="fas fa-sync"></i></a>
             <?php endif; ?>
+        </div>
+    </form>
 
-            <?php if ($u_role === 'admin'): ?>
-            <div class="filter-group">
-                <label><i class="fas fa-user-tie"></i> Penagih</label>
-                <select name="filter_collector" class="form-control filter-control">
-                    <option value="">Semua Penagih</option>
-                    <?php foreach($collectors as $coll): ?>
-                        <option value="<?= $coll['id'] ?>" <?= $filter_collector == $coll['id'] ? 'selected' : '' ?>><?= htmlspecialchars($coll['name']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <?php endif; ?>
-
-            <div class="grid-actions filter-actions">
-                <div class="btn-group">
-                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search"></i> Cari</button>
-                    <?php if($search || $filter_type || $filter_collector): ?>
-                        <a href="index.php?page=admin_customers" class="btn btn-ghost btn-sm filter-reset-btn"><i class="fas fa-sync"></i></a>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </form>
-    </div>
-
-    <!-- Scrollable Container for Customers -->
-    <div class="scroll-container" style="max-height:70vh; overflow-y:auto; padding-right:5px; margin-bottom:20px; border-radius:12px;">
-        <!-- Mobile Card View (Hidden on Desktop) -->
-        <div class="customers-mobile-container" style="display:none;">
+    <!-- Mobile Card View (Hidden on Desktop) -->
+    <div class="customers-mobile-container block md:hidden">
         <?php
         $tenant_id = $_SESSION['tenant_id'] ?? 1;
         $routers = [];
         try { $routers = $db->query("SELECT * FROM routers WHERE tenant_id = $tenant_id")->fetchAll(); } catch(Exception $e) {}
         $customers = $db->query("SELECT id, customer_code, name, type, contact, address, package_name, monthly_fee, area, router_id, pppoe_name, created_by, collector_id FROM customers WHERE 1=1 $where_type $where_collector $where_search $scope_where ORDER BY id DESC LIMIT $items_per_page OFFSET $offset")->fetchAll();
-        
+
         foreach($customers as $c):
             $rtName = '-';
             foreach($routers as $r) { if($r['id'] == ($c['router_id'] ?? 0)) $rtName = $r['name']; }
         ?>
-        <div class="glass-panel" style="padding:16px; margin-bottom:12px; border-left:4px solid var(--primary);">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+        <div class="ui-card mb-3 p-4">
+            <div class="mb-2.5 flex items-start justify-between gap-3">
                 <div>
-                    <div style="font-weight:700; font-size:16px;"><?= htmlspecialchars($c['name']) ?></div>
-                    <div style="font-size:11px; color:var(--primary); font-family:monospace;"><?= htmlspecialchars($c['customer_code'] ?? '') ?></div>
+                    <div class="text-[15px] font-bold"><?= htmlspecialchars($c['name']) ?></div>
+                    <div class="font-mono text-xs text-muted-foreground"><?= htmlspecialchars($c['customer_code'] ?? '') ?></div>
                 </div>
-                    <?php if($u_role === 'admin'): ?>
-                        <?php if($c['type']=='partner'): ?>
-                            <span class="badge badge-warning">Mitra</span>
-                        <?php else: ?>
-                            <span class="badge badge-success">SLA</span>
-                        <?php endif; ?>
-                    <?php endif; ?>
-            </div>
-            
-            <div style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;">
-                <div style="margin-bottom:3px;"><i class="fas fa-box" style="width:16px;"></i> <?= htmlspecialchars($c['package_name']) ?> — <strong>Rp <?= number_format($c['monthly_fee'], 0, ',', '.') ?></strong></div>
                 <?php if($u_role === 'admin'): ?>
-                <div style="margin-bottom:3px;"><i class="fas fa-map-marker-alt" style="width:16px;"></i> <?= htmlspecialchars($c['area'] ?: '-') ?></div>
+                    <?php if($c['type']=='partner'): ?>
+                        <span class="ui-badge ui-badge-accent">Mitra</span>
+                    <?php else: ?>
+                        <span class="ui-badge ui-badge-muted">Pelanggan</span>
+                    <?php endif; ?>
                 <?php endif; ?>
-                <div style="margin-bottom:3px;"><i class="fas fa-phone" style="width:16px;"></i> <?= htmlspecialchars($c['contact']) ?></div>
-                <div style="font-family:monospace; font-size:11px;">
-                    IP: <?= htmlspecialchars($c['ip_address'] ?: '-') ?> • Sumber: <?= htmlspecialchars($rtName) ?>
-                </div>
             </div>
 
-            <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--glass-border); padding-top:12px;">
+            <div class="mb-3 space-y-0.5 text-[13px] text-muted-foreground">
+                <div><?= htmlspecialchars($c['package_name']) ?> — <strong class="tabular-nums text-foreground">Rp <?= number_format($c['monthly_fee'], 0, ',', '.') ?></strong></div>
+                <?php if($u_role === 'admin'): ?>
+                <div>Area: <?= htmlspecialchars($c['area'] ?: '-') ?></div>
+                <?php endif; ?>
+                <div>Kontak: <?= htmlspecialchars($c['contact']) ?></div>
+                <div class="font-mono text-xs">IP: <?= htmlspecialchars($c['ip_address'] ?: '-') ?> · Sumber: <?= htmlspecialchars($rtName) ?></div>
+            </div>
+
+            <div class="flex items-center justify-between gap-3 border-t border-solid border-border pt-3">
                 <div class="conn-status" data-router="<?= htmlspecialchars($c['router_id'] ?? 0) ?>" data-pppoe="<?= htmlspecialchars($c['pppoe_name'] ?? '') ?>">
                     <?php if(empty($c['pppoe_name'])): ?>
-                        <span style="color:var(--text-secondary); font-size:12px;">Tanpa API</span>
+                        <span class="text-xs text-muted-foreground">Tanpa API</span>
                     <?php elseif(intval($c['router_id'] ?? 0) <= 0): ?>
-                        <span style="color:var(--text-secondary); font-size:12px;">Router N/A</span>
+                        <span class="text-xs text-muted-foreground">Router N/A</span>
                     <?php else: ?>
-                        <i class="fas fa-spinner fa-spin text-warning"></i>
+                        <i class="fas fa-spinner fa-spin text-muted-foreground"></i>
                     <?php endif; ?>
                 </div>
-                <div class="btn-group">
-                    <button class="btn btn-xs btn-ghost" onclick="createInvoice(<?= $c['id'] ?>, <?= $c['monthly_fee'] ?>)" title="Tagih"><i class="fas fa-file-invoice-dollar"></i></button>
+                <div class="flex flex-wrap justify-end gap-1.5">
+                    <button class="ui-btn ui-btn-sm ui-btn-outline" onclick="createInvoice(<?= $c['id'] ?>, <?= $c['monthly_fee'] ?>)" title="Tagih"><i class="fas fa-file-invoice-dollar"></i></button>
                     <?php if(!empty($c['pppoe_name'])): ?>
-                        <button class="btn btn-xs btn-ghost" onclick="viewTR069('<?= htmlspecialchars($c['pppoe_name']) ?>')" title="TR-069"><i class="fas fa-satellite-dish"></i></button>
+                        <button class="ui-btn ui-btn-sm ui-btn-outline" onclick="viewTR069('<?= htmlspecialchars($c['pppoe_name']) ?>')" title="TR-069"><i class="fas fa-satellite-dish"></i></button>
                     <?php endif; ?>
-                    <a href="index.php?page=admin_customers&action=details&id=<?= $c['id'] ?>" class="btn btn-xs btn-ghost" style="color:var(--primary);" title="Detail Lengkap"><i class="fas fa-eye"></i></a>
-                    <a href="index.php?page=admin_customers&action=edit&id=<?= $c['id'] ?>" class="btn btn-xs btn-ghost" style="color:var(--warning);" title="Edit"><i class="fas fa-edit"></i></a>
-                    <a data-method="post" href="index.php?page=admin_customers&action=delete&id=<?= $c['id'] ?>" class="btn btn-xs btn-danger" onclick="return confirm('Hapus?')" title="Hapus"><i class="fas fa-trash"></i></a>
+                    <a href="index.php?page=admin_customers&action=details&id=<?= $c['id'] ?>" class="ui-btn ui-btn-sm ui-btn-outline" title="Detail lengkap"><i class="fas fa-eye"></i></a>
+                    <a href="index.php?page=admin_customers&action=edit&id=<?= $c['id'] ?>" class="ui-btn ui-btn-sm ui-btn-outline" title="Edit"><i class="fas fa-edit"></i></a>
+                    <a data-method="post" href="index.php?page=admin_customers&action=delete&id=<?= $c['id'] ?>" class="ui-btn ui-btn-sm ui-btn-outline text-danger" onclick="return confirm('Hapus?')" title="Hapus"><i class="fas fa-trash"></i></a>
                 </div>
             </div>
         </div>
         <?php endforeach; ?>
+        <?php if(empty($customers)): ?>
+        <div class="ui-card px-5 py-10 text-center text-sm text-muted-foreground">Belum ada data.</div>
+        <?php endif; ?>
     </div>
 
     <!-- Desktop Table View (Hidden on Mobile) -->
-    <div class="table-container customers-desktop-table">
-        <table>
-            <thead>
-                <tr>
-                    <th style="width:40px; text-align:center;"><input type="checkbox" id="check-all-cust" style="transform:scale(1.2); cursor:pointer;"></th>
-                    <th>Nama</th>
-                    <?php if ($u_role === 'admin'): ?><th>Tipe / Area</th><?php endif; ?>
-                    <th>Layanan / Kontak</th>
-                    <th>Biaya Bulanan</th>
-                    <th>IP / Koneksi</th>
-                    <th>Status</th>
-                    <th>Aksi</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach($customers as $c):
-                    $rtName = '-';
-                    foreach($routers as $r) { if($r['id'] == ($c['router_id'] ?? 0)) $rtName = $r['name']; }
-                ?>
-                <tr class="cust-row">
-                    <td style="text-align:center;"><input type="checkbox" class="cust-checkbox" value="<?= $c['id'] ?>" style="transform:scale(1.2); cursor:pointer;"></td>
-                    <td>
-                        <div style="font-weight:600;"><?= htmlspecialchars($c['name']) ?></div>
-                        <div style="font-size:11px; color:var(--primary); font-family:monospace;"><?= htmlspecialchars($c['customer_code'] ?? '') ?></div>
-                    </td>
-                    <?php if ($u_role === 'admin'): ?>
-                    <td>
-                        <?php if($c['type']=='partner'): ?>
-                            <span class="badge badge-warning">Mitra</span>
-                        <?php else: ?>
-                            <span class="badge badge-success">Pelanggan</span>
-                        <?php endif; ?>
-                        <div style="font-size:12px; margin-top:5px; color:var(--text-secondary);"><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($c['area'] ?: '-') ?></div>
-                    </td>
+    <section class="customers-desktop-table ui-card hidden overflow-hidden md:block">
+        <div class="overflow-x-auto">
+            <table class="w-full border-collapse text-sm">
+                <thead>
+                    <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                        <th class="w-10 px-4 py-2.5 text-center font-semibold"><input type="checkbox" id="check-all-cust" class="cursor-pointer"></th>
+                        <th class="px-4 py-2.5 font-semibold">Nama</th>
+                        <?php if ($u_role === 'admin'): ?><th class="px-4 py-2.5 font-semibold">Tipe / area</th><?php endif; ?>
+                        <th class="px-4 py-2.5 font-semibold">Layanan / kontak</th>
+                        <th class="px-4 py-2.5 font-semibold">Biaya bulanan</th>
+                        <th class="px-4 py-2.5 font-semibold">IP / koneksi</th>
+                        <th class="px-4 py-2.5 text-center font-semibold">Status</th>
+                        <th class="px-4 py-2.5 text-right font-semibold">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if(empty($customers)): ?>
+                        <tr><td colspan="8" class="px-5 py-10 text-center text-sm text-muted-foreground">Belum ada data.</td></tr>
                     <?php endif; ?>
-                    <td>
-                        <div style="font-weight:600;"><?= htmlspecialchars($c['package_name']) ?></div>
-                        <div style="font-size:12px; color:var(--text-secondary);"><i class="fas fa-phone"></i> <?= htmlspecialchars($c['contact']) ?></div>
-                    </td>
-                    <td style="font-weight:bold;">Rp <?= number_format($c['monthly_fee'], 0, ',', '.') ?></td>
-                    <td style="font-family:monospace; line-height:1.4;">
-                        IP: <?= htmlspecialchars($c['ip_address'] ?? '-') ?><br>
-                        <span style="font-size:11px; color:var(--text-secondary);"><i class="fas fa-network-wired"></i> <?= htmlspecialchars($rtName) ?></span><br>
-                        <span style="font-size:11px; color:var(--text-secondary);"><i class="fas fa-user-circle"></i> <?= htmlspecialchars($c['pppoe_name'] ?? 'Tidak Disetel') ?></span>
-                    </td>
-                    <td class="conn-status" style="text-align:center;" data-router="<?= htmlspecialchars($c['router_id'] ?? 0) ?>" data-pppoe="<?= htmlspecialchars($c['pppoe_name'] ?? '') ?>">
-                        <?php if(empty($c['pppoe_name'])): ?>
-                            <span style="color:var(--text-secondary); font-size:12px;">Tanpa API</span>
-                        <?php else: ?>
-                            <i class="fas fa-circle-notch fa-spin text-warning"></i>
+                    <?php foreach($customers as $c):
+                        $rtName = '-';
+                        foreach($routers as $r) { if($r['id'] == ($c['router_id'] ?? 0)) $rtName = $r['name']; }
+                    ?>
+                    <tr class="cust-row border-t border-solid border-border">
+                        <td class="px-4 py-3 text-center"><input type="checkbox" class="cust-checkbox cursor-pointer" value="<?= $c['id'] ?>"></td>
+                        <td class="px-4 py-3">
+                            <div class="font-semibold"><?= htmlspecialchars($c['name']) ?></div>
+                            <div class="font-mono text-xs text-muted-foreground"><?= htmlspecialchars($c['customer_code'] ?? '') ?></div>
+                        </td>
+                        <?php if ($u_role === 'admin'): ?>
+                        <td class="px-4 py-3">
+                            <?php if($c['type']=='partner'): ?>
+                                <span class="ui-badge ui-badge-accent">Mitra</span>
+                            <?php else: ?>
+                                <span class="ui-badge ui-badge-muted">Pelanggan</span>
+                            <?php endif; ?>
+                            <div class="mt-1 text-xs text-muted-foreground"><?= htmlspecialchars($c['area'] ?: '-') ?></div>
+                        </td>
                         <?php endif; ?>
-                    </td>
-                    <td>
-                        <button class="btn btn-sm btn-ghost" onclick="createInvoice(<?= $c['id'] ?>, <?= $c['monthly_fee'] ?>)" title="Tagih Manual"><i class="fas fa-file-invoice"></i></button>
-                        <?php if(!empty($c['pppoe_name'])): ?>
-                            <button class="btn btn-sm btn-ghost" onclick="viewTR069('<?= htmlspecialchars($c['pppoe_name']) ?>')" title="Monitoring TR-069"><i class="fas fa-satellite-dish"></i></button>
-                        <?php endif; ?>
-                        <a href="index.php?page=admin_customers&action=details&id=<?= $c['id'] ?>" class="btn btn-sm btn-info" title="Detail & Riwayat"><i class="fas fa-eye"></i></a>
-                        <a href="index.php?page=admin_customers&action=edit&id=<?= $c['id'] ?>" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></a>
-                        <a data-method="post" href="index.php?page=admin_customers&action=delete&id=<?= $c['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus pelanggan ini?')" title="Hapus"><i class="fas fa-trash"></i></a>
-                        
-                        <?php 
-                        $wa_number = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $c['contact']));
-                        $wa_text = "Halo " . urlencode($c['name']) . ", tagihan internet Anda sebesar Rp " . number_format($c['monthly_fee'], 0, ',', '.') . " telah tersedia. Mohon segera melakukan pembayaran.";
-                        ?>
-                        <button onclick="sendWAGateway('<?= $wa_number ?>', <?= htmlspecialchars(json_encode($wa_text)) ?>, 'https://api.whatsapp.com/send?phone=<?= $wa_number ?>&text=<?= $wa_text ?>', this)" class="btn btn-sm btn-ghost" style="color:#25D366;" title="Kirim WA"><i class="fab fa-whatsapp"></i></button>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
+                        <td class="px-4 py-3">
+                            <div class="font-semibold"><?= htmlspecialchars($c['package_name']) ?></div>
+                            <div class="text-xs text-muted-foreground"><?= htmlspecialchars($c['contact']) ?></div>
+                        </td>
+                        <td class="px-4 py-3 font-semibold tabular-nums">Rp <?= number_format($c['monthly_fee'], 0, ',', '.') ?></td>
+                        <td class="px-4 py-3 font-mono text-xs leading-relaxed">
+                            IP: <?= htmlspecialchars($c['ip_address'] ?? '-') ?><br>
+                            <span class="text-muted-foreground">Router: <?= htmlspecialchars($rtName) ?></span><br>
+                            <span class="text-muted-foreground">PPPoE: <?= htmlspecialchars($c['pppoe_name'] ?? 'Tidak disetel') ?></span>
+                        </td>
+                        <td class="conn-status px-4 py-3 text-center" data-router="<?= htmlspecialchars($c['router_id'] ?? 0) ?>" data-pppoe="<?= htmlspecialchars($c['pppoe_name'] ?? '') ?>">
+                            <?php if(empty($c['pppoe_name'])): ?>
+                                <span class="text-xs text-muted-foreground">Tanpa API</span>
+                            <?php else: ?>
+                                <i class="fas fa-circle-notch fa-spin text-muted-foreground"></i>
+                            <?php endif; ?>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="flex flex-wrap justify-end gap-1.5">
+                            <button class="ui-btn ui-btn-sm ui-btn-outline" onclick="createInvoice(<?= $c['id'] ?>, <?= $c['monthly_fee'] ?>)" title="Tagih manual"><i class="fas fa-file-invoice"></i></button>
+                            <?php if(!empty($c['pppoe_name'])): ?>
+                                <button class="ui-btn ui-btn-sm ui-btn-outline" onclick="viewTR069('<?= htmlspecialchars($c['pppoe_name']) ?>')" title="Monitoring TR-069"><i class="fas fa-satellite-dish"></i></button>
+                            <?php endif; ?>
+                            <a href="index.php?page=admin_customers&action=details&id=<?= $c['id'] ?>" class="ui-btn ui-btn-sm ui-btn-outline" title="Detail & riwayat"><i class="fas fa-eye"></i></a>
+                            <a href="index.php?page=admin_customers&action=edit&id=<?= $c['id'] ?>" class="ui-btn ui-btn-sm ui-btn-outline" title="Edit"><i class="fas fa-edit"></i></a>
+                            <a data-method="post" href="index.php?page=admin_customers&action=delete&id=<?= $c['id'] ?>" class="ui-btn ui-btn-sm ui-btn-outline text-danger" onclick="return confirm('Hapus pelanggan ini?')" title="Hapus"><i class="fas fa-trash"></i></a>
 
-    </div>
+                            <?php
+                            $wa_number = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $c['contact']));
+                            $wa_text = "Halo " . urlencode($c['name']) . ", tagihan internet Anda sebesar Rp " . number_format($c['monthly_fee'], 0, ',', '.') . " telah tersedia. Mohon segera melakukan pembayaran.";
+                            ?>
+                            <button onclick="sendWAGateway('<?= $wa_number ?>', <?= htmlspecialchars(json_encode($wa_text)) ?>, 'https://api.whatsapp.com/send?phone=<?= $wa_number ?>&text=<?= $wa_text ?>', this)" class="ui-btn ui-btn-sm ui-btn-wa" title="Kirim WA"><i class="fab fa-whatsapp"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </section>
 
     <!-- Pagination Navigation -->
     <?php if($total_pages > 1): ?>
-    <div class="pagination-nav" style="margin-top:24px;">
-        <?php 
-        $params = $_GET; 
-        unset($params['p']); 
+    <div class="mt-5 flex flex-wrap items-center justify-center gap-1.5">
+        <?php
+        $params = $_GET;
+        unset($params['p']);
         $query_str = http_build_query($params);
         $base_url = "index.php?" . $query_str . "&p=";
         ?>
-        
+
         <?php if($current_page > 1): ?>
-            <a href="<?= $base_url . ($current_page - 1) ?>" class="btn btn-sm btn-ghost">&laquo; Prev</a>
+            <a href="<?= $base_url . ($current_page - 1) ?>" class="ui-btn ui-btn-sm ui-btn-outline">&laquo; Prev</a>
         <?php endif; ?>
 
-        <?php 
+        <?php
         $start_p = max(1, $current_page - 2);
         $end_p = min($total_pages, $current_page + 2);
-        if($start_p > 1) echo '<span style="padding:5px 10px; color:var(--text-secondary);">...</span>';
-        for($i = $start_p; $i <= $end_p; $i++): 
+        if($start_p > 1) echo '<span class="px-2 text-muted-foreground">...</span>';
+        for($i = $start_p; $i <= $end_p; $i++):
         ?>
-            <a href="<?= $base_url . $i ?>" class="btn btn-sm <?= $i == $current_page ? 'btn-primary' : 'btn-ghost' ?>"><?= $i ?></a>
+            <a href="<?= $base_url . $i ?>" class="ui-btn ui-btn-sm <?= $i == $current_page ? 'ui-btn-primary' : 'ui-btn-outline' ?>"><?= $i ?></a>
         <?php endfor; ?>
-        <?php if($end_p < $total_pages) echo '<span style="padding:5px 10px; color:var(--text-secondary);">...</span>'; ?>
+        <?php if($end_p < $total_pages) echo '<span class="px-2 text-muted-foreground">...</span>'; ?>
 
         <?php if($current_page < $total_pages): ?>
-            <a href="<?= $base_url . ($current_page + 1) ?>" class="btn btn-sm btn-ghost">Next &raquo;</a>
+            <a href="<?= $base_url . ($current_page + 1) ?>" class="ui-btn ui-btn-sm ui-btn-outline">Next &raquo;</a>
         <?php endif; ?>
-        
-        <div class="pagination-info">
-            Menampilkan <?= count($customers) ?> dari <?= $total_rows ?> pelanggan (Halaman <?= $current_page ?> dari <?= $total_pages ?>)
+
+        <div class="w-full text-center text-xs text-muted-foreground">
+            Menampilkan <?= count($customers) ?> dari <?= $total_rows ?> pelanggan (halaman <?= $current_page ?> dari <?= $total_pages ?>)
         </div>
     </div>
     <?php endif; ?>
 
     <!-- Bulk Action Bar -->
-    <div id="bulk-bar" class="glass-panel" style="display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%); width:91%; max-width:900px; padding:15px 25px; z-index:1000; box-shadow:0 -10px 40px rgba(0,0,0,0.3); border:2px solid var(--primary); align-items:center; justify-content:space-between; flex-wrap:wrap; gap:15px;">
-        <div style="display:flex; align-items:center; gap:20px;">
-            <button class="btn btn-sm btn-ghost" onclick="cancelBulkSelection()" style="padding:10px; border-radius:50%; width:35px; height:35px; display:flex; align-items:center; justify-content:center;" title="Batalkan Seleksi">
-                <i class="fas fa-times"></i>
-            </button>
-            <div style="display:flex; align-items:center; gap:10px;">
-                <div style="background:var(--primary); color:white; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:13px;" id="bulk-count">0</div>
-                <div style="font-weight:700; font-size:14px;">Terpilih</div>
+    <div id="bulk-bar" class="ui-card fixed bottom-4 left-1/2 z-[1000] w-[calc(100%-2rem)] max-w-3xl -translate-x-1/2 flex-wrap items-center justify-between gap-3 border-primary/40 p-3 shadow-md sm:px-5" style="display:none;">
+        <div class="flex items-center gap-3">
+            <button class="ui-btn ui-btn-sm ui-btn-ghost" onclick="cancelBulkSelection()" title="Batalkan seleksi"><i class="fas fa-times"></i></button>
+            <div class="flex items-center gap-2 text-sm font-semibold">
+                <span id="bulk-count" class="ui-badge ui-badge-signal tabular-nums">0</span> terpilih
             </div>
         </div>
-        
-        <div style="display:flex; gap:10px; align-items:center;">
+
+        <div class="flex flex-wrap items-center gap-2">
             <?php if ($u_role === 'admin'): ?>
-            <div id="move-collector-box" style="display:none; align-items:center; gap:8px; background:var(--hover-bg); padding:5px 10px; border-radius:8px; border:1px solid var(--glass-border);">
-                <span style="font-size:12px; font-weight:600;">Pindah ke:</span>
-                <select id="bulk-target-collector" class="form-control" style="width:150px; padding:5px;">
-                    <option value="">-- Pilih Penagih --</option>
-                    <?php 
+            <div id="move-collector-box" class="items-center gap-2 rounded-md bg-muted px-2.5 py-1.5" style="display:none;">
+                <span class="text-xs font-semibold">Pindah ke:</span>
+                <select id="bulk-target-collector" class="form-control w-40">
+                    <option value="">-- Pilih penagih --</option>
+                    <?php
                     $colls = $db->query("SELECT id, name FROM users WHERE role = 'collector'")->fetchAll();
                     foreach($colls as $coll) echo "<option value='{$coll['id']}'>{$coll['name']}</option>";
                     ?>
                 </select>
-                <button class="btn btn-sm btn-primary" onclick="submitBulkMove()">Simpan</button>
-                <button class="btn btn-sm btn-ghost" onclick="toggleMoveBox(false)">Batal</button>
+                <button class="ui-btn ui-btn-sm ui-btn-primary" onclick="submitBulkMove()">Simpan</button>
+                <button class="ui-btn ui-btn-sm ui-btn-ghost" onclick="toggleMoveBox(false)">Batal</button>
             </div>
 
-            <div id="assign-partner-box" style="display:none; align-items:center; gap:8px; background:var(--hover-bg); padding:5px 10px; border-radius:8px; border:1px solid var(--glass-border);">
-                <span style="font-size:12px; font-weight:600;">Mitra:</span>
-                <select id="bulk-target-partner" class="form-control" style="width:170px; padding:5px;">
-                    <option value="">-- Pilih Mitra --</option>
+            <div id="assign-partner-box" class="items-center gap-2 rounded-md bg-muted px-2.5 py-1.5" style="display:none;">
+                <span class="text-xs font-semibold">Mitra:</span>
+                <select id="bulk-target-partner" class="form-control w-44">
+                    <option value="">-- Pilih mitra --</option>
                     <?php foreach($partners as $p) echo "<option value='{$p['id']}'>" . htmlspecialchars($p['name']) . "</option>"; ?>
                 </select>
-                <button class="btn btn-sm btn-primary" onclick="submitBulkAssignPartner()">Simpan</button>
-                <button class="btn btn-sm btn-ghost" onclick="togglePartnerBox(false)">Batal</button>
+                <button class="ui-btn ui-btn-sm ui-btn-primary" onclick="submitBulkAssignPartner()">Simpan</button>
+                <button class="ui-btn ui-btn-sm ui-btn-ghost" onclick="togglePartnerBox(false)">Batal</button>
             </div>
 
-            <button class="btn btn-sm btn-ghost" id="btn-move-trigger" onclick="toggleMoveBox(true)" style="color:var(--primary); font-weight:700;">
-                <i class="fas fa-exchange-alt"></i> Pindah Penagih
+            <button class="ui-btn ui-btn-sm ui-btn-outline" id="btn-move-trigger" onclick="toggleMoveBox(true)">
+                <i class="fas fa-exchange-alt"></i> Pindah penagih
             </button>
 
-            <button class="btn btn-sm btn-ghost" id="btn-assign-partner-trigger" onclick="togglePartnerBox(true)" style="color:#60a5fa; font-weight:700;">
-                <i class="fas fa-user-tag"></i> Pindah Mitra
+            <button class="ui-btn ui-btn-sm ui-btn-outline" id="btn-assign-partner-trigger" onclick="togglePartnerBox(true)">
+                <i class="fas fa-user-tag"></i> Pindah mitra
             </button>
             <?php endif; ?>
-            
-            <button class="btn btn-sm btn-danger" onclick="submitBulkDelete()" style="font-weight:700;">
-                <i class="fas fa-trash"></i> Hapus Masal
+
+            <button class="ui-btn ui-btn-sm ui-btn-outline text-danger" onclick="submitBulkDelete()">
+                <i class="fas fa-trash"></i> Hapus masal
             </button>
         </div>
     </div>
@@ -1206,14 +1185,6 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
     </script>
-</div>
-
-<style>
-@media (max-width: 768px) {
-    .customers-desktop-table { display: none !important; }
-    .customers-mobile-container { display: block !important; }
-}
-</style>
 
 <form id="autoInvoiceForm" method="POST" action="index.php?page=admin_invoices&action=create_auto" style="display:none;">
 <?= csrf_field() ?>
@@ -1296,7 +1267,7 @@ document.addEventListener("DOMContentLoaded", function() {
             $u_id = $_SESSION['user_id'];
             $u_role = $_SESSION['user_role'];
             if (!$c) {
-                echo "<div class='glass-panel p-5 text-center'><h3>Akses Ditolak</h3><p>Anda tidak berwenang mengedit data ini.</p><a href='index.php?page=admin_customers' class='btn btn-primary'>Kembali</a></div>";
+                echo "<div class='ui-card p-10 text-center'><h3 class='m-0 text-lg font-bold'>Akses ditolak</h3><p class='mt-1 text-sm text-muted-foreground'>Anda tidak berwenang mengedit data ini.</p><a href='index.php?page=admin_customers' class='ui-btn ui-btn-primary mt-4'>Kembali</a></div>";
                 return;
             }
         }
@@ -1306,72 +1277,78 @@ document.addEventListener("DOMContentLoaded", function() {
         $c = ['type'=>$default_type, 'registration_date'=>date('Y-m-d'), 'billing_date'=>'', 'router_id'=>0, 'pppoe_name'=>'', 'name'=>'', 'address'=>'', 'contact'=>'', 'package_name'=>'', 'monthly_fee'=>'', 'ip_address'=>'', 'area'=>'', 'ppn_active'=>0, 'bhp_active'=>0, 'uso_active'=>0];
     }
 ?>
-<div class="glass-panel" style="padding: 24px; max-width:600px; margin:0 auto;">
-    <h3 style="font-size:20px; margin-bottom:20px;"><i class="fas fa-user-edit text-primary"></i> <?= $action === 'edit' ? 'Edit Data Pelanggan' : 'Tambah Baru' ?></h3>
+<div class="ui-card mx-auto max-w-2xl p-5 sm:p-6">
+    <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div>
+            <h2 class="m-0 text-xl font-bold"><?= $action === 'edit' ? 'Edit data pelanggan' : 'Tambah pelanggan' ?></h2>
+        </div>
+        <a href="index.php?page=admin_customers" class="ui-btn ui-btn-sm ui-btn-outline"><i class="fas fa-arrow-left"></i> Kembali</a>
+    </div>
     <form action="index.php?page=admin_customers&action=<?= $action === 'edit' ? 'update' : 'add' ?>" method="POST" onsubmit="return validateAndSync(event)">
         <?php if($action === 'edit'): ?><input type="hidden" name="id" value="<?= $c['id'] ?>"><?php endif; ?>
-        
+
         <?php if ($u_role === 'admin'): ?>
-        <div class="form-group">
-            <label>Tipe Entitas</label>
+        <label class="mb-4 block">
+            <span class="mb-1 block text-xs font-medium text-muted-foreground">Tipe entitas</span>
             <select name="type" id="customer_type_selector" class="form-control" required onchange="togglePkgFields(this.value)">
-                <option value="customer" <?= $c['type']=='customer'?'selected':'' ?>>Pelanggan (Rumahan)</option>
-                <option value="partner" <?= $c['type']=='partner'?'selected':'' ?>>Mitra (Bandwidth)</option>
+                <option value="customer" <?= $c['type']=='customer'?'selected':'' ?>>Pelanggan (rumahan)</option>
+                <option value="partner" <?= $c['type']=='partner'?'selected':'' ?>>Mitra (bandwidth)</option>
             </select>
-        </div>
+        </label>
         <?php else: ?>
             <input type="hidden" name="type" id="customer_type_selector" value="customer">
         <?php endif; ?>
-        <div class="form-group">
-            <label>Nama Lengkap / Instansi</label>
+        <label class="mb-4 block">
+            <span class="mb-1 block text-xs font-medium text-muted-foreground">Nama lengkap / instansi</span>
             <input type="text" name="name" class="form-control" value="<?= htmlspecialchars($c['name']) ?>" required>
-        </div>
-        <div class="form-group">
-            <label>Alamat Instalasi</label>
+        </label>
+        <label class="mb-4 block">
+            <span class="mb-1 block text-xs font-medium text-muted-foreground">Alamat instalasi</span>
             <input type="text" name="address" class="form-control" value="<?= htmlspecialchars($c['address']) ?>">
-        </div>
-        <div class="form-group">
-            <label>Kontak / WhatsApp</label>
+        </label>
+        <label class="mb-4 block">
+            <span class="mb-1 block text-xs font-medium text-muted-foreground">Kontak / WhatsApp</span>
             <input type="text" name="contact" class="form-control" value="<?= htmlspecialchars($c['contact']) ?>">
-        </div>
-        <div id="standard-pkg-zone" class="flex" style="gap:15px; margin-bottom:20px; <?= $c['type'] == 'partner' ? 'display:none;' : '' ?>">
-            <div style="flex:1;">
-                <label style="font-size:14px; margin-bottom:8px; display:block;">Pilih Paket</label>
+        </label>
+
+        <div id="standard-pkg-zone" class="mb-4 flex flex-col gap-4 sm:flex-row" style="<?= $c['type'] == 'partner' ? 'display:none;' : '' ?>">
+            <div class="sm:flex-1">
+                <label class="mb-1 block text-xs font-medium text-muted-foreground">Pilih paket</label>
                 <select name="package_name_select" id="package_selector" class="form-control" onchange="updateFee(this.value)">
-                    <option value="">-- Pilih Paket --</option>
+                    <option value="">-- Pilih paket --</option>
                     <?php foreach($packages_all as $p): ?>
                         <option value="<?= htmlspecialchars($p['name']) ?>" data-fee="<?= $p['fee'] ?>" <?= $c['package_name'] == $p['name'] ? 'selected' : '' ?>><?= htmlspecialchars($p['name']) ?></option>
                     <?php endforeach; ?>
                 </select>
-                <div style="font-size:10px; color:var(--text-secondary); margin-top:5px;">*Atur paket di menu Manajemen Paket</div>
+                <div class="mt-1 text-xs text-muted-foreground">Atur paket di menu Manajemen paket.</div>
             </div>
-            <div style="flex:1;">
-                <label style="font-size:14px; margin-bottom:8px; display:block;">Biaya Bulanan (Rp)</label>
+            <div class="sm:flex-1">
+                <label class="mb-1 block text-xs font-medium text-muted-foreground">Biaya bulanan (Rp)</label>
                 <input type="number" name="monthly_fee_std" id="monthly_fee_input" class="form-control" value="<?= $c['monthly_fee'] ?>">
             </div>
         </div>
 
-        <div id="custom-pkg-zone" class="flex" style="gap:15px; margin-bottom:20px; <?= $c['type'] != 'partner' ? 'display:none;' : '' ?>">
-            <div style="flex:1;">
-                <label style="font-size:14px; margin-bottom:8px; display:block;">Nama Paket (Custom)</label>
+        <div id="custom-pkg-zone" class="mb-4 flex flex-col gap-4 sm:flex-row" style="<?= $c['type'] != 'partner' ? 'display:none;' : '' ?>">
+            <div class="sm:flex-1">
+                <label class="mb-1 block text-xs font-medium text-muted-foreground">Nama paket (custom)</label>
                 <input type="text" name="package_name_custom" class="form-control" value="<?= htmlspecialchars($c['package_name']) ?>" placeholder="Misal: Dedicated 50Mbps">
-                <div style="font-size:10px; color:var(--success); margin-top:5px;">*Khusus Mitra tulis manual nama paketnya</div>
+                <div class="mt-1 text-xs text-muted-foreground">Khusus mitra, tulis manual nama paketnya.</div>
             </div>
-            <div style="flex:1;">
-                <label style="font-size:14px; margin-bottom:8px; display:block;">Biaya Custom (Rp)</label>
-                <input type="number" name="monthly_fee_custom" class="form-control" value="<?= $c['monthly_fee'] ?>" placeholder="Sesuai Kontrak">
+            <div class="sm:flex-1">
+                <label class="mb-1 block text-xs font-medium text-muted-foreground">Biaya custom (Rp)</label>
+                <input type="number" name="monthly_fee_custom" class="form-control" value="<?= $c['monthly_fee'] ?>" placeholder="Sesuai kontrak">
             </div>
         </div>
-        
+
         <!-- Hidden real fields to sync before submit -->
         <input type="hidden" name="package_name" id="real_package_name" value="<?= htmlspecialchars($c['package_name']) ?>">
         <input type="hidden" name="monthly_fee" id="real_monthly_fee" value="<?= $c['monthly_fee'] ?>">
 
-        <div style="padding:15px; background:var(--hover-bg); border-radius:12px; margin-bottom:20px; border-left:4px solid var(--primary);">
-            <div class="form-group" style="margin-bottom:10px;">
-                <label>Router (Bawaan)</label>
+        <div class="mb-4 grid gap-4 rounded-lg border border-solid border-border p-4">
+            <label class="block">
+                <span class="mb-1 block text-xs font-medium text-muted-foreground">Router (bawaan)</span>
                 <select name="router_id" id="sel_router_id" class="form-control" onchange="loadPPPoE(this.value)">
-                    <option value="0">-- Akses Manual --</option>
+                    <option value="0">-- Akses manual --</option>
                     <?php
                     $tenant_id = $_SESSION['tenant_id'] ?? 1;
                     $routers = []; try { $routers = $db->query("SELECT * FROM routers WHERE tenant_id = $tenant_id")->fetchAll(); } catch(Exception $e) {}
@@ -1380,18 +1357,18 @@ document.addEventListener("DOMContentLoaded", function() {
                     <option value="<?= $r['id'] ?>" <?= ($c['router_id'] ?? 0) == $r['id'] ? 'selected' : '' ?>><?= htmlspecialchars($r['name']) ?></option>
                     <?php endforeach; ?>
                 </select>
-            </div>
-            <div class="form-group" style="margin-bottom:10px;">
-                <label>Akun PPPoE (Secret)</label>
+            </label>
+            <label class="block">
+                <span class="mb-1 block text-xs font-medium text-muted-foreground">Akun PPPoE (secret)</span>
                 <select name="pppoe_name" id="sel_pppoe_name" class="form-control" data-prev="<?= htmlspecialchars($c['pppoe_name'] ?? '') ?>">
                     <option value="<?= htmlspecialchars($c['pppoe_name'] ?? '') ?>"><?= htmlspecialchars($c['pppoe_name'] ?: '-- Pilih Router --') ?></option>
                 </select>
-            </div>
+            </label>
             <?php if ($u_role === 'admin'): ?>
-            <div class="form-group" style="margin-bottom:0;">
-                <label>Petugas Penagih (Collector)</label>
+            <label class="block">
+                <span class="mb-1 block text-xs font-medium text-muted-foreground">Petugas penagih (collector)</span>
                 <select name="collector_id" class="form-control">
-                    <option value="0">-- Pilih Penagih --</option>
+                    <option value="0">-- Pilih penagih --</option>
                     <?php
                     $tenant_id = $_SESSION['tenant_id'] ?? 1;
                     $colls = $db->query("SELECT id, name FROM users WHERE role = 'collector' AND tenant_id = $tenant_id ORDER BY name ASC")->fetchAll();
@@ -1400,19 +1377,19 @@ document.addEventListener("DOMContentLoaded", function() {
                     <option value="<?= $coll['id'] ?>" <?= ($c['collector_id'] ?? 0) == $coll['id'] ? 'selected' : '' ?>><?= htmlspecialchars($coll['name']) ?></option>
                     <?php endforeach; ?>
                 </select>
-            </div>
+            </label>
             <?php else: ?>
                 <input type="hidden" name="collector_id" value="0">
             <?php endif; ?>
         </div>
-        
+
         <?php if($u_role === 'admin'): ?>
-        <div class="form-group">
-            <label>IP Address & Area Penagihan</label>
-            <div class="flex" style="gap:10px;">
-                <input type="text" name="ip_address" class="form-control" value="<?= htmlspecialchars($c['ip_address']) ?>" placeholder="IP (192.168.x.x)" style="flex:1;">
-                <select name="area" class="form-control" style="flex:2;">
-                    <option value="">-- Pilih Area --</option>
+        <div class="mb-4">
+            <span class="mb-1 block text-xs font-medium text-muted-foreground">IP address & area penagihan</span>
+            <div class="grid gap-3 sm:grid-cols-[1fr_2fr]">
+                <input type="text" name="ip_address" class="form-control" value="<?= htmlspecialchars($c['ip_address']) ?>" placeholder="IP (192.168.x.x)">
+                <select name="area" class="form-control">
+                    <option value="">-- Pilih area --</option>
                     <?php foreach($areas_all as $a): ?>
                         <option value="<?= htmlspecialchars($a['name']) ?>" <?= $c['area'] == $a['name'] ? 'selected' : '' ?>><?= htmlspecialchars($a['name']) ?></option>
                     <?php endforeach; ?>
@@ -1421,28 +1398,28 @@ document.addEventListener("DOMContentLoaded", function() {
                     <?php endif; ?>
                 </select>
             </div>
-            <div style="font-size:10px; color:var(--text-secondary); margin-top:5px;">*Atur daftar area di menu Manajemen Area</div>
+            <div class="mt-1 text-xs text-muted-foreground">Atur daftar area di menu Manajemen area.</div>
         </div>
         <?php else: ?>
-            <div class="form-group">
-                <label>IP Address</label>
+            <label class="mb-4 block">
+                <span class="mb-1 block text-xs font-medium text-muted-foreground">IP address</span>
                 <input type="text" name="ip_address" class="form-control" value="<?= htmlspecialchars($c['ip_address']) ?>" placeholder="IP (192.168.x.x)">
-            </div>
+            </label>
             <input type="hidden" name="area" value="">
         <?php endif; ?>
 
-        <div class="form-group" style="margin-top:18px;">
-            <label>Aktivasi Fitur Tambahan</label>
-            <div class="flex" style="gap:10px; flex-wrap:wrap; margin-top:8px;">
-                <label style="display:flex; align-items:center; gap:8px; background:var(--hover-bg); padding:8px 12px; border-radius:10px; min-width:110px;">
+        <div class="mb-4">
+            <span class="mb-1 block text-xs font-medium text-muted-foreground">Aktivasi fitur tambahan</span>
+            <div class="mt-1 flex flex-wrap gap-2">
+                <label class="inline-flex min-w-[110px] cursor-pointer items-center gap-2 rounded-md border border-solid border-border px-3 py-2 text-sm">
                     <input type="checkbox" name="ppn_active" value="1" <?= !empty($c['ppn_active']) ? 'checked' : '' ?>>
                     <span>PPN</span>
                 </label>
-                <label style="display:flex; align-items:center; gap:8px; background:var(--hover-bg); padding:8px 12px; border-radius:10px; min-width:110px;">
+                <label class="inline-flex min-w-[110px] cursor-pointer items-center gap-2 rounded-md border border-solid border-border px-3 py-2 text-sm">
                     <input type="checkbox" name="bhp_active" value="1" <?= !empty($c['bhp_active']) ? 'checked' : '' ?>>
                     <span>BHP</span>
                 </label>
-                <label style="display:flex; align-items:center; gap:8px; background:var(--hover-bg); padding:8px 12px; border-radius:10px; min-width:110px;">
+                <label class="inline-flex min-w-[110px] cursor-pointer items-center gap-2 rounded-md border border-solid border-border px-3 py-2 text-sm">
                     <input type="checkbox" name="uso_active" value="1" <?= !empty($c['uso_active']) ? 'checked' : '' ?>>
                     <span>USO</span>
                 </label>
@@ -1451,14 +1428,14 @@ document.addEventListener("DOMContentLoaded", function() {
 
         <?php if ($u_role === 'admin'): ?>
         <!-- NEW: Infra & GIS Section -->
-        <div style="padding:15px; background:rgba(236, 72, 153, 0.05); border-radius:12px; margin-bottom:20px; border:1px solid rgba(236, 72, 153, 0.2);">
-            <div style="font-weight:700; color:#ec4899; margin-bottom:12px;"><i class="fas fa-network-wired"></i> Infra & GIS Jaringan</div>
-            <div class="flex" style="gap:15px; margin-bottom:15px;">
-                <div style="flex:2;">
-                    <label style="font-size:12px; margin-bottom:5px; display:block;">Sumber Koneksi (ODP/Switch/Radio)</label>
+        <div class="mb-4 rounded-lg border border-solid border-border p-4">
+            <div class="mb-3 text-sm font-semibold">Infra & GIS jaringan</div>
+            <div class="mb-4 grid gap-4 sm:grid-cols-[2fr_1fr]">
+                <div>
+                    <label class="mb-1 block text-xs font-medium text-muted-foreground">Sumber koneksi (ODP/switch/radio)</label>
                     <select name="odp_id" class="form-control">
-                        <option value="0">-- Pilih Sumber --</option>
-                        <?php 
+                        <option value="0">-- Pilih sumber --</option>
+                        <?php
                         $all_assets = $db->query("SELECT id, name, type, total_ports FROM infrastructure_assets ORDER BY type DESC, name ASC")->fetchAll();
                         foreach($all_assets as $o):
                             $tenant_id = $_SESSION['tenant_id'] ?? 1;
@@ -1472,78 +1449,76 @@ document.addEventListener("DOMContentLoaded", function() {
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div style="flex:1;">
-                    <label style="font-size:12px; margin-bottom:5px; display:block;">Port ODP</label>
+                <div>
+                    <label class="mb-1 block text-xs font-medium text-muted-foreground">Port ODP</label>
                     <input type="number" name="odp_port" class="form-control" value="<?= $c['odp_port'] ?? '' ?>" placeholder="1-16">
                 </div>
             </div>
-            <div class="flex" style="gap:15px;">
-                <div style="flex:1;">
-                    <label style="font-size:12px; margin-bottom:5px; display:block;">Latitude</label>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                    <label class="mb-1 block text-xs font-medium text-muted-foreground">Latitude</label>
                     <input type="text" name="lat" class="form-control" value="<?= htmlspecialchars($c['lat'] ?? '') ?>" placeholder="-6.xxx">
                 </div>
-                <div style="flex:1;">
-                    <label style="font-size:12px; margin-bottom:5px; display:block;">Longitude</label>
+                <div>
+                    <label class="mb-1 block text-xs font-medium text-muted-foreground">Longitude</label>
                     <input type="text" name="lng" class="form-control" value="<?= htmlspecialchars($c['lng'] ?? '') ?>" placeholder="106.xxx">
                 </div>
             </div>
-            <div style="font-size:11px; margin-top:8px; color:var(--text-secondary);">
-                <i class="fas fa-info-circle"></i> Tip: Gunakan Google Maps (Klik kanan di lokasi > Ambil koordinat) atau buka <a href="index.php?page=admin_map" target="_blank" style="color:#ec4899; font-weight:700;">Peta Jaringan</a> untuk referensi.
+            <div class="mt-2 text-xs text-muted-foreground">
+                Tip: gunakan Google Maps (klik kanan di lokasi > ambil koordinat) atau buka <a href="index.php?page=admin_map" target="_blank" class="font-semibold text-primary">Peta jaringan</a> untuk referensi.
             </div>
         </div>
         <?php endif; ?>
 
-        <div class="flex" style="gap:15px;">
-            <div class="form-group" style="flex:1;">
-                <label>Tanggal Registrasi</label>
+        <div class="mb-4 grid gap-4 sm:grid-cols-2">
+            <label class="block">
+                <span class="mb-1 block text-xs font-medium text-muted-foreground">Tanggal registrasi</span>
                 <input type="date" name="registration_date" class="form-control" value="<?= htmlspecialchars($c['registration_date']) ?>" required>
-            </div>
-            <div class="form-group" style="flex:1;">
-                <label>Tanggal Tagihan (1-28)</label>
+            </label>
+            <label class="block">
+                <span class="mb-1 block text-xs font-medium text-muted-foreground">Tanggal tagihan (1-28)</span>
                 <input type="number" name="billing_date" class="form-control" min="1" max="28" value="<?= htmlspecialchars($c['billing_date']) ?>" placeholder="1 s/d 28" required>
-            </div>
+            </label>
         </div>
 
-        <?php 
+        <?php
         // Summary Tunggakan jika sedang Edit
-        if($action === 'edit'): 
+        if($action === 'edit'):
             $unpaid_stats = $db->query("SELECT COUNT(*) as count, SUM(amount) as total FROM invoices WHERE customer_id = {$c['id']} AND status = 'Belum Lunas'")->fetch();
             if($unpaid_stats['count'] > 0):
         ?>
-            <div style="padding:15px; background:rgba(239, 68, 68, 0.1); border-radius:12px; margin-bottom:20px; border:1px solid rgba(239, 68, 68, 0.3);">
-                <div style="font-weight:700; color:var(--danger); margin-bottom:5px;">
-                    <i class="fas fa-exclamation-triangle"></i> Status Tunggakan Saat Ini
-                </div>
-                <div style="font-size:14px;">
-                    Pelanggan memiliki <strong><?= $unpaid_stats['count'] ?> bulan</strong> tunggakan belum lunas 
-                    dengan total <strong>Rp <?= number_format($unpaid_stats['total'], 0, ',', '.') ?></strong>.
+            <div class="mb-4 rounded-lg border border-solid border-danger/40 bg-danger-soft p-4 text-sm">
+                <div class="font-semibold text-danger">Status tunggakan saat ini</div>
+                <div class="mt-1">
+                    Pelanggan memiliki <strong><?= $unpaid_stats['count'] ?> bulan</strong> tunggakan belum lunas
+                    dengan total <strong class="tabular-nums">Rp <?= number_format($unpaid_stats['total'], 0, ',', '.') ?></strong>.
                 </div>
             </div>
-        <?php 
+        <?php
             endif;
-        endif; 
+        endif;
         ?>
 
-        <div style="padding:15px; background:var(--badge-danger-bg); border-radius:12px; margin-bottom:20px; border-left:4px solid var(--danger);">
-            <div style="cursor:pointer; font-weight:700; color:var(--danger);" onclick="toggleArrears()">
-                <i class="fas fa-history"></i> <?= $action === 'edit' ? 'Tambah Tunggakan Manual' : 'Tunggakan Migrasi (Opsional)' ?> 
-                <i class="fas fa-chevron-down" style="float:right;"></i>
+        <div class="mb-4 rounded-lg border border-solid border-border p-4">
+            <div class="flex cursor-pointer items-center justify-between text-sm font-semibold" onclick="toggleArrears()">
+                <span><?= $action === 'edit' ? 'Tambah tunggakan manual' : 'Tunggakan migrasi (opsional)' ?></span>
+                <i class="fas fa-chevron-down text-muted-foreground"></i>
             </div>
-            <div id="arrearsPanel" style="display:none; margin-top:15px;">
-                <p style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">
+            <div id="arrearsPanel" class="mt-4" style="display:none;">
+                <p class="m-0 mb-2.5 text-xs text-muted-foreground">
                     <?= $action === 'edit' ? 'Gunakan ini untuk memasukkan tunggakan tambahan yang belum tercatat.' : 'Gunakan ini untuk memasukkan data hutang lama pelanggan.' ?>
                 </p>
-                <div class="flex" style="gap:10px;">
-                    <input type="number" name="arrears_months" id="arr_m" class="form-control" min="0" placeholder="Jml Bulan" oninput="prevArr()">
-                    <input type="number" name="arrears_amount" id="arr_a" class="form-control" min="0" placeholder="Nominal/Bln (Kosongkan = Biaya Bulanan)" oninput="prevArr()">
+                <div class="grid gap-3 sm:grid-cols-2">
+                    <input type="number" name="arrears_months" id="arr_m" class="form-control" min="0" placeholder="Jml bulan" oninput="prevArr()">
+                    <input type="number" name="arrears_amount" id="arr_a" class="form-control" min="0" placeholder="Nominal/bln (kosongkan = biaya bulanan)" oninput="prevArr()">
                 </div>
-                <div id="arrPrev" style="font-size:12px; color:var(--danger); margin-top:10px; display:none;"></div>
+                <div id="arrPrev" class="mt-2.5 text-xs text-danger" style="display:none;"></div>
             </div>
         </div>
 
-        <div style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid var(--glass-border); padding-top:20px;">
-            <a href="index.php?page=admin_customers" class="btn btn-ghost">Batal</a>
-            <button type="submit" class="btn btn-primary">Simpan</button>
+        <div class="mt-6 flex justify-end gap-2 border-t border-solid border-border pt-5">
+            <a href="index.php?page=admin_customers" class="ui-btn ui-btn-outline">Batal</a>
+            <button type="submit" class="ui-btn ui-btn-primary">Simpan</button>
         </div>
     </form>
 </div>
@@ -1632,57 +1607,47 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 
 <?php elseif ($action === 'import_view'): ?>
-<div class="glass-panel" style="padding: 24px; max-width:800px; margin:0 auto;">
-    <h3 style="font-size:20px; margin-bottom:20px;"><i class="fas fa-file-import text-success"></i> Import Data Pelanggan</h3>
-    
-    <div style="background:var(--hover-bg); padding:15px; border-radius:12px; margin-bottom:25px; font-size:13px; line-height:1.6; border-left:4px solid var(--success);">
-        <strong>Persyaratan Format:</strong><br>
-        1. Gunakan file format <strong>.csv</strong> atau Paste dari Excel/Sheets.<br>
-        2. Sistem akan otomatis mensinkronisasi Nama Paket & Area baru.<br>
-        3. ID Pelanggan akan dibuatkan otomatis secara unik oleh sistem.<br>
-        <a href="index.php?page=admin_customers&action=download_template" class="btn btn-sm btn-ghost" style="color:var(--success); margin-top:10px;"><i class="fas fa-download"></i> Download Template CSV</a>
+<div class="ui-card mx-auto max-w-3xl p-5 sm:p-6">
+    <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div>
+            <h2 class="m-0 text-xl font-bold">Import data pelanggan</h2>
+            <p class="m-0 mt-1 text-sm text-muted-foreground">Unggah file CSV atau tempel data dari Excel/Sheets.</p>
+        </div>
+        <a href="index.php?page=admin_customers&action=download_template" class="ui-btn ui-btn-sm ui-btn-outline"><i class="fas fa-download"></i> Download template CSV</a>
     </div>
 
-    <style>
-        .collector-assign-box {
-            background: rgba(var(--primary-rgb), 0.03);
-            border: 1px solid var(--glass-border);
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        .collector-assign-box label { margin: 0; font-weight: 700; font-size: 13px; white-space: nowrap; }
-        .collector-assign-box select { flex: 1; max-width: 300px; }
-    </style>
+    <div class="mb-5 rounded-lg border border-solid border-border p-4 text-sm leading-relaxed">
+        <div class="font-semibold">Persyaratan format</div>
+        <ol class="m-0 mt-1 list-decimal pl-5 text-muted-foreground">
+            <li>Gunakan file format <strong class="text-foreground">.csv</strong> atau paste dari Excel/Sheets.</li>
+            <li>Sistem akan otomatis mensinkronisasi nama paket &amp; area baru.</li>
+            <li>ID pelanggan akan dibuatkan otomatis secara unik oleh sistem.</li>
+        </ol>
+    </div>
 
-    <div class="collector-assign-box">
-        <i class="fas fa-user-tie text-primary" style="font-size: 20px;"></i>
-        <label>Tugaskan Data Impor ke Penagih (Opsional):</label>
-        <?php 
+    <div class="collector-assign-box mb-5 flex flex-col gap-2 rounded-lg border border-solid border-border p-4 sm:flex-row sm:items-center sm:gap-4">
+        <label for="common_collector_id" class="m-0 whitespace-nowrap text-xs font-medium text-muted-foreground">Tugaskan data impor ke penagih (opsional)</label>
+        <?php
         $tenant_id = $_SESSION['tenant_id'] ?? 1;
-        $colls_import = $db->query("SELECT id, name FROM users WHERE role = 'collector' AND tenant_id = $tenant_id ORDER BY name ASC")->fetchAll(); 
+        $colls_import = $db->query("SELECT id, name FROM users WHERE role = 'collector' AND tenant_id = $tenant_id ORDER BY name ASC")->fetchAll();
         ?>
-        <select id="common_collector_id" class="form-control" onchange="syncCollector(this.value)">
-            <option value="0">-- Biarkan Tanpa Penagih --</option>
+        <select id="common_collector_id" class="form-control sm:max-w-xs" onchange="syncCollector(this.value)">
+            <option value="0">-- Biarkan tanpa penagih --</option>
             <?php foreach($colls_import as $cl): ?>
                 <option value="<?= $cl['id'] ?>"><?= htmlspecialchars($cl['name']) ?></option>
             <?php endforeach; ?>
         </select>
     </div>
 
-    <div class="import-tabs">
-        .tab-btn { padding: 10px 20px; cursor: pointer; border-radius: 8px 8px 0 0; background: none; border: none; font-weight: 600; color: var(--text-secondary); }
-        .tab-btn.active { background: var(--nav-active-bg); color: var(--primary); border-bottom: 2px solid var(--primary); }
+    <style>
+        .tab-btn.active { background: #FFFFFF; color: #172026; font-weight: 600; box-shadow: 0 1px 2px rgba(23,32,38,.05), 0 1px 0 rgba(23,32,38,.02); }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
     </style>
 
-    <div class="import-tabs">
-        <button class="tab-btn active" onclick="switchTab('file')"><i class="fas fa-file-csv"></i> Upload File CSV</button>
-        <button class="tab-btn" onclick="switchTab('paste')"><i class="fas fa-paste"></i> Paste Data Excel</button>
+    <div class="import-tabs mb-5 flex w-fit flex-wrap gap-1 rounded-md bg-muted p-1">
+        <button type="button" class="tab-btn active cursor-pointer rounded-sm border-0 bg-transparent px-3 py-1.5 text-sm font-medium text-muted-foreground" onclick="switchTab('file')"><i class="fas fa-file-csv"></i> Upload file CSV</button>
+        <button type="button" class="tab-btn cursor-pointer rounded-sm border-0 bg-transparent px-3 py-1.5 text-sm font-medium text-muted-foreground" onclick="switchTab('paste')"><i class="fas fa-paste"></i> Paste data Excel</button>
     </div>
 
     <!-- Mode 1: File Upload -->
@@ -1690,17 +1655,16 @@ document.addEventListener("DOMContentLoaded", () => {
         <form action="index.php?page=admin_customers&action=import_file" method="POST" enctype="multipart/form-data">
 <?= csrf_field() ?>
             <input type="hidden" name="collector_id" class="sync-collector" value="0">
-            <div style="border: 2px dashed var(--glass-border); padding: 40px; border-radius: 15px; text-align: center; background: rgba(255,255,255,0.02); transition: 0.3s;" id="drop-zone" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--glass-border)'">
-                <i class="fas fa-cloud-upload-alt" style="font-size: 48px; color: var(--primary); opacity: 0.5; margin-bottom: 15px;"></i>
-                <h4 style="margin:0 0 10px 0;">Pilih File CSV</h4>
-                <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 20px;">Upload file format .csv sesuai template untuk hasil maksimal.</p>
+            <div class="rounded-lg border-2 border-dashed border-border p-8 text-center" id="drop-zone" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--glass-border)'">
+                <h4 class="m-0 mb-1 text-[15px] font-bold">Pilih file CSV</h4>
+                <p class="m-0 mb-4 text-xs text-muted-foreground">Upload file format .csv sesuai template untuk hasil maksimal.</p>
                 <input type="file" name="csv_file" id="csv_input" accept=".csv" required style="display: none;" onchange="updateFileName(this)">
-                <button type="button" class="btn btn-primary" onclick="document.getElementById('csv_input').click()">Pilih File</button>
-                <div id="file-name" style="margin-top: 15px; font-weight: 600; font-size: 13px; color: var(--success); display: none;"></div>
+                <button type="button" class="ui-btn ui-btn-outline" onclick="document.getElementById('csv_input').click()">Pilih file</button>
+                <div id="file-name" class="mt-4 text-sm font-semibold text-signal" style="display: none;"></div>
             </div>
-            <div class="form-actions-row" style="margin-top:25px;">
-                <a href="index.php?page=admin_customers" class="btn btn-ghost">Batal</a>
-                <button type="submit" class="btn btn-primary" style="background:var(--success); border-color:var(--success); color:white;">Upload & Proses</button>
+            <div class="mt-6 flex justify-end gap-2">
+                <a href="index.php?page=admin_customers" class="ui-btn ui-btn-outline">Batal</a>
+                <button type="submit" class="ui-btn ui-btn-primary">Upload &amp; proses</button>
             </div>
         </form>
     </div>
@@ -1710,13 +1674,13 @@ document.addEventListener("DOMContentLoaded", () => {
         <form action="index.php?page=admin_customers&action=import_paste" method="POST">
 <?= csrf_field() ?>
             <input type="hidden" name="collector_id" class="sync-collector" value="0">
-            <div class="form-group">
-                <label>Salin & Tempel Data (Tab-Separated):</label>
-                <textarea name="paste_data" class="form-control" rows="10" placeholder="customer [Tab] Budi [Tab] Alamat..." required style="font-family:monospace; font-size:12px;"></textarea>
-            </div>
-            <div class="form-actions-row" style="margin-top:20px;">
-                <a href="index.php?page=admin_customers" class="btn btn-ghost">Batal</a>
-                <button type="submit" class="btn btn-primary">Mulai Import</button>
+            <label class="block">
+                <span class="mb-1 block text-xs font-medium text-muted-foreground">Salin &amp; tempel data (tab-separated)</span>
+                <textarea name="paste_data" class="form-control font-mono text-xs" rows="10" placeholder="customer [Tab] Budi [Tab] Alamat..." required></textarea>
+            </label>
+            <div class="mt-6 flex justify-end gap-2">
+                <a href="index.php?page=admin_customers" class="ui-btn ui-btn-outline">Batal</a>
+                <button type="submit" class="ui-btn ui-btn-primary">Mulai import</button>
             </div>
         </form>
     </div>
@@ -1750,56 +1714,58 @@ document.addEventListener("DOMContentLoaded", () => {
     $map = $_SESSION['pending_mapping'] ?? ['type' => 0, 'name' => 1, 'address' => 2, 'contact' => 3, 'package' => 4, 'fee' => 5, 'ip' => 6, 'reg_date' => 7, 'bill_date' => 8, 'area' => 9];
     $hasMapping = isset($_SESSION['pending_mapping']);
 ?>
-<div class="glass-panel" style="padding: 24px; max-width:1100px; margin:0 auto;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-        <h3 style="margin:0;"><i class="fas fa-eye text-primary"></i> Preview & Verifikasi Kolom</h3>
-        <div class="badge badge-info" style="font-size:14px; padding:6px 12px;"><?= count($pending) ?> Calon Pelanggan</div>
+<div class="ui-card mx-auto max-w-6xl p-5 sm:p-6">
+    <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <h2 class="m-0 text-xl font-bold">Preview &amp; verifikasi kolom</h2>
+        </div>
+        <span class="ui-badge ui-badge-muted"><?= count($pending) ?> calon pelanggan</span>
     </div>
 
     <?php if ($hasMapping): ?>
-        <div class="glass-panel" style="background:rgba(34,197,94,0.05); border:1px dashed var(--success); padding:15px; margin-bottom:20px; font-size:13px;">
-            <i class="fas fa-magic text-success"></i> <strong>Sistem Mendeteksi Judul Kolom (Header)!</strong><br>
+        <div class="mb-5 rounded-lg border border-solid border-border p-4 text-sm">
+            <span class="font-semibold text-signal">Sistem mendeteksi judul kolom (header).</span>
             Data akan diproses berdasarkan nama kolom yang ditemukan, bukan berdasarkan urutan template standar.
         </div>
     <?php else: ?>
-        <div class="glass-panel" style="background:rgba(245,158,11,0.05); border:1px dashed #f59e0b; padding:15px; margin-bottom:20px; font-size:13px;">
-            <i class="fas fa-exclamation-triangle text-warning"></i> <strong>Judul Kolom Tidak Ditemukan!</strong><br>
+        <div class="mb-5 rounded-lg border border-solid border-accent/50 bg-accent-soft p-4 text-sm">
+            <span class="font-semibold text-accent-ink">Judul kolom tidak ditemukan.</span>
             Sistem akan menggunakan urutan template standar EinvaBill. Pastikan data Anda sudah berurutan dengan benar.
         </div>
     <?php endif; ?>
 
-    <div class="table-container" style="max-height: 500px; overflow-y:auto; border:1px solid var(--glass-border); border-radius:12px;">
-        <table style="width:100%; font-size:11px; border-collapse: collapse;">
-            <thead style="position:sticky; top:0; background:var(--bg-color); z-index:10; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                <tr>
-                    <th style="padding:12px; border-bottom:2px solid var(--primary);"><div style="color:var(--text-secondary); font-size:9px; margin-bottom:4px;">Kolom <?= $map['type']+1 ?></div>Tipe</th>
-                    <th style="padding:12px; border-bottom:2px solid var(--primary);"><div style="color:var(--text-secondary); font-size:9px; margin-bottom:4px;">Kolom <?= $map['name']+1 ?></div>Nama</th>
-                    <th style="padding:12px; border-bottom:2px solid var(--primary);"><div style="color:var(--text-secondary); font-size:9px; margin-bottom:4px;">Kolom <?= $map['address']+1 ?></div>Alamat</th>
-                    <th style="padding:12px; border-bottom:2px solid var(--primary);"><div style="color:var(--text-secondary); font-size:9px; margin-bottom:4px;">Kolom <?= $map['contact']+1 ?></div>WhatsApp</th>
-                    <th style="padding:12px; border-bottom:2px solid var(--primary);"><div style="color:var(--text-secondary); font-size:9px; margin-bottom:4px;">Kolom <?= $map['package']+1 ?></div>Paket</th>
-                    <th style="padding:12px; border-bottom:2px solid var(--primary);"><div style="color:var(--text-secondary); font-size:9px; margin-bottom:4px;">Kolom <?= $map['fee']+1 ?></div>Biaya</th>
-                    <th style="padding:12px; border-bottom:2px solid var(--primary);"><div style="color:var(--text-secondary); font-size:9px; margin-bottom:4px;">Kolom <?= $map['ip']+1 ?></div>IP Address</th>
-                    <th style="padding:12px; border-bottom:2px solid var(--primary);"><div style="color:var(--text-secondary); font-size:9px; margin-bottom:4px;">Kolom <?= $map['reg_date']+1 ?></div>Tgl Daftar</th>
-                    <th style="padding:12px; border-bottom:2px solid var(--primary);"><div style="color:var(--text-secondary); font-size:9px; margin-bottom:4px;">Kolom <?= $map['bill_date']+1 ?></div>Jatuh Tempo</th>
-                    <th style="padding:12px; border-bottom:2px solid var(--primary);"><div style="color:var(--text-secondary); font-size:9px; margin-bottom:4px;">Kolom <?= $map['area']+1 ?></div>Area</th>
+    <div class="table-container max-h-[500px] overflow-auto rounded-lg border border-solid border-border">
+        <table class="w-full border-collapse text-xs">
+            <thead class="sticky top-0 z-10 bg-card">
+                <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                    <th class="border-b border-solid border-border px-3 py-2.5 font-semibold"><div class="text-[9px] font-medium">Kolom <?= $map['type']+1 ?></div>Tipe</th>
+                    <th class="border-b border-solid border-border px-3 py-2.5 font-semibold"><div class="text-[9px] font-medium">Kolom <?= $map['name']+1 ?></div>Nama</th>
+                    <th class="border-b border-solid border-border px-3 py-2.5 font-semibold"><div class="text-[9px] font-medium">Kolom <?= $map['address']+1 ?></div>Alamat</th>
+                    <th class="border-b border-solid border-border px-3 py-2.5 font-semibold"><div class="text-[9px] font-medium">Kolom <?= $map['contact']+1 ?></div>WhatsApp</th>
+                    <th class="border-b border-solid border-border px-3 py-2.5 font-semibold"><div class="text-[9px] font-medium">Kolom <?= $map['package']+1 ?></div>Paket</th>
+                    <th class="border-b border-solid border-border px-3 py-2.5 font-semibold"><div class="text-[9px] font-medium">Kolom <?= $map['fee']+1 ?></div>Biaya</th>
+                    <th class="border-b border-solid border-border px-3 py-2.5 font-semibold"><div class="text-[9px] font-medium">Kolom <?= $map['ip']+1 ?></div>IP address</th>
+                    <th class="border-b border-solid border-border px-3 py-2.5 font-semibold"><div class="text-[9px] font-medium">Kolom <?= $map['reg_date']+1 ?></div>Tgl daftar</th>
+                    <th class="border-b border-solid border-border px-3 py-2.5 font-semibold"><div class="text-[9px] font-medium">Kolom <?= $map['bill_date']+1 ?></div>Jatuh tempo</th>
+                    <th class="border-b border-solid border-border px-3 py-2.5 font-semibold"><div class="text-[9px] font-medium">Kolom <?= $map['area']+1 ?></div>Area</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if(empty($pending)): ?>
-                    <tr><td colspan="10" style="text-align:center; padding:50px;">Tidak ada data yang terdeteksi.</td></tr>
+                    <tr><td colspan="10" class="px-5 py-10 text-center text-sm text-muted-foreground">Tidak ada data yang terdeteksi.</td></tr>
                 <?php else: ?>
                     <?php foreach($pending as $row): ?>
-                    <tr>
-                        <td style="padding:10px; border-bottom:1px solid var(--glass-border); text-align:center;"><span class="badge badge-sm"><?= htmlspecialchars($row[$map['type']] ?? '-') ?></span></td>
-                        <td style="padding:10px; border-bottom:1px solid var(--glass-border); font-weight:700;"><?= htmlspecialchars($row[$map['name']] ?? '-') ?></td>
-                        <td style="padding:10px; border-bottom:1px solid var(--glass-border);"><?= htmlspecialchars($row[$map['address']] ?? '-') ?></td>
-                        <td style="padding:10px; border-bottom:1px solid var(--glass-border); font-family:monospace;"><?= htmlspecialchars($row[$map['contact']] ?? '-') ?></td>
-                        <td style="padding:10px; border-bottom:1px solid var(--glass-border);"><?= htmlspecialchars($row[$map['package']] ?? '-') ?></td>
-                        <td style="padding:10px; border-bottom:1px solid var(--glass-border); font-weight:700; color:var(--success);">Rp <?= number_format(floatval(preg_replace('/[^0-9]/', '', $row[$map['fee']] ?? 0)), 0, ',', '.') ?></td>
-                        <td style="padding:10px; border-bottom:1px solid var(--glass-border); font-family:monospace;"><?= htmlspecialchars($row[$map['ip']] ?? '-') ?></td>
-                        <td style="padding:10px; border-bottom:1px solid var(--glass-border);"><?= htmlspecialchars($row[$map['reg_date']] ?? '-') ?></td>
-                        <td style="padding:10px; border-bottom:1px solid var(--glass-border); text-align:center;"><?= htmlspecialchars($row[$map['bill_date']] ?? '-') ?></td>
-                        <td style="padding:10px; border-bottom:1px solid var(--glass-border);"><?= htmlspecialchars($row[$map['area']] ?? '-') ?></td>
+                    <tr class="border-t border-solid border-border">
+                        <td class="px-3 py-2.5 text-center"><span class="ui-badge ui-badge-muted"><?= htmlspecialchars($row[$map['type']] ?? '-') ?></span></td>
+                        <td class="px-3 py-2.5 font-semibold"><?= htmlspecialchars($row[$map['name']] ?? '-') ?></td>
+                        <td class="px-3 py-2.5"><?= htmlspecialchars($row[$map['address']] ?? '-') ?></td>
+                        <td class="px-3 py-2.5 font-mono"><?= htmlspecialchars($row[$map['contact']] ?? '-') ?></td>
+                        <td class="px-3 py-2.5"><?= htmlspecialchars($row[$map['package']] ?? '-') ?></td>
+                        <td class="px-3 py-2.5 font-semibold tabular-nums">Rp <?= number_format(floatval(preg_replace('/[^0-9]/', '', $row[$map['fee']] ?? 0)), 0, ',', '.') ?></td>
+                        <td class="px-3 py-2.5 font-mono"><?= htmlspecialchars($row[$map['ip']] ?? '-') ?></td>
+                        <td class="px-3 py-2.5"><?= htmlspecialchars($row[$map['reg_date']] ?? '-') ?></td>
+                        <td class="px-3 py-2.5 text-center"><?= htmlspecialchars($row[$map['bill_date']] ?? '-') ?></td>
+                        <td class="px-3 py-2.5"><?= htmlspecialchars($row[$map['area']] ?? '-') ?></td>
                     </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -1807,16 +1773,16 @@ document.addEventListener("DOMContentLoaded", () => {
         </table>
     </div>
 
-    <div class="form-actions-row" style="margin-top:30px; padding-top:20px; border-top:1px solid var(--glass-border);">
+    <div class="mt-6 flex justify-end gap-2 border-t border-solid border-border pt-5">
         <form action="index.php?page=admin_customers&action=import_cancel" method="POST">
 <?= csrf_field() ?>
-            <button type="submit" class="btn btn-ghost">Batalkan</button>
+            <button type="submit" class="ui-btn ui-btn-outline">Batalkan</button>
         </form>
         <?php if(!empty($pending)): ?>
             <form action="index.php?page=admin_customers&action=import_confirm" method="POST">
 <?= csrf_field() ?>
-                <button type="submit" class="btn btn-primary" style="background:var(--success); border-color:var(--success); color:white; font-weight:700;">
-                    <i class="fas fa-check"></i> Sudah Sesuai, Impor Sekarang
+                <button type="submit" class="ui-btn ui-btn-primary">
+                    <i class="fas fa-check"></i> Sudah sesuai, impor sekarang
                 </button>
             </form>
         <?php endif; ?>
@@ -1829,7 +1795,7 @@ document.addEventListener("DOMContentLoaded", () => {
     $c = $db->query("SELECT * FROM customers WHERE id = $id AND tenant_id = $tenant_id")->fetch();
     
     if(!$c) { 
-        echo "<div class='glass-panel p-5 text-center'><h3>Akses Ditolak</h3><p>Data tidak ditemukan atau Anda tidak berwenang melihat data ini.</p><a href='index.php?page=admin_customers' class='btn btn-primary'>Kembali</a></div>";
+        echo "<div class='ui-card p-10 text-center'><h3 class='m-0 text-lg font-bold'>Akses ditolak</h3><p class='mt-1 text-sm text-muted-foreground'>Data tidak ditemukan atau Anda tidak berwenang melihat data ini.</p><a href='index.php?page=admin_customers' class='ui-btn ui-btn-primary mt-4'>Kembali</a></div>";
         return; 
     }
     
@@ -1859,89 +1825,80 @@ document.addEventListener("DOMContentLoaded", () => {
 ?>
 
 <?php if($msg === 'invoice_created'): ?>
-    <div class="glass-panel" style="background:rgba(34,197,94,0.1); border-left:4px solid var(--success); padding:15px; margin-bottom:20px; color:var(--success); font-weight:600;">
-        <i class="fas fa-check-circle"></i> Berhasil! Tagihan manual untuk bulan ini telah diterbitkan.
-    </div>
+    <div class="ui-card mb-5 p-4 text-sm"><span class="font-semibold text-signal">Berhasil.</span> Tagihan manual untuk bulan ini telah diterbitkan.</div>
 <?php elseif($msg === 'invoice_itemized_created'): ?>
-    <div class="glass-panel" style="background:rgba(34,197,94,0.1); border-left:4px solid var(--success); padding:15px; margin-bottom:20px; color:var(--success); font-weight:600;">
-        <i class="fas fa-check-circle"></i> Berhasil! Tagihan rincian (Add-ons) telah diterbitkan.
-    </div>
+    <div class="ui-card mb-5 p-4 text-sm"><span class="font-semibold text-signal">Berhasil.</span> Tagihan rincian (add-ons) telah diterbitkan.</div>
 <?php elseif($msg === 'bulk_payment_success' || $success === 'bulk'): ?>
-    <div class="glass-panel" style="background:rgba(34,197,94,0.1); border-left:4px solid var(--success); padding:15px; margin-bottom:20px; color:var(--success); font-weight:600;">
-        <i class="fas fa-check-circle"></i> Berhasil! Pembayaran untuk beberapa bulan telah tercatat.
-    </div>
+    <div class="ui-card mb-5 p-4 text-sm"><span class="font-semibold text-signal">Berhasil.</span> Pembayaran untuk beberapa bulan telah tercatat.</div>
 <?php endif; ?>
 
-<div style="display:flex; flex-direction:column; gap:25px;">
+<div class="flex flex-col gap-5">
     <!-- Customer Info Brief -->
-    <div class="glass-panel" style="padding: 24px; position:relative; overflow:hidden;">
-        <div style="position:absolute; top:-20px; right:-20px; font-size:120px; opacity:0.03; transform:rotate(-15deg);"><i class="fas fa-user-circle"></i></div>
-        
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:15px;">
+    <div class="ui-card p-5 sm:p-6">
+        <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
-                <a href="index.php?page=admin_customers" class="btn btn-sm btn-ghost" style="margin-bottom:15px;"><i class="fas fa-arrow-left"></i> Kembali</a>
-                <h2 style="font-size:24px; font-weight:800; margin-bottom:5px;"><?= htmlspecialchars($c['name']) ?></h2>
-                <div style="font-family:monospace; color:var(--primary); font-weight:700;"><?= htmlspecialchars($c['customer_code']) ?></div>
+                <a href="index.php?page=admin_customers" class="ui-btn ui-btn-sm ui-btn-outline mb-4"><i class="fas fa-arrow-left"></i> Kembali</a>
+                <h2 class="m-0 text-xl font-bold sm:text-2xl"><?= htmlspecialchars($c['name']) ?></h2>
+                <div class="mt-1 font-mono text-sm text-muted-foreground"><?= htmlspecialchars($c['customer_code']) ?></div>
             </div>
-            <div style="text-align:right;">
-                <div class="badge badge-<?= $c['type']=='customer'?'success':'warning' ?>" style="font-size:14px; padding:6px 15px;"><?= strtoupper($c['type']) ?></div>
-                <div style="margin-top:10px; font-weight:600; font-size:18px; color:var(--primary);">Rp <?= number_format($c['monthly_fee'], 0, ',', '.') ?> / bulan</div>
+            <div class="text-right">
+                <span class="ui-badge <?= $c['type']=='customer'?'ui-badge-muted':'ui-badge-accent' ?>"><?= $c['type']=='partner' ? 'Mitra' : 'Pelanggan' ?></span>
+                <div class="mt-2 text-lg font-bold tabular-nums">Rp <?= number_format($c['monthly_fee'], 0, ',', '.') ?> <span class="text-sm font-medium text-muted-foreground">/ bulan</span></div>
             </div>
         </div>
-        
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:20px; margin-top:30px;">
-            <div style="background:var(--hover-bg); padding:15px; border-radius:12px; border:1px solid var(--glass-border);">
-                <div style="font-size:12px; color:var(--text-secondary); margin-bottom:5px;">INFO LAYANAN</div>
-                <div style="font-weight:600;"><i class="fas fa-box text-primary"></i> <?= htmlspecialchars($c['package_name']) ?></div>
-                <div style="font-size:13px; margin-top:4px;"><i class="fas fa-calendar-alt text-primary"></i> Tagihan: Tanggal <?= $c['billing_date'] ?></div>
+
+        <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div class="rounded-lg border border-solid border-border p-4">
+                <div class="text-xs font-medium text-muted-foreground">Info layanan</div>
+                <div class="mt-1 font-semibold"><?= htmlspecialchars($c['package_name']) ?></div>
+                <div class="mt-0.5 text-[13px] text-muted-foreground">Tagihan: tanggal <?= $c['billing_date'] ?></div>
             </div>
-            <div style="background:var(--hover-bg); padding:15px; border-radius:12px; border:1px solid var(--glass-border);">
-                <div style="font-size:12px; color:var(--text-secondary); margin-bottom:5px;">KONTAK & ALAMAT</div>
-                <div style="font-weight:600;"><i class="fab fa-whatsapp text-success"></i> <?= htmlspecialchars($c['contact']) ?></div>
-                <div style="font-size:13px; margin-top:4px;"><i class="fas fa-map-marker-alt text-danger"></i> <?= htmlspecialchars($c['area']) ?></div>
+            <div class="rounded-lg border border-solid border-border p-4">
+                <div class="text-xs font-medium text-muted-foreground">Kontak &amp; alamat</div>
+                <div class="mt-1 font-semibold"><?= htmlspecialchars($c['contact']) ?></div>
+                <div class="mt-0.5 text-[13px] text-muted-foreground"><?= htmlspecialchars($c['area']) ?></div>
             </div>
             <!-- New Arrears Card -->
-            <div style="background:var(--hover-bg); padding:15px; border-radius:12px; border:1px solid <?= $unpaid_total > 0 ? 'var(--danger)' : 'var(--glass-border)' ?>;">
-                <div style="font-size:12px; color:var(--text-secondary); margin-bottom:5px;">
-                    <?= $c['type'] === 'partner' ? 'KEKURANGAN MITRA' : 'SISA TAGIHAN' ?>
+            <div class="rounded-lg border border-solid p-4 <?= $unpaid_total > 0 ? 'border-danger/40' : 'border-border' ?>">
+                <div class="text-xs font-medium text-muted-foreground">
+                    <?= $c['type'] === 'partner' ? 'Kekurangan mitra' : 'Sisa tagihan' ?>
                 </div>
-                <div style="font-size:18px; font-weight:800; color:<?= $unpaid_total > 0 ? 'var(--danger)' : 'var(--success)' ?>;">
+                <div class="mt-1 text-lg font-extrabold tabular-nums <?= $unpaid_total > 0 ? 'text-danger' : 'text-signal' ?>">
                     Rp <?= number_format($unpaid_total, 0, ',', '.') ?>
                 </div>
-                <div style="font-size:11px; margin-top:4px; color:var(--text-secondary);">
+                <div class="mt-0.5 text-xs text-muted-foreground">
                     <?= $unpaid_total > 0 ? 'Segera lakukan penagihan' : 'Semua tagihan lunas' ?>
                 </div>
             </div>
         </div>
     </div>
 
-    <div style="display:grid; grid-template-columns: 1fr 320px; gap:25px; align-items:start;" class="details-grid-container">
+    <div class="details-grid-container grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
         <!-- Riwayat Pembayaran -->
         <!-- Section Penagihan -->
-        <div class="glass-panel" style="padding: 24px;">
-            <div style="margin-bottom:25px;">
-                <h3 style="font-size:18px; margin-bottom:15px; display:flex; align-items:center; gap:10px;">
-                    <i class="fas fa-file-invoice text-danger"></i> Tagihan Belum Lunas
-                </h3>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Periode</th>
-                                <th>Nominal</th>
-                                <th style="text-align:right;">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if(empty($unpaid_invoices)): ?>
-                                <tr><td colspan="3" style="text-align:center; padding:20px; color:var(--text-secondary);">Semua tagihan lunas! 🎉</td></tr>
-                            <?php endif; ?>
-                            <?php foreach($unpaid_invoices as $ui): ?>
-                                <tr>
-                                    <td><strong><?= date('M Y', strtotime($ui['due_date'])) ?></strong></td>
-                                    <td style="font-weight:700; color:var(--danger);">Rp <?= number_format($ui['amount'] - ($ui['discount'] ?? 0), 0, ',', '.') ?></td>
-                                    <td style="text-align:right;">
-                                        <div style="display:flex; justify-content:flex-end; gap:6px;">
+        <div class="ui-card overflow-hidden">
+            <div class="border-b border-solid border-border px-4 py-3 sm:px-5">
+                <h3 class="m-0 text-[15px] font-bold">Tagihan belum lunas</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse text-sm">
+                    <thead>
+                        <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                            <th class="px-4 py-2.5 font-semibold">Periode</th>
+                            <th class="px-4 py-2.5 font-semibold">Nominal</th>
+                            <th class="px-4 py-2.5 text-right font-semibold">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if(empty($unpaid_invoices)): ?>
+                            <tr><td colspan="3" class="px-5 py-8 text-center text-sm text-muted-foreground">Semua tagihan lunas.</td></tr>
+                        <?php endif; ?>
+                        <?php foreach($unpaid_invoices as $ui): ?>
+                            <tr class="border-t border-solid border-border">
+                                <td class="px-4 py-3 font-semibold"><?= date('M Y', strtotime($ui['due_date'])) ?></td>
+                                <td class="px-4 py-3 font-semibold tabular-nums text-danger">Rp <?= number_format($ui['amount'] - ($ui['discount'] ?? 0), 0, ',', '.') ?></td>
+                                <td class="px-4 py-3">
+                                    <div class="flex flex-wrap justify-end gap-1.5">
                                             <?php 
                                                 // Fetch template settings (Tenant Aware)
                                                 if (!isset($wa_tpl)) {
@@ -1973,42 +1930,41 @@ document.addEventListener("DOMContentLoaded", () => {
                                                 ]);
                                                 $wa_fallback = "https://api.whatsapp.com/send?phone=$wa_raw&text=" . urlencode($wa_msg);
                                             ?>
-                                            <button onclick="sendWAGateway('<?= $wa_raw ?>', <?= htmlspecialchars(json_encode($wa_msg)) ?>, '<?= $wa_fallback ?>', this)" class="btn btn-xs btn-ghost" style="color:#25D366;" title="Kirim Pengingat WA"><i class="fab fa-whatsapp"></i></button>
-                                            <a data-method="post" href="index.php?page=admin_invoices&action=mark_paid&id=<?= $ui['id'] ?>&ref=customer_details&cust_id=<?= $id ?>" class="btn btn-xs btn-success" onclick="return confirm('Tandai tagihan ini Lunas?')"><i class="fas fa-check"></i> Bayar</a>
-                                            <button onclick="CustomersPage.showEditInvoice(<?= $ui['id'] ?>, <?= $ui['amount'] ?>, <?= $ui['discount'] ?? 0 ?>, '<?= $ui['due_date'] ?>')" class="btn btn-xs btn-warning btn-edit-invoice" title="Edit" data-inv-id="<?= $ui['id'] ?>" data-inv-amount="<?= $ui['amount'] ?>" data-inv-discount="<?= $ui['discount'] ?? 0 ?>" data-inv-date="<?= $ui['due_date'] ?>"><i class="fas fa-edit"></i></button>
-                                            <a data-method="post" href="index.php?page=admin_invoices&action=delete&id=<?= $ui['id'] ?>&ref=customer_details&cust_id=<?= $id ?>" class="btn btn-xs btn-ghost" style="color:var(--danger);" onclick="return confirm('Hapus tagihan ini?')"><i class="fas fa-trash"></i></a>
-                                        </div>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
+                                        <button onclick="sendWAGateway('<?= $wa_raw ?>', <?= htmlspecialchars(json_encode($wa_msg)) ?>, '<?= $wa_fallback ?>', this)" class="ui-btn ui-btn-sm ui-btn-wa" title="Kirim pengingat WA"><i class="fab fa-whatsapp"></i></button>
+                                        <a data-method="post" href="index.php?page=admin_invoices&action=mark_paid&id=<?= $ui['id'] ?>&ref=customer_details&cust_id=<?= $id ?>" class="ui-btn ui-btn-sm ui-btn-primary" onclick="return confirm('Tandai tagihan ini Lunas?')"><i class="fas fa-check"></i> Bayar</a>
+                                        <button onclick="CustomersPage.showEditInvoice(<?= $ui['id'] ?>, <?= $ui['amount'] ?>, <?= $ui['discount'] ?? 0 ?>, '<?= $ui['due_date'] ?>')" class="ui-btn ui-btn-sm ui-btn-outline btn-edit-invoice" title="Edit" data-inv-id="<?= $ui['id'] ?>" data-inv-amount="<?= $ui['amount'] ?>" data-inv-discount="<?= $ui['discount'] ?? 0 ?>" data-inv-date="<?= $ui['due_date'] ?>"><i class="fas fa-edit"></i></button>
+                                        <a data-method="post" href="index.php?page=admin_invoices&action=delete&id=<?= $ui['id'] ?>&ref=customer_details&cust_id=<?= $id ?>" class="ui-btn ui-btn-sm ui-btn-outline text-danger" onclick="return confirm('Hapus tagihan ini?')" title="Hapus"><i class="fas fa-trash"></i></a>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
             </div>
 
-            <hr style="border:0; border-top:1px solid var(--glass-border); margin:25px 0;">
-
-            <h3 style="font-size:18px; margin-bottom:20px;"><i class="fas fa-history text-primary"></i> Riwayat Pembayaran (Lunas)</h3>
-            <div class="table-container">
-                <table>
+            <div class="border-b border-t border-solid border-border px-4 py-3 sm:px-5">
+                <h3 class="m-0 text-[15px] font-bold">Riwayat pembayaran (lunas)</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse text-sm">
                     <thead>
-                        <tr>
-                            <th>Bulan Tagihan</th>
-                            <th>Nominal</th>
-                            <th>Tanggal Bayar</th>
-                            <th>Diterima Oleh</th>
+                        <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                            <th class="px-4 py-2.5 font-semibold">Bulan tagihan</th>
+                            <th class="px-4 py-2.5 font-semibold">Nominal</th>
+                            <th class="px-4 py-2.5 font-semibold">Tanggal bayar</th>
+                            <th class="px-4 py-2.5 font-semibold">Diterima oleh</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if(empty($history)): ?>
-                            <tr><td colspan="4" style="text-align:center; padding:30px; color:var(--text-secondary);">Belum ada riwayat pembayaran.</td></tr>
+                            <tr><td colspan="4" class="px-5 py-8 text-center text-sm text-muted-foreground">Belum ada riwayat pembayaran.</td></tr>
                         <?php endif; ?>
                         <?php foreach($history as $h): ?>
-                            <tr>
-                                <td><strong><?= date('F Y', strtotime($h['due_date'])) ?></strong></td>
-                                <td style="font-weight:700; color:var(--success);">Rp <?= number_format($h['amount'], 0, ',', '.') ?></td>
-                                <td><?= date('d/m/Y H:i', strtotime($h['payment_date'])) ?></td>
-                                <td style="font-size:13px;"><?= htmlspecialchars($h['receiver_name'] ?: 'System') ?></td>
+                            <tr class="border-t border-solid border-border">
+                                <td class="px-4 py-3 font-semibold"><?= date('F Y', strtotime($h['due_date'])) ?></td>
+                                <td class="px-4 py-3 font-semibold tabular-nums text-signal">Rp <?= number_format($h['amount'], 0, ',', '.') ?></td>
+                                <td class="px-4 py-3 tabular-nums"><?= date('d/m/Y H:i', strtotime($h['payment_date'])) ?></td>
+                                <td class="px-4 py-3 text-[13px]"><?= htmlspecialchars($h['receiver_name'] ?: 'System') ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -2016,81 +1972,83 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
         </div>
 
+        <div class="flex flex-col gap-5">
         <!-- Section Bayar Banyak Bulan -->
-        <div class="glass-panel" style="padding: 24px; border-top:4px solid var(--success);">
-            <h3 style="font-size:18px; margin-bottom:15px;"><i class="fas fa-money-bill-wave text-success"></i> Bayar Banyak Bulan</h3>
-            <p style="font-size:13px; color:var(--text-secondary); margin-bottom:20px;">Gunakan fitur ini jika pelanggan ingin membayar untuk bulan ini dan bulan-bulan berikutnya sekaligus secara manual.</p>
-            
+        <div class="ui-card p-5">
+            <h3 class="m-0 text-[15px] font-bold">Bayar banyak bulan</h3>
+            <p class="m-0 mb-4 mt-1 text-xs text-muted-foreground">Gunakan fitur ini jika pelanggan ingin membayar untuk bulan ini dan bulan-bulan berikutnya sekaligus secara manual.</p>
+
             <form action="index.php?page=admin_customers&action=bulk_pay" method="POST">
 <?= csrf_field() ?>
                 <input type="hidden" name="customer_id" value="<?= $id ?>">
                 <input type="hidden" name="amount_per_month" value="<?= $c['monthly_fee'] ?>">
-                
-                <div class="form-group">
-                    <label>Jumlah Bulan</label>
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <input type="number" name="num_months" class="form-control" value="1" min="1" max="12" required style="font-size:20px; font-weight:800; text-align:center;">
-                        <div style="font-weight:600;">Bulan</div>
+
+                <label class="mb-4 block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Jumlah bulan</span>
+                    <div class="flex items-center gap-2.5">
+                        <input type="number" name="num_months" class="form-control text-center text-lg font-bold tabular-nums" value="1" min="1" max="12" required>
+                        <span class="text-sm font-medium">bulan</span>
                     </div>
-                </div>
-                
-                <div style="padding:15px; background:var(--nav-active-bg); border-radius:10px; margin-bottom:20px;">
-                    <div style="font-size:12px; color:var(--text-secondary);">ESTIMASI TOTAL:</div>
-                    <div style="font-size:20px; font-weight:800; color:var(--success);" id="bulk_total_display">Rp <?= number_format($c['monthly_fee'], 0, ',', '.') ?></div>
+                </label>
+
+                <div class="mb-4 rounded-lg border border-solid border-border p-4">
+                    <div class="text-xs font-medium text-muted-foreground">Estimasi total</div>
+                    <div class="mt-1 text-xl font-extrabold tabular-nums" id="bulk_total_display">Rp <?= number_format($c['monthly_fee'], 0, ',', '.') ?></div>
                 </div>
 
-                <button type="submit" class="btn btn-success" style="width:100%; border-radius:12px; padding:15px;" onclick="return confirm('Proses pembayaran banyak bulan untuk pelanggan ini?')">
-                    <i class="fas fa-check-circle"></i> PROSES BAYAR
+                <button type="submit" class="ui-btn ui-btn-primary w-full" onclick="return confirm('Proses pembayaran banyak bulan untuk pelanggan ini?')">
+                    <i class="fas fa-check-circle"></i> Proses bayar
                 </button>
             </form>
         </div>
 
         <!-- Section Tagihan Khusus / Add-ons -->
-        <div class="glass-panel" style="padding: 24px; border-top:4px solid var(--primary); margin-top:20px;">
-            <h3 style="font-size:18px; margin-bottom:15px;"><i class="fas fa-plus-circle text-primary"></i> Tagihan Khusus / Add-ons</h3>
-            <p style="font-size:13px; color:var(--text-secondary); margin-bottom:20px;">Gunakan ini untuk membuat tagihan dengan rincian item (Biaya Bulanan + Extra).</p>
-            
+        <div class="ui-card p-5">
+            <h3 class="m-0 text-[15px] font-bold">Tagihan khusus / add-ons</h3>
+            <p class="m-0 mb-4 mt-1 text-xs text-muted-foreground">Gunakan ini untuk membuat tagihan dengan rincian item (biaya bulanan + extra).</p>
+
             <form action="index.php?page=admin_invoices&action=create_itemized" method="POST" id="itemizedForm">
 <?= csrf_field() ?>
                 <input type="hidden" name="customer_id" value="<?= $id ?>">
-                
-                <div class="form-group">
-                    <label>Jatuh Tempo</label>
+
+                <label class="mb-4 block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Jatuh tempo</span>
                     <input type="date" name="due_date" class="form-control" value="<?= date('Y-m-d', strtotime('+3 days')) ?>" required>
-                </div>
+                </label>
 
                 <div id="itemsContainer">
-                    <div style="display:grid; grid-template-columns: 1fr 140px 40px; gap:10px; margin-bottom:10px; align-items:center;">
+                    <div class="mb-2.5 grid grid-cols-[1fr_140px_40px] items-center gap-2.5">
                         <input type="text" name="item_desc[]" class="form-control" value="Biaya Langganan Bulanan" placeholder="Deskripsi" required>
                         <input type="number" name="item_amount[]" class="form-control item-amount" value="<?= $c['monthly_fee'] ?>" placeholder="Nominal" required>
                         <span></span>
                     </div>
                 </div>
 
-                <button type="button" class="btn btn-sm btn-ghost" onclick="CustomersPage.addItemRow()" style="margin-bottom:20px; color:var(--primary);">
-                    <i class="fas fa-plus"></i> Tambah Item
+                <button type="button" class="ui-btn ui-btn-sm ui-btn-outline mb-4" onclick="CustomersPage.addItemRow()">
+                    <i class="fas fa-plus"></i> Tambah item
                 </button>
 
-                <div style="padding:15px; background:var(--nav-active-bg); border-radius:10px; margin-bottom:12px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                        <div style="font-size:12px; color:var(--text-secondary);">SUBTOTAL:</div>
-                        <div style="font-size:16px; font-weight:700;" id="itemized_subtotal_display">Rp <?= number_format($c['monthly_fee'], 0, ',', '.') ?></div>
+                <div class="mb-3 rounded-lg border border-solid border-border p-4">
+                    <div class="mb-2 flex items-center justify-between">
+                        <div class="text-xs font-medium text-muted-foreground">Subtotal</div>
+                        <div class="font-semibold tabular-nums" id="itemized_subtotal_display">Rp <?= number_format($c['monthly_fee'], 0, ',', '.') ?></div>
                     </div>
-                    <div class="form-group" style="margin-bottom:0;">
-                        <label style="font-size:11px; color:var(--danger); font-weight:700;">Potongan / Diskon (Rp):</label>
-                        <input type="number" name="invoice_discount" class="form-control" value="0" oninput="updateItemizedTotal()" style="padding:5px 10px; border:1px solid var(--danger); font-weight:700; color:var(--danger);">
-                    </div>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Potongan / diskon (Rp)</span>
+                        <input type="number" name="invoice_discount" class="form-control tabular-nums" value="0" oninput="updateItemizedTotal()">
+                    </label>
                 </div>
 
-                <div style="padding:15px; background:rgba(37, 99, 235, 0.1); border-radius:10px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; border:2px dashed var(--primary);">
-                    <div style="font-size:12px; color:var(--text-secondary); font-weight:800;">TOTAL AKHIR:</div>
-                    <div style="font-size:22px; font-weight:800; color:var(--primary);" id="itemized_total_display">Rp <?= number_format($c['monthly_fee'], 0, ',', '.') ?></div>
+                <div class="mb-4 flex items-center justify-between rounded-lg border border-solid border-border bg-muted p-4">
+                    <div class="text-xs font-semibold text-muted-foreground">Total akhir</div>
+                    <div class="text-xl font-extrabold tabular-nums" id="itemized_total_display">Rp <?= number_format($c['monthly_fee'], 0, ',', '.') ?></div>
                 </div>
 
-                <button type="submit" class="btn btn-primary" style="width:100%; border-radius:12px; padding:15px;">
-                    <i class="fas fa-file-invoice-dollar"></i> TERBITKAN TAGIHAN
+                <button type="submit" class="ui-btn ui-btn-primary w-full">
+                    <i class="fas fa-file-invoice-dollar"></i> Terbitkan tagihan
                 </button>
             </form>
+        </div>
         </div>
     </div>
 </div>
@@ -2138,19 +2096,6 @@ window.CustomersPage = (function(){
 document.addEventListener('DOMContentLoaded', function(){ try{ if(window.CustomersPage) window.CustomersPage.init(); }catch(e){} });
 </script>
 
-<style>
-@media (max-width: 900px) {
-    .details-grid-container { grid-template-columns: 1fr !important; }
-}
-
-/* Mobile responsive toggle for customer list */
-@media (max-width: 768px) {
-    .customers-desktop-table { display: none !important; }
-    .customers-mobile-container { display: block !important; }
-    .hide-mobile { display: none !important; }
-}
-</style>
-
 <script>
 document.querySelector('input[name="num_months"]').addEventListener('input', function() {
     const months = parseInt(this.value) || 0;
@@ -2164,14 +2109,16 @@ document.querySelector('input[name="num_months"]').addEventListener('input', fun
 <?php endif; ?>
 
 <!-- TR-069 Monitor Modal -->
-<div id="tr069Modal" class="modal" style="display:none; position:fixed; z-index:1001; left:0; top:0; width:100%; height:100%; overflow:auto; background-color: rgba(0,0,0,0.8); backdrop-filter: blur(5px);">
-    <div class="glass-panel" style="background: var(--bg-color); margin: 5% auto; padding: 25px; border-radius: 20px; width: 90%; max-width: 600px; border: 1px solid var(--glass-border); position:relative;">
-        <span onclick="document.getElementById('tr069Modal').style.display='none'" style="position:absolute; right:20px; top:15px; font-size:28px; font-weight:bold; cursor:pointer; color:var(--text-secondary);">&times;</span>
-        <h3 style="margin-bottom:20px;"><i class="fas fa-satellite-dish text-primary"></i> Monitoring ONT (TR-069)</h3>
+<div id="tr069Modal" class="modal fixed inset-0 z-[1001] overflow-auto bg-black/50 p-4" style="display:none;">
+    <div class="ui-card relative mx-auto my-[5%] w-full max-w-xl p-5 sm:p-6">
+        <div class="mb-4 flex items-start justify-between gap-4">
+            <h3 class="m-0 text-lg font-bold">Monitoring ONT (TR-069)</h3>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-ghost" onclick="document.getElementById('tr069Modal').style.display='none'" aria-label="Tutup">&times;</button>
+        </div>
         <div id="tr069-content">
-            <div style="text-align:center; padding:40px;">
-                <i class="fas fa-circle-notch fa-spin fa-2x text-primary"></i>
-                <p style="margin-top:15px; color:var(--text-secondary);">Menghubungkan ke server ACS...</p>
+            <div class="px-5 py-10 text-center text-sm text-muted-foreground">
+                <i class="fas fa-circle-notch fa-spin"></i>
+                <p class="m-0 mt-3">Menghubungkan ke server ACS...</p>
             </div>
         </div>
     </div>
@@ -2179,29 +2126,32 @@ document.querySelector('input[name="num_months"]').addEventListener('input', fun
 
 
 <!-- Modal Edit Invoice -->
-<div id="editInvoiceModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(5px); align-items:center; justify-content:center; z-index:9999;">
-    <div class="glass-panel" style="width:100%; max-width:400px; padding:24px; margin:20px; border-top:4px solid var(--warning);">
-        <h3 id="editTitle" style="margin-bottom:20px; font-weight:800;"><i class="fas fa-edit text-warning"></i> Edit Tagihan</h3>
+<div id="editInvoiceModal" class="fixed inset-0 z-[9999] items-center justify-center bg-black/50 p-4" style="display:none;">
+    <div class="ui-card w-full max-w-md p-5 sm:p-6">
+        <div class="mb-4 flex items-start justify-between gap-4">
+            <h3 id="editTitle" class="m-0 text-lg font-bold">Edit tagihan</h3>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-ghost" onclick="CustomersPage.hideEditInvoice()" aria-label="Tutup">&times;</button>
+        </div>
         <form action="index.php?page=admin_invoices&action=edit_post" method="POST">
 <?= csrf_field() ?>
             <input type="hidden" name="id" id="editInvId">
             <input type="hidden" name="ref" value="customer_details">
             <input type="hidden" name="cust_id" value="<?= $id ?>">
-            <div class="form-group mb-3">
-                <label style="font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase;">Nominal Tagihan (Rp)</label>
-                <input type="number" name="amount" id="editInvAmount" class="form-control" required style="font-size:18px; font-weight:700; height:45px;">
-            </div>
-            <div class="form-group mb-3">
-                <label style="font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase;">Potongan / Restitusi (Rp)</label>
-                <input type="number" name="discount" id="editInvDiscount" class="form-control" value="0" style="color:var(--danger); font-weight:700;">
-            </div>
-            <div class="form-group mb-4">
-                <label style="font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase;">Jatuh Tempo</label>
+            <label class="mb-4 block">
+                <span class="mb-1 block text-xs font-medium text-muted-foreground">Nominal tagihan (Rp)</span>
+                <input type="number" name="amount" id="editInvAmount" class="form-control text-lg font-bold tabular-nums" required>
+            </label>
+            <label class="mb-4 block">
+                <span class="mb-1 block text-xs font-medium text-muted-foreground">Potongan / restitusi (Rp)</span>
+                <input type="number" name="discount" id="editInvDiscount" class="form-control tabular-nums" value="0">
+            </label>
+            <label class="mb-4 block">
+                <span class="mb-1 block text-xs font-medium text-muted-foreground">Jatuh tempo</span>
                 <input type="date" name="due_date" id="editInvDate" class="form-control" required>
-            </div>
-                <div style="display:flex; justify-content:flex-end; gap:10px;">
-                <button type="button" class="btn btn-ghost" onclick="CustomersPage.hideEditInvoice()">Batal</button>
-                <button type="submit" class="btn btn-warning" style="font-weight:800; padding:10px 25px;">SIMPAN PERUBAHAN</button>
+            </label>
+            <div class="mt-6 flex justify-end gap-2">
+                <button type="button" class="ui-btn ui-btn-outline" onclick="CustomersPage.hideEditInvoice()">Batal</button>
+                <button type="submit" class="ui-btn ui-btn-primary">Simpan perubahan</button>
             </div>
         </form>
     </div>

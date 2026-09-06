@@ -574,48 +574,64 @@ $utilization_pct = ($total_ports_capacity > 0) ? ($total_ports_used / $total_por
 $active_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets a WHERE 1=1 $scope_where AND lower(COALESCE(status, '')) IN ('aktif', 'deployed', 'siap pakai', 'ready', 'active')")->fetchColumn() ?: 0;
 ?>
 
-<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:20px; margin-bottom:30px;">
-    <div class="glass-panel" style="padding:20px; border-left:4px solid var(--primary); display:flex; flex-direction:column; justify-content:center;">
-        <div style="font-size:11px; color:var(--text-secondary); margin-bottom:8px; text-transform:uppercase; letter-spacing:1px;">Total Nilai Perolehan</div>
-        <div style="font-size:24px; font-weight:800; color:var(--text-primary);">Rp <?= number_format($total_investment, 0, ',', '.') ?></div>
-        <div style="font-size:11px; color:var(--text-secondary); margin-top:5px;">Total nilai aset perusahaan tercatat</div>
+<div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h2 class="m-0 text-xl font-bold sm:text-2xl">Register aset perusahaan</h2>
     </div>
-    <div class="glass-panel" style="padding:20px; border-left:4px solid var(--success); display:flex; flex-direction:column; justify-content:center;">
-        <div style="font-size:11px; color:var(--text-secondary); margin-bottom:8px; text-transform:uppercase; letter-spacing:1px;">Jumlah Aset Tercatat</div>
-        <div style="font-size:24px; font-weight:800; color:var(--success);"><?= array_sum($stats_raw) ?> <span style="font-size:14px;">Unit</span></div>
-        <div style="font-size:11px; color:var(--text-secondary); margin-top:5px;">Terdaftar dalam register aset</div>
-    </div>
-    <div class="glass-panel" style="padding:24px; border-left:4px solid #f59e0b; display:flex; flex-direction:column; justify-content:center;">
-        <div style="font-size:11px; color:var(--text-secondary); margin-bottom:8px; text-transform:uppercase; letter-spacing:1px;">Status Aktif</div>
-        <div style="font-size:24px; font-weight:800; color:#f59e0b;"><?= $active_assets ?> <span style="font-size:14px; color:var(--text-secondary); font-weight:normal;">Unit</span></div>
-        <div style="font-size:11px; color:var(--text-secondary); margin-top:5px;">Aset yang siap dipakai / aktif</div>
-    </div>
-    <div class="glass-panel" style="padding:20px; border-left:4px solid #a855f7; display:flex; flex-direction:column; justify-content:center;">
-        <div style="font-size:11px; color:var(--text-secondary); margin-bottom:8px; text-transform:uppercase; letter-spacing:1px;">Kondisi Lainnya</div>
-        <div style="font-size:24px; font-weight:800; color:#a855f7;"><?= max(0, array_sum($stats_raw) - $active_assets) ?> <span style="font-size:14px; color:var(--text-secondary); font-weight:normal;">Unit</span></div>
-        <div style="font-size:11px; color:var(--text-secondary); margin-top:5px;">Dalam perbaikan / rusak / tidak aktif</div>
+    <div class="compact-toolbar flex flex-wrap gap-2">
+        <button class="ui-btn ui-btn-outline" onclick="window.open('index.php?page=admin_assets&action=print','_blank')"><i class="fas fa-print"></i> Export / cetak</button>
+        <button class="ui-btn ui-btn-primary" onclick="showAssetModal()"><i class="fas fa-plus"></i> Tambah aset</button>
     </div>
 </div>
 
-<div class="glass-panel" style="padding:25px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; flex-wrap:wrap; gap:15px;">
-        <h3 style="margin:0;"><i class="fas fa-boxes text-primary"></i> Register Aset Perusahaan</h3>
-        <div class="compact-toolbar" style="display:flex; gap:10px;">
-            <div class="view-toggle" style="background:rgba(255,255,255,0.05); padding:4px; border-radius:10px; display:flex;">
-                <button class="btn btn-sm <?= ($_GET['view']??'table') == 'table' ? 'btn-primary' : 'btn-ghost' ?>" onclick="location.href='index.php?page=admin_assets&view=table'">
-                    <i class="fas fa-table"></i> Daftar
-                </button>
-                <button class="btn btn-sm <?= ($_GET['view']??'') == 'tree' ? 'btn-primary' : 'btn-ghost' ?>" onclick="location.href='index.php?page=admin_assets&view=tree'">
-                    <i class="fas fa-network-wired"></i> Topologi
-                </button>
-            </div>
-            <button class="btn btn-ghost" onclick="window.open('index.php?page=admin_assets&action=print','_blank')"><i class="fas fa-print"></i> Export / Cetak</button>
-            <button class="btn btn-primary" onclick="showAssetModal()"><i class="fas fa-plus"></i> Tambah Aset</button>
-        </div>
+<div class="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+    <div class="ui-card p-4">
+        <div class="text-xs font-medium text-muted-foreground">Total nilai perolehan</div>
+        <div class="mt-1 text-2xl font-extrabold tabular-nums">Rp <?= number_format($total_investment, 0, ',', '.') ?></div>
+        <div class="text-xs text-muted-foreground">Total nilai aset perusahaan tercatat</div>
     </div>
+    <div class="ui-card p-4">
+        <div class="text-xs font-medium text-muted-foreground">Jumlah aset tercatat</div>
+        <div class="mt-1 text-2xl font-extrabold tabular-nums"><?= array_sum($stats_raw) ?> <span class="text-sm font-normal text-muted-foreground">unit</span></div>
+        <div class="text-xs text-muted-foreground">Terdaftar dalam register aset</div>
+    </div>
+    <div class="ui-card p-4">
+        <div class="text-xs font-medium text-muted-foreground">Status aktif</div>
+        <div class="mt-1 text-2xl font-extrabold tabular-nums text-signal"><?= $active_assets ?> <span class="text-sm font-normal text-muted-foreground">unit</span></div>
+        <div class="text-xs text-muted-foreground">Aset yang siap dipakai / aktif</div>
+    </div>
+    <div class="ui-card p-4">
+        <div class="text-xs font-medium text-muted-foreground">Kondisi lainnya</div>
+        <div class="mt-1 text-2xl font-extrabold tabular-nums"><?= max(0, array_sum($stats_raw) - $active_assets) ?> <span class="text-sm font-normal text-muted-foreground">unit</span></div>
+        <div class="text-xs text-muted-foreground">Dalam perbaikan / rusak / tidak aktif</div>
+    </div>
+</div>
 
-    <?php if(($_GET['view']??'table') === 'table'): ?>
-    <div style="max-height:520px; overflow-y:auto; padding-right:6px; display:grid; gap:12px;">
+<div class="view-toggle mb-5 flex w-fit flex-wrap gap-1 rounded-md bg-muted p-1">
+    <button class="<?= ($_GET['view']??'table') == 'table' ? 'rounded-sm bg-card px-3 py-1.5 text-sm font-semibold text-foreground shadow-card border-0' : 'rounded-sm bg-transparent px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground border-0' ?>" onclick="location.href='index.php?page=admin_assets&view=table'"<?= ($_GET['view']??'table') == 'table' ? ' aria-current="page"' : '' ?>>
+        <i class="fas fa-table"></i> Daftar
+    </button>
+    <button class="<?= ($_GET['view']??'') == 'tree' ? 'rounded-sm bg-card px-3 py-1.5 text-sm font-semibold text-foreground shadow-card border-0' : 'rounded-sm bg-transparent px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground border-0' ?>" onclick="location.href='index.php?page=admin_assets&view=tree'"<?= ($_GET['view']??'') == 'tree' ? ' aria-current="page"' : '' ?>>
+        <i class="fas fa-network-wired"></i> Topologi
+    </button>
+</div>
+
+<?php if(($_GET['view']??'table') === 'table'): ?>
+<section class="ui-card overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-sm">
+            <thead>
+                <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                    <th class="px-4 py-2.5 font-semibold">Aset</th>
+                    <th class="px-4 py-2.5 font-semibold">Kategori</th>
+                    <th class="px-4 py-2.5 text-right font-semibold">Nilai perolehan</th>
+                    <th class="px-4 py-2.5 text-right font-semibold">Penyusutan</th>
+                    <th class="px-4 py-2.5 text-right font-semibold">Nilai buku</th>
+                    <th class="px-4 py-2.5 font-semibold">Status</th>
+                    <th class="px-4 py-2.5 text-right font-semibold">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
         <?php
         $assets = $db->query("SELECT a.*, p.name as parent_name FROM infrastructure_assets a LEFT JOIN infrastructure_assets p ON a.parent_id = p.id WHERE 1=1 $scope_where ORDER BY a.type DESC, a.name ASC")->fetchAll();
         foreach($assets as $a):
@@ -633,35 +649,37 @@ $active_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets a WHERE 
             $depreciation_amount = min($a['price'], $depreciation_per_year * floor($years_used));
             $book_value = max(0, $a['price'] - $depreciation_amount);
         ?>
-        <div class="glass-panel" style="padding:16px 18px; border-left:4px solid var(--primary); display:grid; grid-template-columns: 1.6fr 1fr auto; gap:16px; align-items:center; border-radius:14px;">
-            <div>
-                <div style="font-weight:800; font-size:16px; margin-bottom:6px;"><?= htmlspecialchars($a['name']) ?></div>
-                <div style="font-size:12px; color:var(--text-secondary); margin-bottom:6px; line-height:1.5;"><?= htmlspecialchars($a['description'] ? trim(strip_tags($a['description'])) : 'Keterangan belum diisi') ?></div>
-                <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
-                    <span class="badge" style="background:var(--primary); color:white;"><?= htmlspecialchars($a['type'] ?: 'Umum') ?></span>
-                    <span class="badge" style="background:rgba(255,255,255,0.08); color:var(--text-primary);"><?= htmlspecialchars($a['brand'] ?: 'Vendor belum diisi') ?></span>
-                </div>
-            </div>
-            <div>
-                <div style="font-weight:700; color:var(--success); margin-bottom:4px;">Rp <?= number_format($a['price'], 0, ',', '.') ?></div>
-                <div style="font-size:12px; color:#f59e0b; margin-bottom:2px;">Penyusutan: Rp <?= number_format($depreciation_amount, 0, ',', '.') ?></div>
-                <div style="font-size:12px; color:var(--text-secondary);">Nilai buku: Rp <?= number_format($book_value, 0, ',', '.') ?></div>
-                <div style="font-size:12px; color:var(--text-secondary); margin-top:6px; display:inline-block; padding:4px 8px; border-radius:999px; background:rgba(255,255,255,0.06);">Status: <?= htmlspecialchars($a['status'] ?: '-') ?></div>
-            </div>
-            <div class="compact-action-icons" style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
-                <button class="btn btn-sm btn-warning" onclick='editAsset(<?= json_encode($a) ?>)' title="Edit"><i class="fas fa-edit"></i></button>
-                <button class="btn btn-sm btn-primary" onclick='showInvoiceModal(<?= json_encode($a) ?>)' title="Buat Nota / Cetak"><i class="fas fa-receipt"></i></button>
-                <a data-method="post" href="index.php?page=admin_assets&action=delete&id=<?= $a['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus aset ini?')"><i class="fas fa-trash"></i></a>
-            </div>
-        </div>
+                <tr class="border-t border-solid border-border">
+                    <td class="px-4 py-3">
+                        <div class="font-semibold text-foreground"><?= htmlspecialchars($a['name']) ?></div>
+                        <div class="text-xs text-muted-foreground"><?= htmlspecialchars($a['description'] ? trim(strip_tags($a['description'])) : 'Keterangan belum diisi') ?></div>
+                        <div class="text-xs text-muted-foreground"><?= htmlspecialchars($a['brand'] ?: 'Vendor belum diisi') ?></div>
+                    </td>
+                    <td class="px-4 py-3"><span class="ui-badge ui-badge-muted"><?= htmlspecialchars($a['type'] ?: 'Umum') ?></span></td>
+                    <td class="px-4 py-3 text-right font-semibold tabular-nums">Rp <?= number_format($a['price'], 0, ',', '.') ?></td>
+                    <td class="px-4 py-3 text-right tabular-nums text-muted-foreground">Rp <?= number_format($depreciation_amount, 0, ',', '.') ?></td>
+                    <td class="px-4 py-3 text-right tabular-nums">Rp <?= number_format($book_value, 0, ',', '.') ?></td>
+                    <td class="px-4 py-3"><span class="ui-badge"><?= htmlspecialchars($a['status'] ?: '-') ?></span></td>
+                    <td class="px-4 py-3 text-right">
+                        <div class="compact-action-icons inline-flex flex-wrap justify-end gap-1">
+                            <button class="ui-btn ui-btn-sm ui-btn-outline" onclick='editAsset(<?= json_encode($a) ?>)' title="Edit"><i class="fas fa-edit"></i></button>
+                            <button class="ui-btn ui-btn-sm ui-btn-outline" onclick='showInvoiceModal(<?= json_encode($a) ?>)' title="Buat Nota / Cetak"><i class="fas fa-receipt"></i></button>
+                            <a data-method="post" href="index.php?page=admin_assets&action=delete&id=<?= $a['id'] ?>" class="ui-btn ui-btn-sm ui-btn-outline text-danger" title="Hapus" onclick="return confirm('Hapus aset ini?')"><i class="fas fa-trash"></i></a>
+                        </div>
+                    </td>
+                </tr>
         <?php endforeach; ?>
         <?php if(empty($assets)): ?>
-            <div style="text-align:center; padding:50px; color:var(--text-secondary);"><i class="fas fa-info-circle"></i> Belum ada aset terdaftar.</div>
+                <tr class="border-t border-solid border-border"><td colspan="7" class="px-5 py-10 text-center text-sm text-muted-foreground">Belum ada aset terdaftar.</td></tr>
         <?php endif; ?>
+            </tbody>
+        </table>
     </div>
-    <?php else: ?>
-    <!-- Network Topology Tree View -->
-    <div class="network-tree-container" style="padding:10px 0;">
+</section>
+<?php else: ?>
+<!-- Network Topology Tree View -->
+<div class="ui-card p-4 sm:p-5">
+    <div class="network-tree-container">
         <?php
         $tree = buildNetworkTree($db, 0, $scope_where);
 
@@ -681,59 +699,56 @@ $active_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets a WHERE 
             if($item['type'] == 'ODC') $color = '#a855f7';
             if($item['type'] == 'ODP') $color = '#ec4899';
             if($item['type'] == 'Router') $color = '#f59e0b';
-            
+
             $icon = 'fa-server';
             if($item['type'] == 'ODC') $icon = 'fa-boxes-stacked';
             if($item['type'] == 'ODP') $icon = 'fa-plug-circle-bolt';
             if($item['type'] == 'Router') $icon = 'fa-router';
 
-            echo '<div class="tree-item" style="margin-left:' . ($level * 35) . 'px; border-left: 2px solid rgba(255,255,255,0.05); padding-left: 25px; position:relative; margin-bottom:15px;">';
+            echo '<div class="tree-item relative mb-3 border-l border-solid border-border pl-5" style="margin-left:' . ($level * 24) . 'px;">';
             if($level > 0) {
-                echo '<div style="position:absolute; left:0; top:35px; width:25px; height:2px; background:rgba(255,255,255,0.05);"></div>';
+                echo '<div class="absolute left-0 top-8 h-px w-5 bg-border"></div>';
             }
-            
-            echo '<div class="glass-panel" style="padding:15px 20px; display:flex; justify-content:space-between; align-items:center; border-left:4px solid ' . $color . '; min-height:80px; transition:all 0.2s;">';
-            
-            echo '<div style="display:flex; align-items:center; gap:20px;">';
-            echo '<div style="width:48px; height:48px; background:' . $color . '15; color:' . $color . '; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:20px;"><i class="fas ' . $icon . '"></i></div>';
-            echo '<div>';
-            echo '<div style="font-weight:700; font-size:16px; color:var(--text-primary);">' . htmlspecialchars($item['name']) . ' <span style="font-size:11px; opacity:0.5; font-weight:normal; margin-left:8px; text-transform:uppercase;">' . $item['type'] . '</span></div>';
-            echo '<div style="font-size:12px; color:var(--text-secondary); margin-top:4px;"><i class="fas fa-network-wired" style="font-size:10px; margin-right:5px;"></i> ' . $item['total_active_downstream'] . ' Total Jalur Aktif</div>';
+
+            echo '<div class="ui-card flex flex-wrap items-center justify-between gap-4 px-4 py-3">';
+
+            echo '<div class="min-w-0">';
+            echo '<div class="flex flex-wrap items-center gap-2 text-sm font-bold text-foreground">' . htmlspecialchars($item['name']) . ' <span class="ui-badge ui-badge-muted">' . $item['type'] . '</span></div>';
+            echo '<div class="mt-0.5 text-xs text-muted-foreground">' . $item['total_active_downstream'] . ' total jalur aktif</div>';
+            echo '</div>';
+
+            echo '<div class="flex items-center gap-5">';
+            echo '<div class="w-[120px]">';
+            echo '<div class="mb-1 flex justify-between text-[11px] text-muted-foreground">';
+            echo '<span>Utilisasi port</span>';
+            echo '<span class="font-semibold tabular-nums ' . ($usage_pct > 85 ? 'text-danger' : 'text-foreground') . '">' . round($usage_pct) . '%</span>';
+            echo '</div>';
+            echo '<div class="h-1.5 w-full overflow-hidden rounded-full bg-muted">';
+            echo '<div class="h-full ' . ($usage_pct > 85 ? 'bg-danger' : 'bg-signal') . '" style="width:' . $usage_pct . '%;"></div>';
             echo '</div>';
             echo '</div>';
-            
-            echo '<div style="display:flex; align-items:center; gap:25px;">';
-            echo '<div style="text-align:right; width:120px;">';
-            echo '<div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-secondary); margin-bottom:6px;">';
-            echo '<span>Utilisasi Port</span>';
-            echo '<span style="font-weight:800; color:' . ($usage_pct > 85 ? 'var(--danger)' : 'var(--text-primary)') . '">' . round($usage_pct) . '%</span>';
-            echo '</div>';
-            echo '<div style="width:100%; height:8px; background:rgba(255,255,255,0.05); border-radius:4px; overflow:hidden;">';
-            echo '<div style="width:' . $usage_pct . '%; height:100%; background:' . ($usage_pct > 85 ? 'var(--danger)' : 'var(--success)') . '; box-shadow: 0 0 10px ' . ($usage_pct > 85 ? 'var(--danger)' : 'var(--success)') . '44;"></div>';
-            echo '</div>';
-            echo '</div>';
-            
-            echo '<div style="display:flex; gap:8px;">';
+
+            echo '<div class="flex gap-1">';
             if($item['lat'] && $item['lng']) {
-                echo '<a href="index.php?page=admin_map&lat=' . $item['lat'] . '&lng=' . $item['lng'] . '" class="btn btn-sm btn-ghost" title="Lihat di Peta" style="color:#06b6d4;"><i class="fas fa-location-dot"></i></a>';
+                echo '<a href="index.php?page=admin_map&lat=' . $item['lat'] . '&lng=' . $item['lng'] . '" class="ui-btn ui-btn-sm ui-btn-outline" title="Lihat di Peta"><i class="fas fa-location-dot"></i></a>';
             }
-            echo '<button class="btn btn-sm btn-ghost" style="color:var(--text-secondary);" onclick=\'editAsset(' . json_encode($item) . ')\'><i class="fas fa-edit"></i></button>';
+            echo '<button class="ui-btn ui-btn-sm ui-btn-outline" title="Edit" onclick=\'editAsset(' . json_encode($item) . ')\'><i class="fas fa-edit"></i></button>';
             echo '</div>';
             echo '</div>';
-            
+
             echo '</div>'; // end glass-panel
 
             // List Customers if it's an ODP or has customers
             $customers = getCustomersForAsset($db, $item['id']);
             if(!empty($customers)) {
-                echo '<div style="margin-left: 68px; margin-top: -10px; margin-bottom: 20px; font-size: 11px; padding: 10px 15px; background: rgba(255,255,255,0.03); border-radius: 0 0 12px 12px; border: 1px solid rgba(255,255,255,0.05); border-top:none;">';
-                echo '<div style="color:var(--text-secondary); margin-bottom:5px; font-weight:700;"><i class="fas fa-users-viewfinder"></i> PELANGGAN TERHUBUNG:</div>';
+                echo '<div class="mb-3 ml-4 rounded-b-lg border border-t-0 border-solid border-border bg-muted px-4 py-2 text-xs">';
+                echo '<div class="mb-1 font-semibold text-muted-foreground">Pelanggan terhubung:</div>';
                 foreach($customers as $c) {
-                    echo '<div style="display:inline-block; margin-right:15px; color:var(--text-primary);"><i class="fas fa-user" style="font-size:9px; opacity:0.5;"></i> ' . htmlspecialchars($c['name']) . ' (' . $c['customer_code'] . ')</div>';
+                    echo '<div class="mr-4 inline-block text-foreground">' . htmlspecialchars($c['name']) . ' (' . $c['customer_code'] . ')</div>';
                 }
                 echo '</div>';
             }
-            
+
             if(!empty($item['children'])) {
                 foreach($item['children'] as $child) {
                     renderTreeItem($db, $child, $level + 1);
@@ -744,165 +759,172 @@ $active_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets a WHERE 
     }
 
     foreach($tree as $root) renderTreeItem($db, $root);
-        
+
         if(empty($tree)) {
-            echo '<div style="text-align:center; padding:80px; color:var(--text-secondary); opacity:0.6;">';
-            echo '<i class="fas fa-network-wired" style="font-size:60px; margin-bottom:20px; display:block; opacity:0.1;"></i> Belum ada infrastruktur terdaftar atau periksa filter Parent.';
+            echo '<div class="px-5 py-10 text-center text-sm text-muted-foreground">';
+            echo 'Belum ada infrastruktur terdaftar atau periksa filter Parent.';
             echo '</div>';
         }
         ?>
     </div>
-    <?php endif; ?>
 </div>
+<?php endif; ?>
 
 <!-- Asset Modal -->
-<div id="assetModal" class="modal" style="display:none; position:fixed; z-index:1001; left:0; top:0; width:100%; height:100%; overflow-y:auto; padding:24px 0; background:rgba(0,0,0,0.8); backdrop-filter:blur(10px);">
-    <div class="glass-panel" style="width:90%; max-width:620px; margin:0 auto; padding:30px; max-height:calc(100vh - 48px); overflow-y:auto;">
-        <h3 id="modalTitle" style="margin-bottom:20px;">Tambah Aset Baru</h3>
-        <form method="POST" id="assetForm" style="display:flex; flex-direction:column; gap:0;">
+<div id="assetModal" class="modal fixed inset-0 z-[1001] overflow-y-auto bg-black/50 p-4 sm:p-6" style="display:none;">
+    <div class="ui-card mx-auto w-full max-w-2xl p-5 sm:p-6">
+        <div class="mb-4 flex items-start justify-between gap-4">
+            <h3 id="modalTitle" class="m-0 text-lg font-bold">Tambah aset baru</h3>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-ghost" onclick="closeAssetModal()" aria-label="Tutup">✕</button>
+        </div>
+        <form method="POST" id="assetForm">
 <?= csrf_field() ?>
             <input type="hidden" name="id" id="asset_id">
-            <div style="max-height:calc(100vh - 220px); overflow-y:auto; padding-right:6px;">
-            <div class="form-group">
-                <label>Nama Aset</label>
-                <input type="text" name="name" id="asset_name" class="form-control" required placeholder="Contoh: Laptop Administrasi">
-                <div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">Kategori dan kode akan dibuat otomatis berdasarkan nama aset.</div>
-            </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
-                <div class="form-group">
-                    <label>Kode Aset / Nomor Asset</label>
-                    <input type="text" name="asset_code" id="asset_code" class="form-control" placeholder="Contoh: A-001">
+            <div class="grid gap-4">
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Nama aset</span>
+                    <input type="text" name="name" id="asset_name" class="form-control" required placeholder="Contoh: Laptop Administrasi">
+                    <span class="mt-1 block text-[11px] text-muted-foreground">Kategori dan kode akan dibuat otomatis berdasarkan nama aset.</span>
+                </label>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Kode aset / nomor asset</span>
+                        <input type="text" name="asset_code" id="asset_code" class="form-control" placeholder="Contoh: A-001">
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Kategori</span>
+                        <select name="type" id="asset_type" class="form-control" required>
+                            <option value="Peralatan Kantor">Peralatan Kantor</option>
+                            <option value="Komputer & IT">Komputer & IT</option>
+                            <option value="Kendaraan">Kendaraan</option>
+                            <option value="Furniture">Furniture</option>
+                            <option value="Bangunan">Bangunan</option>
+                            <option value="Lainnya">Lainnya</option>
+                        </select>
+                    </label>
                 </div>
-                <div class="form-group">
-                    <label>Kategori</label>
-                    <select name="type" id="asset_type" class="form-control" required>
-                        <option value="Peralatan Kantor">Peralatan Kantor</option>
-                        <option value="Komputer & IT">Komputer & IT</option>
-                        <option value="Kendaraan">Kendaraan</option>
-                        <option value="Furniture">Furniture</option>
-                        <option value="Bangunan">Bangunan</option>
-                        <option value="Lainnya">Lainnya</option>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Merk / vendor</span>
+                        <input type="text" name="brand" id="asset_brand" class="form-control" placeholder="Contoh: Lenovo / PT. Mitra Sejahtera">
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Nilai perolehan (Rp)</span>
+                        <input type="number" name="price" id="asset_price" class="form-control" value="0">
+                    </label>
+                </div>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Tanggal perolehan</span>
+                        <input type="date" name="installation_date" id="asset_date" class="form-control" value="<?= date('Y-m-d') ?>">
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Masa manfaat (tahun)</span>
+                        <input type="number" name="useful_life_years" id="asset_useful_life" class="form-control" min="1" value="5">
+                    </label>
+                </div>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Status / kondisi</span>
+                        <select name="status" id="asset_status" class="form-control">
+                            <option value="Aktif">Aktif</option>
+                            <option value="Siap Pakai">Siap Pakai</option>
+                            <option value="Perbaikan">Perbaikan</option>
+                            <option value="Rusak">Rusak</option>
+                            <option value="Dijual">Dijual</option>
+                        </select>
+                    </label>
+                </div>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Aset induk (opsional)</span>
+                    <select name="parent_id" id="asset_parent" class="form-control">
+                        <option value="0">Tidak ada</option>
+                        <?php
+                        $parents = $db->query("SELECT a.id, a.name, a.type FROM infrastructure_assets a WHERE a.type != 'ODP' $scope_where ORDER BY a.type DESC")->fetchAll();
+                        foreach($parents as $p) echo "<option value='{$p['id']}'>{$p['type']} - {$p['name']}</option>";
+                        ?>
                     </select>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Keterangan / lokasi</span>
+                    <textarea name="description" id="asset_description" class="form-control" rows="3" placeholder="Contoh: Ruang Administrasi, cabang Jakarta, catatan pemakaian"></textarea>
+                </label>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Latitude (opsional)</span>
+                        <input type="text" name="lat" id="asset_lat" class="form-control">
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Longitude (opsional)</span>
+                        <input type="text" name="lng" id="asset_lng" class="form-control">
+                    </label>
                 </div>
             </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
-                <div class="form-group">
-                    <label>Merk / Vendor</label>
-                    <input type="text" name="brand" id="asset_brand" class="form-control" placeholder="Contoh: Lenovo / PT. Mitra Sejahtera">
-                </div>
-                <div class="form-group">
-                    <label>Nilai Perolehan (Rp)</label>
-                    <input type="number" name="price" id="asset_price" class="form-control" value="0">
-                </div>
-            </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
-                <div class="form-group">
-                    <label>Tanggal Perolehan</label>
-                    <input type="date" name="installation_date" id="asset_date" class="form-control" value="<?= date('Y-m-d') ?>">
-                </div>
-                <div class="form-group">
-                    <label>Masa Manfaat (tahun)</label>
-                    <input type="number" name="useful_life_years" id="asset_useful_life" class="form-control" min="1" value="5">
-                </div>
-            </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
-                <div class="form-group">
-                    <label>Status / Kondisi</label>
-                    <select name="status" id="asset_status" class="form-control">
-                        <option value="Aktif">Aktif</option>
-                        <option value="Siap Pakai">Siap Pakai</option>
-                        <option value="Perbaikan">Perbaikan</option>
-                        <option value="Rusak">Rusak</option>
-                        <option value="Dijual">Dijual</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Aset Induk (opsional)</label>
-                <select name="parent_id" id="asset_parent" class="form-control">
-                    <option value="0">Tidak ada</option>
-                    <?php 
-                    $parents = $db->query("SELECT a.id, a.name, a.type FROM infrastructure_assets a WHERE a.type != 'ODP' $scope_where ORDER BY a.type DESC")->fetchAll();
-                    foreach($parents as $p) echo "<option value='{$p['id']}'>{$p['type']} - {$p['name']}</option>";
-                    ?>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Keterangan / Lokasi</label>
-                <textarea name="description" id="asset_description" class="form-control" rows="3" placeholder="Contoh: Ruang Administrasi, cabang Jakarta, catatan pemakaian"></textarea>
-            </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
-                <div class="form-group">
-                    <label>Latitude (opsional)</label>
-                    <input type="text" name="lat" id="asset_lat" class="form-control">
-                </div>
-                <div class="form-group">
-                    <label>Longitude (opsional)</label>
-                    <input type="text" name="lng" id="asset_lng" class="form-control">
-                </div>
-            </div>
-            </div>
-            <div class="form-actions-row" style="margin-top:20px; position:sticky; bottom:0; background:linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.08) 35%, rgba(255,255,255,0.12) 100%); backdrop-filter:blur(8px); padding-top:14px;">
-                <button type="button" class="btn btn-ghost" onclick="closeAssetModal()">Batal</button>
-                <button type="submit" class="btn btn-primary" id="saveBtn">Simpan Aset</button>
+            <div class="form-actions-row mt-6 flex justify-end gap-2">
+                <button type="button" class="ui-btn ui-btn-outline" onclick="closeAssetModal()">Batal</button>
+                <button type="submit" class="ui-btn ui-btn-primary" id="saveBtn">Simpan aset</button>
             </div>
         </form>
     </div>
 </div>
 
 <!-- Invoice Modal -->
-<div id="invoiceModal" class="modal" style="display:none; position:fixed; z-index:1002; left:0; top:0; width:100%; height:100%; overflow-y:auto; padding:24px 0; background:rgba(0,0,0,0.8); backdrop-filter:blur(10px);">
-    <div class="glass-panel" style="width:90%; max-width:520px; margin:0 auto; padding:20px; max-height:calc(100vh - 48px); overflow-y:auto;">
-        <h3 style="margin-bottom:10px;"><i class="fas fa-receipt"></i> Buat Nota Penjualan Aset</h3>
+<div id="invoiceModal" class="modal fixed inset-0 z-[1002] overflow-y-auto bg-black/50 p-4 sm:p-6" style="display:none;">
+    <div class="ui-card mx-auto w-full max-w-lg p-5 sm:p-6">
+        <div class="mb-4 flex items-start justify-between gap-4">
+            <h3 class="m-0 text-lg font-bold">Buat nota penjualan aset</h3>
+            <button type="button" class="ui-btn ui-btn-sm ui-btn-ghost" onclick="closeInvoiceModal()" aria-label="Tutup">✕</button>
+        </div>
         <form method="POST" id="invoiceForm" action="index.php?page=admin_assets&action=invoice_create">
 <?= csrf_field() ?>
             <input type="hidden" name="asset_id" id="inv_asset_id">
-            <div class="form-group">
-                <label>Pilih Mitra / Pelanggan (Untuk menagih)</label>
-                <select name="customer_id" id="inv_customer" class="form-control" required>
-                    <option value="">-- Pilih Mitra / Pelanggan --</option>
-                    <?php
-                        $tenant_id = $_SESSION['tenant_id'] ?? 1;
-                        $partners = $db->query("SELECT id, name FROM customers WHERE type = 'partner' AND tenant_id = $tenant_id ORDER BY name ASC")->fetchAll();
-                        foreach($partners as $p) echo "<option value='" . intval($p['id']) . "'>" . htmlspecialchars($p['name']) . "</option>";
-                    ?>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Jumlah (Rp)</label>
-                <input type="number" name="amount" id="inv_amount" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label>Deskripsi / Item</label>
-                <input type="text" name="description" id="inv_description" class="form-control" placeholder="Contoh: Pembelian Router XYZ">
-            </div>
-            <div class="form-group">
-                <label>Alamat Penagihan (opsional)</label>
-                <input type="text" name="billing_address" id="inv_billing_address" class="form-control" placeholder="Alamat untuk dicantumkan di invoice">
-            </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                <div class="form-group">
-                    <label>No. HP / Telepon</label>
-                    <input type="text" name="billing_phone" id="inv_billing_phone" class="form-control" placeholder="Contoh: 08123456789">
+            <div class="grid gap-4">
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Pilih mitra / pelanggan (untuk menagih)</span>
+                    <select name="customer_id" id="inv_customer" class="form-control" required>
+                        <option value="">-- Pilih Mitra / Pelanggan --</option>
+                        <?php
+                            $tenant_id = $_SESSION['tenant_id'] ?? 1;
+                            $partners = $db->query("SELECT id, name FROM customers WHERE type = 'partner' AND tenant_id = $tenant_id ORDER BY name ASC")->fetchAll();
+                            foreach($partners as $p) echo "<option value='" . intval($p['id']) . "'>" . htmlspecialchars($p['name']) . "</option>";
+                        ?>
+                    </select>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Jumlah (Rp)</span>
+                    <input type="number" name="amount" id="inv_amount" class="form-control" required>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Deskripsi / item</span>
+                    <input type="text" name="description" id="inv_description" class="form-control" placeholder="Contoh: Pembelian Router XYZ">
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Alamat penagihan (opsional)</span>
+                    <input type="text" name="billing_address" id="inv_billing_address" class="form-control" placeholder="Alamat untuk dicantumkan di invoice">
+                </label>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">No. HP / telepon</span>
+                        <input type="text" name="billing_phone" id="inv_billing_phone" class="form-control" placeholder="Contoh: 08123456789">
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Email</span>
+                        <input type="email" name="billing_email" id="inv_billing_email" class="form-control" placeholder="email@example.com">
+                    </label>
                 </div>
-                <div class="form-group">
-                    <label>Email</label>
-                    <input type="email" name="billing_email" id="inv_billing_email" class="form-control" placeholder="email@example.com">
+                <div class="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Tanggal jatuh tempo</span>
+                        <input type="date" name="due_date" id="inv_due_date" class="form-control" value="<?= date('Y-m-d') ?>">
+                    </label>
+                    <label class="flex h-10 items-center gap-2 text-sm">
+                        <input type="checkbox" name="mark_sold" id="inv_mark_sold" value="1" class="h-4 w-4"> Tandai terjual
+                    </label>
                 </div>
             </div>
-            <div style="display:flex; gap:10px;">
-                <div class="form-group" style="flex:1;">
-                    <label>Tanggal Jatuh Tempo</label>
-                    <input type="date" name="due_date" id="inv_due_date" class="form-control" value="<?= date('Y-m-d') ?>">
-                </div>
-                <div class="form-group" style="width:140px; display:flex; align-items:center; gap:8px;">
-                    <label style="margin:0; font-size:13px;">Tandai Terjual</label>
-                    <input type="checkbox" name="mark_sold" id="inv_mark_sold" value="1" style="width:20px; height:20px;">
-                </div>
-            </div>
-            <div class="form-actions-row" style="margin-top:16px;">
-                <button type="button" class="btn btn-ghost" onclick="closeInvoiceModal()">Batal</button>
-                <button type="submit" class="btn btn-primary">Buat & Cetak</button>
+            <div class="form-actions-row mt-6 flex justify-end gap-2">
+                <button type="button" class="ui-btn ui-btn-outline" onclick="closeInvoiceModal()">Batal</button>
+                <button type="submit" class="ui-btn ui-btn-primary">Buat & cetak</button>
             </div>
         </form>
     </div>

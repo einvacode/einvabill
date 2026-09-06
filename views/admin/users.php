@@ -90,80 +90,87 @@ if ($_SESSION['user_id'] == 1 && $action !== 'list') {
 ?>
 
 <?php if ($action === 'list'): ?>
-<div class="glass-panel" style="padding: 24px;">
-    <div style="display:flex; justify-content:space-between; margin-bottom:20px; align-items:center;">
-        <h3 style="font-size:20px;"><i class="fas fa-user-shield"></i> Daftar Pengguna / Akses Login</h3>
-        <a href="index.php?page=admin_users&action=create" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Tambah Pengguna</a>
+<div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h2 class="m-0 text-xl font-bold sm:text-2xl">Pengguna dan akses login</h2>
+        <p class="m-0 mt-1 text-sm text-muted-foreground">Akun admin, penagih, dan mitra yang dapat masuk ke aplikasi.</p>
     </div>
-    
-    <div class="table-container">
-        <table class="table" style="width:100%">
+    <div class="flex flex-wrap gap-2">
+        <a href="index.php?page=admin_users&action=create" class="ui-btn ui-btn-primary w-full sm:w-auto"><i class="fas fa-plus"></i> Tambah pengguna</a>
+    </div>
+</div>
+
+<section class="ui-card overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-sm">
             <thead>
-                <tr>
-                    <th>Username</th>
-                    <th>Nama Pengguna</th>
-                    <th>Hak Akses / Role</th>
-                    <?= $_SESSION['user_id'] == 1 ? '<th>Tenant / Organisasi</th>' : '' ?>
-                    <th>Area (Penagih) / Link (Mitra)</th>
-                    <th>Aksi</th>
+                <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                    <th class="px-4 py-2.5 font-semibold sm:px-5">Username</th>
+                    <th class="px-3 py-2.5 font-semibold">Nama pengguna</th>
+                    <th class="px-3 py-2.5 font-semibold">Hak akses</th>
+                    <?= $_SESSION['user_id'] == 1 ? '<th class="px-3 py-2.5 font-semibold">Tenant / organisasi</th>' : '' ?>
+                    <th class="px-3 py-2.5 font-semibold">Area (penagih) / link (mitra)</th>
+                    <th class="px-4 py-2.5 text-right font-semibold sm:px-5">Aksi</th>
                 </tr>
             </thead>
             <tbody>
                 <?php
                 $u_id_session = $_SESSION['user_id'];
                 $tenant_id_session = $_SESSION['tenant_id'] ?? 1;
-                
-                $sql = "SELECT u.*, c.name as partner_name, (SELECT company_name FROM settings s WHERE s.tenant_id = u.tenant_id LIMIT 1) as org_name 
-                        FROM users u 
-                        LEFT JOIN customers c ON u.customer_id = c.id 
-                        WHERE " . ($u_id_session == 1 ? "1=1" : "u.tenant_id = $tenant_id_session") . " 
+
+                $sql = "SELECT u.*, c.name as partner_name, (SELECT company_name FROM settings s WHERE s.tenant_id = u.tenant_id LIMIT 1) as org_name
+                        FROM users u
+                        LEFT JOIN customers c ON u.customer_id = c.id
+                        WHERE " . ($u_id_session == 1 ? "1=1" : "u.tenant_id = $tenant_id_session") . "
                         ORDER BY u.id DESC";
                 $users = $db->query($sql)->fetchAll();
                 foreach($users as $u):
                 ?>
-                <tr>
-                    <td><strong><?= htmlspecialchars($u['username']) ?></strong></td>
-                    <td><?= htmlspecialchars($u['name']) ?></td>
-                    <td>
+                <tr class="border-t border-solid border-border">
+                    <td class="px-4 py-3 font-semibold sm:px-5"><?= htmlspecialchars($u['username']) ?></td>
+                    <td class="px-3 py-3"><?= htmlspecialchars($u['name']) ?></td>
+                    <td class="px-3 py-3">
                         <?php if($u['role']=='admin'): ?>
-                            <span class="badge badge-primary">Admin</span>
+                            <span class="ui-badge border-transparent bg-primary-soft text-primary">Admin</span>
                         <?php elseif($u['role']=='collector'): ?>
-                            <span class="badge badge-warning">Penagih</span>
+                            <span class="ui-badge ui-badge-accent">Penagih</span>
                         <?php else: ?>
-                            <span class="badge badge-success">Mitra</span>
+                            <span class="ui-badge ui-badge-signal">Mitra</span>
                         <?php endif; ?>
                     </td>
                     <?php if ($_SESSION['user_id'] == 1): ?>
-                        <td>
-                            <div style="font-weight:700; color:var(--primary);"><?= htmlspecialchars($u['org_name'] ?? 'Default Tenant') ?></div>
-                            <div style="font-size:10px; opacity:0.6;">T-ID: <?= $u['tenant_id'] ?></div>
+                        <td class="px-3 py-3">
+                            <div class="font-semibold"><?= htmlspecialchars($u['org_name'] ?? 'Default Tenant') ?></div>
+                            <div class="text-xs text-muted-foreground">T-ID: <?= $u['tenant_id'] ?></div>
                         </td>
                     <?php endif; ?>
-                    <td>
+                    <td class="px-3 py-3">
                         <?php if($u['role']=='collector'): ?>
-                            <div style="font-size:11px; margin-bottom:4px;"><i class="fas fa-map-marker-alt"></i> Area: <?= htmlspecialchars($u['area'] && trim($u['area']) != '' ? $u['area'] : 'Semua Area') ?></div>
+                            <div class="text-xs">Area: <?= htmlspecialchars($u['area'] && trim($u['area']) != '' ? $u['area'] : 'Semua area') ?></div>
                         <?php endif; ?>
-                        
+
                         <?php if($u['role']=='partner' || $u['role']=='collector'): ?>
-                            <div style="font-size:11px; color:var(--primary); font-weight:600;"><i class="fas fa-link"></i> Link: <?= htmlspecialchars($u['partner_name'] ?? 'Belum terhubung') ?></div>
+                            <div class="text-xs text-muted-foreground">Link: <?= htmlspecialchars($u['partner_name'] ?? 'Belum terhubung') ?></div>
                         <?php else: ?>
-                            <div style="font-size:11px; color:var(--text-secondary);">-</div>
+                            <div class="text-xs text-muted-foreground">-</div>
                         <?php endif; ?>
                     </td>
-                    <td>
-                        <a href="index.php?page=admin_users&action=edit&id=<?= $u['id'] ?>" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></a>
-                        <?php if($u['id'] != 1 && $u['id'] != $_SESSION['user_id']): ?>
-                            <a data-method="post" href="index.php?page=admin_users&action=delete&id=<?= $u['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus user ini?')"><i class="fas fa-trash"></i></a>
-                        <?php endif; ?>
+                    <td class="px-4 py-3 text-right sm:px-5">
+                        <div class="inline-flex gap-1">
+                            <a href="index.php?page=admin_users&action=edit&id=<?= $u['id'] ?>" class="ui-btn ui-btn-sm ui-btn-outline" title="Edit"><i class="fas fa-edit"></i><span class="hidden sm:inline">Edit</span></a>
+                            <?php if($u['id'] != 1 && $u['id'] != $_SESSION['user_id']): ?>
+                                <a data-method="post" href="index.php?page=admin_users&action=delete&id=<?= $u['id'] ?>" class="ui-btn ui-btn-sm ui-btn-outline text-danger" title="Hapus" onclick="return confirm('Hapus user ini?')"><i class="fas fa-trash"></i><span class="hidden sm:inline">Hapus</span></a>
+                            <?php endif; ?>
+                        </div>
                     </td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
     </div>
-</div>
+</section>
 
-<?php elseif ($action === 'create' || $action === 'edit'): 
+<?php elseif ($action === 'create' || $action === 'edit'):
     $is_edit = ($action === 'edit');
     $u = null;
     if ($is_edit) {
@@ -171,70 +178,78 @@ if ($_SESSION['user_id'] == 1 && $action !== 'list') {
         $u = $db->query("SELECT * FROM users WHERE id = " . intval($id))->fetch();
     }
 ?>
-<div class="glass-panel" style="padding: 24px; max-width:500px; margin:0 auto;">
-    <h3 style="font-size:20px; margin-bottom:20px;"><?= $is_edit ? 'Edit Pengguna' : 'Tambah Pengguna Baru' ?></h3>
-    <form action="index.php?page=admin_users&action=<?= $is_edit ? 'update' : 'add' ?>" method="POST">
-        <?php if($is_edit): ?><input type="hidden" name="id" value="<?= $u['id'] ?>"><?php endif; ?>
-        
-        <div class="form-group">
-            <label>Username</label>
-            <input type="text" name="username" class="form-control" value="<?= htmlspecialchars($u['username'] ?? '') ?>" required>
+<div class="mx-auto max-w-lg">
+    <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div>
+            <h2 class="m-0 text-xl font-bold sm:text-2xl"><?= $is_edit ? 'Edit pengguna' : 'Tambah pengguna baru' ?></h2>
+            <p class="m-0 mt-1 text-sm text-muted-foreground">Akun login beserta hak akses dan penempatannya.</p>
         </div>
-        <div class="form-group">
-            <label>Password <?= $is_edit ? '<small style="color:var(--warning-color)">(Kosongkan jika tidak ingin mengubah password)</small>' : '' ?></label>
-            <input type="password" name="password" class="form-control" <?= $is_edit ? '' : 'required' ?>>
-        </div>
-        <div class="form-group">
-            <label>Nama Pengguna / Pegawai</label>
-            <input type="text" name="name" class="form-control" value="<?= htmlspecialchars($u['name'] ?? '') ?>" required>
-        </div>
-        
-        <?php
-            $current_role = $u['role'] ?? 'collector';
-        ?>
-        <div class="form-group">
-            <label>Hak Akses / Role</label>
-            <select name="role" id="roleSelect" class="form-control" required style="background:rgba(15,23,42,0.8);" onchange="toggleRoleFields()">
-                <?php if ($_SESSION['user_id'] == 1): ?>
-                    <option value="admin" <?= $current_role=='admin'?'selected':'' ?>>Administrator (Tenant Owner)</option>
-                <?php endif; ?>
-                <option value="collector" <?= $current_role=='collector'?'selected':'' ?>>Penagih / Collector</option>
-                <option value="partner" <?= $current_role=='partner'?'selected':'' ?>>Mitra (Akses Mandiri)</option>
-            </select>
-        </div>
+    </div>
 
-        <?php if ($_SESSION['user_id'] == 1): ?>
-        <div id="field_tenant_select" class="form-group" style="border:1px dashed var(--primary); padding: 15px; border-radius:8px; margin-bottom: 15px;">
-            <label style="color:var(--primary);"><i class="fas fa-building"></i> Penempatan Tenant</label>
-            <select name="target_tenant_id" class="form-control" style="background:rgba(15,23,42,0.8);">
-                <?php foreach($all_tenants as $ten): ?>
-                    <option value="<?= $ten['id'] ?>" <?= ($u['tenant_id'] ?? '') == $ten['id'] ? 'selected' : '' ?>><?= htmlspecialchars($ten['company_name'] ?: ($ten['name'] . ' (Root)')) ?> [ID: <?= $ten['id'] ?>]</option>
-                <?php endforeach; ?>
-            </select>
-            <small style="color:var(--text-secondary); display:block; margin-top:5px;">Pilih organisasi tempat user ini bernaung. Jika user adalah Admin baru, pilih dirinya sendiri atau parent adminnya.</small>
-        </div>
-        <?php endif; ?>
-        
-        <div id="field_area" class="form-group" style="display:none; border:1px dashed var(--border-color); padding: 15px; border-radius:8px;">
-            <label style="color:var(--warning-color);"><i class="fas fa-map-marker-alt"></i> Target Area Penagihan</label>
-            <select name="area" class="form-control" style="background:rgba(15,23,42,0.8);">
-                <option value="">-- Semua Area (Akses Penuh) --</option>
-                <?php foreach($areas_all as $a): ?>
-                    <option value="<?= htmlspecialchars($a['name']) ?>" <?= ($u['area'] ?? '') == $a['name'] ? 'selected' : '' ?>><?= htmlspecialchars($a['name']) ?></option>
-                <?php endforeach; ?>
-                <?php if(!empty($u['area']) && !in_array($u['area'], array_column($areas_all, 'name'))): ?>
-                    <option value="<?= htmlspecialchars($u['area']) ?>" selected><?= htmlspecialchars($u['area']) ?> (Legacy)</option>
-                <?php endif; ?>
-            </select>
-            <small style="color:var(--text-secondary); display:block; margin-top:5px;">Hanya penagih dengan area yang sama dengan data pelanggan yang dapat menagih pelanggan tersebut. Pilih "Semua Area" jika ingin ia bisa menagih di MANA SAJA.</small>
-        </div>
-        
-        <div id="field_customer_link" class="form-group" style="display:none; border:1px dashed var(--glass-border); padding: 15px; border-radius:8px;">
-            <label style="color:var(--primary);" id="link_label"><i class="fas fa-link"></i> Tautkan ke Data Pelanggan</label>
-            <select name="customer_id" id="customerIdSelect" class="form-control" style="background:rgba(15,23,42,0.8);">
-                <option value="">-- Pilih --</option>
-            </select>
-            <small id="link_hint" style="color:var(--text-secondary); display:block; margin-top:5px;">Tautkan akun ini ke satu profil pelanggan.</small>
+    <form action="index.php?page=admin_users&action=<?= $is_edit ? 'update' : 'add' ?>" method="POST" class="ui-card p-5 sm:p-6">
+        <?php if($is_edit): ?><input type="hidden" name="id" value="<?= $u['id'] ?>"><?php endif; ?>
+
+        <div class="grid gap-4">
+            <label class="block">
+                <span class="mb-1 block text-xs font-medium text-muted-foreground">Username</span>
+                <input type="text" name="username" class="form-control" value="<?= htmlspecialchars($u['username'] ?? '') ?>" required>
+            </label>
+            <label class="block">
+                <span class="mb-1 block text-xs font-medium text-muted-foreground">Password<?= $is_edit ? ' <span class="font-normal">(kosongkan jika tidak ingin mengubah password)</span>' : '' ?></span>
+                <input type="password" name="password" class="form-control" <?= $is_edit ? '' : 'required' ?>>
+            </label>
+            <label class="block">
+                <span class="mb-1 block text-xs font-medium text-muted-foreground">Nama pengguna / pegawai</span>
+                <input type="text" name="name" class="form-control" value="<?= htmlspecialchars($u['name'] ?? '') ?>" required>
+            </label>
+
+            <?php
+                $current_role = $u['role'] ?? 'collector';
+            ?>
+            <label class="block">
+                <span class="mb-1 block text-xs font-medium text-muted-foreground">Hak akses / role</span>
+                <select name="role" id="roleSelect" class="form-control" required onchange="toggleRoleFields()">
+                    <?php if ($_SESSION['user_id'] == 1): ?>
+                        <option value="admin" <?= $current_role=='admin'?'selected':'' ?>>Administrator (pemilik tenant)</option>
+                    <?php endif; ?>
+                    <option value="collector" <?= $current_role=='collector'?'selected':'' ?>>Penagih / collector</option>
+                    <option value="partner" <?= $current_role=='partner'?'selected':'' ?>>Mitra (akses mandiri)</option>
+                </select>
+            </label>
+
+            <?php if ($_SESSION['user_id'] == 1): ?>
+            <div id="field_tenant_select" class="rounded-md border border-solid border-border bg-background p-4">
+                <label class="mb-1 block text-xs font-medium text-muted-foreground">Penempatan tenant</label>
+                <select name="target_tenant_id" class="form-control">
+                    <?php foreach($all_tenants as $ten): ?>
+                        <option value="<?= $ten['id'] ?>" <?= ($u['tenant_id'] ?? '') == $ten['id'] ? 'selected' : '' ?>><?= htmlspecialchars($ten['company_name'] ?: ($ten['name'] . ' (Root)')) ?> [ID: <?= $ten['id'] ?>]</option>
+                    <?php endforeach; ?>
+                </select>
+                <p class="m-0 mt-2 text-xs text-muted-foreground">Pilih organisasi tempat user ini bernaung. Jika user adalah admin baru, pilih dirinya sendiri atau parent admin-nya.</p>
+            </div>
+            <?php endif; ?>
+
+            <div id="field_area" class="rounded-md border border-solid border-border bg-background p-4" style="display:none;">
+                <label class="mb-1 block text-xs font-medium text-muted-foreground">Target area penagihan</label>
+                <select name="area" class="form-control">
+                    <option value="">-- Semua area (akses penuh) --</option>
+                    <?php foreach($areas_all as $a): ?>
+                        <option value="<?= htmlspecialchars($a['name']) ?>" <?= ($u['area'] ?? '') == $a['name'] ? 'selected' : '' ?>><?= htmlspecialchars($a['name']) ?></option>
+                    <?php endforeach; ?>
+                    <?php if(!empty($u['area']) && !in_array($u['area'], array_column($areas_all, 'name'))): ?>
+                        <option value="<?= htmlspecialchars($u['area']) ?>" selected><?= htmlspecialchars($u['area']) ?> (Legacy)</option>
+                    <?php endif; ?>
+                </select>
+                <p class="m-0 mt-2 text-xs text-muted-foreground">Hanya penagih dengan area yang sama dengan data pelanggan yang dapat menagih pelanggan tersebut. Pilih "Semua area" agar ia bisa menagih di mana saja.</p>
+            </div>
+
+            <div id="field_customer_link" class="rounded-md border border-solid border-border bg-background p-4" style="display:none;">
+                <label class="mb-1 block text-xs font-medium text-muted-foreground" id="link_label"><i class="fas fa-link"></i> Tautkan ke Data Pelanggan</label>
+                <select name="customer_id" id="customerIdSelect" class="form-control">
+                    <option value="">-- Pilih --</option>
+                </select>
+                <p id="link_hint" class="m-0 mt-2 text-xs text-muted-foreground">Tautkan akun ini ke satu profil pelanggan.</p>
+            </div>
         </div>
         <script>
         var _customersList = <?= json_encode(array_map(function($c){ return ['id'=>$c['id'],'name'=>$c['name']]; }, $customers_list)) ?>;
@@ -242,9 +257,9 @@ if ($_SESSION['user_id'] == 1 && $action !== 'list') {
         var _currentLinkedId = <?= json_encode($u['customer_id'] ?? '') ?>;
         </script>
 
-        <div class="form-actions-row" style="margin-top:20px;">
-            <a href="index.php?page=admin_users" class="btn btn-ghost">Batal</a>
-            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Simpan</button>
+        <div class="mt-6 flex justify-end gap-2">
+            <a href="index.php?page=admin_users" class="ui-btn ui-btn-outline">Batal</a>
+            <button type="submit" class="ui-btn ui-btn-primary"><i class="fas fa-save"></i> Simpan</button>
         </div>
     </form>
 </div>

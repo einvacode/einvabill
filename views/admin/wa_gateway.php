@@ -6,63 +6,55 @@ if (!isset($_SESSION['user_id'])) {
 }
 ?>
 
-<div class="glass-panel" style="padding:30px; margin-bottom:30px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px;">
-        <div style="display:flex; align-items:center; gap:15px;">
-            <div style="width:50px; height:50px; background:rgba(37, 211, 102, 0.1); border-radius:12px; display:flex; align-items:center; justify-content:center;">
-                <i class="fab fa-whatsapp" style="font-size:28px; color:#25D366;"></i>
-            </div>
-            <div>
-                <h2 style="margin:0; font-size:22px;">WhatsApp <?= ($_SESSION['user_role'] === 'admin' ? 'Gateway' : 'Perangkat') ?></h2>
-                <div class="wa-status-indicator" style="margin-top:4px;">Mengecek Status...</div>
+
+<div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h2 class="m-0 text-xl font-bold sm:text-2xl"><?= ($_SESSION['user_role'] === 'admin' ? 'WhatsApp gateway' : 'Perangkat WhatsApp') ?></h2>
+        <div class="wa-status-indicator mt-1 text-sm text-muted-foreground">Mengecek status...</div>
+    </div>
+    <a href="index.php?page=<?= $_SESSION['user_role'] === 'admin' ? 'admin_dashboard' : ($_SESSION['user_role'] === 'partner' ? 'partner' : 'collector') ?>" class="ui-btn ui-btn-outline"><i class="fas fa-arrow-left"></i> Kembali</a>
+</div>
+
+<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+    <!-- QR Code Section -->
+    <div class="ui-card p-5 text-center sm:p-6">
+        <div id="qr-container" class="mb-4 inline-block min-h-[240px] min-w-[240px] rounded-md border border-solid border-border bg-white p-4">
+            <div id="qrcode" style="display:flex; justify-content:center; align-items:center; height:200px;">
+                <div class="text-[13px] text-muted-foreground"><i class="fas fa-spinner fa-spin"></i> Memuat QR code...</div>
             </div>
         </div>
-        <a href="index.php?page=<?= $_SESSION['user_role'] === 'admin' ? 'admin_dashboard' : ($_SESSION['user_role'] === 'partner' ? 'partner' : 'collector') ?>" class="btn btn-sm btn-ghost"><i class="fas fa-arrow-left"></i> Kembali</a>
+
+        <div id="wa-connection-tip" class="mx-auto max-w-[280px] text-[13px] leading-relaxed text-muted-foreground">
+            <p class="m-0">Silakan scan QR code di atas menggunakan menu <strong>Perangkat tertaut</strong> pada WhatsApp HP Anda.</p>
+        </div>
+
+        <div id="wa-connected-box" class="p-5" style="display:none;">
+            <div class="text-lg font-bold text-signal">Terhubung</div>
+            <p class="m-0 mt-1 text-[13px] text-muted-foreground">Sistem siap mengirim tagihan otomatis.</p>
+            <button onclick="logoutWA()" class="ui-btn ui-btn-sm ui-btn-outline text-danger mt-5"><i class="fas fa-sign-out-alt"></i> Putuskan koneksi</button>
+        </div>
     </div>
 
-    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:25px;">
-        <!-- QR Code Section -->
-        <div class="glass-panel" style="padding:25px; border:1px solid var(--glass-border); background:rgba(255,255,255,0.02); text-align:center;">
-            <div id="qr-container" style="background:#fff; padding:20px; border-radius:15px; display:inline-block; margin-bottom:20px; min-width:240px; min-height:240px; border:4px solid #f1f5f9;">
-                <div id="qrcode" style="display:flex; justify-content:center; align-items:center; height:200px;">
-                    <div style="color:#64748b; font-size:13px;"><i class="fas fa-spinner fa-spin"></i> Memuat QR Code...</div>
-                </div>
-            </div>
-            
-            <div id="wa-connection-tip" style="color:var(--text-secondary); font-size:13px; line-height:1.6; max-width:280px; margin:0 auto;">
-                <p><i class="fas fa-camera"></i> Silakan scan QR Code di atas menggunakan menu <strong>Perangkat Tertaut</strong> pada WhatsApp HP Anda.</p>
-            </div>
-            
-            <div id="wa-connected-box" style="display:none; padding:20px;">
-                <i class="fas fa-check-circle" style="font-size:64px; color:#10b981; margin-bottom:15px;"></i>
-                <h4 style="color:#10b981; font-weight:800; margin-bottom:10px;">TERHUBUNG!</h4>
-                <p style="font-size:13px; color:var(--text-secondary);">Sistem siap mengirim tagihan otomatis.</p>
-                <button onclick="logoutWA()" class="btn btn-danger btn-sm" style="margin-top:20px;"><i class="fas fa-sign-out-alt"></i> Putuskan Koneksi</button>
-            </div>
+    <!-- Info & Stats Section -->
+    <div class="flex flex-col gap-4">
+        <div class="ui-card p-5">
+            <h3 class="m-0 mb-3 text-[15px] font-bold">Cara kerja gateway</h3>
+            <ul class="m-0 pl-5 text-sm leading-relaxed text-muted-foreground">
+                <li>Gateway berfungsi sebagai "WhatsApp Web" bagi sistem.</li>
+                <li>Sistem tidak menyimpan nomor tujuan atau pesan selain untuk keperluan pengiriman sementara.</li>
+                <li><strong>Setiap pesan masal akan diberikan jeda 10 detik otomatis</strong> untuk menjaga keamanan nomor Anda dari blokir.</li>
+            </ul>
         </div>
 
-        <!-- Info & Stats Section -->
-        <div style="display:flex; flex-direction:column; gap:20px;">
-            <div class="glass-panel" style="padding:20px; background:rgba(var(--primary-rgb), 0.05);">
-                <h5 style="margin:0 0 12px; font-weight:800; font-size:14px; text-transform:uppercase; letter-spacing:1px;"><i class="fas fa-info-circle"></i> Cara Kerja Gateway</h5>
-                <ul style="padding-left:20px; font-size:12px; color:var(--text-secondary); line-height:1.8; margin:0;">
-                    <li>Gateway berfungsi sebagai "WhatsApp Web" bagi sistem.</li>
-                    <li>Sistem tidak menyimpan nomor tujuan atau pesan selain untuk keperluan pengiriman sementara.</li>
-                    <li><strong>Setiap pesan masal akan diberikan jeda 10 detik otomatis</strong> untuk menjaga keamanan nomor Anda dari blokir.</li>
-                </ul>
-            </div>
-
-            <div class="glass-panel" style="padding:20px; background:rgba(0,0,0,0.2);">
-                <h5 style="margin:0 0 12px; font-weight:800; font-size:14px; text-transform:uppercase; letter-spacing:1px;"><i class="fas fa-list-ul"></i> Aktivitas Terakhir</h5>
-                <style>
-                    #wa-logs::-webkit-scrollbar { width: 4px; }
-                    #wa-logs::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
-                    #wa-logs::-webkit-scrollbar-thumb { background: rgba(16, 185, 129, 0.3); border-radius: 10px; }
-                    #wa-logs::-webkit-scrollbar-thumb:hover { background: rgba(16, 185, 129, 0.5); }
-                </style>
-                <div id="wa-logs" style="font-family:monospace; font-size:11px; color:#10b981; max-height:200px; overflow-y:auto; line-height:1.6; padding-right:5px;">
-                    <div style="opacity:0.6;">> Menunggu aktivitas gateway...</div>
-                </div>
+        <div class="ui-card p-5">
+            <h3 class="m-0 mb-3 text-[15px] font-bold">Aktivitas terakhir</h3>
+            <style>
+                #wa-logs { scrollbar-width: thin; }
+                #wa-logs::-webkit-scrollbar { width: 6px; }
+                #wa-logs::-webkit-scrollbar-thumb { background: #D9E0E2; border-radius: 3px; }
+            </style>
+            <div id="wa-logs" class="max-h-[200px] overflow-y-auto rounded-md bg-muted p-3 font-mono text-[11px] leading-relaxed text-foreground">
+                <div class="text-muted-foreground">> Menunggu aktivitas gateway...</div>
             </div>
         </div>
     </div>

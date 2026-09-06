@@ -7,10 +7,9 @@ $u = $stmt_u->fetch();
 $partner_cid = $u['customer_id'] ?? 0;
 
 if (!$partner_cid) {
-    echo "<div class='glass-panel' style='padding:40px; text-align:center;'>
-            <i class='fas fa-user-slash fa-3x' style='opacity:0.3; margin-bottom:15px;'></i>
-            <h3>Akun Belum Tertaut</h3>
-            <p>Akun mitra Anda belum ditautkan ke data pelanggan pusat sebagai reseller.</p>
+    echo "<div class='ui-card px-5 py-10 text-center'>
+            <h3 class='m-0 text-lg font-bold'>Akun belum tertaut</h3>
+            <p class='m-0 mt-1 text-sm text-muted-foreground'>Akun mitra Anda belum ditautkan ke data pelanggan pusat sebagai reseller.</p>
           </div>";
     return;
 }
@@ -41,7 +40,7 @@ elseif ($filter_status === 'belum') $status_where = " AND i.status = 'Belum Luna
 
 // Fetch stats
 $stmt_stats = $db->prepare("
-    SELECT 
+    SELECT
         COUNT(*) as total,
         SUM(CASE WHEN i.status='Lunas' THEN 1 ELSE 0 END) as lunas,
         SUM(CASE WHEN i.status='Belum Lunas' THEN 1 ELSE 0 END) as belum,
@@ -55,8 +54,8 @@ $partner_stats = $stmt_stats->fetch();
 $order_sql = ($sort_date === 'asc') ? 'ASC' : 'DESC';
 
 $stmt_inv = $db->prepare("
-    SELECT i.*, c.name FROM invoices i 
-    JOIN customers c ON i.customer_id = c.id 
+    SELECT i.*, c.name FROM invoices i
+    JOIN customers c ON i.customer_id = c.id
     WHERE c.id = ? $date_where $status_where
     ORDER BY i.due_date $order_sql, i.id DESC
 ");
@@ -64,132 +63,122 @@ $stmt_inv->execute($params);
 $partner_invoices = $stmt_inv->fetchAll();
 ?>
 
-<div class="glass-panel" style="padding:24px; margin-bottom:20px; border-left:5px solid var(--primary);">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:15px;">
-        <div>
-            <h3 style="margin:0; font-size:20px; font-weight:800; color:var(--text-primary);"><i class="fas fa-file-invoice-dollar text-primary"></i> Tagihan Kemitraan Saya Ke ISP</h3>
-            <p style="margin:5px 0 0; font-size:13px; color:var(--text-secondary);">Berikut adalah riwayat tagihan bulanan dari ISP pusat untuk akun reseller Anda.</p>
-        </div>
-        <div style="display:flex; gap:15px;">
-            <div class="stat-mini" style="text-align:right;">
-                <div style="font-size:10px; font-weight:800; color:var(--text-secondary);">TOTAL TUNGGAKAN</div>
-                <div style="font-size:18px; font-weight:900; color:var(--danger);">Rp <?= number_format($partner_stats['total_belum'], 0, ',', '.') ?></div>
-            </div>
-            <div class="stat-mini" style="text-align:right;">
-                <div style="font-size:10px; font-weight:800; color:var(--text-secondary);">TOTAL TERBAYAR</div>
-                <div style="font-size:18px; font-weight:900; color:var(--success);">Rp <?= number_format($partner_stats['total_lunas'], 0, ',', '.') ?></div>
-            </div>
-        </div>
+<!-- Page header -->
+<div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h2 class="m-0 text-xl font-bold sm:text-2xl">Tagihan kemitraan saya ke ISP</h2>
+        <p class="m-0 mt-1 text-sm text-muted-foreground">Riwayat tagihan bulanan dari ISP pusat untuk akun reseller Anda.</p>
     </div>
+</div>
 
-    <!-- Filter Form -->
-    <div class="filter-panel">
-        <form method="GET" class="grid-filters">
-            <input type="hidden" name="page" value="partner_isp_invoices">
-            <div class="filter-group">
-                <label>Dari Tanggal Jatuh Tempo</label>
-                <input type="date" name="date_from" class="form-control filter-control" value="<?= htmlspecialchars($date_from) ?>">
-            </div>
-            <div class="filter-group">
-                <label>Sampai Tanggal</label>
-                <input type="date" name="date_to" class="form-control filter-control" value="<?= htmlspecialchars($date_to) ?>">
-            </div>
-            <div class="filter-group">
-                <label>Status Pembayaran</label>
-                <select name="filter_status" class="form-control filter-control">
-                    <option value="semua" <?= $filter_status === 'semua' ? 'selected' : '' ?>>Semua Status</option>
-                    <option value="belum" <?= $filter_status === 'belum' ? 'selected' : '' ?>>Belum Lunas</option>
-                    <option value="lunas" <?= $filter_status === 'lunas' ? 'selected' : '' ?>>Lunas Terbayar</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <label>Urutan</label>
-                <select name="sort_date" class="form-control filter-control">
-                    <option value="desc" <?= $sort_date === 'desc' ? 'selected' : '' ?>>Terbaru (Desc)</option>
-                    <option value="asc" <?= $sort_date === 'asc' ? 'selected' : '' ?>>Terlama (Asc)</option>
-                </select>
-            </div>
-            <div class="grid-actions filter-actions">
-                <div class="btn-group">
-                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter"></i> Cari</button>
-                    <a href="index.php?page=partner_isp_invoices" class="btn btn-ghost btn-sm filter-reset-btn"><i class="fas fa-redo"></i></a>
-                </div>
-            </div>
-        </form>
+<!-- Stats -->
+<div class="mb-5 grid grid-cols-2 gap-3">
+    <div class="ui-card p-4">
+        <div class="text-xs font-medium text-muted-foreground">Total tunggakan</div>
+        <div class="mt-1 text-xl font-extrabold tabular-nums text-danger sm:text-2xl">Rp <?= number_format($partner_stats['total_belum'], 0, ',', '.') ?></div>
     </div>
+    <div class="ui-card p-4">
+        <div class="text-xs font-medium text-muted-foreground">Total terbayar</div>
+        <div class="mt-1 text-xl font-extrabold tabular-nums text-signal sm:text-2xl">Rp <?= number_format($partner_stats['total_lunas'], 0, ',', '.') ?></div>
+    </div>
+</div>
 
-    <!-- Data List -->
-    <?php if(empty($partner_invoices)): ?>
-        <div style="text-align:center; padding:60px 20px; border:1px dashed var(--glass-border); border-radius:20px;">
-            <i class="fas fa-receipt fa-4x" style="opacity:0.1; margin-bottom:20px;"></i>
-            <h4 style="margin:0; opacity:0.5;">Tidak Ada Tagihan Ditemukan</h4>
-            <p style="font-size:13px; color:var(--text-secondary);">Silakan ubah filter atau hubungi ISP pusat jika ada kendala.</p>
-        </div>
-    <?php else: ?>
-        <!-- Desktop Mode -->
-        <div class="table-container desktop-only" style="border:1px solid var(--glass-border); border-radius:15px; overflow:hidden;">
-            <table style="width:100%;">
-                <thead style="background:rgba(var(--primary-rgb), 0.05);">
-                    <tr>
-                        <th style="padding:15px; font-size:11px; text-transform:uppercase; text-align:left;">Nomor Invoice</th>
-                        <th style="padding:15px; font-size:11px; text-transform:uppercase; text-align:left;">Jatuh Tempo</th>
-                        <th style="padding:15px; font-size:11px; text-transform:uppercase; text-align:left;">Nominal</th>
-                        <th style="padding:15px; font-size:11px; text-transform:uppercase; text-align:left;">Status</th>
-                        <th style="padding:15px; font-size:11px; text-transform:uppercase; text-align:right;">Opsi</th>
+<!-- Filter Form -->
+<form method="GET" class="ui-card mb-5 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_auto] lg:items-end">
+    <input type="hidden" name="page" value="partner_isp_invoices">
+    <label class="block">
+        <span class="mb-1 block text-xs font-medium text-muted-foreground">Dari tanggal jatuh tempo</span>
+        <input type="date" name="date_from" class="form-control w-full" value="<?= htmlspecialchars($date_from) ?>">
+    </label>
+    <label class="block">
+        <span class="mb-1 block text-xs font-medium text-muted-foreground">Sampai tanggal</span>
+        <input type="date" name="date_to" class="form-control w-full" value="<?= htmlspecialchars($date_to) ?>">
+    </label>
+    <label class="block">
+        <span class="mb-1 block text-xs font-medium text-muted-foreground">Status pembayaran</span>
+        <select name="filter_status" class="form-control w-full">
+            <option value="semua" <?= $filter_status === 'semua' ? 'selected' : '' ?>>Semua status</option>
+            <option value="belum" <?= $filter_status === 'belum' ? 'selected' : '' ?>>Belum lunas</option>
+            <option value="lunas" <?= $filter_status === 'lunas' ? 'selected' : '' ?>>Lunas terbayar</option>
+        </select>
+    </label>
+    <label class="block">
+        <span class="mb-1 block text-xs font-medium text-muted-foreground">Urutan</span>
+        <select name="sort_date" class="form-control w-full">
+            <option value="desc" <?= $sort_date === 'desc' ? 'selected' : '' ?>>Terbaru</option>
+            <option value="asc" <?= $sort_date === 'asc' ? 'selected' : '' ?>>Terlama</option>
+        </select>
+    </label>
+    <div class="flex gap-2">
+        <button type="submit" class="ui-btn ui-btn-primary"><i class="fas fa-filter"></i> Cari</button>
+        <a href="index.php?page=partner_isp_invoices" class="ui-btn ui-btn-outline filter-reset-btn" title="Reset filter"><i class="fas fa-redo"></i></a>
+    </div>
+</form>
+
+<!-- Data List -->
+<?php if(empty($partner_invoices)): ?>
+    <div class="ui-card px-5 py-10 text-center text-sm text-muted-foreground">
+        <div class="font-semibold text-foreground">Tidak ada tagihan ditemukan</div>
+        <div class="mt-1">Silakan ubah filter atau hubungi ISP pusat jika ada kendala.</div>
+    </div>
+<?php else: ?>
+    <!-- Desktop Mode -->
+    <section class="ui-card overflow-hidden desktop-only">
+        <div class="overflow-x-auto">
+            <table class="w-full border-collapse text-sm">
+                <thead>
+                    <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                        <th class="px-4 py-2.5 font-semibold">Nomor invoice</th>
+                        <th class="px-4 py-2.5 font-semibold">Jatuh tempo</th>
+                        <th class="px-4 py-2.5 font-semibold">Nominal</th>
+                        <th class="px-4 py-2.5 font-semibold">Status</th>
+                        <th class="px-4 py-2.5 text-right font-semibold">Opsi</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach($partner_invoices as $p_inv): ?>
-                    <tr style="border-bottom:1px solid var(--glass-border); transition:all 0.2s;">
-                        <td style="padding:15px;">
-                            <div style="font-size:14px; font-weight:800; color:var(--text-primary);">#<?= str_pad($p_inv['id'], 5, "0", STR_PAD_LEFT) ?></div>
+                    <tr class="border-t border-solid border-border">
+                        <td class="px-4 py-3 font-semibold tabular-nums">#<?= str_pad($p_inv['id'], 5, "0", STR_PAD_LEFT) ?></td>
+                        <td class="px-4 py-3 tabular-nums text-muted-foreground"><?= date('d/m/Y', strtotime($p_inv['due_date'])) ?></td>
+                        <td class="px-4 py-3 font-bold tabular-nums whitespace-nowrap <?= $p_inv['status'] == 'Lunas' ? 'text-signal' : 'text-foreground' ?>">Rp <?= number_format($p_inv['amount'], 0, ',', '.') ?></td>
+                        <td class="px-4 py-3">
+                            <span class="ui-badge <?= $p_inv['status'] == 'Lunas' ? 'ui-badge-signal' : 'ui-badge-danger' ?>"><?= htmlspecialchars($p_inv['status']) ?></span>
                         </td>
-                        <td style="padding:15px;">
-                            <div style="font-size:13px; font-weight:600; color:var(--text-secondary);"><?= date('d/m/Y', strtotime($p_inv['due_date'])) ?></div>
-                        </td>
-                        <td style="padding:15px;">
-                            <div style="font-size:15px; font-weight:900; color:<?= $p_inv['status'] == 'Lunas' ? 'var(--success)' : 'var(--text-primary)' ?>">Rp<?= number_format($p_inv['amount'], 0, ',', '.') ?></div>
-                        </td>
-                        <td style="padding:15px;">
-                            <span class="badge <?= $p_inv['status'] == 'Lunas' ? 'badge-success' : 'badge-danger' ?>" style="font-size:10px; font-weight:800; padding:4px 12px; border-radius:8px;"><?= strtoupper($p_inv['status']) ?></span>
-                        </td>
-                        <td style="padding:15px; text-align:right;">
-                            <a href="index.php?page=invoice_print&id=<?= $p_inv['id'] ?>" target="_blank" class="btn btn-sm btn-ghost" style="width:36px; height:36px; padding:0; border-radius:10px; border:1px solid var(--glass-border);"><i class="fas fa-print"></i></a>
+                        <td class="px-4 py-3 text-right">
+                            <a href="index.php?page=invoice_print&id=<?= $p_inv['id'] ?>" target="_blank" class="ui-btn ui-btn-sm ui-btn-outline" title="Cetak"><i class="fas fa-print"></i></a>
                         </td>
                     </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
+    </section>
 
-        <!-- Mobile Mode -->
-        <div class="mobile-only">
-            <?php foreach($partner_invoices as $p_inv): ?>
-            <div class="glass-panel" style="padding:20px; margin-bottom:15px; border-left:5px solid <?= $p_inv['status'] == 'Lunas' ? 'var(--success)' : 'var(--danger)' ?>; position:relative;">
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
-                    <div>
-                        <div style="font-size:10px; font-weight:800; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px;">Nomor Invoice</div>
-                        <div style="font-size:16px; font-weight:900; color:var(--text-primary);">#INV-<?= str_pad($p_inv['id'], 5, "0", STR_PAD_LEFT) ?></div>
-                    </div>
-                    <span class="badge <?= $p_inv['status'] == 'Lunas' ? 'badge-success' : 'badge-danger' ?>" style="font-size:10px; padding:4px 12px; border-radius:8px;"><?= strtoupper($p_inv['status']) ?></span>
+    <!-- Mobile Mode -->
+    <div class="mobile-only">
+        <?php foreach($partner_invoices as $p_inv): ?>
+        <div class="ui-card mb-3 p-4">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <div class="text-xs text-muted-foreground">Nomor invoice</div>
+                    <div class="text-[15px] font-bold tabular-nums">#INV-<?= str_pad($p_inv['id'], 5, "0", STR_PAD_LEFT) ?></div>
                 </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px; padding-bottom:15px; border-bottom:1px solid var(--glass-border);">
-                    <div>
-                        <div style="font-size:10px; font-weight:800; color:var(--text-secondary); text-transform:uppercase;">Tanggal Jatuh Tempo</div>
-                        <div style="font-size:13px; font-weight:700; color:var(--text-primary);"><?= date('d/m/Y', strtotime($p_inv['due_date'])) ?></div>
-                    </div>
-                    <div style="text-align:right;">
-                        <div style="font-size:10px; font-weight:800; color:var(--text-secondary); text-transform:uppercase;">Total Tagihan</div>
-                        <div style="font-size:16px; font-weight:900; color:<?= $p_inv['status'] == 'Lunas' ? 'var(--success)' : 'var(--text-primary)' ?>;">Rp<?= number_format($p_inv['amount'], 0, ',', '.') ?></div>
-                    </div>
+                <span class="ui-badge <?= $p_inv['status'] == 'Lunas' ? 'ui-badge-signal' : 'ui-badge-danger' ?>"><?= htmlspecialchars($p_inv['status']) ?></span>
+            </div>
+            <div class="mt-3 grid grid-cols-2 gap-3 border-t border-solid border-border pt-3">
+                <div>
+                    <div class="text-xs text-muted-foreground">Tanggal jatuh tempo</div>
+                    <div class="text-sm font-semibold tabular-nums"><?= date('d/m/Y', strtotime($p_inv['due_date'])) ?></div>
                 </div>
-                <div style="display:flex; gap:10px;">
-                    <a href="index.php?page=invoice_print&id=<?= $p_inv['id'] ?>" target="_blank" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:var(--text-primary); text-decoration:none; padding:12px; border-radius:12px; font-weight:700; font-size:13px;">
-                        <i class="fas fa-print"></i> CETAK STRUK PEMBAYARAN
-                    </a>
+                <div class="text-right">
+                    <div class="text-xs text-muted-foreground">Total tagihan</div>
+                    <div class="text-[15px] font-bold tabular-nums <?= $p_inv['status'] == 'Lunas' ? 'text-signal' : 'text-foreground' ?>">Rp <?= number_format($p_inv['amount'], 0, ',', '.') ?></div>
                 </div>
             </div>
-            <?php endforeach; ?>
+            <div class="mt-3">
+                <a href="index.php?page=invoice_print&id=<?= $p_inv['id'] ?>" target="_blank" class="ui-btn ui-btn-outline w-full"><i class="fas fa-print"></i> Cetak struk pembayaran</a>
+            </div>
         </div>
-    <?php endif; ?>
-</div>
+        <?php endforeach; ?>
+    </div>
+<?php endif; ?>

@@ -2,7 +2,7 @@
 // Simple create-invoice page for admin/partner quick access
  $u_role = $_SESSION['user_role'] ?? 'guest';
 if (!in_array($u_role, ['admin','partner'])) {
-    echo "<div class='glass-panel' style='padding:40px; text-align:center;'><h2>Akses Ditolak</h2></div>"; return;
+    echo "<div class='ui-card p-10 text-center'><h2 class='m-0 text-xl font-bold'>Akses ditolak</h2></div>"; return;
 }
 
 // Normalize existing temporary customers so they don't appear in kemitraan lists (Tenant Scoped)
@@ -65,123 +65,138 @@ try {
 // Note: pendapatan handled in main reports/dashboard. no local pendapatan fetch here.
 ?>
 
-<div style="max-width:1100px; margin:12px auto;">
-    <div style="display:flex; gap:10px; margin-bottom:12px;">
-        <button class="btn btn-sm btn-primary" id="tabCreateBtn" onclick="showTab('create')">Buat Invoice</button>
-        <button class="btn btn-sm btn-ghost" id="tabHistoryBtn" onclick="showTab('history')">Riwayat</button>
-        <button class="btn btn-sm btn-ghost" id="tabTempsBtn" onclick="showTab('temps')">Pelanggan Baru</button>
-    </div>
-
-    <div id="createSection">
-        <div class="glass-panel" style="padding:20px;">
-            <h3 style="margin-top:0;"><i class="fas fa-plus-circle"></i> Buat Invoice Cepat</h3>
-            <p style="color:var(--text-secondary); margin-bottom:12px;">Isi data penerima, tambahkan item, lalu klik "Buat & Cetak".</p>
-
-            <form method="POST" action="index.php?page=admin_assets&action=invoice_create">
-<?= csrf_field() ?>
-                <input type="hidden" name="created_via" value="admin_manual">
-                <input type="hidden" name="customer_id" id="quick_invoice_customer_id" value="0">
-                <div class="form-group" style="margin-bottom:14px;">
-                    <label>Pilih Customer Input Manual</label>
-                    <select class="form-control" id="existing_customer_picker" onchange="useExistingCustomer(this.value)">
-                        <option value="">-- Pilih customer input manual --</option>
-                        <?php foreach($existing_customers as $cust): ?>
-                            <option value="<?= intval($cust['id']) ?>">
-                                <?= htmlspecialchars($cust['name']) ?><?= !empty($cust['customer_code']) ? ' - ' . htmlspecialchars($cust['customer_code']) : '' ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <style>
-                /* Grid alignment for create-invoice to match edit layout */
-                #invoiceItemsTable { table-layout: fixed; width:100%; }
-                #invoiceItemsTable tbody td { padding:10px 8px; }
-                #invoiceItemsTable tbody td:first-child { width:60%; }
-                #invoiceItemsTable tbody td:nth-child(2) { width:10%; }
-                #invoiceItemsTable tbody td:nth-child(3) { width:15%; }
-                #invoiceItemsTable tbody td:nth-child(4) { width:15%; }
-                #invoiceItemsTable tbody td input { width:100%; box-sizing:border-box; }
-                #invoiceItemsTable .btn-ghost { width:42px; height:42px; padding:0; border-radius:10px; }
-                </style>
-                <div class="quick-invoice-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; align-items:start;">
-                    <div>
-                        <label>Nama Penerima</label>
-                        <input type="text" name="recipient_name" class="form-control" placeholder="Nama orang/mitra" required>
-
-                        <label style="margin-top:12px;">Alamat Penagihan</label>
-                        <input type="text" name="billing_address" class="form-control" placeholder="Alamat untuk dicantumkan di invoice">
-
-                        <div class="quick-invoice-contact-row" style="display:flex; gap:10px; margin-top:12px;">
-                            <div style="flex:1;">
-                                <label>No. HP / Telepon</label>
-                                <input type="text" name="billing_phone" class="form-control" placeholder="0812xxxx">
-                            </div>
-                            <div style="width:180px;">
-                                <label>Email</label>
-                                <input type="email" name="billing_email" class="form-control" placeholder="email@example.com">
-                            </div>
-                        </div>
-
-                        <label style="margin-top:12px;">Instruksi Pembayaran</label>
-                        <textarea name="payment_instructions" class="form-control" rows="3" placeholder="Contoh: Transfer ke BCA 123456789 a.n. PT Contoh"></textarea>
-                    </div>
-
-                    <div class="quick-invoice-side" style="border-left:1px solid rgba(255,255,255,0.04); padding-left:14px;">
-                        <label>Tanggal Jatuh Tempo</label>
-                        <input type="date" name="due_date" class="form-control" value="<?= date('Y-m-d') ?>">
-
-                        <input type="hidden" name="amount" id="invoice_total" value="0">
-                        <div style="margin-top:18px; font-weight:700; font-size:20px;">Total Nota</div>
-                        <div style="font-size:20px; color:var(--primary); margin-top:6px;">Rp <span id="invoice_total_display">0</span></div>
-
-                        <div class="quick-invoice-actions" style="display:flex; gap:10px; margin-top:18px;">
-                            <button class="btn btn-ghost" type="button" onclick="history.back()">Batal</button>
-                            <button class="btn btn-primary" type="submit">Buat & Cetak</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div style="margin-top:18px;">
-                    <div style="background:transparent; padding:12px; border-radius:8px;">
-                        <h4 style="margin:4px 0 12px;"><i class="fas fa-list"></i> Daftar Item</h4>
-                        <div style="overflow:auto;">
-                            <table id="invoiceItemsTable" style="width:100%; border-collapse:collapse;">
-                                <thead>
-                                    <tr style="background:var(--nav-active-bg);">
-                                        <th style="padding:8px; text-align:left; width:55%">Deskripsi</th>
-                                        <th style="padding:8px; text-align:center; width:12%">Jumlah</th>
-                                        <th style="padding:8px; text-align:right; width:16%">Harga Satuan (Rp)</th>
-                                        <th style="padding:8px; text-align:right; width:12%">Total (Rp)</th>
-                                        <th style="padding:8px; text-align:center; width:5%">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td style="padding:8px;"><input type="text" name="item_desc[]" class="form-control" placeholder="Contoh: Router Model X" required></td>
-                                        <td style="padding:8px; text-align:center;"><input type="number" name="item_qty[]" class="form-control" value="1" min="1" required oninput="CreateInvoice.recalculateRow(this)"></td>
-                                        <td style="padding:8px;"><input type="number" name="item_unit[]" class="form-control" value="0" required oninput="CreateInvoice.recalculateRow(this)"></td>
-                                        <td style="padding:8px;"><input type="number" name="item_amount[]" class="form-control" value="0" readonly></td>
-                                        <td style="padding:8px; text-align:center;"><button type="button" class="btn btn-ghost" onclick="CreateInvoice.removeItemRow(this)"><i class="fas fa-trash"></i></button></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-
-                            <div class="quick-invoice-item-actions" style="margin-top:10px; display:flex; gap:10px;">
-                                <button type="button" class="btn btn-sm btn-primary" onclick="CreateInvoice.addItemRow()"><i class="fas fa-plus"></i> Tambah Baris</button>
-                                <button type="button" class="btn btn-sm btn-ghost" onclick="CreateInvoice.clearItemRows()">Bersihkan</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </form>
+<div>
+    <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div>
+            <h2 class="m-0 text-xl font-bold sm:text-2xl">Buat invoice cepat</h2>
+            <p class="m-0 mt-1 text-sm text-muted-foreground">Isi data penerima, tambahkan item, lalu klik "Buat & cetak".</p>
         </div>
     </div>
 
+    <div class="mb-5 flex flex-wrap gap-2">
+        <button class="btn btn-sm btn-primary" id="tabCreateBtn" onclick="showTab('create')">Buat invoice</button>
+        <button class="btn btn-sm btn-ghost" id="tabHistoryBtn" onclick="showTab('history')">Riwayat</button>
+        <button class="btn btn-sm btn-ghost" id="tabTempsBtn" onclick="showTab('temps')">Pelanggan baru</button>
+    </div>
+
+    <div id="createSection">
+        <form method="POST" action="index.php?page=admin_assets&action=invoice_create" class="ui-card p-4 sm:p-5">
+<?= csrf_field() ?>
+            <input type="hidden" name="created_via" value="admin_manual">
+            <input type="hidden" name="customer_id" id="quick_invoice_customer_id" value="0">
+            <label class="mb-4 block">
+                <span class="mb-1 block text-xs font-medium text-muted-foreground">Pilih customer input manual</span>
+                <select class="form-control" id="existing_customer_picker" onchange="useExistingCustomer(this.value)">
+                    <option value="">-- Pilih customer input manual --</option>
+                    <?php foreach($existing_customers as $cust): ?>
+                        <option value="<?= intval($cust['id']) ?>">
+                            <?= htmlspecialchars($cust['name']) ?><?= !empty($cust['customer_code']) ? ' - ' . htmlspecialchars($cust['customer_code']) : '' ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <style>
+            /* Item table: fixed column widths shared by static and JS-created rows */
+            #invoiceItemsTable { table-layout: fixed; width:100%; }
+            #invoiceItemsTable tbody td { padding:8px; }
+            #invoiceItemsTable tbody td:first-child { width:50%; }
+            #invoiceItemsTable tbody td:nth-child(2) { width:12%; }
+            #invoiceItemsTable tbody td:nth-child(3) { width:17%; }
+            #invoiceItemsTable tbody td:nth-child(4) { width:15%; }
+            #invoiceItemsTable tbody td input { width:100%; box-sizing:border-box; }
+            #invoiceItemsTable tbody td input[name="item_qty[]"] { text-align:center; }
+            #invoiceItemsTable tbody td input[name="item_unit[]"],
+            #invoiceItemsTable tbody td input[name="item_amount[]"] { text-align:right; }
+            #invoiceItemsTable .btn-ghost { width:36px; height:36px; padding:0; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; }
+            </style>
+            <div class="grid gap-4 lg:grid-cols-2">
+                <div class="grid content-start gap-4">
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Nama penerima</span>
+                        <input type="text" name="recipient_name" class="form-control" placeholder="Nama orang/mitra" required>
+                    </label>
+
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Alamat penagihan</span>
+                        <input type="text" name="billing_address" class="form-control" placeholder="Alamat untuk dicantumkan di invoice">
+                    </label>
+
+                    <div class="grid gap-4 sm:grid-cols-[1fr_200px]">
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-medium text-muted-foreground">No. HP / telepon</span>
+                            <input type="text" name="billing_phone" class="form-control" placeholder="0812xxxx">
+                        </label>
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-medium text-muted-foreground">Email</span>
+                            <input type="email" name="billing_email" class="form-control" placeholder="email@example.com">
+                        </label>
+                    </div>
+
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Instruksi pembayaran</span>
+                        <textarea name="payment_instructions" class="form-control" rows="3" placeholder="Contoh: Transfer ke BCA 123456789 a.n. PT Contoh"></textarea>
+                    </label>
+                </div>
+
+                <div class="grid content-start gap-4 lg:border-l lg:border-solid lg:border-border lg:pl-5">
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Tanggal jatuh tempo</span>
+                        <input type="date" name="due_date" class="form-control" value="<?= date('Y-m-d') ?>">
+                    </label>
+
+                    <input type="hidden" name="amount" id="invoice_total" value="0">
+                    <div class="rounded-md bg-muted p-4">
+                        <div class="text-xs font-medium text-muted-foreground">Total nota</div>
+                        <div class="mt-1 text-2xl font-extrabold tabular-nums text-primary">Rp <span id="invoice_total_display">0</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <h3 class="m-0 mb-2 text-[15px] font-bold">Daftar item</h3>
+                <div class="overflow-x-auto rounded-md border border-solid border-border">
+                    <table id="invoiceItemsTable" class="w-full border-collapse text-sm">
+                        <thead>
+                            <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                                <th class="px-2 py-2.5 font-semibold" style="width:50%">Deskripsi</th>
+                                <th class="px-2 py-2.5 text-center font-semibold" style="width:12%">Jumlah</th>
+                                <th class="px-2 py-2.5 text-right font-semibold" style="width:17%">Harga satuan (Rp)</th>
+                                <th class="px-2 py-2.5 text-right font-semibold" style="width:15%">Total (Rp)</th>
+                                <th class="px-2 py-2.5 text-center font-semibold">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="padding:8px;"><input type="text" name="item_desc[]" class="form-control" placeholder="Contoh: Router Model X" required></td>
+                                <td style="padding:8px; text-align:center;"><input type="number" name="item_qty[]" class="form-control" value="1" min="1" required oninput="CreateInvoice.recalculateRow(this)"></td>
+                                <td style="padding:8px;"><input type="number" name="item_unit[]" class="form-control" value="0" required oninput="CreateInvoice.recalculateRow(this)"></td>
+                                <td style="padding:8px;"><input type="number" name="item_amount[]" class="form-control" value="0" readonly></td>
+                                <td style="padding:8px; text-align:center;"><button type="button" class="btn btn-ghost" onclick="CreateInvoice.removeItemRow(this)" title="Hapus baris"><i class="fas fa-trash"></i></button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-3 flex flex-wrap gap-2">
+                    <button type="button" class="ui-btn ui-btn-sm ui-btn-outline" onclick="CreateInvoice.addItemRow()"><i class="fas fa-plus"></i> Tambah baris</button>
+                    <button type="button" class="ui-btn ui-btn-sm ui-btn-ghost" onclick="CreateInvoice.clearItemRows()">Bersihkan</button>
+                </div>
+            </div>
+
+            <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button class="ui-btn ui-btn-outline w-full sm:w-auto" type="button" onclick="history.back()">Batal</button>
+                <button class="ui-btn ui-btn-primary w-full sm:w-auto" type="submit">Buat & cetak</button>
+            </div>
+        </form>
+    </div>
+
     <div id="historySection" style="display:none;">
-        <div class="glass-panel" style="padding:16px; width:100%; margin:0 0 30px;">
-            <h4 style="margin:4px 0 12px;"><i class="fas fa-history"></i> Riwayat Invoice yang Dibuat</h4>
+        <section class="ui-card overflow-hidden">
+            <div class="border-b border-solid border-border px-4 py-3 sm:px-5">
+                <h3 class="m-0 text-[15px] font-bold">Riwayat invoice yang dibuat</h3>
+            </div>
             <?php if(empty($invoices)): ?>
-                <div style="color:var(--text-secondary);">Belum ada invoice yang Anda buat.</div>
+                <div class="px-5 py-10 text-center text-sm text-muted-foreground">Belum ada invoice yang Anda buat.</div>
             <?php else: ?>
                 <?php
                     // Recent temporary customers (type 'note' or 'temp') to help quick invoice creation
@@ -189,16 +204,15 @@ try {
                         $recent_temps = $db->query("SELECT id, name, address, contact, registration_date FROM customers WHERE type IN ('note','temp') ORDER BY registration_date DESC LIMIT 10")->fetchAll();
                     } catch (Exception $e) { $recent_temps = []; }
                 ?>
-                <div style="display:grid; grid-template-columns: 1fr; gap:12px; align-items:start;">
-                    <div style="overflow:auto; width:100%;">
-                        <table class="table" style="font-size:13px; width:100%; table-layout:fixed;">
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse text-sm">
                         <thead>
-                            <tr style="background:var(--nav-active-bg);">
-                                <th style="padding:8px; text-align:left; width:140px;">Tanggal</th>
-                                <th style="padding:8px; text-align:left;">#INV / Penerima</th>
-                                <th style="padding:8px; text-align:center; width:160px;">Aksi</th>
-                                <th style="padding:8px; text-align:right; width:140px;">Jumlah (Rp)</th>
-                                <th style="padding:8px; text-align:center; width:120px;">Status</th>
+                            <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                                <th class="px-4 py-2.5 font-semibold sm:px-5">Tanggal</th>
+                                <th class="px-3 py-2.5 font-semibold">Invoice / penerima</th>
+                                <th class="px-3 py-2.5 text-right font-semibold">Jumlah</th>
+                                <th class="px-3 py-2.5 font-semibold">Status</th>
+                                <th class="px-4 py-2.5 text-right font-semibold sm:px-5">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -210,51 +224,53 @@ try {
                                 $items = [];
                                 try { $stmt_it = $db->prepare("SELECT description, qty, unit_price, amount FROM invoice_items WHERE invoice_id = ?"); $stmt_it->execute([intval($inv['id'])]); $items = $stmt_it->fetchAll(); } catch (Exception $e) { $items = []; }
                             ?>
-                            <tr>
-                                <td style="padding:8px; vertical-align:top;"><?= date('d/m H:i', strtotime($inv['created_at'])) ?></td>
-                                <td style="padding:8px; vertical-align:top;"><strong>INV-<?= str_pad($inv['id'],5,'0',STR_PAD_LEFT) ?></strong><br><span style="color:var(--text-secondary); font-size:13px;"><?= htmlspecialchars($inv['customer_name'] ?? $inv['name'] ?? '-') ?></span>
-                                    <?php if(!empty($inv['billing_address'])): ?><div style="font-size:12px; color:var(--text-secondary); margin-top:4px;"><?= htmlspecialchars($inv['billing_address']) ?></div><?php endif; ?>
+                            <tr class="border-t border-solid border-border">
+                                <td class="px-4 py-3 align-top text-xs tabular-nums text-muted-foreground whitespace-nowrap sm:px-5"><?= date('d/m H:i', strtotime($inv['created_at'])) ?></td>
+                                <td class="px-3 py-3 align-top">
+                                    <div class="text-sm font-semibold tabular-nums">INV-<?= str_pad($inv['id'],5,'0',STR_PAD_LEFT) ?></div>
+                                    <div class="text-xs text-muted-foreground"><?= htmlspecialchars($inv['customer_name'] ?? $inv['name'] ?? '-') ?></div>
+                                    <?php if(!empty($inv['billing_address'])): ?><div class="text-xs text-muted-foreground"><?= htmlspecialchars($inv['billing_address']) ?></div><?php endif; ?>
                                 </td>
-                                <td style="padding:8px; text-align:center; vertical-align:top;">
-                                    <div style="display:inline-flex; gap:6px; align-items:center;">
+                                <td class="px-3 py-3 text-right align-top font-bold tabular-nums whitespace-nowrap">Rp <?= number_format($inv['amount'],0,',','.') ?></td>
+                                <td class="px-3 py-3 align-top"><span class="ui-badge <?= $is_paid ? 'ui-badge-signal' : 'ui-badge-danger' ?>"><?= $is_paid ? 'Sudah bayar' : 'Belum bayar' ?></span></td>
+                                <td class="px-4 py-3 align-top sm:px-5">
+                                    <div class="flex justify-end gap-1.5">
                                     <?php if (!$is_paid): ?>
-                                        <a class="btn btn-xs btn-success" title="Bayar" href="index.php?page=admin_assets&action=invoice_mark_paid&id=<?= intval($inv['id']) ?>" onclick="return confirm('Tandai sebagai sudah dibayar?')"><i class="fas fa-money-bill-wave"></i></a>
+                                        <a class="ui-btn ui-btn-sm ui-btn-primary" title="Bayar" href="index.php?page=admin_assets&action=invoice_mark_paid&id=<?= intval($inv['id']) ?>" onclick="return confirm('Tandai sebagai sudah dibayar?')"><i class="fas fa-money-bill-wave"></i></a>
                                     <?php endif; ?>
-                                        <a class="btn btn-xs btn-ghost" title="Cetak" href="index.php?page=admin_invoices&action=print&id=<?= intval($inv['id']) ?>"><i class="fas fa-print"></i></a>
-                                        <a class="btn btn-xs btn-ghost" title="Edit" href="index.php?page=admin_edit_quick_invoice&id=<?= intval($inv['id']) ?>"><i class="fas fa-edit"></i></a>
-                                        <a class="btn btn-xs btn-danger" title="Hapus" href="index.php?page=admin_assets&action=invoice_delete_quick&id=<?= intval($inv['id']) ?>" onclick="return confirm('Hapus invoice ini?')"><i class="fas fa-trash"></i></a>
-                                        <button class="btn btn-xs btn-ghost" title="Item" onclick="CreateInvoice.toggleInvoiceItems(<?= intval($inv['id']) ?>)"><i class="fas fa-list"></i></button>
+                                        <a class="ui-btn ui-btn-sm ui-btn-outline" title="Cetak" href="index.php?page=admin_invoices&action=print&id=<?= intval($inv['id']) ?>"><i class="fas fa-print"></i></a>
+                                        <a class="ui-btn ui-btn-sm ui-btn-outline" title="Edit" href="index.php?page=admin_edit_quick_invoice&id=<?= intval($inv['id']) ?>"><i class="fas fa-edit"></i></a>
+                                        <a class="ui-btn ui-btn-sm ui-btn-outline text-danger" title="Hapus" href="index.php?page=admin_assets&action=invoice_delete_quick&id=<?= intval($inv['id']) ?>" onclick="return confirm('Hapus invoice ini?')"><i class="fas fa-trash"></i></a>
+                                        <button type="button" class="ui-btn ui-btn-sm ui-btn-outline" title="Item" onclick="CreateInvoice.toggleInvoiceItems(<?= intval($inv['id']) ?>)"><i class="fas fa-list"></i></button>
                                     </div>
                                 </td>
-                                <td style="padding:8px; text-align:right; vertical-align:top;">Rp <?= number_format($inv['amount'],0,',','.') ?></td>
-                                <td style="padding:8px; text-align:center; vertical-align:top; color:<?= $is_paid ? '#10b981' : '#ef4444' ?>; font-weight:700;"><?= $is_paid ? 'Sudah Bayar' : 'Belum Bayar' ?></td>
                             </tr>
-                            <tr id="invItems-<?= intval($inv['id']) ?>" style="display:none; background:rgba(255,255,255,0.02);">
-                                <td colspan="5" style="padding:8px;">
-                                    <div style="overflow:auto;">
-                                        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                            <tr id="invItems-<?= intval($inv['id']) ?>" class="bg-muted" style="display:none;">
+                                <td colspan="5" class="px-4 py-3 sm:px-5">
+                                    <div class="overflow-x-auto">
+                                        <table class="w-full border-collapse text-sm">
                                             <thead>
-                                                <tr style="background:transparent;">
-                                                    <th style="text-align:left; padding:6px;">Keterangan</th>
-                                                    <th style="text-align:right; padding:6px; width:110px;">Harga</th>
-                                                    <th style="text-align:center; padding:6px; width:60px;">Jml</th>
-                                                    <th style="text-align:right; padding:6px; width:120px;">Total</th>
+                                                <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                                                    <th class="px-2 py-1.5 font-semibold">Keterangan</th>
+                                                    <th class="px-2 py-1.5 text-right font-semibold" style="width:110px;">Harga</th>
+                                                    <th class="px-2 py-1.5 text-center font-semibold" style="width:60px;">Jml</th>
+                                                    <th class="px-2 py-1.5 text-right font-semibold" style="width:120px;">Total</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 <?php if(empty($items)): ?>
-                                                    <tr><td colspan="4" style="padding:8px; color:var(--text-secondary);">Tidak ada item tercatat.</td></tr>
+                                                    <tr><td colspan="4" class="px-2 py-2 text-muted-foreground">Tidak ada item tercatat.</td></tr>
                                                 <?php else: ?>
                                                     <?php foreach($items as $it):
                                                         $qty = intval($it['qty'] ?? 1);
                                                         $unit = isset($it['unit_price']) ? floatval($it['unit_price']) : ( ($qty>0) ? round(floatval($it['amount'])/$qty) : floatval($it['amount']) );
                                                         $lt = floatval($it['amount']);
                                                     ?>
-                                                    <tr>
-                                                        <td style="padding:6px;"><?= htmlspecialchars($it['description']) ?></td>
-                                                        <td style="padding:6px; text-align:right;">Rp <?= number_format($unit,0,',','.') ?></td>
-                                                        <td style="padding:6px; text-align:center;"><?= $qty ?></td>
-                                                        <td style="padding:6px; text-align:right;">Rp <?= number_format($lt,0,',','.') ?></td>
+                                                    <tr class="border-t border-solid border-border">
+                                                        <td class="px-2 py-1.5"><?= htmlspecialchars($it['description']) ?></td>
+                                                        <td class="px-2 py-1.5 text-right tabular-nums">Rp <?= number_format($unit,0,',','.') ?></td>
+                                                        <td class="px-2 py-1.5 text-center tabular-nums"><?= $qty ?></td>
+                                                        <td class="px-2 py-1.5 text-right tabular-nums">Rp <?= number_format($lt,0,',','.') ?></td>
                                                     </tr>
                                                     <?php endforeach; ?>
                                                 <?php endif; ?>
@@ -266,49 +282,42 @@ try {
                             <?php endforeach; ?>
                         </tbody>
                     </table>
-                    </div>
                 </div>
             <?php endif; ?>
-        </div>
+        </section>
     </div>
 
     <div id="tempsSection" style="display:none;">
-        <div class="glass-panel" style="padding:16px; width:100%; margin:0 0 30px;">
-            <h4 style="margin:4px 0 12px;"><i class="fas fa-users"></i> Pelanggan Baru (Sementara)</h4>
+        <section class="ui-card p-4 sm:p-5">
+            <h3 class="m-0 mb-3 text-[15px] font-bold">Pelanggan baru (sementara)</h3>
             <?php if(empty($recent_temps)): ?>
-                <div style="color:var(--text-secondary);">Tidak ada pelanggan sementara.</div>
+                <div class="px-5 py-10 text-center text-sm text-muted-foreground">Tidak ada pelanggan sementara.</div>
             <?php else: ?>
-                <style>
-                .temps-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px; }
-                .temp-card { padding:12px; border-radius:12px; background:rgba(0,0,0,0.02); display:flex; flex-direction:column; gap:8px; }
-                .temp-card .meta { font-size:13px; color:var(--text-secondary); }
-                .temp-card .actions { display:flex; gap:8px; margin-top:8px; }
-                .temp-card .actions form { margin:0; }
-                </style>
-                <div class="temps-grid">
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     <?php foreach($recent_temps as $t): ?>
-                        <div class="temp-card">
-                            <div style="font-weight:700; font-size:15px;"><?= htmlspecialchars($t['name']) ?></div>
-                            <div class="meta"><?= htmlspecialchars($t['contact'] ?: '-') ?></div>
-                            <div class="meta" style="white-space:normal;"><?= htmlspecialchars($t['address'] ?: '-') ?></div>
-                            <div class="actions">
-                                <button class="btn btn-sm btn-primary" onclick="useTempCustomer(<?= intval($t['id']) ?>)">Gunakan</button>
-                                <a class="btn btn-sm btn-ghost" href="index.php?page=admin_customers&action=details&id=<?= intval($t['id']) ?>">Detail</a>
-                                <form method="POST" action="index.php?page=admin_temp_customers">
+                        <div class="flex flex-col gap-1 rounded-md border border-solid border-border p-3">
+                            <div class="text-sm font-semibold"><?= htmlspecialchars($t['name']) ?></div>
+                            <div class="text-xs text-muted-foreground"><?= htmlspecialchars($t['contact'] ?: '-') ?></div>
+                            <div class="text-xs text-muted-foreground"><?= htmlspecialchars($t['address'] ?: '-') ?></div>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" onclick="useTempCustomer(<?= intval($t['id']) ?>)">Gunakan</button>
+                                <a class="ui-btn ui-btn-sm ui-btn-outline" href="index.php?page=admin_customers&action=details&id=<?= intval($t['id']) ?>">Detail</a>
+                                <form method="POST" action="index.php?page=admin_temp_customers" class="m-0">
 <?= csrf_field() ?>
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="id" value="<?= intval($t['id']) ?>">
-                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Hapus pelanggan sementara ini?')">Hapus</button>
+                                    <button type="submit" class="ui-btn ui-btn-sm ui-btn-outline text-danger" onclick="return confirm('Hapus pelanggan sementara ini?')">Hapus</button>
                                 </form>
                             </div>
                         </div>
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
-        </div>
+        </section>
     </div>
 
     <!-- Pendapatan tab removed: payments go to main reports/dashboard -->
+</div>
 
     <script>
 window.CreateInvoice = (function(){

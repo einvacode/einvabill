@@ -463,135 +463,76 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
 $packages_all = $db->query("SELECT * FROM packages WHERE created_by = $user_id OR created_by = 0 OR created_by IS NULL ORDER BY name ASC")->fetchAll();
 ?>
 
-<style>
-/* Flexbox Layout for Partner Command Center */
-.tab-flex-container {
-    display: flex;
-    flex-direction: column;
-    height: calc(100vh - 120px);
-    overflow: hidden;
-}
-@media (max-width: 768px) {
-    .tab-flex-container {
-        height: calc(100vh - 160px); /* Adjust for mobile bottom nav */
-    }
-}
-
-.scroll-container {
-    flex: 1;
-    overflow-y: auto;
-    padding-right: 5px;
-}
-/* Custom Scrollbar */
-.scroll-container::-webkit-scrollbar { width: 5px; }
-.scroll-container::-webkit-scrollbar-track { background: transparent; }
-.scroll-container::-webkit-scrollbar-thumb { background: rgba(var(--primary-rgb), 0.2); border-radius: 10px; }
-.scroll-container { scrollbar-width: thin; scrollbar-color: rgba(var(--primary-rgb), 0.2) transparent; }
-
-/* Persistent Summary Bar */
-.static-summary-bar {
-    margin-top: 15px;
-    flex-shrink: 0;
-    width: 100%;
-    animation: fadeInStatic 0.5s ease-out;
-}
-@keyframes fadeInStatic {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* Stat Card Hover Fix */
-.stat-card-interactive {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.stat-card-interactive:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 30px rgba(0,0,0,0.15);
-}
-</style>
-
-<div class="tab-flex-container">
-    <!-- STATIC HEADER: Title & Banners -->
-    <div style="flex-shrink:0; margin-bottom:10px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding:0 5px;">
-            <div style="display:flex; align-items:center; gap:12px;">
-                <button class="burger-btn show-mobile" onclick="toggleSidebar()" style="background:none; border:none; color:var(--text-primary); font-size:20px; cursor:pointer; padding:0;"><i class="fas fa-bars"></i></button>
-                <div>
-                    <h2 style="margin:0; font-size:20px; font-weight:800; color:var(--text-primary);">Dashboard Mitra</h2>
-                    <p style="margin:0; font-size:12px; color:var(--text-secondary);"><?= $_SESSION['user_name'] ?> | ID: <?= $partner_cid ?: 'N/A' ?></p>
-                </div>
-            </div>
-            <div class="btn-group">
-                <a href="index.php?page=partner&action=import_view" class="btn btn-sm btn-ghost" style="color:var(--success); border-radius:10px 0 0 10px; border:1px solid var(--glass-border); padding:0 15px;"><i class="fas fa-file-import"></i> <span class="hide-mobile">Import</span></a>
-                <a href="index.php?page=partner&action=export_csv" class="btn btn-sm btn-ghost" style="color:var(--primary); border-radius:0; border:1px solid var(--glass-border); border-left:none; padding:0 15px;"><i class="fas fa-file-export"></i> <span class="hide-mobile">Export</span></a>
-                <button onclick="PartnerPage.showAddCustomerModal()" class="btn btn-sm btn-primary" style="height:38px; border-radius:0 10px 10px 0; font-weight:700;"><i class="fas fa-user-plus"></i> <span class="hide-mobile">Tambah Pelanggan</span></button>
-            </div>
-        </div>
-    </div>
-
-
 <?php if($success_data): ?>
-<div class="glass-panel" style="margin-bottom:20px; border-left:4px solid var(--success); padding:20px; animation: slideDown 0.4s ease-out; background:rgba(16,185,129,0.1);">
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
+<div class="ui-card mb-5 p-4 sm:p-5">
+    <div class="flex items-start justify-between gap-4">
         <div>
-            <h3 style="margin:0; color:var(--success); font-size:18px;"><i class="fas fa-check-circle"></i> Pembayaran Berhasil!</h3>
-            <p style="margin:5px 0 0; font-size:13px; color:var(--text-secondary);">Tagihan untuk <strong><?= htmlspecialchars($success_data['name']) ?></strong> telah diperbarui.</p>
+            <h3 class="m-0 text-[15px] font-bold text-signal">Pembayaran berhasil</h3>
+            <p class="m-0 mt-1 text-sm text-muted-foreground">Tagihan untuk <strong class="text-foreground"><?= htmlspecialchars($success_data['name']) ?></strong> telah diperbarui.</p>
         </div>
-        <button onclick="this.parentElement.parentElement.style.display='none'" style="background:none; border:none; color:var(--text-secondary); cursor:pointer;"><i class="fas fa-times"></i></button>
+        <button type="button" onclick="this.parentElement.parentElement.style.display='none'" class="grid h-8 w-8 shrink-0 place-items-center rounded-md border-0 bg-transparent text-muted-foreground hover:bg-muted cursor-pointer" aria-label="Tutup"><i class="fas fa-times"></i></button>
     </div>
-    <div style="display:flex; gap:10px; flex-wrap:wrap;">
-        <a href="<?= $success_data['wa_link'] ?>" target="_blank" class="btn" style="background:#25D366; color:white; flex:1; min-width:150px; padding:12px; font-weight:700; text-align:center; text-decoration:none; border-radius:10px;">
-            <i class="fab fa-whatsapp"></i> Kirim Notifikasi WA
-        </a>
-        <a href="index.php?page=invoice_print&id=<?= intval($_GET['last_id'] ?? 0) ?>&format=thermal" target="_blank" class="btn btn-ghost" style="flex:1; min-width:150px; padding:12px; font-weight:700; border-radius:10px; text-align:center; text-decoration:none; border:1px solid var(--glass-border);">
-            <i class="fas fa-print"></i> Cetak Kuitansi
-        </a>
+    <div class="mt-4 flex flex-col gap-2 sm:flex-row">
+        <a href="<?= $success_data['wa_link'] ?>" target="_blank" class="ui-btn ui-btn-wa w-full sm:w-auto"><i class="fab fa-whatsapp"></i> Kirim notifikasi WA</a>
+        <a href="index.php?page=invoice_print&id=<?= intval($_GET['last_id'] ?? 0) ?>&format=thermal" target="_blank" class="ui-btn ui-btn-outline w-full sm:w-auto"><i class="fas fa-print"></i> Cetak kuitansi</a>
     </div>
 </div>
 <?php endif; ?>
 
 <?php if (isset($_GET['msg'])): ?>
-    <div style="padding: 15px 20px; background: rgba(16, 185, 129, 0.1); border-left: 4px solid var(--success); margin-bottom: 20px; border-radius: 12px; display: flex; align-items: center; gap: 12px; animation: slideDown 0.4s ease-out;">
-        <i class="fas fa-check-circle" style="color: var(--success); font-size: 18px;"></i>
-        <div style="font-weight: 700; color: var(--success); font-size: 14px;">
-            <?php 
-                if($_GET['msg'] == 'added') echo 'Pelanggan baru berhasil didaftarkan!';
-                if($_GET['msg'] == 'updated') echo 'Data pelanggan berhasil diperbarui!';
-                if($_GET['msg'] == 'deleted') echo 'Pelanggan berhasil dihapus beserta seluruh tagihan dan pembayarannya.';
-                if($_GET['msg'] == 'import_success') echo 'Berhasil mengimpor ' . intval($_GET['count'] ?? 0) . ' data pelanggan ke akun Anda.';
-                if($_GET['msg'] == 'forbidden') echo '<span style="color:var(--danger)">Akses ditolak. Anda hanya bisa mengelola pelanggan milik Anda sendiri.</span>';
-            ?>
-        </div>
+    <div class="ui-card mb-5 p-4 text-sm <?= $_GET['msg'] == 'forbidden' ? 'border-danger/40' : '' ?>">
+        <?php
+            if($_GET['msg'] == 'added') echo '<span class="font-semibold text-signal">Berhasil.</span> Pelanggan baru berhasil didaftarkan.';
+            if($_GET['msg'] == 'updated') echo '<span class="font-semibold text-signal">Tersimpan.</span> Data pelanggan berhasil diperbarui.';
+            if($_GET['msg'] == 'deleted') echo '<span class="font-semibold text-signal">Terhapus.</span> Pelanggan berhasil dihapus beserta seluruh tagihan dan pembayarannya.';
+            if($_GET['msg'] == 'import_success') echo '<span class="font-semibold text-signal">Berhasil.</span> Berhasil mengimpor ' . intval($_GET['count'] ?? 0) . ' data pelanggan ke akun Anda.';
+            if($_GET['msg'] == 'forbidden') echo '<span class="font-semibold text-danger">Akses ditolak.</span> Anda hanya bisa mengelola pelanggan milik Anda sendiri.';
+        ?>
     </div>
 <?php endif; ?>
 
+<!-- Page header -->
+<div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div class="flex items-center gap-3">
+        <button type="button" class="grid h-9 w-9 place-items-center rounded-md border border-solid border-border bg-card text-foreground cursor-pointer lg:hidden" onclick="toggleSidebar()" aria-label="Buka menu"><i class="fas fa-bars"></i></button>
+        <div>
+            <h2 class="m-0 text-xl font-bold sm:text-2xl">Dashboard mitra</h2>
+            <p class="m-0 mt-1 text-sm text-muted-foreground"><?= $_SESSION['user_name'] ?> · ID <?= $partner_cid ?: 'N/A' ?></p>
+        </div>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a href="index.php?page=partner&action=import_view" class="ui-btn ui-btn-outline"><i class="fas fa-file-import"></i> <span class="hidden sm:inline">Impor</span></a>
+        <a href="index.php?page=partner&action=export_csv" class="ui-btn ui-btn-outline"><i class="fas fa-file-export"></i> <span class="hidden sm:inline">Ekspor</span></a>
+        <button type="button" onclick="PartnerPage.showAddCustomerModal()" class="ui-btn ui-btn-primary"><i class="fas fa-user-plus"></i> <span class="hidden sm:inline">Tambah pelanggan</span></button>
+    </div>
+</div>
+
 <?php if ($action === 'import_view'): ?>
-<div class="glass-panel" style="padding: 24px; max-width:800px; margin:0 auto 30px;">
-    <h3 style="font-size:20px; margin-bottom:20px;"><i class="fas fa-file-import text-success"></i> Import Data Pelanggan</h3>
-    <div style="background:var(--hover-bg); padding:15px; border-radius:12px; margin-bottom:25px; font-size:13px; line-height:1.6; border-left:4px solid var(--success);">
-        <strong>Petunjuk Impor:</strong><br>
-        1. Gunakan file format <strong>.csv</strong> atau Paste dari Excel.<br>
+<div class="ui-card mx-auto mb-6 max-w-3xl p-4 sm:p-6">
+    <h3 class="m-0 mb-4 text-lg font-bold">Impor data pelanggan</h3>
+    <div class="mb-5 rounded-md bg-muted p-4 text-sm leading-relaxed">
+        <strong>Petunjuk impor:</strong><br>
+        1. Gunakan file format <strong>.csv</strong> atau tempel dari Excel.<br>
         2. Pastikan kolom Nama, Alamat, dan WhatsApp terisi.<br>
-        3. <a href="index.php?page=partner&action=download_template" style="color:var(--primary); font-weight:700; text-decoration:none;"><i class="fas fa-download"></i> Download Template CSV</a>
+        3. <a href="index.php?page=partner&action=download_template" class="font-semibold text-primary no-underline"><i class="fas fa-download"></i> Unduh template CSV</a>
     </div>
 
-    <div class="import-tabs" style="display:flex; gap:10px; margin-bottom:20px;">
-        <button class="tab-btn active" id="btn-file" onclick="switchImportTab('file')" style="flex:1; padding:12px; border-radius:10px; background:var(--nav-active-bg); border:none; color:var(--primary); font-weight:700; cursor:pointer;"><i class="fas fa-file-csv"></i> File CSV</button>
-        <button class="tab-btn" id="btn-paste" onclick="switchImportTab('paste')" style="flex:1; padding:12px; border-radius:10px; background:transparent; border:1px solid var(--glass-border); color:var(--text-secondary); font-weight:700; cursor:pointer;"><i class="fas fa-paste"></i> Paste Excel</button>
+    <div class="import-tabs mb-5 flex gap-2">
+        <button type="button" class="tab-btn active flex-1 rounded-md px-4 py-2.5 text-sm font-semibold cursor-pointer" id="btn-file" onclick="switchImportTab('file')" style="background:var(--nav-active-bg); border:none; color:var(--primary);"><i class="fas fa-file-csv"></i> File CSV</button>
+        <button type="button" class="tab-btn flex-1 rounded-md px-4 py-2.5 text-sm font-semibold cursor-pointer" id="btn-paste" onclick="switchImportTab('paste')" style="background:transparent; border:1px solid var(--glass-border); color:var(--text-secondary);"><i class="fas fa-paste"></i> Tempel dari Excel</button>
     </div>
 
     <div id="import-file" class="import-section">
         <form action="index.php?page=partner&action=import_file" method="POST" enctype="multipart/form-data">
 <?= csrf_field() ?>
-            <div style="border: 2px dashed var(--glass-border); padding: 40px; border-radius: 15px; text-align: center; background: rgba(255,255,255,0.02);">
-                <i class="fas fa-cloud-upload-alt" style="font-size: 40px; color: var(--primary); opacity: 0.5; margin-bottom: 15px;"></i>
+            <div class="rounded-md border border-dashed border-border p-8 text-center">
                 <input type="file" name="csv_file" id="csv_input" accept=".csv" required style="display: none;" onchange="this.nextElementSibling.innerText = this.files[0].name">
-                <button type="button" class="btn btn-primary" onclick="document.getElementById('csv_input').click()">Pilih File CSV</button>
-                <div style="margin-top: 10px; font-size: 12px; color: var(--text-secondary);">Belum ada file terpilih</div>
+                <button type="button" class="ui-btn ui-btn-primary" onclick="document.getElementById('csv_input').click()">Pilih file CSV</button>
+                <div class="mt-3 text-xs text-muted-foreground">Belum ada file terpilih</div>
             </div>
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
-                <a href="index.php?page=partner" class="btn btn-ghost">Batal</a>
-                <button type="submit" class="btn btn-primary">Upload & Preview</button>
+            <div class="mt-5 flex justify-end gap-2">
+                <a href="index.php?page=partner" class="ui-btn ui-btn-outline">Batal</a>
+                <button type="submit" class="ui-btn ui-btn-primary">Unggah & pratinjau</button>
             </div>
         </form>
     </div>
@@ -599,12 +540,13 @@ $packages_all = $db->query("SELECT * FROM packages WHERE created_by = $user_id O
     <div id="import-paste" class="import-section" style="display:none;">
         <form action="index.php?page=partner&action=import_paste" method="POST">
 <?= csrf_field() ?>
-            <div class="form-group">
-                <textarea name="paste_data" class="form-control" rows="8" placeholder="Nama [Tab] Alamat [Tab] WhatsApp..." required style="font-family:monospace; font-size:12px; background:rgba(0,0,0,0.2);"></textarea>
-            </div>
-            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
-                <a href="index.php?page=partner" class="btn btn-ghost">Batal</a>
-                <button type="submit" class="btn btn-primary">Proses Data</button>
+            <label class="block">
+                <span class="mb-1 block text-xs font-medium text-muted-foreground">Data dari Excel</span>
+                <textarea name="paste_data" class="form-control w-full font-mono text-xs" rows="8" placeholder="Nama [Tab] Alamat [Tab] WhatsApp..." required></textarea>
+            </label>
+            <div class="mt-5 flex justify-end gap-2">
+                <a href="index.php?page=partner" class="ui-btn ui-btn-outline">Batal</a>
+                <button type="submit" class="ui-btn ui-btn-primary">Proses data</button>
             </div>
         </form>
     </div>
@@ -621,302 +563,271 @@ function switchImportTab(t){
 }
 </script>
 
-<?php elseif ($action === 'import_preview'): 
+<?php elseif ($action === 'import_preview'):
     $pending = $_SESSION['pending_import_partner'] ?? [];
     $map = $_SESSION['pending_mapping_partner'] ?? ['type' => 0, 'name' => 0, 'address' => 1, 'contact' => 2, 'package' => 3, 'fee' => 4, 'ip' => 5, 'reg_date' => 6, 'bill_date' => 7, 'area' => 8];
 ?>
-<div class="glass-panel" style="padding: 24px; max-width:1000px; margin:0 auto 30px;">
-    <h3 style="margin-bottom:20px;"><i class="fas fa-eye text-primary"></i> Preview Data (<?= count($pending) ?> Pelanggan)</h3>
-    <div class="table-container" style="max-height: 400px; overflow-y:auto; border:1px solid var(--glass-border); border-radius:12px; margin-bottom:20px;">
-        <table style="width:100%; font-size:12px;">
+<div class="ui-card mx-auto mb-6 max-w-5xl overflow-hidden">
+    <div class="border-b border-solid border-border px-4 py-3 sm:px-5">
+        <h3 class="m-0 text-[15px] font-bold">Pratinjau data</h3>
+        <p class="m-0 text-xs text-muted-foreground"><?= count($pending) ?> pelanggan siap diimpor</p>
+    </div>
+    <div class="max-h-[400px] overflow-auto">
+        <table class="w-full border-collapse text-sm">
             <thead>
-                <tr>
-                    <th>Nama</th><th>Alamat</th><th>WhatsApp</th><th>Paket</th><th>Biaya</th>
+                <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                    <th class="px-4 py-2.5 font-semibold">Nama</th><th class="px-4 py-2.5 font-semibold">Alamat</th><th class="px-4 py-2.5 font-semibold">WhatsApp</th><th class="px-4 py-2.5 font-semibold">Paket</th><th class="px-4 py-2.5 font-semibold">Biaya</th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach($pending as $row): ?>
-                <tr>
-                    <td><?= htmlspecialchars($row[$map['name']] ?? '-') ?></td>
-                    <td><?= htmlspecialchars($row[$map['address']] ?? '-') ?></td>
-                    <td><?= htmlspecialchars($row[$map['contact']] ?? '-') ?></td>
-                    <td><?= htmlspecialchars($row[$map['package']] ?? '-') ?></td>
-                    <td>Rp<?= number_format(floatval(preg_replace('/[^0-9]/', '', $row[$map['fee']] ?? 0)), 0, ',', '.') ?></td>
+                <tr class="border-t border-solid border-border">
+                    <td class="px-4 py-2.5"><?= htmlspecialchars($row[$map['name']] ?? '-') ?></td>
+                    <td class="px-4 py-2.5"><?= htmlspecialchars($row[$map['address']] ?? '-') ?></td>
+                    <td class="px-4 py-2.5"><?= htmlspecialchars($row[$map['contact']] ?? '-') ?></td>
+                    <td class="px-4 py-2.5"><?= htmlspecialchars($row[$map['package']] ?? '-') ?></td>
+                    <td class="px-4 py-2.5 tabular-nums whitespace-nowrap">Rp <?= number_format(floatval(preg_replace('/[^0-9]/', '', $row[$map['fee']] ?? 0)), 0, ',', '.') ?></td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
     </div>
-    <div style="display:flex; justify-content:flex-end; gap:10px;">
-        <a href="index.php?page=partner&action=import_cancel" class="btn btn-ghost">Batalkan</a>
+    <div class="flex justify-end gap-2 border-t border-solid border-border px-4 py-3 sm:px-5">
+        <a href="index.php?page=partner&action=import_cancel" class="ui-btn ui-btn-outline">Batalkan</a>
         <form action="index.php?page=partner&action=import_confirm" method="POST">
 <?= csrf_field() ?>
-            <button type="submit" class="btn btn-primary" style="background:var(--success); border-color:var(--success);"><i class="fas fa-check"></i> Konfirmasi & Impor</button>
+            <button type="submit" class="ui-btn ui-btn-primary"><i class="fas fa-check"></i> Konfirmasi & impor</button>
         </form>
     </div>
 </div>
 
 <?php else: // ACTION: list (Default) ?>
-    <div class="scroll-container">
-        <!-- Dashboard Home Contents -->
-        
-        <div style="display:grid; grid-template-columns: 1fr; gap:20px;">
-            <!-- LEFT/TOP: Simplified Summary -->
-            <div>
-                <style>
-                    .partner-summary-grid {
-                        display: grid;
-                        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                        gap: 10px;
-                    }
-                    .partner-summary-card {
-                        padding: 14px;
-                        border-top: 3px solid var(--primary);
-                        display: flex;
-                        flex-direction: column;
-                        gap: 6px;
-                        text-decoration: none;
-                        color: inherit;
-                    }
-                    .partner-summary-card:hover {
-                        transform: translateY(-2px);
-                    }
-                    .partner-summary-title { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 800; }
-                    .partner-summary-value { font-size: 20px; font-weight: 900; color: var(--text-primary); line-height: 1.2; }
-                    .partner-summary-sub { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
-                    .partner-summary-source { margin-top: auto; font-size: 12px; color: var(--primary); font-weight: 700; }
-                    @media (max-width: 640px) {
-                        .partner-summary-grid { grid-template-columns: 1fr 1fr; }
-                    }
-                </style>
 
-                <div class="source-nav" style="margin:0 0 12px;">
-                    <a class="source-nav-link" href="index.php?page=partner"><i class="fas fa-users"></i> Data Pelanggan</a>
-                    <a class="source-nav-link" href="index.php?page=partner_isp_invoices"><i class="fas fa-file-invoice"></i> Data Tagihan</a>
-                    <a class="source-nav-link" href="index.php?page=partner_reports"><i class="fas fa-chart-line"></i> Data Laporan</a>
-                </div>
+    <!-- Source navigation -->
+    <div class="mb-5 flex flex-wrap gap-1 rounded-md bg-muted p-1 w-fit">
+        <a href="index.php?page=partner" class="rounded-sm bg-card px-3 py-1.5 text-sm font-semibold text-foreground no-underline shadow-card" aria-current="page">Data pelanggan</a>
+        <a href="index.php?page=partner_isp_invoices" class="rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground no-underline hover:text-foreground">Data tagihan</a>
+        <a href="index.php?page=partner_reports" class="rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground no-underline hover:text-foreground">Data laporan</a>
+    </div>
 
-                <div class="partner-summary-grid">
-                    <a class="glass-panel partner-summary-card" href="index.php?page=partner">
-                        <div class="partner-summary-title">Total Pelanggan</div>
-                        <div class="partner-summary-value"><?= number_format($my_cust_count) ?></div>
-                        <div class="partner-summary-sub">Pelanggan aktif yang dikelola</div>
-                        <div class="partner-summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
-                    </a>
-                    <a class="glass-panel partner-summary-card" href="index.php?page=partner_reports">
-                        <div class="partner-summary-title">Pendapatan Bulan Ini</div>
-                        <div class="partner-summary-value" style="color:var(--success);">Rp<?= number_format($total_paid_val, 0, ',', '.') ?></div>
-                        <div class="partner-summary-sub"><?= date('F Y') ?></div>
-                        <div class="partner-summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
-                    </a>
-                    <a class="glass-panel partner-summary-card" href="index.php?page=partner_isp_invoices&filter_status=belum">
-                        <div class="partner-summary-title">Total Piutang</div>
-                        <div class="partner-summary-value" style="color:var(--danger);">Rp<?= number_format($total_unpaid_val, 0, ',', '.') ?></div>
-                        <div class="partner-summary-sub">Jatuh tempo hari ini: <?= number_format($due_today) ?></div>
-                        <div class="partner-summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
-                    </a>
-                    <a class="glass-panel partner-summary-card" href="index.php?page=partner_reports">
-                        <div class="partner-summary-title">Laba Bersih</div>
-                        <div class="partner-summary-value">Rp<?= number_format($my_net_profit, 0, ',', '.') ?></div>
-                        <div class="partner-summary-sub">Koleksi - tagihan ISP</div>
-                        <div class="partner-summary-source">Buka sumber data <i class="fas fa-arrow-right"></i></div>
-                    </a>
+    <!-- Summary tiles -->
+    <div class="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <a href="index.php?page=partner" class="ui-card flex flex-col gap-1 p-4 no-underline text-foreground transition-colors hover:border-primary/40">
+            <div class="text-xs font-medium text-muted-foreground">Total pelanggan</div>
+            <div class="mt-1 text-xl font-extrabold leading-tight tabular-nums sm:text-2xl"><?= number_format($my_cust_count) ?></div>
+            <div class="text-xs text-muted-foreground">Pelanggan aktif yang dikelola</div>
+            <div class="mt-auto text-xs font-semibold text-primary">Buka sumber data</div>
+        </a>
+        <a href="index.php?page=partner_reports" class="ui-card flex flex-col gap-1 p-4 no-underline text-foreground transition-colors hover:border-primary/40">
+            <div class="text-xs font-medium text-muted-foreground">Pendapatan bulan ini</div>
+            <div class="mt-1 text-xl font-extrabold leading-tight tabular-nums text-signal sm:text-2xl">Rp <?= number_format($total_paid_val, 0, ',', '.') ?></div>
+            <div class="text-xs text-muted-foreground"><?= date('F Y') ?></div>
+            <div class="mt-auto text-xs font-semibold text-primary">Buka sumber data</div>
+        </a>
+        <a href="index.php?page=partner_isp_invoices&filter_status=belum" class="ui-card flex flex-col gap-1 p-4 no-underline text-foreground transition-colors hover:border-primary/40">
+            <div class="text-xs font-medium text-muted-foreground">Total piutang</div>
+            <div class="mt-1 text-xl font-extrabold leading-tight tabular-nums text-danger sm:text-2xl">Rp <?= number_format($total_unpaid_val, 0, ',', '.') ?></div>
+            <div class="text-xs text-muted-foreground">Jatuh tempo hari ini: <?= number_format($due_today) ?></div>
+            <div class="mt-auto text-xs font-semibold text-primary">Buka sumber data</div>
+        </a>
+        <a href="index.php?page=partner_reports" class="ui-card flex flex-col gap-1 p-4 no-underline text-foreground transition-colors hover:border-primary/40">
+            <div class="text-xs font-medium text-muted-foreground">Laba bersih</div>
+            <div class="mt-1 text-xl font-extrabold leading-tight tabular-nums sm:text-2xl">Rp <?= number_format($my_net_profit, 0, ',', '.') ?></div>
+            <div class="text-xs text-muted-foreground">Koleksi dikurangi tagihan ISP</div>
+            <div class="mt-auto text-xs font-semibold text-primary">Buka sumber data</div>
+        </a>
+    </div>
+
+    <!-- Data sources -->
+    <div class="mb-5 flex flex-wrap gap-2">
+        <a href="index.php?page=partner" class="ui-btn ui-btn-sm ui-btn-outline"><i class="fas fa-users"></i> Sumber pelanggan</a>
+        <a href="index.php?page=partner_isp_invoices" class="ui-btn ui-btn-sm ui-btn-outline"><i class="fas fa-file-invoice"></i> Sumber tagihan</a>
+        <a href="index.php?page=partner_reports" class="ui-btn ui-btn-sm ui-btn-outline"><i class="fas fa-chart-line"></i> Sumber laporan</a>
+    </div>
+
+    <div class="grid gap-5">
+        <!-- 0. TRANSAKSI TERBARU -->
+        <?php if(!empty($recent_revenue)): ?>
+        <section class="ui-card overflow-hidden">
+            <div class="flex items-center justify-between gap-3 border-b border-solid border-border px-4 py-3 sm:px-5">
+                <div>
+                    <h3 class="m-0 text-[15px] font-bold">Transaksi pelanggan terbaru</h3>
+                    <p class="m-0 text-xs text-muted-foreground">Tiga pembayaran terakhir yang tercatat</p>
                 </div>
+                <a href="index.php?page=partner_reports" class="ui-btn ui-btn-sm ui-btn-outline">Lihat laporan</a>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse text-sm">
+                    <thead>
+                        <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                            <th class="px-4 py-2.5 font-semibold sm:px-5">Pelanggan</th>
+                            <th class="px-3 py-2.5 font-semibold">Tanggal</th>
+                            <th class="px-3 py-2.5 text-right font-semibold">Total</th>
+                            <th class="px-4 py-2.5 text-right font-semibold sm:px-5">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach($recent_revenue as $tr): ?>
+                            <tr class="border-t border-solid border-border">
+                                <td class="px-4 py-3 font-semibold sm:px-5"><?= htmlspecialchars($tr['customer_name']) ?></td>
+                                <td class="px-3 py-3 tabular-nums text-muted-foreground whitespace-nowrap"><?= date('d/m/y H:i', strtotime($tr['payment_date'])) ?></td>
+                                <td class="px-3 py-3 text-right font-bold tabular-nums text-signal whitespace-nowrap">Rp <?= number_format($tr['paid_amount'], 0, ',', '.') ?></td>
+                                <td class="px-4 py-3 text-right sm:px-5">
+                                    <a href="index.php?page=invoice_print&id=<?= $tr['id'] ?>&format=thermal" target="_blank" class="ui-btn ui-btn-sm ui-btn-outline" title="Cetak kuitansi"><i class="fas fa-print"></i></a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        <?php endif; ?>
+
+        <!-- 1. MY CUSTOMERS LIST -->
+        <section class="ui-card overflow-hidden">
+            <div class="flex items-center justify-between gap-3 border-b border-solid border-border px-4 py-3 sm:px-5">
+                <div>
+                    <h3 class="m-0 text-[15px] font-bold">Daftar pelanggan saya</h3>
+                    <p class="m-0 text-xs text-muted-foreground">Pelanggan yang Anda kelola beserta tunggakannya</p>
+                </div>
+                <span class="ui-badge ui-badge-muted"><?= count($my_customers) ?> pelanggan</span>
             </div>
 
-            <!-- MAIN LISTS -->
-            <div>
-                <div class="source-nav" style="margin:0 0 14px;">
-                    <a class="source-nav-link" href="index.php?page=partner"><i class="fas fa-users"></i> Sumber Pelanggan</a>
-                    <a class="source-nav-link" href="index.php?page=partner_isp_invoices"><i class="fas fa-file-invoice"></i> Sumber Tagihan</a>
-                    <a class="source-nav-link" href="index.php?page=partner_reports"><i class="fas fa-chart-line"></i> Sumber Laporan</a>
-                </div>
-
-                <!-- 0. TRANSAKSI TERBARU -->
-                <?php if(!empty($recent_revenue)): ?>
-                <div class="glass-panel" style="padding:20px; border-left:4px solid var(--success); margin-bottom:20px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                        <h3 style="margin:0; font-size:16px; font-weight:800; color:var(--success);"><i class="fas fa-history"></i> Transaksi Pelanggan Terbaru</h3>
-                        <a href="index.php?page=partner_reports" style="font-size:11px; font-weight:700; color:var(--primary); text-decoration:none;">Lihat Laporan <i class="fas fa-arrow-right"></i></a>
-                    </div>
-                    <div class="table-container">
-                        <table style="width:100%; font-size:13px;">
-                            <thead>
-                                <tr style="text-align:left; border-bottom:1px solid var(--glass-border);">
-                                    <th style="padding:10px 5px;">Pelanggan</th>
-                                    <th style="padding:10px 5px;">Tanggal</th>
-                                    <th style="padding:10px 5px; text-align:right;">Total</th>
-                                    <th style="padding:10px 5px; text-align:center;">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach($recent_revenue as $tr): ?>
-                                    <tr style="border-bottom:1px dotted var(--glass-border);">
-                                        <td style="padding:10px 5px;"><strong><?= htmlspecialchars($tr['customer_name']) ?></strong></td>
-                                        <td style="padding:10px 5px; color:var(--text-secondary);"><?= date('d/m/y H:i', strtotime($tr['payment_date'])) ?></td>
-                                        <td style="padding:10px 5px; text-align:right; font-weight:700; color:var(--success);">Rp<?= number_format($tr['paid_amount'], 0, ',', '.') ?></td>
-                                        <td style="padding:10px 5px; text-align:center;">
-                                            <a href="index.php?page=invoice_print&id=<?= $tr['id'] ?>&format=thermal" target="_blank" class="btn btn-sm btn-ghost" style="padding:4px 8px; border:1px solid rgba(var(--primary-rgb), 0.2);" title="Cetak Kuitansi"><i class="fas fa-print"></i></a>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <?php endif; ?>
-
-                <!-- 1. MY CUSTOMERS LIST -->
-                <div class="glass-panel" style="padding:20px; border-left:4px solid var(--primary); margin-bottom:20px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                        <h3 style="margin:0; font-size:16px; font-weight:800;"><i class="fas fa-users text-primary"></i> Daftar Pelanggan Saya</h3>
-                        <span class="badge" style="background:var(--primary); color:white;"><?= count($my_customers) ?></span>
-                    </div>
-                    
-                    <div class="table-container">
-                        <table style="width:100%; font-size:13px;">
-                            <thead>
-                                <tr>
-                                    <th>Pelanggan</th>
-                                    <th>Layanan</th>
-                                    <th class="hide-mobile">Kontak</th>
-                                    <th>Tunggakan</th>
-                                    <th>Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if(empty($my_customers)): ?>
-                                    <tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-secondary);">Belum ada pelanggan. Klik "Tambah Pelanggan" untuk memulai.</td></tr>
-                                <?php endif; ?>
-                                <?php foreach($my_customers as $cust): ?>
-                                    <tr>
-                                        <td>
-                                            <div style="font-weight:700;"><?= htmlspecialchars($cust['name']) ?></div>
-                                            <div style="font-size:11px; color:var(--text-secondary);"><?= $cust['customer_code'] ?></div>
-                                        </td>
-                                        <td>
-                                            <div style="font-weight:600;"><?= htmlspecialchars($cust['package_name']) ?></div>
-                                            <div style="font-size:11px; color:var(--text-secondary);">Rp<?= number_format($cust['monthly_fee'],0,',','.') ?></div>
-                                        </td>
-                                        <td class="hide-mobile">
-                                            <div style="font-size:12px;"><?= $cust['contact'] ?></div>
-                                            <div style="font-size:10px; color:var(--text-secondary);"><?= htmlspecialchars($cust['area']) ?></div>
-                                        </td>
-                                        <td>
-                                            <?php if($cust['unpaid_count'] > 0): ?>
-                                                <span style="color:var(--danger); font-weight:800;">Rp<?= number_format($cust['total_unpaid'], 0, ',', '.') ?></span>
-                                                <div style="font-size:9px; color:var(--danger);"><?= $cust['unpaid_count'] ?> Bulan</div>
-                                            <?php else: ?>
-                                                <span style="color:var(--success); font-weight:800;">LUNAS</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <div style="display:flex; gap:5px; flex-wrap:wrap;">
-                                                <?php if($cust['unpaid_count'] > 0): ?>
-                                                    <button onclick="PartnerPage.quickPay(<?= $cust['id'] ?>, '<?= addslashes($cust['name']) ?>', <?= $cust['unpaid_count'] ?>, <?= $cust['total_unpaid'] ?>)" class="btn btn-sm" style="background:var(--success); color:white; padding:5px 8px;" title="Bayar Kilat"><i class="fas fa-check"></i></button>
-                                                <?php endif; ?>
-                                                <button onclick='PartnerPage.editCustomer(<?= json_encode([
-                                                    "id" => $cust["id"],
-                                                    "name" => $cust["name"],
-                                                    "address" => $cust["address"],
-                                                    "contact" => $cust["contact"],
-                                                    "package_name" => $cust["package_name"],
-                                                    "monthly_fee" => $cust["monthly_fee"],
-                                                    "billing_date" => $cust["billing_date"],
-                                                    "area" => $cust["area"],
-                                                    "ppn_active" => $cust["ppn_active"] ?? 0,
-                                                    "bhp_active" => $cust["bhp_active"] ?? 0,
-                                                    "uso_active" => $cust["uso_active"] ?? 0
-                                                ], JSON_HEX_APOS | JSON_HEX_QUOT) ?>)' class="btn btn-sm" style="background:rgba(var(--primary-rgb), 0.1); color:var(--primary); padding:5px 8px;" title="Edit Pelanggan"><i class="fas fa-pen"></i></button>
-                                                <button onclick="PartnerPage.deleteCustomer(<?= $cust['id'] ?>, '<?= addslashes($cust['name']) ?>')" class="btn btn-sm" style="background:rgba(239,68,68,0.1); color:var(--danger); padding:5px 8px;" title="Hapus Pelanggan"><i class="fas fa-trash"></i></button>
-                                                <?php 
-                                                    $dash_wa_num = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $cust['contact']));
-                                                    $dash_portal_link = $base_url . "/index.php?page=customer_portal&code=" . ($cust['customer_code'] ?: $cust['id']);
-                                                    // If has arrears, send reminder. Otherwise send generic hello.
-                                                    if ($cust['unpaid_count'] > 0) {
-                                                        $dash_wa_msg = parse_wa_template($wa_tpl_unpaid, [
-                                                            'name' => $cust['name'],
-                                                            'id_cust' => ($cust['customer_code'] ?: $cust['id']),
-                                                            'package' => $cust['package_name'],
-                                                            'tagihan' => $cust['monthly_fee'],
-                                                            'total_payment' => $cust['total_unpaid'],
-                                                            'jatuh_tempo' => 'Tgl ' . ($cust['billing_date'] ?: '1'),
-                                                            'rekening' => $rekening_receipt,
-                                                            'portal_link' => $dash_portal_link
-                                                        ]);
-                                                    } else {
-                                                        $dash_wa_msg = "Halo " . $cust['name'] . ", ada yang bisa kami bantu?";
-                                                    }
-                                                    $dash_wa_link = "https://api.whatsapp.com/send?phone=$dash_wa_num&text=" . urlencode($dash_wa_msg);
-                                                ?>
-                                                <a href="<?= $dash_wa_link ?>" target="_blank" class="btn btn-sm" style="background:#25D366; color:white; padding:5px 8px;"><i class="fab fa-whatsapp"></i></a>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- 2. MY BILLS TO ISP -->
-                <?php if(!empty($partner_invoices)): ?>
-                <div class="glass-panel" style="padding:20px; border-left:4px solid var(--danger);">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                        <h3 style="margin:0; font-size:16px; font-weight:800; color:var(--danger);"><i class="fas fa-file-invoice-dollar"></i> Tagihan Saya ke ISP</h3>
-                        <span class="badge" style="background:var(--danger); color:white; font-size:10px;">PRIBADI</span>
-                    </div>
-                    <div class="table-container">
-                        <table style="width:100%; font-size:13px;">
-                            <thead>
-                                <tr>
-                                    <th>Nominal</th><th>Jatuh Tempo</th><th>Status</th><th>Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach($partner_invoices as $inv): ?>
-                                    <tr>
-                                        <td style="font-weight:700;">Rp<?= number_format($inv['amount'],0,',','.') ?></td>
-                                        <td><?= date('d/m/Y', strtotime($inv['due_date'])) ?></td>
-                                        <td>
-                                            <span style="padding:3px 8px; border-radius:20px; font-size:10px; font-weight:800; background:<?= ($inv['status'] === 'Lunas' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)') ?>; color:<?= ($inv['status'] === 'Lunas' ? 'var(--success)' : 'var(--danger)') ?>;">
-                                                <?= strtoupper($inv['status']) ?>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <a href="index.php?page=invoice_print&id=<?= $inv['id'] ?>" target="_blank" class="btn btn-sm btn-ghost" style="padding:5px 8px;"><i class="fas fa-print"></i></a>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <?php endif; ?>
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse text-sm">
+                    <thead>
+                        <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                            <th class="px-4 py-2.5 font-semibold sm:px-5">Pelanggan</th>
+                            <th class="px-3 py-2.5 font-semibold">Layanan</th>
+                            <th class="hidden px-3 py-2.5 font-semibold md:table-cell">Kontak</th>
+                            <th class="px-3 py-2.5 font-semibold">Tunggakan</th>
+                            <th class="px-4 py-2.5 text-right font-semibold sm:px-5">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if(empty($my_customers)): ?>
+                            <tr><td colspan="5" class="px-5 py-10 text-center text-sm text-muted-foreground">Belum ada pelanggan. Klik "Tambah pelanggan" untuk memulai.</td></tr>
+                        <?php endif; ?>
+                        <?php foreach($my_customers as $cust): ?>
+                            <tr class="border-t border-solid border-border">
+                                <td class="px-4 py-3 sm:px-5">
+                                    <div class="font-semibold"><?= htmlspecialchars($cust['name']) ?></div>
+                                    <div class="text-xs text-muted-foreground"><?= $cust['customer_code'] ?></div>
+                                </td>
+                                <td class="px-3 py-3">
+                                    <div class="font-medium"><?= htmlspecialchars($cust['package_name']) ?></div>
+                                    <div class="text-xs text-muted-foreground tabular-nums">Rp <?= number_format($cust['monthly_fee'],0,',','.') ?></div>
+                                </td>
+                                <td class="hidden px-3 py-3 md:table-cell">
+                                    <div class="text-xs"><?= $cust['contact'] ?></div>
+                                    <div class="text-xs text-muted-foreground"><?= htmlspecialchars($cust['area']) ?></div>
+                                </td>
+                                <td class="px-3 py-3 whitespace-nowrap">
+                                    <?php if($cust['unpaid_count'] > 0): ?>
+                                        <div class="font-bold tabular-nums text-danger">Rp <?= number_format($cust['total_unpaid'], 0, ',', '.') ?></div>
+                                        <div class="text-xs text-danger"><?= $cust['unpaid_count'] ?> bulan</div>
+                                    <?php else: ?>
+                                        <span class="ui-badge ui-badge-signal">Lunas</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="px-4 py-3 sm:px-5">
+                                    <div class="flex flex-wrap justify-end gap-1.5">
+                                        <?php if($cust['unpaid_count'] > 0): ?>
+                                            <button type="button" onclick="PartnerPage.quickPay(<?= $cust['id'] ?>, '<?= addslashes($cust['name']) ?>', <?= $cust['unpaid_count'] ?>, <?= $cust['total_unpaid'] ?>)" class="ui-btn ui-btn-sm ui-btn-primary" title="Bayar kilat"><i class="fas fa-check"></i></button>
+                                        <?php endif; ?>
+                                        <button type="button" onclick='PartnerPage.editCustomer(<?= json_encode([
+                                            "id" => $cust["id"],
+                                            "name" => $cust["name"],
+                                            "address" => $cust["address"],
+                                            "contact" => $cust["contact"],
+                                            "package_name" => $cust["package_name"],
+                                            "monthly_fee" => $cust["monthly_fee"],
+                                            "billing_date" => $cust["billing_date"],
+                                            "area" => $cust["area"],
+                                            "ppn_active" => $cust["ppn_active"] ?? 0,
+                                            "bhp_active" => $cust["bhp_active"] ?? 0,
+                                            "uso_active" => $cust["uso_active"] ?? 0
+                                        ], JSON_HEX_APOS | JSON_HEX_QUOT) ?>)' class="ui-btn ui-btn-sm ui-btn-outline" title="Edit pelanggan"><i class="fas fa-pen"></i></button>
+                                        <button type="button" onclick="PartnerPage.deleteCustomer(<?= $cust['id'] ?>, '<?= addslashes($cust['name']) ?>')" class="ui-btn ui-btn-sm ui-btn-outline text-danger" title="Hapus pelanggan"><i class="fas fa-trash"></i></button>
+                                        <?php
+                                            $dash_wa_num = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $cust['contact']));
+                                            $dash_portal_link = $base_url . "/index.php?page=customer_portal&code=" . ($cust['customer_code'] ?: $cust['id']);
+                                            // If has arrears, send reminder. Otherwise send generic hello.
+                                            if ($cust['unpaid_count'] > 0) {
+                                                $dash_wa_msg = parse_wa_template($wa_tpl_unpaid, [
+                                                    'name' => $cust['name'],
+                                                    'id_cust' => ($cust['customer_code'] ?: $cust['id']),
+                                                    'package' => $cust['package_name'],
+                                                    'tagihan' => $cust['monthly_fee'],
+                                                    'total_payment' => $cust['total_unpaid'],
+                                                    'jatuh_tempo' => 'Tgl ' . ($cust['billing_date'] ?: '1'),
+                                                    'rekening' => $rekening_receipt,
+                                                    'portal_link' => $dash_portal_link
+                                                ]);
+                                            } else {
+                                                $dash_wa_msg = "Halo " . $cust['name'] . ", ada yang bisa kami bantu?";
+                                            }
+                                            $dash_wa_link = "https://api.whatsapp.com/send?phone=$dash_wa_num&text=" . urlencode($dash_wa_msg);
+                                        ?>
+                                        <a href="<?= $dash_wa_link ?>" target="_blank" class="ui-btn ui-btn-sm ui-btn-wa" title="Kirim WhatsApp"><i class="fab fa-whatsapp"></i></a>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
             </div>
-        </div>
+        </section>
 
-        <!-- PERSISTENT BOTTOM SUMMARY BAR -->
-        <div class="static-summary-bar">
-            <div class="glass-panel" style="padding:15px 20px; border-left:4px solid var(--success); background:linear-gradient(to right, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05)); backdrop-filter:blur(15px); display:flex; justify-content:space-between; align-items:center; border-radius:18px; box-shadow:0 -10px 25px rgba(0,0,0,0.1);">
-                <div style="display:flex; align-items:center; gap:12px;">
-                    <div style="width:40px; height:40px; border-radius:12px; background:var(--success); color:white; display:flex; align-items:center; justify-content:center; font-size:20px; box-shadow:0 4px 10px rgba(16, 185, 129, 0.3); flex-shrink:0;">
-                        <i class="fas fa-coins"></i>
-                    </div>
-                    <div>
-                        <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:800;">Laba Bersih SAYA</div>
-                        <div style="font-size:18px; font-weight:900; color:var(--text-primary); line-height:1.2;">Rp<?= number_format($my_net_profit, 0, ',', '.') ?></div>
-                    </div>
+        <!-- 2. MY BILLS TO ISP -->
+        <?php if(!empty($partner_invoices)): ?>
+        <section class="ui-card overflow-hidden">
+            <div class="flex items-center justify-between gap-3 border-b border-solid border-border px-4 py-3 sm:px-5">
+                <div>
+                    <h3 class="m-0 text-[15px] font-bold">Tagihan saya ke ISP</h3>
+                    <p class="m-0 text-xs text-muted-foreground">Tagihan akun reseller Anda dari ISP pusat</p>
                 </div>
-                <div style="text-align:right;">
-                    <div style="font-size:10px; color:var(--text-secondary); font-weight:800; text-transform:uppercase;">Piutang Aktif</div>
-                    <div style="font-size:18px; font-weight:900; color:var(--danger); line-height:1.2;">Rp<?= number_format($total_unpaid_val, 0, ',', '.') ?></div>
-                </div>
+                <span class="ui-badge ui-badge-muted">Pribadi</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse text-sm">
+                    <thead>
+                        <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                            <th class="px-4 py-2.5 font-semibold sm:px-5">Nominal</th><th class="px-3 py-2.5 font-semibold">Jatuh tempo</th><th class="px-3 py-2.5 font-semibold">Status</th><th class="px-4 py-2.5 text-right font-semibold sm:px-5">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach($partner_invoices as $inv): ?>
+                            <tr class="border-t border-solid border-border">
+                                <td class="px-4 py-3 font-bold tabular-nums whitespace-nowrap sm:px-5">Rp <?= number_format($inv['amount'],0,',','.') ?></td>
+                                <td class="px-3 py-3 tabular-nums whitespace-nowrap"><?= date('d/m/Y', strtotime($inv['due_date'])) ?></td>
+                                <td class="px-3 py-3">
+                                    <span class="ui-badge <?= ($inv['status'] === 'Lunas' ? 'ui-badge-signal' : 'ui-badge-danger') ?>"><?= htmlspecialchars($inv['status']) ?></span>
+                                </td>
+                                <td class="px-4 py-3 text-right sm:px-5">
+                                    <a href="index.php?page=invoice_print&id=<?= $inv['id'] ?>" target="_blank" class="ui-btn ui-btn-sm ui-btn-outline" title="Cetak"><i class="fas fa-print"></i></a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        <?php endif; ?>
+
+        <!-- SUMMARY -->
+        <div class="ui-card flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5">
+            <div>
+                <div class="text-xs font-medium text-muted-foreground">Laba bersih saya</div>
+                <div class="text-lg font-extrabold leading-tight tabular-nums">Rp <?= number_format($my_net_profit, 0, ',', '.') ?></div>
+            </div>
+            <div class="text-right">
+                <div class="text-xs font-medium text-muted-foreground">Piutang aktif</div>
+                <div class="text-lg font-extrabold leading-tight tabular-nums text-danger">Rp <?= number_format($total_unpaid_val, 0, ',', '.') ?></div>
             </div>
         </div>
     </div>
 <?php endif; ?>
-</div> <!-- end .tab-flex-container -->
 
 <!-- Hidden Form for Quick Pay -->
 <form id="quickPayForm" action="index.php?page=admin_invoices&action=mark_paid_bulk" method="POST" style="display:none;">
@@ -937,7 +848,7 @@ window.PartnerPage = (function(){
     }
     function showAddCustomerModal(){ const m = document.getElementById('addCustomerModal'); if(m) m.style.display = 'flex'; }
     function syncAddPrice(select){ const fee = select.options[select.selectedIndex].getAttribute('data-fee'); if(fee){ const el = document.getElementById('add_monthly_fee'); if(el) el.value = fee; } }
-    
+
     function editCustomer(data) {
         document.getElementById('edit_cust_id').value = data.id;
         document.getElementById('edit_name').value = data.name || '';
@@ -953,98 +864,91 @@ window.PartnerPage = (function(){
         document.getElementById('editCustomerModal').style.display = 'flex';
     }
     function syncEditPrice(select){ const fee = select.options[select.selectedIndex].getAttribute('data-fee'); if(fee){ document.getElementById('edit_monthly_fee').value = fee; } }
-    
+
     function deleteCustomer(id, name) {
         if (confirm(`HAPUS PELANGGAN: ${name}?\n\nSeluruh data tagihan dan pembayaran pelanggan ini akan dihapus permanen.\n\nTindakan ini TIDAK BISA dibatalkan!`)) {
             window.location.href = `index.php?page=partner&action=delete_customer&id=${id}`;
         }
     }
-    
+
     return { quickPay, showAddCustomerModal, syncAddPrice, editCustomer, syncEditPrice, deleteCustomer };
 })();
 </script>
 
 <!-- Modal Tambah Pelanggan Baru -->
-<div id="addCustomerModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:9999; backdrop-filter: blur(10px); padding:15px;">
-    <div class="glass-panel" style="width:100%; max-width:550px; padding:0; border-radius:24px; border:1px solid rgba(255,255,255,0.1); box-shadow: 0 25px 50px rgba(0,0,0,0.4); overflow:hidden;">
+<div id="addCustomerModal" class="fixed inset-0 z-[1000] items-center justify-center bg-black/50 p-4" style="display:none;">
+    <div class="ui-card flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden">
         <!-- Header -->
-        <div style="padding:24px; background:linear-gradient(to right, var(--primary), #1e293b); color:white; display:flex; justify-content:space-between; align-items:center;">
-            <div style="display:flex; align-items:center; gap:12px;">
-                <div style="width:45px; height:45px; border-radius:14px; background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; font-size:20px;">
-                    <i class="fas fa-user-plus"></i>
-                </div>
-                <div>
-                    <h3 style="margin:0; font-size:18px; font-weight:800;">Pelanggan Baru</h3>
-                    <p style="margin:2px 0 0; font-size:12px; opacity:0.8;">Pendaftaran mitra di lapangan</p>
-                </div>
+        <div class="flex items-start justify-between gap-4 border-b border-solid border-border px-5 py-4">
+            <div>
+                <h3 class="m-0 text-lg font-bold">Pelanggan baru</h3>
+                <p class="m-0 mt-0.5 text-xs text-muted-foreground">Pendaftaran mitra di lapangan</p>
             </div>
-            <button onclick="document.getElementById('addCustomerModal').style.display='none'" style="background:none; border:none; color:white; cursor:pointer; font-size:24px; padding:10px; opacity:0.7;">&times;</button>
+            <button type="button" onclick="document.getElementById('addCustomerModal').style.display='none'" class="ui-btn ui-btn-sm ui-btn-ghost" aria-label="Tutup">&times;</button>
         </div>
-        
-        <form action="index.php?page=partner&action=add_customer" method="POST" style="padding:24px; max-height:70vh; overflow-y:auto;" onsubmit="return confirm('Daftarkan pelanggan baru ini?')">
+
+        <form action="index.php?page=partner&action=add_customer" method="POST" class="min-h-0 overflow-y-auto p-5" onsubmit="return confirm('Daftarkan pelanggan baru ini?')">
 <?= csrf_field() ?>
             <!-- Section 1: Data Diri -->
-            <div style="margin-bottom:24px;">
-                <div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--primary); margin-bottom:16px; display:flex; align-items:center; gap:8px;">
-                    <i class="fas fa-id-card"></i> Identitas Pelanggan
-                </div>
-                <div class="form-group" style="margin-bottom:15px;">
-                    <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Nama Lengkap / Instansi</label>
-                    <input type="text" name="name" class="form-control" placeholder="Masukan nama pelanggan" required style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;">
-                </div>
-                <div class="form-group">
-                    <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">No. WhatsApp (Aktif)</label>
-                    <input type="text" name="contact" class="form-control" placeholder="08xxxx" required style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;">
+            <div class="mb-5">
+                <div class="mb-3 text-sm font-bold">Identitas pelanggan</div>
+                <div class="grid gap-4">
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Nama lengkap / instansi</span>
+                        <input type="text" name="name" class="form-control w-full" placeholder="Masukkan nama pelanggan" required>
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">No. WhatsApp (aktif)</span>
+                        <input type="text" name="contact" class="form-control w-full" placeholder="08xxxx" required>
+                    </label>
                 </div>
             </div>
 
             <!-- Section 2: Layanan -->
-            <div style="margin-bottom:24px;">
-                <div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--primary); margin-bottom:16px; display:flex; align-items:center; gap:8px;">
-                    <i class="fas fa-wifi"></i> Paket & Lokasi
-                </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:18px;">
-                    <div class="form-group">
-                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Paket Internet</label>
-                        <select name="package_name" class="form-control" onchange="syncAddPrice(this)" required style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;">
-                            <option value="">-- Pilih Paket --</option>
+            <div class="mb-5">
+                <div class="mb-3 text-sm font-bold">Paket & lokasi</div>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Paket internet</span>
+                        <select name="package_name" class="form-control w-full" onchange="syncAddPrice(this)" required>
+                            <option value="">-- Pilih paket --</option>
                             <?php foreach($packages_all as $pkg): ?>
-                                <option value="<?= htmlspecialchars($pkg['name']) ?>" data-fee="<?= $pkg['fee'] ?>"><?= htmlspecialchars($pkg['name']) ?> (Rp<?= number_format($pkg['fee'],0,',','.') ?>)</option>
+                                <option value="<?= htmlspecialchars($pkg['name']) ?>" data-fee="<?= $pkg['fee'] ?>"><?= htmlspecialchars($pkg['name']) ?> (Rp <?= number_format($pkg['fee'],0,',','.') ?>)</option>
                             <?php endforeach; ?>
                         </select>
-                    </div>
-                    <div class="form-group">
-                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Biaya Bulanan (Rp)</label>
-                        <input type="number" name="monthly_fee" id="add_monthly_fee" class="form-control" required style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%; font-weight:700;">
-                    </div>
-                    <div class="form-group">
-                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Tanggal Tagih</label>
-                        <select name="billing_date" class="form-control" style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;">
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Biaya bulanan (Rp)</span>
+                        <input type="number" name="monthly_fee" id="add_monthly_fee" class="form-control w-full font-semibold tabular-nums" required>
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Tanggal tagih</span>
+                        <select name="billing_date" class="form-control w-full">
                             <?php for($d=1;$d<=28;$d++): ?>
                                 <option value="<?= $d ?>">Tanggal <?= $d ?></option>
                             <?php endfor; ?>
                         </select>
-                    </div>
-                    <div class="form-group" style="grid-column: span 2;">
-                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Tanggal Registrasi</label>
-                        <input type="date" name="registration_date" value="<?= date('Y-m-d') ?>" class="form-control" required style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;">
-                    </div>
-                    <div class="form-group" style="grid-column: span 2;">
-                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Alamat Lengkap</label>
-                        <textarea name="address" class="form-control" rows="3" placeholder="Jl. Contoh Nomor 1..." style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;"></textarea>
-                    </div>
-                    <div class="form-group" style="grid-column: span 2;">
-                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Aktivasi Fitur Tambahan</label>
-                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                            <label style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); border-radius:10px; padding:8px 12px; min-width:110px;">
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Tanggal registrasi</span>
+                        <input type="date" name="registration_date" value="<?= date('Y-m-d') ?>" class="form-control w-full" required>
+                    </label>
+                    <label class="block sm:col-span-2">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Alamat lengkap</span>
+                        <textarea name="address" class="form-control w-full" rows="3" placeholder="Jl. Contoh Nomor 1..."></textarea>
+                    </label>
+                    <div class="sm:col-span-2">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Aktivasi fitur tambahan</span>
+                        <div class="flex flex-wrap gap-2">
+                            <label class="inline-flex items-center gap-2 rounded-md border border-solid border-border px-3 py-2 text-sm">
                                 <input type="checkbox" name="ppn_active" value="1">
                                 <span>PPN</span>
                             </label>
-                            <label style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); border-radius:10px; padding:8px 12px; min-width:110px;">
+                            <label class="inline-flex items-center gap-2 rounded-md border border-solid border-border px-3 py-2 text-sm">
                                 <input type="checkbox" name="bhp_active" value="1">
                                 <span>BHP</span>
                             </label>
-                            <label style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); border-radius:10px; padding:8px 12px; min-width:110px;">
+                            <label class="inline-flex items-center gap-2 rounded-md border border-solid border-border px-3 py-2 text-sm">
                                 <input type="checkbox" name="uso_active" value="1">
                                 <span>USO</span>
                             </label>
@@ -1054,99 +958,90 @@ window.PartnerPage = (function(){
             </div>
 
             <!-- Footer: Actions -->
-            <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:10px; padding-top:24px; border-top:1px solid var(--glass-border);">
-                <button type="button" class="btn btn-ghost" onclick="document.getElementById('addCustomerModal').style.display='none'" style="padding:12px 24px; border-radius:12px; font-weight:600; font-size:14px;">Batal</button>
-                <button type="submit" class="btn btn-primary" style="padding:12px 30px; border-radius:12px; font-weight:800; font-size:14px; box-shadow: 0 4px 15px rgba(var(--primary-rgb), 0.3);">
-                    <i class="fas fa-save" style="margin-right:8px;"></i> Simpan Pelanggan
-                </button>
+            <div class="mt-6 flex justify-end gap-2 border-t border-solid border-border pt-4">
+                <button type="button" class="ui-btn ui-btn-outline" onclick="document.getElementById('addCustomerModal').style.display='none'">Batal</button>
+                <button type="submit" class="ui-btn ui-btn-primary"><i class="fas fa-save"></i> Simpan pelanggan</button>
             </div>
         </form>
     </div>
 </div>
 
 <!-- Modal Edit Pelanggan -->
-<div id="editCustomerModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:9999; backdrop-filter: blur(10px); padding:15px;">
-    <div class="glass-panel" style="width:100%; max-width:550px; padding:0; border-radius:24px; border:1px solid rgba(255,255,255,0.1); box-shadow: 0 25px 50px rgba(0,0,0,0.4); overflow:hidden;">
+<div id="editCustomerModal" class="fixed inset-0 z-[1000] items-center justify-center bg-black/50 p-4" style="display:none;">
+    <div class="ui-card flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden">
         <!-- Header -->
-        <div style="padding:24px; background:linear-gradient(to right, #f59e0b, #d97706); color:white; display:flex; justify-content:space-between; align-items:center;">
-            <div style="display:flex; align-items:center; gap:12px;">
-                <div style="width:45px; height:45px; border-radius:14px; background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; font-size:20px;">
-                    <i class="fas fa-user-edit"></i>
-                </div>
-                <div>
-                    <h3 style="margin:0; font-size:18px; font-weight:800;">Edit Pelanggan</h3>
-                    <p style="margin:2px 0 0; font-size:12px; opacity:0.8;">Perbarui data pelanggan Anda</p>
-                </div>
+        <div class="flex items-start justify-between gap-4 border-b border-solid border-border px-5 py-4">
+            <div>
+                <h3 class="m-0 text-lg font-bold">Edit pelanggan</h3>
+                <p class="m-0 mt-0.5 text-xs text-muted-foreground">Perbarui data pelanggan Anda</p>
             </div>
-            <button onclick="document.getElementById('editCustomerModal').style.display='none'" style="background:none; border:none; color:white; cursor:pointer; font-size:24px; padding:10px; opacity:0.7;">&times;</button>
+            <button type="button" onclick="document.getElementById('editCustomerModal').style.display='none'" class="ui-btn ui-btn-sm ui-btn-ghost" aria-label="Tutup">&times;</button>
         </div>
-        
-        <form action="index.php?page=partner&action=edit_customer" method="POST" style="padding:24px; max-height:70vh; overflow-y:auto;" onsubmit="return confirm('Simpan perubahan data pelanggan ini?')">
+
+        <form action="index.php?page=partner&action=edit_customer" method="POST" class="min-h-0 overflow-y-auto p-5" onsubmit="return confirm('Simpan perubahan data pelanggan ini?')">
 <?= csrf_field() ?>
             <input type="hidden" name="id" id="edit_cust_id">
-            
+
             <!-- Section 1: Data Diri -->
-            <div style="margin-bottom:24px;">
-                <div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#f59e0b; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
-                    <i class="fas fa-id-card"></i> Identitas Pelanggan
-                </div>
-                <div class="form-group" style="margin-bottom:15px;">
-                    <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Nama Lengkap / Instansi</label>
-                    <input type="text" name="name" id="edit_name" class="form-control" required style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;">
-                </div>
-                <div class="form-group" style="margin-bottom:15px;">
-                    <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">No. WhatsApp (Aktif)</label>
-                    <input type="text" name="contact" id="edit_contact" class="form-control" required style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;">
+            <div class="mb-5">
+                <div class="mb-3 text-sm font-bold">Identitas pelanggan</div>
+                <div class="grid gap-4">
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Nama lengkap / instansi</span>
+                        <input type="text" name="name" id="edit_name" class="form-control w-full" required>
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">No. WhatsApp (aktif)</span>
+                        <input type="text" name="contact" id="edit_contact" class="form-control w-full" required>
+                    </label>
                 </div>
             </div>
 
             <!-- Section 2: Layanan -->
-            <div style="margin-bottom:24px;">
-                <div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#f59e0b; margin-bottom:16px; display:flex; align-items:center; gap:8px;">
-                    <i class="fas fa-wifi"></i> Paket & Lokasi
-                </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:18px;">
-                    <div class="form-group">
-                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Paket Internet</label>
-                        <select name="package_name" id="edit_package_name" class="form-control" onchange="PartnerPage.syncEditPrice(this)" style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;">
+            <div class="mb-5">
+                <div class="mb-3 text-sm font-bold">Paket & lokasi</div>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Paket internet</span>
+                        <select name="package_name" id="edit_package_name" class="form-control w-full" onchange="PartnerPage.syncEditPrice(this)">
                             <option value="">-- Custom --</option>
                             <?php foreach($packages_all as $pkg): ?>
-                                <option value="<?= htmlspecialchars($pkg['name']) ?>" data-fee="<?= $pkg['fee'] ?>"><?= htmlspecialchars($pkg['name']) ?> (Rp<?= number_format($pkg['fee'],0,',','.') ?>)</option>
+                                <option value="<?= htmlspecialchars($pkg['name']) ?>" data-fee="<?= $pkg['fee'] ?>"><?= htmlspecialchars($pkg['name']) ?> (Rp <?= number_format($pkg['fee'],0,',','.') ?>)</option>
                             <?php endforeach; ?>
                         </select>
-                    </div>
-                    <div class="form-group">
-                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Biaya Bulanan (Rp)</label>
-                        <input type="number" name="monthly_fee" id="edit_monthly_fee" class="form-control" required style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%; font-weight:700;">
-                    </div>
-                    <div class="form-group">
-                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Tanggal Tagih</label>
-                        <select name="billing_date" id="edit_billing_date" class="form-control" style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;">
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Biaya bulanan (Rp)</span>
+                        <input type="number" name="monthly_fee" id="edit_monthly_fee" class="form-control w-full font-semibold tabular-nums" required>
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Tanggal tagih</span>
+                        <select name="billing_date" id="edit_billing_date" class="form-control w-full">
                             <?php for($d=1;$d<=28;$d++): ?>
                                 <option value="<?= $d ?>">Tanggal <?= $d ?></option>
                             <?php endfor; ?>
                         </select>
-                    </div>
-                    <div class="form-group">
-                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Area</label>
-                        <input type="text" name="area" id="edit_area" class="form-control" placeholder="Area/Wilayah" style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;">
-                    </div>
-                    <div class="form-group" style="grid-column: span 2;">
-                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Alamat Lengkap</label>
-                        <textarea name="address" id="edit_address" class="form-control" rows="3" style="padding:12px 16px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;"></textarea>
-                    </div>
-                    <div class="form-group" style="grid-column: span 2;">
-                        <label style="font-size:13px; color:var(--text-secondary); margin-bottom:8px; display:block;">Aktivasi Fitur Tambahan</label>
-                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                            <label style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); border-radius:10px; padding:8px 12px; min-width:110px;">
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Area</span>
+                        <input type="text" name="area" id="edit_area" class="form-control w-full" placeholder="Area/wilayah">
+                    </label>
+                    <label class="block sm:col-span-2">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Alamat lengkap</span>
+                        <textarea name="address" id="edit_address" class="form-control w-full" rows="3"></textarea>
+                    </label>
+                    <div class="sm:col-span-2">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Aktivasi fitur tambahan</span>
+                        <div class="flex flex-wrap gap-2">
+                            <label class="inline-flex items-center gap-2 rounded-md border border-solid border-border px-3 py-2 text-sm">
                                 <input type="checkbox" name="ppn_active" id="edit_ppn_active" value="1">
                                 <span>PPN</span>
                             </label>
-                            <label style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); border-radius:10px; padding:8px 12px; min-width:110px;">
+                            <label class="inline-flex items-center gap-2 rounded-md border border-solid border-border px-3 py-2 text-sm">
                                 <input type="checkbox" name="bhp_active" id="edit_bhp_active" value="1">
                                 <span>BHP</span>
                             </label>
-                            <label style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); border-radius:10px; padding:8px 12px; min-width:110px;">
+                            <label class="inline-flex items-center gap-2 rounded-md border border-solid border-border px-3 py-2 text-sm">
                                 <input type="checkbox" name="uso_active" id="edit_uso_active" value="1">
                                 <span>USO</span>
                             </label>
@@ -1156,11 +1051,9 @@ window.PartnerPage = (function(){
             </div>
 
             <!-- Footer: Actions -->
-            <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:10px; padding-top:24px; border-top:1px solid var(--glass-border);">
-                <button type="button" class="btn btn-ghost" onclick="document.getElementById('editCustomerModal').style.display='none'" style="padding:12px 24px; border-radius:12px; font-weight:600; font-size:14px;">Batal</button>
-                <button type="submit" class="btn" style="padding:12px 30px; border-radius:12px; font-weight:800; font-size:14px; background:#f59e0b; color:white; border:none; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);">
-                    <i class="fas fa-save" style="margin-right:8px;"></i> Simpan Perubahan
-                </button>
+            <div class="mt-6 flex justify-end gap-2 border-t border-solid border-border pt-4">
+                <button type="button" class="ui-btn ui-btn-outline" onclick="document.getElementById('editCustomerModal').style.display='none'">Batal</button>
+                <button type="submit" class="ui-btn ui-btn-primary"><i class="fas fa-save"></i> Simpan perubahan</button>
             </div>
         </form>
     </div>

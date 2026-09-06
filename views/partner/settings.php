@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $brand_rekening = $_POST['brand_rekening'] ?? '';
     $wa_template = $_POST['wa_template'] ?? '';
     $wa_template_paid = $_POST['wa_template_paid'] ?? '';
-    
+
     $web_upload_dir = 'uploads/partner/';
     $fs_upload_dir = __DIR__ . '/../../public/' . $web_upload_dir;
 
@@ -35,13 +35,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $err = "QRIS: " . $up['error'];
         }
     }
-    
+
     try {
         $stmt = $db->prepare("UPDATE users SET brand_name = ?, brand_address = ?, brand_contact = ?, brand_logo = ?, brand_qris = ?, brand_bank = ?, brand_rekening = ?, wa_template = ?, wa_template_paid = ? WHERE id = ?");
         $stmt->execute([$brand_name, $brand_address, $brand_contact, $logo_path, $qris_path, $brand_bank, $brand_rekening, $wa_template, $wa_template_paid, $u_id]);
-        
+
         $msg = "Profil berhasil diperbarui!";
-        
+
         // Refresh user data
         $stmt = $db->prepare("SELECT * FROM users WHERE id = ?");
         $stmt->execute([$u_id]);
@@ -52,146 +52,116 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
-<div class="glass-panel" style="padding: 30px; max-width: 800px; margin: 0 auto;">
-    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px;">
-        <div style="background: rgba(var(--primary-rgb), 0.1); width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--primary);">
-            <i class="fas fa-id-card-alt" style="font-size: 24px;"></i>
-        </div>
-        <div>
-            <h2 style="margin: 0; font-size: 20px; font-weight: 800;">Pengaturan Profil Bisnis Mitra</h2>
-            <p style="margin: 5px 0 0; font-size: 13px; color: var(--text-secondary);">Sesuaikan identitas bisnis Anda yang akan muncul pada nota pelanggan.</p>
-        </div>
+<div class="mx-auto max-w-3xl">
+    <div class="mb-5">
+        <h2 class="m-0 text-xl font-bold sm:text-2xl">Profil bisnis mitra</h2>
+        <p class="m-0 mt-1 text-sm text-muted-foreground">Sesuaikan identitas bisnis Anda yang akan muncul pada nota pelanggan.</p>
     </div>
 
     <?php if($msg): ?>
-        <div class="glass-panel" style="padding:15px; margin-bottom:20px; background:rgba(16, 185, 129, 0.1); border-left:4px solid var(--success); color:var(--success); font-weight:600;">
-            <i class="fas fa-check-circle"></i> <?= $msg ?>
-        </div>
+        <div class="ui-card mb-5 p-4 text-sm"><span class="font-semibold text-signal">Tersimpan.</span> <?= $msg ?></div>
     <?php endif; ?>
     <?php if($err): ?>
-        <div class="glass-panel" style="padding:15px; margin-bottom:20px; background:rgba(239, 68, 68, 0.1); border-left:4px solid var(--danger); color:var(--danger); font-weight:600;">
-            <i class="fas fa-exclamation-circle"></i> <?= $err ?>
-        </div>
+        <div class="ui-card mb-5 p-4 text-sm border-danger/40"><span class="font-semibold text-danger">Gagal.</span> <?= $err ?></div>
     <?php endif; ?>
 
-    <form method="POST" enctype="multipart/form-data" class="grid-form">
+    <form method="POST" enctype="multipart/form-data">
 <?= csrf_field() ?>
-        <div style="grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 25px;">
-            <!-- Simple Fields -->
-            <div style="display: flex; flex-direction: column; gap: 20px;">
-                <div class="form-group">
-                    <label style="font-weight: 700; font-size: 13px; margin-bottom: 8px; display: block;">Nama Bisnis / Internet</label>
-                    <input type="text" name="brand_name" class="form-control" value="<?= htmlspecialchars($user['brand_name'] ?? '') ?>" placeholder="Contoh: Eka Net Solutions" required>
-                </div>
-                
-                <div class="form-group">
-                    <label style="font-weight: 700; font-size: 13px; margin-bottom: 8px; display: block;">Nomor Telepon Bisnis (WhatsApp)</label>
-                    <input type="text" name="brand_contact" class="form-control" value="<?= htmlspecialchars($user['brand_contact'] ?? '') ?>" placeholder="08xxxxxx">
-                </div>
+        <section class="ui-card p-4 sm:p-5">
+            <h3 class="m-0 mb-4 text-[15px] font-bold">Identitas bisnis</h3>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <!-- Simple Fields -->
+                <div class="flex flex-col gap-4">
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Nama bisnis / internet</span>
+                        <input type="text" name="brand_name" class="form-control w-full" value="<?= htmlspecialchars($user['brand_name'] ?? '') ?>" placeholder="Contoh: Eka Net Solutions" required>
+                    </label>
 
-                <div class="form-group">
-                    <label style="font-weight: 700; font-size: 13px; margin-bottom: 8px; display: block;">Alamat Bisnis</label>
-                    <textarea name="brand_address" class="form-control" style="height: 60px;" placeholder="Alamat lengkap kantor/usaha Anda..."><?= htmlspecialchars($user['brand_address'] ?? '') ?></textarea>
-                </div>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                    <div class="form-group">
-                        <label style="font-weight: 700; font-size: 13px; margin-bottom: 8px; display: block;">Nama Bank</label>
-                        <input type="text" name="brand_bank" class="form-control" value="<?= htmlspecialchars($user['brand_bank'] ?? '') ?>" placeholder="BRI / BCA / Mandiri">
-                    </div>
-                    <div class="form-group">
-                        <label style="font-weight: 700; font-size: 13px; margin-bottom: 8px; display: block;">Nomor Rekening</label>
-                        <input type="text" name="brand_rekening" class="form-control" value="<?= htmlspecialchars($user['brand_rekening'] ?? '') ?>" placeholder="Nomor Rekening">
-                    </div>
-                </div>
-            </div>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Nomor telepon bisnis (WhatsApp)</span>
+                        <input type="text" name="brand_contact" class="form-control w-full" value="<?= htmlspecialchars($user['brand_contact'] ?? '') ?>" placeholder="08xxxxxx">
+                    </label>
 
-            <!-- Upload Fields -->
-            <div style="display: flex; flex-direction: column; gap: 20px;">
-            <div class="form-group">
-                <label style="font-weight: 700; font-size: 13px; margin-bottom: 8px; display: block;">Logo Bisnis (ISP Pusat)</label>
-                <div style="background: rgba(var(--primary-rgb),0.02); border: 2px solid var(--glass-border); border-radius: 12px; padding: 15px; text-align: center;">
-                    <?php
-                        // Fetch Admin Logo for preview
-                        $tenant_id_p = $_SESSION['tenant_id'] ?? 1;
-                        $admin_logo = $db->query("SELECT company_logo FROM settings WHERE tenant_id = $tenant_id_p OR id = 1 LIMIT 1")->fetchColumn();
-                        $logo_src = '';
-                        if (!empty($admin_logo)) {
-                            $logo_src = preg_match('/^http/', $admin_logo) ? $admin_logo : '/' . str_replace(' ', '%20', $admin_logo);
-                        }
-                    ?>
-                    <?php if(!empty($logo_src)): ?>
-                        <img src="<?= htmlspecialchars($logo_src) ?>" style="max-height: 60px; margin-bottom: 10px; border-radius: 5px;">
-                    <?php endif; ?>
-                    <div style="padding: 8px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; color: var(--primary); font-size: 11px; font-weight: 700;">
-                        <i class="fas fa-lock"></i> Logo dikelola oleh ISP Pusat
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Alamat bisnis</span>
+                        <textarea name="brand_address" class="form-control w-full" rows="3" placeholder="Alamat lengkap kantor/usaha Anda..."><?= htmlspecialchars($user['brand_address'] ?? '') ?></textarea>
+                    </label>
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-medium text-muted-foreground">Nama bank</span>
+                            <input type="text" name="brand_bank" class="form-control w-full" value="<?= htmlspecialchars($user['brand_bank'] ?? '') ?>" placeholder="BRI / BCA / Mandiri">
+                        </label>
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-medium text-muted-foreground">Nomor rekening</span>
+                            <input type="text" name="brand_rekening" class="form-control w-full" value="<?= htmlspecialchars($user['brand_rekening'] ?? '') ?>" placeholder="Nomor rekening">
+                        </label>
                     </div>
                 </div>
-            </div>
 
-                <div class="form-group">
-                    <label style="font-weight: 700; font-size: 13px; margin-bottom: 8px; display: block;">File QRIS Pembayaran</label>
-                    <div style="background: rgba(255,255,255,0.02); border: 2px dashed var(--glass-border); border-radius: 12px; padding: 15px; text-align: center;">
-                        <?php
-                            $qris_src = '';
-                            if (!empty($user['brand_qris'])) {
-                                $qris_src = preg_match('/^http/', $user['brand_qris']) ? $user['brand_qris'] : '/' . str_replace(' ', '%20', $user['brand_qris']);
-                            }
-                        ?>
-                        <?php if(!empty($qris_src)): ?>
-                            <img src="<?= htmlspecialchars($qris_src) ?>" style="max-height: 80px; margin-bottom: 15px; border-radius: 5px; border: 1px solid #ddd;">
-                        <?php else: ?>
-                            <div style="font-size: 24px; opacity: 0.2; margin-bottom: 10px;"><i class="fas fa-qrcode"></i></div>
-                        <?php endif; ?>
-                        <input type="file" name="brand_qris" accept="image/*" class="form-control" style="font-size: 12px;">
-                        <p style="font-size: 11px; color: var(--text-secondary); margin-top: 8px;">Upload gambar QRIS Anda di sini.</p>
+                <!-- Upload Fields -->
+                <div class="flex flex-col gap-4">
+                    <div>
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Logo bisnis (ISP pusat)</span>
+                        <div class="rounded-md border border-solid border-border bg-muted/50 p-4 text-center">
+                            <?php
+                                // Fetch Admin Logo for preview
+                                $tenant_id_p = $_SESSION['tenant_id'] ?? 1;
+                                $admin_logo = $db->query("SELECT company_logo FROM settings WHERE tenant_id = $tenant_id_p OR id = 1 LIMIT 1")->fetchColumn();
+                                $logo_src = '';
+                                if (!empty($admin_logo)) {
+                                    $logo_src = preg_match('/^http/', $admin_logo) ? $admin_logo : '/' . str_replace(' ', '%20', $admin_logo);
+                                }
+                            ?>
+                            <?php if(!empty($logo_src)): ?>
+                                <img src="<?= htmlspecialchars($logo_src) ?>" class="mx-auto mb-3 max-h-[60px] rounded-sm" alt="Logo ISP pusat">
+                            <?php endif; ?>
+                            <div class="text-xs text-muted-foreground">Logo dikelola oleh ISP pusat.</div>
+                        </div>
                     </div>
-                </div>
-            </div>
-        </div>
 
-            <!-- WhatsApp Templates section -->
-        <div style="grid-column: 1 / -1; margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--glass-border);">
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
-                <div style="background: rgba(37, 211, 102, 0.1); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #25D366;">
-                    <i class="fab fa-whatsapp" style="font-size: 20px;"></i>
-                </div>
-                <h3 style="margin: 0; font-size: 16px; font-weight: 700;">Pengaturan Pesan WhatsApp (Otomatis)</h3>
-            </div>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px;">
-                <div class="form-group">
-                    <label style="font-weight: 700; font-size: 13px; margin-bottom: 8px; display: block;">Template Pengingat (Belum Lunas)</label>
-                    <textarea name="wa_template" class="form-control" style="height: 120px; font-size: 13px;" placeholder="Gunakan: {nama}, {tagihan}, {jatuh_tempo}, {rekening}, {link_tagihan}"><?= htmlspecialchars($user['wa_template'] ?? '') ?></textarea>
-                    <small style="color:var(--text-secondary); margin-top:5px; display:block; font-size:11px;">Variabel: {nama}, {id_cust}, {paket}, {bulan}, {tagihan}, {jatuh_tempo}, {rekening}, {tunggakan}, {total_harus}, {link_tagihan}, {link_nota}</small>
-                </div>
-                <div class="form-group">
-                    <label style="font-weight: 700; font-size: 13px; margin-bottom: 8px; display: block;">Template Kuitansi (Lunas/Sudah Bayar)</label>
-                    <textarea name="wa_template_paid" class="form-control" style="height: 120px; font-size: 13px;" placeholder="Gunakan: {nama}, {tagihan}, {id_cust}, {link_tagihan}"><?= htmlspecialchars($user['wa_template_paid'] ?? '') ?></textarea>
-                    <small style="color:var(--text-secondary); margin-top:5px; display:block; font-size:11px;">Variabel: {nama}, {id_cust}, {paket}, {bulan}, {tagihan}, {total_bayar}, {tunggakan}, {sisa_tunggakan}, {status_pembayaran}, {waktu_bayar}, {admin}, {link_tagihan}, {link_nota}</small>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">File QRIS pembayaran</span>
+                        <div class="rounded-md border border-dashed border-border p-4 text-center">
+                            <?php
+                                $qris_src = '';
+                                if (!empty($user['brand_qris'])) {
+                                    $qris_src = preg_match('/^http/', $user['brand_qris']) ? $user['brand_qris'] : '/' . str_replace(' ', '%20', $user['brand_qris']);
+                                }
+                            ?>
+                            <?php if(!empty($qris_src)): ?>
+                                <img src="<?= htmlspecialchars($qris_src) ?>" class="mx-auto mb-3 max-h-20 rounded-sm border border-solid border-border" alt="QRIS">
+                            <?php endif; ?>
+                            <input type="file" name="brand_qris" accept="image/*" class="form-control w-full text-xs">
+                            <p class="m-0 mt-2 text-xs text-muted-foreground">Unggah gambar QRIS Anda di sini.</p>
+                        </div>
+                    </label>
                 </div>
             </div>
-            <div style="background: rgba(var(--primary-rgb), 0.05); border-radius: 10px; padding: 15px; margin-top: 15px; border: 1px solid rgba(var(--primary-rgb), 0.1); display: flex; align-items: flex-start; gap: 10px;">
-                <i class="fas fa-info-circle text-primary" style="margin-top: 3px;"></i> 
-                <span style="font-size: 12px; color: var(--text-secondary); line-height: 1.5;">Jika dikosongkan, sistem akan otomatis menggunakan template standar dari ISP Pusat. Anda tetap dapat melakukan branding mandiri dengan kolom-kolom profil di atas.</span>
+        </section>
+
+        <!-- WhatsApp Templates section -->
+        <section class="ui-card mt-5 p-4 sm:p-5">
+            <h3 class="m-0 text-[15px] font-bold">Pesan WhatsApp otomatis</h3>
+            <p class="m-0 mb-4 text-xs text-muted-foreground">Jika dikosongkan, sistem akan otomatis menggunakan template standar dari ISP pusat. Anda tetap dapat melakukan branding mandiri dengan kolom-kolom profil di atas.</p>
+
+            <div class="grid gap-4 sm:grid-cols-2">
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Template pengingat (belum lunas)</span>
+                    <textarea name="wa_template" class="form-control w-full text-[13px]" rows="6" placeholder="Gunakan: {nama}, {tagihan}, {jatuh_tempo}, {rekening}, {link_tagihan}"><?= htmlspecialchars($user['wa_template'] ?? '') ?></textarea>
+                    <small class="mt-1 block text-[11px] text-muted-foreground">Variabel: {nama}, {id_cust}, {paket}, {bulan}, {tagihan}, {jatuh_tempo}, {rekening}, {tunggakan}, {total_harus}, {link_tagihan}, {link_nota}</small>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Template kuitansi (lunas/sudah bayar)</span>
+                    <textarea name="wa_template_paid" class="form-control w-full text-[13px]" rows="6" placeholder="Gunakan: {nama}, {tagihan}, {id_cust}, {link_tagihan}"><?= htmlspecialchars($user['wa_template_paid'] ?? '') ?></textarea>
+                    <small class="mt-1 block text-[11px] text-muted-foreground">Variabel: {nama}, {id_cust}, {paket}, {bulan}, {tagihan}, {total_bayar}, {tunggakan}, {sisa_tunggakan}, {status_pembayaran}, {waktu_bayar}, {admin}, {link_tagihan}, {link_nota}</small>
+                </label>
             </div>
-        </div>
+        </section>
 
         <!-- Action Button -->
-        <div style="grid-column: 1 / -1; margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--glass-border); display: flex; justify-content: flex-end;">
-            <button type="submit" class="btn btn-primary" style="padding: 12px 40px; font-weight: 800; border-radius: 12px; box-shadow: 0 4px 14px rgba(var(--primary-rgb), 0.3);">
-                <i class="fas fa-save" style="margin-right: 8px;"></i> Simpan Perubahan
-            </button>
+        <div class="mt-6 flex justify-end gap-2">
+            <button type="submit" class="ui-btn ui-btn-primary w-full sm:w-auto"><i class="fas fa-save"></i> Simpan perubahan</button>
         </div>
     </form>
 </div>
-
-<style>
-.grid-form {
-    display: grid;
-    gap: 20px;
-}
-.form-group label {
-    color: var(--text-primary);
-}
-</style>
