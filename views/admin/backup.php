@@ -184,10 +184,10 @@ function formatSize($bytes) {
         <p style="color:var(--text-secondary); font-size:13px; margin-bottom:20px;">Simpan salinan database Anda agar bisa dipulihkan sewaktu-waktu.</p>
         
         <div style="display:flex; flex-direction:column; gap:10px;">
-            <a href="index.php?page=admin_backup&action=download" class="btn btn-primary" style="border-radius:10px; display:flex; align-items:center; justify-content:center; gap:8px;">
+            <a data-method="post" href="index.php?page=admin_backup&action=download" class="btn btn-primary" style="border-radius:10px; display:flex; align-items:center; justify-content:center; gap:8px;">
                 <i class="fas fa-cloud-download-alt"></i> Download ke Perangkat
             </a>
-            <a href="index.php?page=admin_backup&action=save_local" class="btn btn-success" style="border-radius:10px; display:flex; align-items:center; justify-content:center; gap:8px;" onclick="return confirm('Simpan backup ke folder server?')">
+            <a data-method="post" href="index.php?page=admin_backup&action=save_local" class="btn btn-success" style="border-radius:10px; display:flex; align-items:center; justify-content:center; gap:8px;" onclick="return confirm('Simpan backup ke folder server?')">
                 <i class="fas fa-server"></i> Simpan di Server
             </a>
         </div>
@@ -200,6 +200,7 @@ function formatSize($bytes) {
         <p style="color:var(--text-secondary); font-size:13px; margin-bottom:20px;">Pulihkan database dari file backup yang sudah pernah disimpan.</p>
         
         <form action="index.php?page=admin_backup&action=restore_upload" method="POST" enctype="multipart/form-data" onsubmit="return confirm('PERINGATAN!\n\nData saat ini akan DITIMPA dengan file backup yang Anda upload.\nData sekarang akan di-backup otomatis sebagai pengaman.\n\nLanjutkan restore?')">
+<?= csrf_field() ?>
             <div style="background:rgba(0,0,0,0.15); border:2px dashed var(--glass-border); border-radius:10px; padding:20px; text-align:center; margin-bottom:10px; transition:border-color 0.3s;" onmouseover="this.style.borderColor='var(--warning)'" onmouseout="this.style.borderColor='var(--glass-border)'">
                 <i class="fas fa-file-upload" style="font-size:24px; color:var(--text-secondary); margin-bottom:8px;"></i>
                 <div style="font-size:13px; color:var(--text-secondary); margin-bottom:10px;">Pilih file .sqlite backup</div>
@@ -240,10 +241,10 @@ function formatSize($bytes) {
                     <td><?= formatSize($b['size']) ?></td>
                     <td style="font-size:13px; color:var(--text-secondary);"><?= $b['date'] ?></td>
                     <td style="white-space:nowrap;">
-                        <a href="index.php?page=admin_backup&action=restore_local&file=<?= urlencode($b['name']) ?>" class="btn btn-sm btn-warning" onclick="return confirm('Restore database dari backup ini?\n\n<?= htmlspecialchars($b['name']) ?>\n\nData saat ini akan di-backup otomatis sebelum ditimpa.')">
+                        <a data-method="post" href="index.php?page=admin_backup&action=restore_local&file=<?= urlencode($b['name']) ?>" class="btn btn-sm btn-warning" onclick="return confirm('Restore database dari backup ini?\n\n<?= htmlspecialchars($b['name']) ?>\n\nData saat ini akan di-backup otomatis sebelum ditimpa.')">
                             <i class="fas fa-undo"></i> Restore
                         </a>
-                        <a href="index.php?page=admin_backup&action=delete_backup&file=<?= urlencode($b['name']) ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus file backup ini permanen?')">
+                        <a data-method="post" href="index.php?page=admin_backup&action=delete_backup&file=<?= urlencode($b['name']) ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus file backup ini permanen?')">
                             <i class="fas fa-trash"></i>
                         </a>
                     </td>
@@ -271,6 +272,7 @@ function formatSize($bytes) {
         </div>
         <div>
             <form id="resetForm" action="index.php?page=admin_backup&action=reset_data" method="POST">
+<?= csrf_field() ?>
                 <button type="button" class="btn btn-danger" style="width:100%; padding:15px; border-radius:12px; font-weight:700; gap:8px;" onclick="handleReset()">
                     <i class="fas fa-trash-alt"></i> RESET SEMUA DATA
                 </button>

@@ -75,6 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php endif; ?>
 
     <form method="POST" enctype="multipart/form-data" class="grid-form">
+<?= csrf_field() ?>
         <div style="grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 25px;">
             <!-- Simple Fields -->
             <div style="display: flex; flex-direction: column; gap: 20px;">

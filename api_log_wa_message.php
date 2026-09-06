@@ -20,6 +20,9 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+// CSRF token (X-CSRF-Token header, added automatically by layout.php's fetch wrapper)
+csrf_require();
+
 $data = json_decode(file_get_contents('php://input'), true);
 
 if (empty($data['invoice_id']) || empty($data['customer_id'])) {

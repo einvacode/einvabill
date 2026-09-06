@@ -63,7 +63,7 @@ if ($action === 'delete') {
                     <td>
                         <div style="display:flex; gap:8px;">
                             <button onclick="editArea(<?= $a['id'] ?>, '<?= addslashes($a['name']) ?>')" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></button>
-                            <a href="index.php?page=admin_areas&action=delete&id=<?= $a['id'] ?>" onclick="return confirm('Hapus area ini?')" class="btn btn-sm btn-danger" title="Hapus"><i class="fas fa-trash"></i></a>
+                            <a data-method="post" href="index.php?page=admin_areas&action=delete&id=<?= $a['id'] ?>" onclick="return confirm('Hapus area ini?')" class="btn btn-sm btn-danger" title="Hapus"><i class="fas fa-trash"></i></a>
                         </div>
                     </td>
                 </tr>
@@ -81,6 +81,7 @@ if ($action === 'delete') {
     <div class="glass-panel" style="width:100%; max-width:400px; padding:24px; margin:20px;">
         <h3 style="margin-bottom:20px;">Tambah Area Baru</h3>
         <form action="index.php?page=admin_areas&action=add" method="POST">
+<?= csrf_field() ?>
             <div class="form-group">
                 <label>Nama Area (Contoh: RT 01 / Blok A)</label>
                 <input type="text" name="name" class="form-control" placeholder="Contoh: Blok A" required>
@@ -98,6 +99,7 @@ if ($action === 'delete') {
     <div class="glass-panel" style="width:100%; max-width:400px; padding:24px; margin:20px;">
         <h3 style="margin-bottom:20px;">Edit Area</h3>
         <form action="index.php?page=admin_areas&action=update" method="POST">
+<?= csrf_field() ?>
             <input type="hidden" name="id" id="editAreaId">
             <div class="form-group">
                 <label>Nama Area</label>

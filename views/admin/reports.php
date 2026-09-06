@@ -784,9 +784,9 @@ if ($action === 'print') {
                             </a>
                             <?php if($_SESSION['user_role'] === 'admin'): ?>
                                 <?php if($row['activity_type'] == 'Pembayaran Masuk' && !empty($row['payment_id'])): ?>
-                                    <a href="index.php?page=admin_reports&action=delete_tx&tx=payment&id=<?= intval($row['payment_id']) ?>" class="btn btn-xs btn-danger" style="margin-left:6px; padding:0 5px;" onclick="return confirm('Hapus pembayaran ini? Semua perubahan akan permanent.')" title="Hapus Pembayaran"><i class="fas fa-trash"></i></a>
+                                    <a data-method="post" href="index.php?page=admin_reports&action=delete_tx&tx=payment&id=<?= intval($row['payment_id']) ?>" class="btn btn-xs btn-danger" style="margin-left:6px; padding:0 5px;" onclick="return confirm('Hapus pembayaran ini? Semua perubahan akan permanent.')" title="Hapus Pembayaran"><i class="fas fa-trash"></i></a>
                                 <?php else: ?>
-                                    <a href="index.php?page=admin_reports&action=delete_tx&tx=invoice&id=<?= intval($row['invoice_id']) ?>" class="btn btn-xs btn-danger" style="margin-left:6px; padding:0 5px;" onclick="return confirm('Hapus invoice ini beserta item dan pembayaran terkait?')" title="Hapus Invoice"><i class="fas fa-trash"></i></a>
+                                    <a data-method="post" href="index.php?page=admin_reports&action=delete_tx&tx=invoice&id=<?= intval($row['invoice_id']) ?>" class="btn btn-xs btn-danger" style="margin-left:6px; padding:0 5px;" onclick="return confirm('Hapus invoice ini beserta item dan pembayaran terkait?')" title="Hapus Invoice"><i class="fas fa-trash"></i></a>
                                 <?php endif; ?>
                             <?php endif; ?>
                         <?php endif; ?>
@@ -1037,9 +1037,9 @@ if ($action === 'print') {
                         <a href="index.php?page=invoice_print&id=<?= $row['invoice_id'] ?>" target="_blank" style="margin-left:8px; color:var(--primary);"><i class="fas fa-print"></i></a>
                         <?php if($_SESSION['user_role'] === 'admin'): ?>
                             <?php if($row['activity_type'] == 'Pembayaran Masuk' && !empty($row['payment_id'])): ?>
-                                <a href="index.php?page=admin_reports&action=delete_tx&tx=payment&id=<?= intval($row['payment_id']) ?>" onclick="return confirm('Hapus pembayaran ini?')" style="margin-left:8px; color:#ef4444;"><i class="fas fa-trash"></i></a>
+                                <a data-method="post" href="index.php?page=admin_reports&action=delete_tx&tx=payment&id=<?= intval($row['payment_id']) ?>" onclick="return confirm('Hapus pembayaran ini?')" style="margin-left:8px; color:#ef4444;"><i class="fas fa-trash"></i></a>
                             <?php else: ?>
-                                <a href="index.php?page=admin_reports&action=delete_tx&tx=invoice&id=<?= intval($row['invoice_id']) ?>" onclick="return confirm('Hapus invoice ini beserta item dan pembayaran terkait?')" style="margin-left:8px; color:#ef4444;"><i class="fas fa-trash"></i></a>
+                                <a data-method="post" href="index.php?page=admin_reports&action=delete_tx&tx=invoice&id=<?= intval($row['invoice_id']) ?>" onclick="return confirm('Hapus invoice ini beserta item dan pembayaran terkait?')" style="margin-left:8px; color:#ef4444;"><i class="fas fa-trash"></i></a>
                             <?php endif; ?>
                         <?php endif; ?>
                         </span>
@@ -1112,9 +1112,9 @@ if ($action === 'print') {
                             </a>
                                 <?php if($_SESSION['user_role'] === 'admin'): ?>
                                     <?php if($row['activity_type'] == 'Pembayaran Masuk' && !empty($row['payment_id'])): ?>
-                                        <a href="index.php?page=admin_reports&action=delete_tx&tx=payment&id=<?= intval($row['payment_id']) ?>" class="btn btn-xs btn-danger" style="margin-left:8px;" onclick="return confirm('Hapus pembayaran ini? Semua perubahan akan permanent.')" title="Hapus Pembayaran"><i class="fas fa-trash"></i></a>
+                                        <a data-method="post" href="index.php?page=admin_reports&action=delete_tx&tx=payment&id=<?= intval($row['payment_id']) ?>" class="btn btn-xs btn-danger" style="margin-left:8px;" onclick="return confirm('Hapus pembayaran ini? Semua perubahan akan permanent.')" title="Hapus Pembayaran"><i class="fas fa-trash"></i></a>
                                     <?php else: ?>
-                                        <a href="index.php?page=admin_reports&action=delete_tx&tx=invoice&id=<?= intval($row['invoice_id']) ?>" class="btn btn-xs btn-danger" style="margin-left:8px;" onclick="return confirm('Hapus invoice ini beserta item dan pembayaran terkait?')" title="Hapus Invoice"><i class="fas fa-trash"></i></a>
+                                        <a data-method="post" href="index.php?page=admin_reports&action=delete_tx&tx=invoice&id=<?= intval($row['invoice_id']) ?>" class="btn btn-xs btn-danger" style="margin-left:8px;" onclick="return confirm('Hapus invoice ini beserta item dan pembayaran terkait?')" title="Hapus Invoice"><i class="fas fa-trash"></i></a>
                                     <?php endif; ?>
                                 <?php endif; ?>
                         <?php endif; ?>

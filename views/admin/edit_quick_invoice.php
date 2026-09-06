@@ -54,6 +54,7 @@
     #editItemsTable .btn-ghost i { color:var(--text-secondary); }
     </style>
     <form method="POST" action="index.php?page=admin_assets&action=invoice_update" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+<?= csrf_field() ?>
         <input type="hidden" name="invoice_id" value="<?= intval($invoice['id']) ?>">
         <div>
             <label>Nama Penerima</label>

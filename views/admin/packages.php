@@ -111,6 +111,7 @@ if ($action === 'sync_all') {
 
     <div class="table-container">
         <form id="bulkDeleteForm" action="index.php?page=admin_packages&action=bulk_delete" method="POST">
+<?= csrf_field() ?>
         <table>
             <thead>
                 <tr>
@@ -138,7 +139,7 @@ if ($action === 'sync_all') {
                     <td>
                         <div style="display:flex; gap:8px;">
                             <button type="button" onclick="editPackage(<?= $p['id'] ?>, '<?= addslashes($p['name']) ?>', <?= $p['fee'] ?>)" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></button>
-                            <a href="index.php?page=admin_packages&action=delete&id=<?= $p['id'] ?>" onclick="return confirm('Hapus paket ini?')" class="btn btn-sm btn-danger" title="Hapus"><i class="fas fa-trash"></i></a>
+                            <a data-method="post" href="index.php?page=admin_packages&action=delete&id=<?= $p['id'] ?>" onclick="return confirm('Hapus paket ini?')" class="btn btn-sm btn-danger" title="Hapus"><i class="fas fa-trash"></i></a>
                         </div>
                     </td>
                 </tr>
@@ -157,6 +158,7 @@ if ($action === 'sync_all') {
     <div class="glass-panel" style="width:100%; max-width:400px; padding:24px; margin:20px;">
         <h3 style="margin-bottom:20px;">Tambah Paket Baru</h3>
         <form action="index.php?page=admin_packages&action=add" method="POST">
+<?= csrf_field() ?>
             <div class="form-group">
                 <label>Nama Paket (Contoh: 10 Mbps)</label>
                 <input type="text" name="name" class="form-control" placeholder="Contoh: 10 Mbps" required>
@@ -178,6 +180,7 @@ if ($action === 'sync_all') {
     <div class="glass-panel" style="width:100%; max-width:400px; padding:24px; margin:20px;">
         <h3 style="margin-bottom:20px;">Edit Paket</h3>
         <form action="index.php?page=admin_packages&action=update" method="POST">
+<?= csrf_field() ?>
             <input type="hidden" name="id" id="editPkgId">
             <div class="form-group">
                 <label>Nama Paket</label>

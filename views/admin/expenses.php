@@ -140,7 +140,7 @@ $total_expense_month = $db->query("SELECT SUM(amount) FROM expenses e $scope_whe
 
                         <div style="display:flex; gap:8px;">
                             <button onclick="editExpense(<?= htmlspecialchars(json_encode($e)) ?>)" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></button>
-                            <a href="index.php?page=admin_expenses&action=delete&id=<?= $e['id'] ?>" onclick="return confirm('Hapus catatan ini?')" class="btn btn-sm btn-danger" title="Hapus"><i class="fas fa-trash"></i></a>
+                            <a data-method="post" href="index.php?page=admin_expenses&action=delete&id=<?= $e['id'] ?>" onclick="return confirm('Hapus catatan ini?')" class="btn btn-sm btn-danger" title="Hapus"><i class="fas fa-trash"></i></a>
                         </div>
                     </td>
                 </tr>
@@ -158,6 +158,7 @@ $total_expense_month = $db->query("SELECT SUM(amount) FROM expenses e $scope_whe
     <div class="glass-panel" style="width:100%; max-width:450px; padding:24px; margin:20px;">
         <h3 style="margin-bottom:20px;"><i class="fas fa-plus-circle text-primary"></i> Tambah Pengeluaran</h3>
         <form action="index.php?page=admin_expenses&action=add" method="POST">
+<?= csrf_field() ?>
             <div class="form-group">
                 <label>Tanggal</label>
                 <input type="date" name="date" class="form-control" value="<?= date('Y-m-d') ?>" required>
@@ -192,6 +193,7 @@ $total_expense_month = $db->query("SELECT SUM(amount) FROM expenses e $scope_whe
     <div class="glass-panel" style="width:100%; max-width:450px; padding:24px; margin:20px;">
         <h3 style="margin-bottom:20px;"><i class="fas fa-edit text-warning"></i> Edit Pengeluaran</h3>
         <form action="index.php?page=admin_expenses&action=update" method="POST">
+<?= csrf_field() ?>
             <input type="hidden" name="id" id="editId">
             <div class="form-group">
                 <label>Tanggal</label>

@@ -78,6 +78,7 @@ try {
             <p style="color:var(--text-secondary); margin-bottom:12px;">Isi data penerima, tambahkan item, lalu klik "Buat & Cetak".</p>
 
             <form method="POST" action="index.php?page=admin_assets&action=invoice_create">
+<?= csrf_field() ?>
                 <input type="hidden" name="created_via" value="admin_manual">
                 <input type="hidden" name="customer_id" id="quick_invoice_customer_id" value="0">
                 <div class="form-group" style="margin-bottom:14px;">
@@ -294,6 +295,7 @@ try {
                                 <button class="btn btn-sm btn-primary" onclick="useTempCustomer(<?= intval($t['id']) ?>)">Gunakan</button>
                                 <a class="btn btn-sm btn-ghost" href="index.php?page=admin_customers&action=details&id=<?= intval($t['id']) ?>">Detail</a>
                                 <form method="POST" action="index.php?page=admin_temp_customers">
+<?= csrf_field() ?>
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="id" value="<?= intval($t['id']) ?>">
                                     <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Hapus pelanggan sementara ini?')">Hapus</button>

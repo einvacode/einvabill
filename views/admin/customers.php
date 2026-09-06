@@ -886,7 +886,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php endif; ?>
                     <a href="index.php?page=admin_customers&action=details&id=<?= $c['id'] ?>" class="btn btn-xs btn-ghost" style="color:var(--primary);" title="Detail Lengkap"><i class="fas fa-eye"></i></a>
                     <a href="index.php?page=admin_customers&action=edit&id=<?= $c['id'] ?>" class="btn btn-xs btn-ghost" style="color:var(--warning);" title="Edit"><i class="fas fa-edit"></i></a>
-                    <a href="index.php?page=admin_customers&action=delete&id=<?= $c['id'] ?>" class="btn btn-xs btn-danger" onclick="return confirm('Hapus?')" title="Hapus"><i class="fas fa-trash"></i></a>
+                    <a data-method="post" href="index.php?page=admin_customers&action=delete&id=<?= $c['id'] ?>" class="btn btn-xs btn-danger" onclick="return confirm('Hapus?')" title="Hapus"><i class="fas fa-trash"></i></a>
                 </div>
             </div>
         </div>
@@ -953,7 +953,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                         <?php endif; ?>
                         <a href="index.php?page=admin_customers&action=details&id=<?= $c['id'] ?>" class="btn btn-sm btn-info" title="Detail & Riwayat"><i class="fas fa-eye"></i></a>
                         <a href="index.php?page=admin_customers&action=edit&id=<?= $c['id'] ?>" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></a>
-                        <a href="index.php?page=admin_customers&action=delete&id=<?= $c['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus pelanggan ini?')" title="Hapus"><i class="fas fa-trash"></i></a>
+                        <a data-method="post" href="index.php?page=admin_customers&action=delete&id=<?= $c['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus pelanggan ini?')" title="Hapus"><i class="fas fa-trash"></i></a>
                         
                         <?php 
                         $wa_number = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $c['contact']));
@@ -1056,11 +1056,14 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <!-- Hidden forms for bulk actions -->
-    <form id="bulk-form-delete" action="index.php?page=admin_customers&action=bulk_delete" method="POST" style="display:none;"></form>
+    <form id="bulk-form-delete" action="index.php?page=admin_customers&action=bulk_delete" method="POST" style="display:none;">
+<?= csrf_field() ?></form>
     <form id="bulk-form-move" action="index.php?page=admin_customers&action=bulk_move" method="POST" style="display:none;">
+<?= csrf_field() ?>
         <input type="hidden" name="target_collector_id" id="hidden-target-collector">
     </form>
     <form id="bulk-form-assign-partner" action="index.php?page=admin_customers&action=bulk_assign_partner" method="POST" style="display:none;">
+<?= csrf_field() ?>
         <input type="hidden" name="target_partner_id" id="hidden-target-partner">
     </form>
 
@@ -1213,6 +1216,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 </style>
 
 <form id="autoInvoiceForm" method="POST" action="index.php?page=admin_invoices&action=create_auto" style="display:none;">
+<?= csrf_field() ?>
     <input type="hidden" name="customer_id" id="inv_customer_id">
     <input type="hidden" name="amount" id="inv_amount">
 </form>
@@ -1684,6 +1688,7 @@ document.addEventListener("DOMContentLoaded", () => {
     <!-- Mode 1: File Upload -->
     <div id="tab-file" class="tab-content active">
         <form action="index.php?page=admin_customers&action=import_file" method="POST" enctype="multipart/form-data">
+<?= csrf_field() ?>
             <input type="hidden" name="collector_id" class="sync-collector" value="0">
             <div style="border: 2px dashed var(--glass-border); padding: 40px; border-radius: 15px; text-align: center; background: rgba(255,255,255,0.02); transition: 0.3s;" id="drop-zone" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--glass-border)'">
                 <i class="fas fa-cloud-upload-alt" style="font-size: 48px; color: var(--primary); opacity: 0.5; margin-bottom: 15px;"></i>
@@ -1703,6 +1708,7 @@ document.addEventListener("DOMContentLoaded", () => {
     <!-- Mode 2: Paste Data -->
     <div id="tab-paste" class="tab-content">
         <form action="index.php?page=admin_customers&action=import_paste" method="POST">
+<?= csrf_field() ?>
             <input type="hidden" name="collector_id" class="sync-collector" value="0">
             <div class="form-group">
                 <label>Salin & Tempel Data (Tab-Separated):</label>
@@ -1803,10 +1809,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     <div class="form-actions-row" style="margin-top:30px; padding-top:20px; border-top:1px solid var(--glass-border);">
         <form action="index.php?page=admin_customers&action=import_cancel" method="POST">
+<?= csrf_field() ?>
             <button type="submit" class="btn btn-ghost">Batalkan</button>
         </form>
         <?php if(!empty($pending)): ?>
             <form action="index.php?page=admin_customers&action=import_confirm" method="POST">
+<?= csrf_field() ?>
                 <button type="submit" class="btn btn-primary" style="background:var(--success); border-color:var(--success); color:white; font-weight:700;">
                     <i class="fas fa-check"></i> Sudah Sesuai, Impor Sekarang
                 </button>
@@ -1966,9 +1974,9 @@ document.addEventListener("DOMContentLoaded", () => {
                                                 $wa_fallback = "https://api.whatsapp.com/send?phone=$wa_raw&text=" . urlencode($wa_msg);
                                             ?>
                                             <button onclick="sendWAGateway('<?= $wa_raw ?>', <?= htmlspecialchars(json_encode($wa_msg)) ?>, '<?= $wa_fallback ?>', this)" class="btn btn-xs btn-ghost" style="color:#25D366;" title="Kirim Pengingat WA"><i class="fab fa-whatsapp"></i></button>
-                                            <a href="index.php?page=admin_invoices&action=mark_paid&id=<?= $ui['id'] ?>&ref=customer_details&cust_id=<?= $id ?>" class="btn btn-xs btn-success" onclick="return confirm('Tandai tagihan ini Lunas?')"><i class="fas fa-check"></i> Bayar</a>
+                                            <a data-method="post" href="index.php?page=admin_invoices&action=mark_paid&id=<?= $ui['id'] ?>&ref=customer_details&cust_id=<?= $id ?>" class="btn btn-xs btn-success" onclick="return confirm('Tandai tagihan ini Lunas?')"><i class="fas fa-check"></i> Bayar</a>
                                             <button onclick="CustomersPage.showEditInvoice(<?= $ui['id'] ?>, <?= $ui['amount'] ?>, <?= $ui['discount'] ?? 0 ?>, '<?= $ui['due_date'] ?>')" class="btn btn-xs btn-warning btn-edit-invoice" title="Edit" data-inv-id="<?= $ui['id'] ?>" data-inv-amount="<?= $ui['amount'] ?>" data-inv-discount="<?= $ui['discount'] ?? 0 ?>" data-inv-date="<?= $ui['due_date'] ?>"><i class="fas fa-edit"></i></button>
-                                            <a href="index.php?page=admin_invoices&action=delete&id=<?= $ui['id'] ?>&ref=customer_details&cust_id=<?= $id ?>" class="btn btn-xs btn-ghost" style="color:var(--danger);" onclick="return confirm('Hapus tagihan ini?')"><i class="fas fa-trash"></i></a>
+                                            <a data-method="post" href="index.php?page=admin_invoices&action=delete&id=<?= $ui['id'] ?>&ref=customer_details&cust_id=<?= $id ?>" class="btn btn-xs btn-ghost" style="color:var(--danger);" onclick="return confirm('Hapus tagihan ini?')"><i class="fas fa-trash"></i></a>
                                         </div>
                                     </td>
                                 </tr>
@@ -2014,6 +2022,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <p style="font-size:13px; color:var(--text-secondary); margin-bottom:20px;">Gunakan fitur ini jika pelanggan ingin membayar untuk bulan ini dan bulan-bulan berikutnya sekaligus secara manual.</p>
             
             <form action="index.php?page=admin_customers&action=bulk_pay" method="POST">
+<?= csrf_field() ?>
                 <input type="hidden" name="customer_id" value="<?= $id ?>">
                 <input type="hidden" name="amount_per_month" value="<?= $c['monthly_fee'] ?>">
                 
@@ -2042,6 +2051,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <p style="font-size:13px; color:var(--text-secondary); margin-bottom:20px;">Gunakan ini untuk membuat tagihan dengan rincian item (Biaya Bulanan + Extra).</p>
             
             <form action="index.php?page=admin_invoices&action=create_itemized" method="POST" id="itemizedForm">
+<?= csrf_field() ?>
                 <input type="hidden" name="customer_id" value="<?= $id ?>">
                 
                 <div class="form-group">
@@ -2173,6 +2183,7 @@ document.querySelector('input[name="num_months"]').addEventListener('input', fun
     <div class="glass-panel" style="width:100%; max-width:400px; padding:24px; margin:20px; border-top:4px solid var(--warning);">
         <h3 id="editTitle" style="margin-bottom:20px; font-weight:800;"><i class="fas fa-edit text-warning"></i> Edit Tagihan</h3>
         <form action="index.php?page=admin_invoices&action=edit_post" method="POST">
+<?= csrf_field() ?>
             <input type="hidden" name="id" id="editInvId">
             <input type="hidden" name="ref" value="customer_details">
             <input type="hidden" name="cust_id" value="<?= $id ?>">

@@ -56,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php endif; ?>
 
     <form method="POST" class="grid-form">
+<?= csrf_field() ?>
         <div style="grid-column: 1 / -1; display: grid; grid-template-columns: 1fr; gap: 20px;">
             <div class="form-group">
                 <label style="font-weight: 700; font-size: 13px; margin-bottom: 8px; display: block;">Nama Lengkap Petugas</label>

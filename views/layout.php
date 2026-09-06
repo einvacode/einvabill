@@ -31,6 +31,54 @@ if (!empty($__layout_settings['company_logo'])) {
         // Global WhatsApp API Constants (Available to all sub-views)
         window.WAGatewayCID = '<?= ($_SESSION["user_role"] === "admin") ? "admin_" . ($_SESSION["tenant_id"] ?? 1) : "u_" . ($_SESSION["user_id"] ?? "guest") ?>';
         window.WAApiProxy = 'wa_proxy.php?path=';
+
+        /** CSRF: every state-changing request carries the session token. */
+        window.CSRF_TOKEN = '<?= htmlspecialchars(csrf_token(), ENT_QUOTES) ?>';
+        (function () {
+            const TOKEN = window.CSRF_TOKEN;
+
+            // 1. fetch(): add X-CSRF-Token to every non-GET request.
+            const nativeFetch = window.fetch;
+            window.fetch = function (input, init) {
+                init = init || {};
+                const method = String(init.method || 'GET').toUpperCase();
+                if (method !== 'GET' && method !== 'HEAD') {
+                    const h = new Headers(init.headers || {});
+                    if (!h.has('X-CSRF-Token')) h.set('X-CSRF-Token', TOKEN);
+                    init.headers = h;
+                }
+                return nativeFetch.call(this, input, init);
+            };
+
+            // 2. Forms: guarantee a _token field on every POST form, including
+            //    forms built or emptied by JavaScript before form.submit().
+            function ensureToken(form) {
+                if (!(form instanceof HTMLFormElement)) return;
+                if (String(form.method || 'get').toLowerCase() !== 'post') return;
+                if (form.querySelector('input[name="_token"]')) return;
+                const i = document.createElement('input');
+                i.type = 'hidden'; i.name = '_token'; i.value = TOKEN;
+                form.appendChild(i);
+            }
+            const nativeSubmit = HTMLFormElement.prototype.submit;
+            HTMLFormElement.prototype.submit = function () { ensureToken(this); return nativeSubmit.apply(this, arguments); };
+            document.addEventListener('submit', function (e) { ensureToken(e.target); }, true);
+
+            // 3. Links with data-method="post": submit as a POST form instead of
+            //    navigating. Runs after any inline onclick confirm(); if that
+            //    returned false the click is already cancelled and we do nothing.
+            document.addEventListener('click', function (e) {
+                const a = e.target.closest && e.target.closest('a[data-method="post"]');
+                if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey) return;
+                e.preventDefault();
+                const f = document.createElement('form');
+                f.method = 'post'; f.action = a.getAttribute('href'); f.style.display = 'none';
+                if (a.target) f.target = a.target;
+                ensureToken(f);
+                document.body.appendChild(f);
+                f.submit();
+            });
+        })();
     </script>
 </head>
 <body>

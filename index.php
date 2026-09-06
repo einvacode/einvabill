@@ -5,6 +5,13 @@ require_once __DIR__ . '/app/init.php';
 
 $page = $_GET['page'] ?? 'home';
 
+// CSRF: every POST must carry a valid token, either the _token form
+// field (added to all forms by csrf_field()) or the X-CSRF-Token header
+// (added to fetch() calls by views/layout.php).
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_require();
+}
+
 // Handle Logout
 if ($page === 'logout') {
     $_SESSION = [];
@@ -152,6 +159,37 @@ if ($user_role === 'admin') {
 
 if (!$is_allowed) {
     $page = '403'; // Set to a forbidden page
+}
+
+// Actions that change data must arrive as POST (with a CSRF token).
+// The links in the views carry data-method="post"; layout.php turns a
+// click into a POST form submission. A plain GET is refused so that a
+// crafted link or prefetch can never mark, delete or restore anything.
+$post_only_actions = [
+    'admin_areas'     => ['delete'],
+    'admin_assets'    => ['delete'],
+    'admin_backup'    => ['download', 'save_local', 'restore_local', 'delete_backup', 'reset_data'],
+    'admin_banners'   => ['delete', 'toggle'],
+    'admin_customers' => ['delete', 'bulk_delete'],
+    'admin_expenses'  => ['delete'],
+    'admin_invoices'  => ['mark_paid', 'unpay', 'delete', 'mark_paid_bulk'],
+    'admin_landing'   => ['delete_package', 'delete_logo'],
+    'admin_packages'  => ['delete', 'bulk_delete'],
+    'admin_reports'   => ['delete_tx'],
+    'admin_router'    => ['delete_router'],
+    'admin_users'     => ['delete'],
+    'admin_temp_customers' => ['delete'],
+    'cleanup_orphans' => ['delete_invoices'],
+    'partner'         => ['delete_customer'],
+];
+$__action = (string) ($_GET['action'] ?? '');
+if ($__action !== '' && isset($post_only_actions[$page]) && in_array($__action, $post_only_actions[$page], true)
+    && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo "<div class='glass-panel' style='padding:40px; text-align:center;'><h1>Metode tidak diizinkan</h1>"
+       . "<p>Aksi ini hanya bisa dijalankan dari tombol di aplikasi, bukan lewat tautan langsung.</p>"
+       . "<a href='index.php?page=" . htmlspecialchars($page) . "' class='btn btn-primary' style='margin-top:20px;'>Kembali</a></div>";
+    exit;
 }
 
 // Minimalistic Templating Route

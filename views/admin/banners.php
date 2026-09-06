@@ -89,6 +89,7 @@ if ($action === 'edit' && isset($_GET['id'])) {
             </div>
 
             <form action="index.php?page=admin_banners&action=save" method="POST" enctype="multipart/form-data">
+<?= csrf_field() ?>
                 <input type="hidden" name="id" value="<?= $editing['id'] ?? '' ?>">
                 <input type="hidden" name="existing_image" value="<?= $editing['image_path'] ?? '' ?>">
                 
@@ -183,7 +184,7 @@ if ($action === 'edit' && isset($_GET['id'])) {
                             <?php endif; ?>
                         </td>
                         <td style="padding:15px 24px;">
-                            <a href="index.php?page=admin_banners&action=toggle&id=<?= $b['id'] ?>" style="text-decoration:none;">
+                            <a data-method="post" href="index.php?page=admin_banners&action=toggle&id=<?= $b['id'] ?>" style="text-decoration:none;">
                                 <?php if($b['is_active']): ?>
                                     <span class="badge badge-success"><i class="fas fa-check"></i> Aktif</span>
                                 <?php else: ?>
@@ -196,7 +197,7 @@ if ($action === 'edit' && isset($_GET['id'])) {
                                 <a href="index.php?page=admin_banners&action=edit&id=<?= $b['id'] ?>" class="btn btn-sm btn-ghost" title="Edit">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <a href="index.php?page=admin_banners&action=delete&id=<?= $b['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus banner ini?')">
+                                <a data-method="post" href="index.php?page=admin_banners&action=delete&id=<?= $b['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus banner ini?')">
                                     <i class="fas fa-trash"></i>
                                 </a>
                             </div>

@@ -717,6 +717,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
 </div>
 
 <form id="payFormGlobal" action="index.php?page=admin_invoices&action=mark_paid_bulk" method="POST" style="display:none;">
+<?= csrf_field() ?>
     <input type="hidden" name="customer_id" id="globalCustId">
     <input type="hidden" name="num_months" id="globalNumMonths">
 </form>
@@ -1017,6 +1018,7 @@ $packages_coll = $db->query("SELECT * FROM packages WHERE created_by = $user_id 
         </div>
         
         <form action="index.php?page=partner&action=edit_customer" method="POST" style="padding:24px; max-height:70vh; overflow-y:auto;" onsubmit="return confirm('Simpan perubahan data pelanggan ini?')">
+<?= csrf_field() ?>
             <input type="hidden" name="id" id="edit_cust_id">
             
             <!-- Section 1: Data Diri -->

@@ -178,6 +178,7 @@ $existing_customers = $db->query("SELECT id, name, customer_code FROM customers 
     <div class="glass-panel" style="width:90%; max-width:400px; margin:10% auto; padding:25px;">
         <h3 id="mTitle" style="margin-bottom:15px; font-size:18px;">Tambah Objek</h3>
         <form method="POST" id="qForm">
+<?= csrf_field() ?>
             <input type="hidden" name="quick_action" id="qAction">
             <input type="hidden" name="lat" id="qLat">
             <input type="hidden" name="lng" id="qLng">

@@ -88,6 +88,7 @@ if (!$settings) {
     </div>
 
     <form method="POST" enctype="multipart/form-data">
+<?= csrf_field() ?>
         <!-- PROFIL SECTION -->
         <div id="profil" class="settings-section active-section">
             <div class="form-group">

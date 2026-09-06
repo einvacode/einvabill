@@ -233,6 +233,7 @@ if (isset($db) && method_exists($db, 'query')) {
             </div>
 
             <form method="POST" action="?page=cleanup_orphans&action=delete_invoices">
+<?= csrf_field() ?>
                 <table class="cleanup-table">
                     <thead>
                         <tr>

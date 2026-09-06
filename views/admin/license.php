@@ -102,6 +102,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'activated') {
         </div>
         <?php if(LICENSE_ST !== 'UNLIMITED' && LICENSE_ST !== 'ACTIVE' || isset($_GET['reauth'])): ?>
             <form action="index.php?page=admin_license_post" method="POST">
+<?= csrf_field() ?>
                 <div class="form-group" style="text-align: left;">
                     <label style="font-size: 12px; margin-left: 5px;">Masukkan Kode Lisensi</label>
                     <input type="text" name="license_key" class="form-control" placeholder="XXXX-XXXX-XXXX-XXXX" required style="text-align: center; font-family: monospace; letter-spacing: 2px; font-size: 18px; padding: 15px;">
@@ -121,6 +122,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'activated') {
         <div style="margin-top:28px; padding:18px; background: rgba(255,255,255,0.02); border-radius:12px; border:1px solid var(--glass-border);">
             <h3 style="margin:0 0 12px; font-size:16px;">Buat Kode Lisensi (Admin)</h3>
             <form action="index.php?page=admin_license_generate" method="POST" id="genForm">
+<?= csrf_field() ?>
                 <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
                     <select name="gen_type" id="gen_type" onchange="toggleGenFields()" style="padding:8px; border-radius:8px;">
                         <option value="trial">Trial (hari)</option>

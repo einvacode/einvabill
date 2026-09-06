@@ -1427,6 +1427,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
         <h3 style="margin-bottom:20px;"><i class="fas fa-file-invoice-dollar"></i> Buat Tagihan Manual</h3>
         <div style="font-size:14px; color:var(--text-secondary); margin-bottom:15px;">Pelanggan: <strong id="modalCustName"></strong></div>
         <form action="index.php?page=collector&action=create_invoice" method="POST">
+<?= csrf_field() ?>
             <input type="hidden" name="customer_id" id="modalCustId">
             <div class="form-group">
                 <label>Nominal Tagihan (Rp)</label>
@@ -1455,6 +1456,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
             <button onclick="document.getElementById('updateContactModal').style.display='none'" style="background:none; border:none; color:white; cursor:pointer; font-size:18px;">&times;</button>
         </div>
         <form action="index.php?page=collector&action=update_profile" method="POST" style="padding:25px;">
+<?= csrf_field() ?>
             <input type="hidden" name="customer_id" id="modalContactCustId">
             <div class="form-group" style="margin-bottom:15px;">
                 <label style="font-size:12px; color:var(--text-secondary); margin-bottom:5px; display:block;">Nama Pelanggan</label>
@@ -1493,6 +1495,7 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
         </div>
         
         <form action="index.php?page=collector&action=add_customer" method="POST" id="addCustomerForm" style="padding:28px;">
+<?= csrf_field() ?>
             <!-- Group: Identity -->
             <div style="margin-bottom:24px;">
                 <div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--primary); margin-bottom:16px; display:flex; align-items:center; gap:8px;">
@@ -1815,6 +1818,7 @@ function setQuickFilter(type) {
 </div>
 <!-- Global Hidden Form for Bulk Payment Submission -->
 <form id="payFormGlobal" action="index.php?page=admin_invoices&action=mark_paid_bulk" method="POST" style="display:none;">
+<?= csrf_field() ?>
     <input type="hidden" name="customer_id" id="globalCustId">
     <input type="hidden" name="num_months" id="globalNumMonths" value="1">
 </form>
@@ -1832,6 +1836,7 @@ function setQuickFilter(type) {
         </div>
         
         <form action="index.php?page=collector&action=add_expense" method="POST" style="padding:20px;">
+<?= csrf_field() ?>
             <div class="form-group" style="margin-bottom:15px;">
                 <label style="font-size:12px; color:var(--text-secondary); margin-bottom:5px; display:block;">Kategori / Nama Pengeluaran</label>
                 <input type="text" name="category" class="form-control" placeholder="Contoh: Bensin, Makan, dsb" required style="padding:10px; border-radius:8px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); font-size:14px; width:100%;">
@@ -1870,6 +1875,7 @@ function setQuickFilter(type) {
         </div>
         
         <form action="index.php?page=collector&action=add_addon" method="POST" style="padding:20px;">
+<?= csrf_field() ?>
             <input type="hidden" name="customer_id" id="addonCustId">
             <p style="font-size:12px; color:var(--text-secondary); margin-bottom:15px; background:rgba(217,119,6,0.05); padding:10px; border-radius:8px; border:1px solid rgba(217,119,6,0.1);">
                 Menambahkan tagihan baru untuk: <strong id="addonCustName" style="color:var(--text-primary);">...</strong>

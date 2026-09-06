@@ -78,6 +78,7 @@ try {
         <h3 style="margin:0 0 20px; font-size:16px; font-weight:800;"><i class="fas fa-cog text-warning"></i> Kontrol Proses</h3>
         
         <form method="POST" action="index.php?page=admin_auto_invoice&action=run" style="display:flex; gap:15px; flex-wrap:wrap;">
+<?= csrf_field() ?>
             <button type="submit" name="mode" value="simulate" class="btn btn-info" style="font-weight:800; padding:12px 24px;">
                 <i class="fas fa-binoculars"></i> TEST DULU (Simulasi)
             </button>

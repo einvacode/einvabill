@@ -46,6 +46,7 @@ $temps = $db->query("SELECT id, name, address, contact, registration_date FROM c
 
     <div style="margin-top:12px; display:flex; gap:12px;">
         <form method="POST" style="flex:1;">
+<?= csrf_field() ?>
             <input type="hidden" name="action" value="add">
             <div style="display:grid; grid-template-columns:1fr 220px; gap:8px;">
                 <input type="text" name="name" class="form-control" placeholder="Nama pelanggan" required>
@@ -69,6 +70,7 @@ $temps = $db->query("SELECT id, name, address, contact, registration_date FROM c
                     <td><?= htmlspecialchars($t['registration_date']) ?></td>
                     <td>
                         <form method="POST" style="display:inline-block; margin-right:6px;">
+<?= csrf_field() ?>
                             <input type="hidden" name="action" value="delete">
                             <input type="hidden" name="id" value="<?= intval($t['id']) ?>">
                             <button class="btn btn-xs btn-danger" onclick="return confirm('Hapus pelanggan sementara ini?')">Hapus</button>

@@ -582,6 +582,7 @@ $packages_all = $db->query("SELECT * FROM packages WHERE created_by = $user_id O
 
     <div id="import-file" class="import-section">
         <form action="index.php?page=partner&action=import_file" method="POST" enctype="multipart/form-data">
+<?= csrf_field() ?>
             <div style="border: 2px dashed var(--glass-border); padding: 40px; border-radius: 15px; text-align: center; background: rgba(255,255,255,0.02);">
                 <i class="fas fa-cloud-upload-alt" style="font-size: 40px; color: var(--primary); opacity: 0.5; margin-bottom: 15px;"></i>
                 <input type="file" name="csv_file" id="csv_input" accept=".csv" required style="display: none;" onchange="this.nextElementSibling.innerText = this.files[0].name">
@@ -597,6 +598,7 @@ $packages_all = $db->query("SELECT * FROM packages WHERE created_by = $user_id O
 
     <div id="import-paste" class="import-section" style="display:none;">
         <form action="index.php?page=partner&action=import_paste" method="POST">
+<?= csrf_field() ?>
             <div class="form-group">
                 <textarea name="paste_data" class="form-control" rows="8" placeholder="Nama [Tab] Alamat [Tab] WhatsApp..." required style="font-family:monospace; font-size:12px; background:rgba(0,0,0,0.2);"></textarea>
             </div>
@@ -648,6 +650,7 @@ function switchImportTab(t){
     <div style="display:flex; justify-content:flex-end; gap:10px;">
         <a href="index.php?page=partner&action=import_cancel" class="btn btn-ghost">Batalkan</a>
         <form action="index.php?page=partner&action=import_confirm" method="POST">
+<?= csrf_field() ?>
             <button type="submit" class="btn btn-primary" style="background:var(--success); border-color:var(--success);"><i class="fas fa-check"></i> Konfirmasi & Impor</button>
         </form>
     </div>
@@ -917,6 +920,7 @@ function switchImportTab(t){
 
 <!-- Hidden Form for Quick Pay -->
 <form id="quickPayForm" action="index.php?page=admin_invoices&action=mark_paid_bulk" method="POST" style="display:none;">
+<?= csrf_field() ?>
     <input type="hidden" name="customer_id" id="qp_cust_id">
     <input type="hidden" name="num_months" id="qp_num_months">
 </form>
@@ -978,6 +982,7 @@ window.PartnerPage = (function(){
         </div>
         
         <form action="index.php?page=partner&action=add_customer" method="POST" style="padding:24px; max-height:70vh; overflow-y:auto;" onsubmit="return confirm('Daftarkan pelanggan baru ini?')">
+<?= csrf_field() ?>
             <!-- Section 1: Data Diri -->
             <div style="margin-bottom:24px;">
                 <div style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--primary); margin-bottom:16px; display:flex; align-items:center; gap:8px;">
@@ -1077,6 +1082,7 @@ window.PartnerPage = (function(){
         </div>
         
         <form action="index.php?page=partner&action=edit_customer" method="POST" style="padding:24px; max-height:70vh; overflow-y:auto;" onsubmit="return confirm('Simpan perubahan data pelanggan ini?')">
+<?= csrf_field() ?>
             <input type="hidden" name="id" id="edit_cust_id">
             
             <!-- Section 1: Data Diri -->

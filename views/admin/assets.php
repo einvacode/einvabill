@@ -651,7 +651,7 @@ $active_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets a WHERE 
             <div class="compact-action-icons" style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
                 <button class="btn btn-sm btn-warning" onclick='editAsset(<?= json_encode($a) ?>)' title="Edit"><i class="fas fa-edit"></i></button>
                 <button class="btn btn-sm btn-primary" onclick='showInvoiceModal(<?= json_encode($a) ?>)' title="Buat Nota / Cetak"><i class="fas fa-receipt"></i></button>
-                <a href="index.php?page=admin_assets&action=delete&id=<?= $a['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus aset ini?')"><i class="fas fa-trash"></i></a>
+                <a data-method="post" href="index.php?page=admin_assets&action=delete&id=<?= $a['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus aset ini?')"><i class="fas fa-trash"></i></a>
             </div>
         </div>
         <?php endforeach; ?>
@@ -760,6 +760,7 @@ $active_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets a WHERE 
     <div class="glass-panel" style="width:90%; max-width:620px; margin:0 auto; padding:30px; max-height:calc(100vh - 48px); overflow-y:auto;">
         <h3 id="modalTitle" style="margin-bottom:20px;">Tambah Aset Baru</h3>
         <form method="POST" id="assetForm" style="display:flex; flex-direction:column; gap:0;">
+<?= csrf_field() ?>
             <input type="hidden" name="id" id="asset_id">
             <div style="max-height:calc(100vh - 220px); overflow-y:auto; padding-right:6px;">
             <div class="form-group">
@@ -854,6 +855,7 @@ $active_assets = $db->query("SELECT COUNT(*) FROM infrastructure_assets a WHERE 
     <div class="glass-panel" style="width:90%; max-width:520px; margin:0 auto; padding:20px; max-height:calc(100vh - 48px); overflow-y:auto;">
         <h3 style="margin-bottom:10px;"><i class="fas fa-receipt"></i> Buat Nota Penjualan Aset</h3>
         <form method="POST" id="invoiceForm" action="index.php?page=admin_assets&action=invoice_create">
+<?= csrf_field() ?>
             <input type="hidden" name="asset_id" id="inv_asset_id">
             <div class="form-group">
                 <label>Pilih Mitra / Pelanggan (Untuk menagih)</label>

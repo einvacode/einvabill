@@ -874,7 +874,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                                 BAYAR (<?= $inv['months_owed'] ?>)
                             </button>
                         <?php else: ?>
-                            <a href="index.php?page=admin_invoices&action=mark_paid&id=<?= $inv['id'] ?>" class="btn btn-success" style="flex:1; font-weight:800; font-size:12px; border-radius:10px;" onclick="return confirm('Tandai tagihan sudah dibayar?')">
+                            <a data-method="post" href="index.php?page=admin_invoices&action=mark_paid&id=<?= $inv['id'] ?>" class="btn btn-success" style="flex:1; font-weight:800; font-size:12px; border-radius:10px;" onclick="return confirm('Tandai tagihan sudah dibayar?')">
                                 BAYAR
                             </a>
                         <?php endif; ?>
@@ -900,7 +900,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
 
                             if($can_unpay_mob): 
                         ?>
-                            <a href="index.php?page=admin_invoices&action=unpay&id=<?= $inv['id'] ?>" class="btn btn-ghost" style="width:36px; color:var(--danger); border-color:rgba(239, 68, 68, 0.2); background:rgba(239, 68, 68, 0.05); padding:0; display:flex; align-items:center; justify-content:center;" onclick="return confirm('Batalkan status lunas?')">
+                            <a data-method="post" href="index.php?page=admin_invoices&action=unpay&id=<?= $inv['id'] ?>" class="btn btn-ghost" style="width:36px; color:var(--danger); border-color:rgba(239, 68, 68, 0.2); background:rgba(239, 68, 68, 0.05); padding:0; display:flex; align-items:center; justify-content:center;" onclick="return confirm('Batalkan status lunas?')">
                                 <i class="fas fa-undo" style="font-size:12px;"></i>
                             </a>
                         <?php endif; ?>
@@ -921,7 +921,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                     <button onclick="InvoicesPage.showEditInvoice(<?= $inv['id'] ?>, <?= $inv['amount'] ?>, <?= $inv['discount'] ?? 0 ?>, '<?= $inv['due_date'] ?>')" class="btn btn-ghost btn-edit-invoice" data-inv-id="<?= $inv['id'] ?>" data-inv-amount="<?= $inv['amount'] ?>" data-inv-discount="<?= $inv['discount'] ?? 0 ?>" data-inv-date="<?= $inv['due_date'] ?>" style="width:40px; height:40px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; color:var(--warning);">
                         <i class="fas fa-edit" style="font-size:15px;"></i>
                     </button>
-                    <a href="index.php?page=admin_invoices&action=delete&id=<?= $inv['id'] ?>" class="btn btn-ghost" style="width:40px; height:40px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; color:var(--danger);" onclick="return confirm('Hapus tagihan ini?')">
+                    <a data-method="post" href="index.php?page=admin_invoices&action=delete&id=<?= $inv['id'] ?>" class="btn btn-ghost" style="width:40px; height:40px; display:flex; align-items:center; justify-content:center; border-radius:10px; padding:0; color:var(--danger);" onclick="return confirm('Hapus tagihan ini?')">
                         <i class="fas fa-trash" style="font-size:15px;"></i>
                     </a>
                 <?php endif; ?>
@@ -1083,7 +1083,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
 
                                     if($can_unpay_desk): 
                                 ?>
-                                    <a href="index.php?page=admin_invoices&action=unpay&id=<?= $inv['id'] ?>" class="btn btn-xs btn-ghost" style="color:var(--danger); opacity:0.6; padding:2px 6px; font-size:9px;" title="Batalkan Pembayaran" onclick="return confirm('Yakin ingin membatalkan pembayaran ini?')">
+                                    <a data-method="post" href="index.php?page=admin_invoices&action=unpay&id=<?= $inv['id'] ?>" class="btn btn-xs btn-ghost" style="color:var(--danger); opacity:0.6; padding:2px 6px; font-size:9px;" title="Batalkan Pembayaran" onclick="return confirm('Yakin ingin membatalkan pembayaran ini?')">
                                         <i class="fas fa-undo"></i> Batalkan
                                     </a>
                                 <?php endif; ?>
@@ -1103,7 +1103,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                                             BAYAR
                                         </button>
                                     <?php else: ?>
-                                        <a href="index.php?page=admin_invoices&action=mark_paid&id=<?= $inv['id'] ?>" class="btn btn-sm btn-success" style="font-weight:800; padding:6px 14px; font-size:11px;" onclick="return confirm('Tandai sudah dibayar?')">
+                                        <a data-method="post" href="index.php?page=admin_invoices&action=mark_paid&id=<?= $inv['id'] ?>" class="btn btn-sm btn-success" style="font-weight:800; padding:6px 14px; font-size:11px;" onclick="return confirm('Tandai sudah dibayar?')">
                                             BAYAR
                                         </a>
                                     <?php endif; ?>
@@ -1125,7 +1125,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                                 if($can_manage): 
                             ?>
                                 <button onclick="InvoicesPage.showEditInvoice(<?= $inv['id'] ?>, <?= $inv['amount'] ?>, <?= $inv['discount'] ?? 0 ?>, '<?= $inv['due_date'] ?>')" class="btn btn-sm btn-ghost btn-edit-invoice" title="Edit" data-inv-id="<?= $inv['id'] ?>" data-inv-amount="<?= $inv['amount'] ?>" data-inv-discount="<?= $inv['discount'] ?? 0 ?>" data-inv-date="<?= $inv['due_date'] ?>" style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; padding:0; background:rgba(245, 158, 11, 0.05); color:var(--warning);"><i class="fas fa-edit" style="font-size:13px;"></i></button>
-                                <a href="index.php?page=admin_invoices&action=delete&id=<?= $inv['id'] ?>" class="btn btn-sm btn-ghost" title="Hapus" style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; padding:0; background:rgba(239, 68, 68, 0.05); color:var(--danger);" onclick="return confirm('Hapus tagihan ini permanent?')"><i class="fas fa-trash" style="font-size:13px;"></i></a>
+                                <a data-method="post" href="index.php?page=admin_invoices&action=delete&id=<?= $inv['id'] ?>" class="btn btn-sm btn-ghost" title="Hapus" style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; padding:0; background:rgba(239, 68, 68, 0.05); color:var(--danger);" onclick="return confirm('Hapus tagihan ini permanent?')"><i class="fas fa-trash" style="font-size:13px;"></i></a>
                             <?php endif; ?>
                         </div>
                     </td>
@@ -1396,6 +1396,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
         <p style="font-size:14px; color:var(--text-secondary); margin-bottom:20px;">Bayar sebagian atau seluruh tunggakan untuk <strong><span id="bulkCustName"></span></strong>.</p>
         
         <form action="index.php?page=admin_invoices&action=mark_paid_bulk" method="POST">
+<?= csrf_field() ?>
             <input type="hidden" name="customer_id" id="bulkCustId">
             
             <div class="form-group mb-3">
@@ -1422,6 +1423,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
     <div class="glass-panel" style="width:100%; max-width:400px; padding:24px; margin:20px; border-top:4px solid var(--warning);">
         <h3 id="editTitle" style="margin-bottom:20px; font-weight:800;"><i class="fas fa-edit text-warning"></i> Edit Tagihan</h3>
         <form action="index.php?page=admin_invoices&action=edit_post" method="POST">
+<?= csrf_field() ?>
             <input type="hidden" name="id" id="editInvId">
             <div class="form-group mb-3">
                 <label style="font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase;">Nominal Tagihan (Rp)</label>
@@ -1451,6 +1453,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
             Fitur ini akan membuat tagihan otomatis untuk <strong>SEMUA <?= $filter_type === 'partner' ? 'Mitra' : 'Pelanggan' ?> aktif</strong> yang belum memiliki tagihan pada bulan yang dipilih.
         </p>
         <form action="index.php?page=admin_invoices&action=create_auto_bulk" method="POST">
+<?= csrf_field() ?>
             <input type="hidden" name="filter_type" value="<?= htmlspecialchars($filter_type ?: 'customer') ?>">
             <div class="form-group mb-3">
                 <label style="font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase;">UNTUK BULAN / PERIODE</label>
@@ -1473,6 +1476,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
     <div class="glass-panel" style="width:100%; max-width:500px; padding:28px; margin:20px; border-top:4px solid var(--primary);">
         <h3 style="margin-bottom:20px; font-weight:800;"><i class="fas fa-plus text-primary"></i> Tagihan Manual</h3>
         <form action="index.php?page=admin_invoices&action=create_itemized" method="POST">
+<?= csrf_field() ?>
             <div class="form-group mb-4">
                 <label style="font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase;">Pilih Pelanggan (<?= strtoupper($filter_type ?: 'customer') ?>)</label>
                 <select name="customer_id" class="form-control" required style="height:45px; font-weight:600;">

@@ -102,7 +102,7 @@ if (!function_exists('formatBytes')) {
                     <td>
                         <a href="index.php?page=admin_router&action=view&id=<?= $rt['id'] ?>" class="btn btn-sm btn-primary">Dashboard</a>
                         <a href="#" onclick="editRouter(<?= htmlspecialchars(json_encode($rt)) ?>)" class="btn btn-sm" style="background:#f59e0b; color:white;">Edit</a>
-                        <a href="index.php?page=admin_router&action=delete_router&id=<?= $rt['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus router ini permanen?')">Hapus</a>
+                        <a data-method="post" href="index.php?page=admin_router&action=delete_router&id=<?= $rt['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus router ini permanen?')">Hapus</a>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -119,6 +119,7 @@ if (!function_exists('formatBytes')) {
     <div class="glass-panel" style="width:100%; max-width:400px; padding:24px;">
         <h3 id="modalTitle" style="margin-bottom:20px;">Tambah Router Baru</h3>
         <form action="index.php?page=admin_router&action=save_router" method="POST">
+<?= csrf_field() ?>
             <input type="hidden" name="id" id="rt_id">
             <div class="form-group">
                 <label>Nama Label (Misal: Mikrotik Pusat Server)</label>

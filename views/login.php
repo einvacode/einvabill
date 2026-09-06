@@ -61,6 +61,7 @@
             <?php endif; ?>
 
             <form action="index.php?page=login_post" method="POST">
+<?= csrf_field() ?>
                 <input type="hidden" name="requested_role" value="<?= $is_staff ? 'staff' : 'partner' ?>">
                 <div class="form-group" style="position:relative;">
                     <i class="fas fa-user" style="position:absolute; left:16px; top:15px; color:var(--text-secondary);"></i>

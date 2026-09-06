@@ -464,6 +464,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
 
 <!-- Hidden Form for Quick Pay -->
 <form id="quickPayForm" action="index.php?page=admin_invoices&action=mark_paid_bulk" method="POST" style="display:none;">
+<?= csrf_field() ?>
     <input type="hidden" name="customer_id" id="qp_cust_id">
     <input type="hidden" name="num_months" id="qp_num_months">
 </form>

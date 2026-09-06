@@ -98,6 +98,7 @@ if ($page === 'admin_updater_run' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div style="display: flex; gap: 10px;">
                     <?php if ($update_available): ?>
                         <form action="index.php?page=admin_updater_run" method="POST">
+<?= csrf_field() ?>
                             <button type="submit" class="btn btn-primary btn-sm" style="font-weight: 800; padding: 10px 20px;">
                                 <i class="fas fa-download"></i> UPDATE SEKARANG
                             </button>
@@ -105,6 +106,7 @@ if ($page === 'admin_updater_run' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php endif; ?>
                     
                     <form action="index.php?page=admin_updater" method="POST">
+<?= csrf_field() ?>
                         <button type="submit" class="btn btn-ghost btn-sm" style="border: 1px solid var(--glass-border); padding: 10px 15px; font-weight: 700;">
                             <i class="fas fa-sync-alt" style="font-size: 11px;"></i> CEK UPDATE
                         </button>

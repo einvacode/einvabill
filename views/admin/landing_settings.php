@@ -109,6 +109,7 @@ $partner_logos = $db->query("SELECT * FROM landing_logos WHERE tenant_id=$tenant
 <div class="glass-panel" style="padding: 24px; margin-bottom:20px;">
     <h3 style="font-size:20px; margin-bottom:20px;"><i class="fas fa-edit"></i> Pengaturan Konten Web Profil (Landing Page)</h3>
     <form action="index.php?page=admin_landing&action=update_profile" method="POST">
+<?= csrf_field() ?>
         <div class="form-group">
             <label>Judul Utama (Hero Title)</label>
             <input type="text" name="landing_hero_title" class="form-control" value="<?= htmlspecialchars($site_settings['landing_hero_title'] ?? '') ?>" placeholder="Misal: Era Baru Koneksi Super Cepat & Stabil">
@@ -158,7 +159,7 @@ $partner_logos = $db->query("SELECT * FROM landing_logos WHERE tenant_id=$tenant
                     </td>
                     <td>
                         <button onclick="editPackage(<?= htmlspecialchars(json_encode($pkg)) ?>)" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i> Edit</button>
-                        <a href="index.php?page=admin_landing&action=delete_package&id=<?= $pkg['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus etalase layanan ini?')"><i class="fas fa-trash"></i></a>
+                        <a data-method="post" href="index.php?page=admin_landing&action=delete_package&id=<?= $pkg['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus etalase layanan ini?')"><i class="fas fa-trash"></i></a>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -175,6 +176,7 @@ $partner_logos = $db->query("SELECT * FROM landing_logos WHERE tenant_id=$tenant
     <div class="glass-panel" style="width:100%; max-width:500px; padding:24px; position:relative;">
         <h3 id="modalTitle" style="margin-bottom:20px;">Tambah Paket / Layanan</h3>
         <form action="index.php?page=admin_landing&action=save_package" method="POST">
+<?= csrf_field() ?>
             <input type="hidden" name="id" id="pkg_id">
             
             <div class="form-group">
@@ -231,7 +233,7 @@ $partner_logos = $db->query("SELECT * FROM landing_logos WHERE tenant_id=$tenant
         <div style="background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); border-radius:12px; padding:20px; text-align:center; position:relative;">
             <img src="<?= htmlspecialchars($p['image_path']) ?>" style="max-height:60px; max-width:100%; margin-bottom:15px; filter:none;" alt="Logo">
             <br>
-            <a href="index.php?page=admin_landing&action=delete_logo&id=<?= $p['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus logo ini?')" style="font-size:11px; width:100%;">
+            <a data-method="post" href="index.php?page=admin_landing&action=delete_logo&id=<?= $p['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus logo ini?')" style="font-size:11px; width:100%;">
                 <i class="fas fa-trash"></i> Hapus
             </a>
         </div>
@@ -240,6 +242,7 @@ $partner_logos = $db->query("SELECT * FROM landing_logos WHERE tenant_id=$tenant
         <!-- Form Tambah Baru -->
         <div style="background:rgba(59,130,246,0.05); border:2px dashed var(--primary); border-radius:12px; padding:20px; text-align:center; display:flex; flex-direction:column; justify-content:center; align-items:center; min-height:140px;">
             <form action="index.php?page=admin_landing&action=add_logo" method="POST" enctype="multipart/form-data" id="form-new-logo" style="width:100%;">
+<?= csrf_field() ?>
                 <i class="fas fa-plus-circle" style="font-size:24px; color:var(--primary); margin-bottom:10px;"></i>
                 <div style="font-size:12px; font-weight:700; color:var(--primary); margin-bottom:10px;">TAMBAH LOGO BARU</div>
                 <input type="file" name="logo_file" accept="image/*" class="form-control" style="font-size:11px; margin-bottom:10px;" onchange="this.form.submit()">
