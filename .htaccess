@@ -8,7 +8,7 @@ Options -Indexes
 <FilesMatch "^(package(-lock)?.json|tailwind..*.js)$">
     Require all denied
 </FilesMatch>
-<FilesMatch "^.(env|git|htaccess)">|git|htaccess)">
+<FilesMatch "^.(env|git|htaccess)">
     Require all denied
 </FilesMatch>
 
