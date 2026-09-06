@@ -1377,7 +1377,15 @@ if (!window.CollectorPage) window.CollectorPage = {};
         if (!confirm("Konfirmasi terima pembayaran tagihan " + custName + "?")) return;
         submitPay(custId, 1);
     }
-}
+    };
+    // Inline onclick handlers call these by their global names.
+    window.handlePay = ns.handlePay;
+    window.showAddCustomerModal = ns.showAddCustomerModal;
+    window.syncAddPrice = ns.syncAddPrice;
+    window.showCreateInvoice = ns.showCreateInvoice;
+    window.showUpdateProfile = ns.showUpdateProfile;
+    Object.defineProperty(window, 'currentPayData', { get: function () { return ns.currentPayData; } });
+})(window.CollectorPage);
 
 function updateBulkTotalDisplay() {
     const input = document.getElementById('bulkMonthInput');
