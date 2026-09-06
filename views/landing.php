@@ -117,6 +117,10 @@ function svg_icon(string $name, string $class = 'h-5 w-5'): string {
             .nav-link { @apply text-sm font-medium text-muted-foreground hover:text-foreground transition-colors; }
             .eyebrow { @apply text-sm font-semibold text-signal; }
             .fiber-dot { @apply inline-block h-2 w-2 rounded-full bg-accent; box-shadow: 0 0 0 4px #FFF3D6; }
+            .marquee { @apply relative overflow-hidden; -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent); }
+            .marquee-track { @apply flex w-max; animation: marquee 32s linear infinite; }
+            .marquee:hover .marquee-track { animation-play-state: paused; }
+            @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
         }
     </style>
 </head>
@@ -343,12 +347,15 @@ function svg_icon(string $name, string $class = 'h-5 w-5'): string {
 <section class="border-y border-border bg-card">
     <div class="container py-12">
         <p class="text-center text-sm font-medium text-muted-foreground">Jaringan, asosiasi, dan penyedia yang menopang layanan kami</p>
-        <div class="mt-8 flex flex-wrap items-center justify-center gap-4">
-            <?php foreach ($partner_logos as $p): ?>
-            <div class="flex h-16 w-[calc(50%-0.5rem)] items-center justify-center rounded-md border border-border bg-white px-5 sm:w-44">
-                <img src="<?= htmlspecialchars($p['image_path']) ?>" alt="Logo mitra jaringan" class="max-h-10 w-auto max-w-full object-contain" loading="lazy">
+        <!-- Marquee: the track is rendered twice and slides by half its width for a seamless loop -->
+        <div class="marquee mt-8" aria-label="Logo mitra jaringan">
+            <div class="marquee-track">
+                <?php for ($i = 0; $i < 2; $i++): foreach ($partner_logos as $p): ?>
+                <div class="mr-4 flex h-16 w-44 shrink-0 items-center justify-center rounded-md border border-border bg-white px-5" <?= $i ? 'aria-hidden="true"' : '' ?>>
+                    <img src="<?= htmlspecialchars($p['image_path']) ?>" alt="<?= $i ? '' : 'Logo mitra jaringan' ?>" class="max-h-10 w-auto max-w-full object-contain" loading="lazy">
+                </div>
+                <?php endforeach; endfor; ?>
             </div>
-            <?php endforeach; ?>
         </div>
     </div>
 </section>
