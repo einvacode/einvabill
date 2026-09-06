@@ -1,10 +1,12 @@
 <?php
 $action = $_GET['action'] ?? 'view';
-$db_path = __DIR__ . '/../../database.sqlite';
-$backup_dir = __DIR__ . '/../../backups/';
+$db_path = DB_PATH;
+// Backups live next to the database in the protected data directory,
+// never in a web-served folder.
+$backup_dir = app_data_dir() . '/backups/';
 
 // Buat folder backup jika belum ada
-if (!is_dir($backup_dir)) mkdir($backup_dir, 0777, true);
+if (!is_dir($backup_dir)) mkdir($backup_dir, 0750, true);
 
 // === BACKUP: Download database ===
 if ($action === 'download') {

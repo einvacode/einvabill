@@ -11,9 +11,11 @@ if (extension_loaded('zlib') && !ini_get('zlib.output_compression')) {
 }
 
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/security.php';
 error_reporting(E_ALL & ~E_NOTICE);
 
 ini_set('display_errors', 0);
+send_security_headers();
 
 // --- UNIVERSAL STABLE SESSION ---
 // Use system default path to avoid permission errors on Proxmox
@@ -24,8 +26,12 @@ ini_set('session.cookie_httponly', 1);
 // Disable garbage collection for testing
 ini_set('session.gc_probability', 0);
 
-// Set session save path to app/sessions for Proxmox compatibility
-ini_set('session.save_path', __DIR__ . '/sessions');
+// Session files live in the protected data directory (never inside a
+// web-served folder: a directory listing would expose session ids).
+$__session_dir = app_data_dir() . '/sessions';
+if (!is_dir($__session_dir)) { @mkdir($__session_dir, 0700, true); }
+ini_set('session.save_path', $__session_dir);
+ini_set('session.use_strict_mode', 1);
 
 // Auto-detect protocol for cookie security
 $is_secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443);
@@ -135,17 +141,21 @@ function compute_customer_invoice_total_from_amount($invoice_amount, $ppn_active
 }
 
 // --- DATABASE INITIALIZATION ---
-$db_file = __DIR__ . '/../database.sqlite';
+// Resolved by app_db_path(): env override, data/database.sqlite, or the
+// legacy ./database.sqlite of existing installs (see app/security.php).
+$db_file = app_db_path();
+define('DB_PATH', $db_file);
 
 // Proxmox/Linux Permission Helper
 if (!file_exists($db_file)) {
+    if (!is_dir(dirname($db_file))) { @mkdir(dirname($db_file), 0750, true); }
     if (!is_writable(dirname($db_file))) {
         die("<div style='padding:40px; text-align:center; font-family:sans-serif;'>
             <h2 style='color:#ef4444;'>⚠️ Izin Akses Direktori Ditolak (Permisson Denied)</h2>
-            <p>Sistem tidak dapat membuat file database. Folder <b>" . basename(dirname(__DIR__)) . "</b> tidak dapat ditulisi oleh web server.</p>
+            <p>Sistem tidak dapat membuat file database. Folder <b>" . htmlspecialchars(basename(dirname($db_file))) . "</b> tidak dapat ditulisi oleh web server.</p>
             <div style='background:#f3f4f6; padding:20px; border-radius:10px; display:inline-block; text-align:left; border:1px solid #d1d5db;'>
-                <code>chown -R www-data:www-data " . realpath(dirname(__DIR__)) . "</code><br>
-                <code>chmod -R 775 " . realpath(dirname(__DIR__)) . "</code>
+                <code>chown -R www-data:www-data " . htmlspecialchars(realpath(dirname(__DIR__))) . "</code><br>
+                <code>chmod -R 775 " . htmlspecialchars(realpath(dirname(__DIR__))) . "</code>
             </div>
             <p style='color:#6b7280; font-size:14px; margin-top:20px;'>Jalankan perintah di atas pada terminal Proxmox Anda, lalu <b>Refresh</b>.</p>
         </div>");
@@ -170,7 +180,7 @@ $db->exec("PRAGMA optimize;");
 $db->exec("PRAGMA threads = 4;");
 
 // --- VERSIONED SCHEMA MANAGEMENT ---
-define('APP_DB_VERSION', 24); // Sync with database_setup.php
+define('APP_DB_VERSION', 25); // Sync with database_setup.php
 define('APP_VERSION', '2.34.1-1');
 
 $current_db_ver = 0;

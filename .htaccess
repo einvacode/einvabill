@@ -1,0 +1,16 @@
+# EinvaBill Apache hardening. Requires "AllowOverride All" on this directory.
+Options -Indexes
+
+# Never serve the database, logs, environment files, or helper scripts.
+<FilesMatch "\.(sqlite|sqlite-wal|sqlite-shm|sqlite-journal|log|env|example|bat|sh|md|lock)$">
+    Require all denied
+</FilesMatch>
+<FilesMatch "^\.(env|git|htaccess)">
+    Require all denied
+</FilesMatch>
+
+<IfModule mod_headers.c>
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "same-origin"
+</IfModule>
