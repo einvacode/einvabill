@@ -1,0 +1,201 @@
+/* ==========================================================================
+   EinvaBill UI layer
+   Loaded after public/style.css inside the admin shell (views/layout.php).
+   Restyles the legacy components every page uses (.glass-panel, .btn,
+   .badge, .form-control, tables, tabs, filters, stat cards) to the same
+   shadcn-style language as the new dashboard, without touching the
+   pages' markup or JavaScript. All selectors are scoped to body.ui-shell.
+   ========================================================================== */
+
+/* ---------- Panels ---------- */
+.ui-shell .glass-panel {
+  background: #FFFFFF;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid #D9E0E2;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(23, 32, 38, .05), 0 1px 0 rgba(23, 32, 38, .02);
+}
+.ui-shell .filter-panel {
+  background: #F0F3F2;
+  border: 1px solid #D9E0E2;
+  border-radius: 10px;
+}
+.ui-shell .glass-stat-mini {
+  border: 1px solid #D9E0E2;
+  border-radius: 10px;
+  background: #FFFFFF;
+  box-shadow: none;
+}
+
+/* ---------- Headings inside pages ---------- */
+.ui-shell h1, .ui-shell h2, .ui-shell h3, .ui-shell h4 {
+  letter-spacing: -0.01em;
+}
+.ui-shell .grid-header h2,
+.ui-shell .glass-panel > h3,
+.ui-shell .glass-panel > h2 {
+  font-weight: 700;
+}
+
+/* ---------- Buttons ---------- */
+.ui-shell .btn {
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1;
+  gap: 8px;
+  box-shadow: none;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+.ui-shell .btn:hover,
+.ui-shell .btn:active { transform: none; box-shadow: none; filter: none; }
+.ui-shell .btn-sm { height: 32px; padding: 0 12px; font-size: 12.5px; border-radius: 7px; }
+.ui-shell .btn-xs { height: 28px; padding: 0 10px; font-size: 12px; border-radius: 6px; }
+.ui-shell .btn-block { width: 100%; }
+
+.ui-shell .btn-primary { background: #0F3A47; color: #fff; }
+.ui-shell .btn-primary:hover { background: #0A2A34; }
+
+.ui-shell .btn-success { background: #1F8A5B; color: #fff; }
+.ui-shell .btn-success:hover { background: #17724A; }
+
+.ui-shell .btn-ghost {
+  background: #FFFFFF;
+  color: #172026;
+  border-color: #D9E0E2;
+}
+.ui-shell .btn-ghost:hover { background: #E9EEEC; color: #172026; border-color: #D9E0E2; }
+
+.ui-shell .btn-info {
+  background: #E4EDF0;
+  color: #0F3A47;
+  border-color: transparent;
+  border-radius: 8px;
+  padding: 0 14px;
+  font-size: 13.5px;
+}
+.ui-shell .btn-info:hover { background: #0F3A47; color: #fff; }
+
+.ui-shell .btn-danger {
+  background: #FFFFFF;
+  color: #B42318;
+  border-color: #E7B1AB;
+  border-radius: 8px;
+  padding: 0 14px;
+  font-size: 13.5px;
+}
+.ui-shell .btn-danger i { color: inherit; }
+.ui-shell .btn-danger:hover { background: #B42318; color: #fff; border-color: #B42318; }
+.ui-shell .btn-danger:hover i { color: #fff; }
+
+.ui-shell .btn-warning {
+  background: #FFF3D6;
+  color: #7A5000;
+  border-color: transparent;
+  border-radius: 8px;
+  padding: 0 14px;
+  font-size: 13.5px;
+}
+.ui-shell .btn-warning:hover { background: #E39B0A; color: #1D1300; }
+
+.ui-shell .btn-sm.btn-info, .ui-shell .btn-sm.btn-danger, .ui-shell .btn-sm.btn-warning { height: 32px; padding: 0 12px; font-size: 12.5px; }
+.ui-shell .btn-xs.btn-info, .ui-shell .btn-xs.btn-danger, .ui-shell .btn-xs.btn-warning { height: 28px; padding: 0 10px; font-size: 12px; }
+
+/* ---------- Badges ---------- */
+.ui-shell .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  border: 1px solid #D9E0E2;
+  background: #FFFFFF;
+  color: #172026;
+}
+.ui-shell .badge-success { background: #E3F3EA; color: #1F8A5B; border-color: transparent; }
+.ui-shell .badge-danger { background: #FBE9E7; color: #B42318; border-color: transparent; }
+.ui-shell .badge-warning { background: #FFF3D6; color: #7A5000; border-color: transparent; }
+
+/* ---------- Forms ---------- */
+.ui-shell .form-group { margin-bottom: 16px; }
+.ui-shell .form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #172026;
+  margin-bottom: 6px;
+}
+.ui-shell .form-control {
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid #D9E0E2;
+  background: #FFFFFF;
+  color: #172026;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.ui-shell .form-control::placeholder { color: #8A979D; }
+.ui-shell .form-control:focus {
+  border-color: #0F3A47;
+  box-shadow: 0 0 0 3px rgba(15, 58, 71, .18);
+}
+.ui-shell select.form-control { padding-right: 32px; }
+.ui-shell textarea.form-control { min-height: 84px; }
+.ui-shell .filter-control { height: 38px; padding: 6px 12px; font-size: 13px; }
+
+/* ---------- Tables ---------- */
+.ui-shell .table-container { border-radius: 10px; }
+.ui-shell table { font-size: 14px; }
+.ui-shell th, .ui-shell td { padding: 12px 14px; border-bottom: 1px solid #E5EAEC; vertical-align: middle; }
+.ui-shell th {
+  font-size: 12px;
+  font-weight: 600;
+  color: #5B6B72;
+  background: #F0F3F2;
+  white-space: nowrap;
+}
+.ui-shell tbody tr:hover { background: #F5F7F6; }
+
+/* ---------- Tabs / source nav ---------- */
+.ui-shell .source-nav { gap: 6px; margin: 12px 0 16px; }
+.ui-shell .source-nav-link {
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #172026;
+  background: #E9EEEC;
+  border: 1px solid transparent;
+}
+.ui-shell .source-nav-link:hover { background: #DDE5E8; }
+.ui-shell .source-nav-link.active { background: #0F3A47; color: #fff; }
+
+/* ---------- Stat cards ---------- */
+.ui-shell .stats-grid { gap: 14px; margin-bottom: 22px; }
+.ui-shell .stat-card { padding: 18px; }
+.ui-shell .stat-title { font-size: 12.5px; font-weight: 500; color: #5B6B72; }
+.ui-shell .stat-value { font-size: 24px; font-weight: 800; letter-spacing: -0.01em; }
+
+/* ---------- Misc ---------- */
+.ui-shell .grid-header { margin-bottom: 18px; }
+.ui-shell .pagination-nav a, .ui-shell .pagination-nav button { border-radius: 8px; }
+.ui-shell hr { border: 0; border-top: 1px solid #E5EAEC; }
+.ui-shell ::selection { background: #E4EDF0; }
+
+/* Legacy inline "glass" tints often use rgba(59,130,246,...) blue; keep them readable */
+.ui-shell .text-primary { color: #0F3A47 !important; }
+.ui-shell .text-danger { color: #B42318 !important; }
+.ui-shell .text-success { color: #1F8A5B !important; }
+.ui-shell .text-warning { color: #B85C0A !important; }
+
+@media (max-width: 640px) {
+  .ui-shell .btn { height: 36px; }
+  .ui-shell th, .ui-shell td { padding: 10px 12px; }
+  .ui-shell .stat-value { font-size: 20px; }
+}

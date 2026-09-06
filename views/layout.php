@@ -92,6 +92,7 @@ function nav_heading(string $text): string {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="public/style.css">
+    <link rel="stylesheet" href="public/ui.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -279,7 +280,7 @@ function nav_heading(string $text): string {
         }, true);
     </script>
 </head>
-<body class="min-h-screen">
+<body class="ui-shell min-h-screen">
 
 <div class="lg:grid lg:grid-cols-[256px_minmax(0,1fr)] min-h-screen">
 
