@@ -1,0 +1,59 @@
+/* Source for public/tw-app.css. Build with: npm run build:app */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Bring the legacy theme variables in line with the new palette so pages
+   that still use public/style.css look like they belong. */
+:root, [data-theme="light"] {
+  --bg-color: #F5F7F6;
+  --primary: #0F3A47; --primary-rgb: 15, 58, 71; --primary-hover: #0A2A34;
+  --success: #1F8A5B; --danger: #B42318; --warning: #B85C0A; --info: #0F3A47;
+  --glass-bg: #FFFFFF; --glass-border: #D9E0E2; --glass-shadow: 0 1px 2px rgba(23,32,38,.05);
+  --card-radius: 12px; --hover-bg: #E9EEEC; --table-header-bg: #F0F3F2;
+  --nav-active-bg: #E4EDF0; --nav-active-color: #0F3A47;
+  --text-primary: #172026; --text-secondary: #5B6B72;
+  --btn-ghost-bg: #FFFFFF; --btn-ghost-border: #D9E0E2; --btn-ghost-hover-bg: #E9EEEC;
+  --gradient-text-from: #172026; --gradient-text-to: #0F3A47;
+}
+
+@layer base {
+  html { -webkit-font-smoothing: antialiased; }
+  body { @apply bg-background text-foreground font-sans; background-image: none !important; }
+  :focus-visible { @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+}
+
+@layer components {
+  .ui-btn { @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border border-solid border-transparent text-sm font-semibold transition-colors h-10 px-4 cursor-pointer no-underline; }
+  .ui-btn-sm { @apply h-8 px-3 text-xs; }
+  .ui-btn-primary { @apply bg-primary text-primary-foreground hover:bg-primary-deep; }
+  .ui-btn-outline { @apply border-border bg-card text-foreground hover:bg-muted; }
+  .ui-btn-ghost { @apply text-foreground hover:bg-muted; }
+  .ui-btn-wa { @apply bg-wa text-white hover:bg-wa-hover; }
+  .ui-card { @apply rounded-lg border border-solid border-border bg-card shadow-card; }
+  .ui-badge { @apply inline-flex items-center gap-1 rounded-md border border-solid border-border bg-card px-2 py-0.5 text-[11px] font-semibold leading-5; }
+  .ui-badge-signal { @apply border-transparent bg-signal-soft text-signal; }
+  .ui-badge-danger { @apply border-transparent bg-danger-soft text-danger; }
+  .ui-badge-accent { @apply border-transparent bg-accent-soft text-accent-ink; }
+  .ui-badge-muted { @apply border-transparent bg-muted text-muted-foreground; }
+
+  .nav-item { @apply flex items-center gap-3 rounded-md px-3 py-2 text-[13.5px] font-medium no-underline transition-colors; }
+  .nav-group-body { display: none; }
+  .nav-group.open .nav-group-body { display: block; }
+  .nav-group.open .nav-chevron { transform: rotate(180deg); }
+  .bottom-nav-item { @apply flex flex-col items-center justify-center gap-1 py-2 text-[10px] font-medium text-muted-foreground no-underline; }
+  .bottom-nav-item.active { @apply text-primary; }
+  .bottom-nav-item i { @apply text-[18px]; }
+  .sheet-item { @apply flex flex-col items-center gap-1.5 rounded-md bg-muted px-2 py-3 text-xs font-medium text-foreground no-underline hover:bg-primary-soft; }
+  .sheet-item i { @apply text-xl text-primary; }
+  .sheet-item.active { @apply bg-primary-soft; }
+}
+
+/* Sidebar scrollbar */
+.app-sidebar-nav { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.25) transparent; }
+.app-sidebar-nav::-webkit-scrollbar { width: 6px; }
+.app-sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); border-radius: 3px; }
+
+/* Keep legacy panels flat inside the new shell */
+.glass-panel { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }

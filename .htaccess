@@ -5,7 +5,10 @@ Options -Indexes
 <FilesMatch "\.(sqlite|sqlite-wal|sqlite-shm|sqlite-journal|log|env|example|bat|sh|md|lock)$">
     Require all denied
 </FilesMatch>
-<FilesMatch "^\.(env|git|htaccess)">
+<FilesMatch "^(package(-lock)?.json|tailwind..*.js)$">
+    Require all denied
+</FilesMatch>
+<FilesMatch "^.(env|git|htaccess)">|git|htaccess)">
     Require all denied
 </FilesMatch>
 

@@ -66,63 +66,7 @@ function svg_icon(string $name, string $class = 'h-5 w-5'): string {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        // Design tokens in the shadcn/ui shape, tuned for this brand.
-        tailwind.config = {
-            theme: {
-                container: { center: true, padding: '1.25rem', screens: { '2xl': '1120px' } },
-                extend: {
-                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
-                    colors: {
-                        background: '#F5F7F6',
-                        foreground: '#172026',
-                        card: '#FFFFFF',
-                        border: '#D9E0E2',
-                        input: '#D9E0E2',
-                        ring: '#0F3A47',
-                        primary: { DEFAULT: '#0F3A47', foreground: '#FFFFFF', deep: '#0A2A34' },
-                        muted: { DEFAULT: '#E9EEEC', foreground: '#5B6B72' },
-                        accent: { DEFAULT: '#E39B0A', foreground: '#1D1300', soft: '#FFF3D6' },
-                        signal: { DEFAULT: '#1F8A5B', soft: '#E3F3EA' },
-                        wa: { DEFAULT: '#1DA851', hover: '#178A43' },
-                    },
-                    borderRadius: { lg: '0.75rem', md: '0.5rem', sm: '0.375rem' },
-                    boxShadow: { card: '0 1px 2px rgba(23,32,38,.05), 0 1px 0 rgba(23,32,38,.02)', lift: '0 12px 32px -12px rgba(15,58,71,.25)' },
-                }
-            }
-        }
-    </script>
-    <style type="text/tailwindcss">
-        @layer base {
-            html { -webkit-font-smoothing: antialiased; }
-            body { @apply bg-background text-foreground font-sans; }
-            h1, h2, h3 { @apply tracking-[-0.01em]; text-wrap: balance; }
-            :focus-visible { @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background rounded-sm; }
-            @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
-        }
-        @layer components {
-            /* shadcn/ui component recipes, ported to plain classes */
-            .btn { @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4; }
-            .btn-lg { @apply h-11 px-5 text-[15px]; }
-            .btn-primary { @apply bg-primary text-primary-foreground hover:bg-primary-deep; }
-            .btn-outline { @apply border border-border bg-card hover:bg-muted; }
-            .btn-ghost { @apply hover:bg-muted; }
-            .btn-wa { @apply bg-wa text-white hover:bg-wa-hover; }
-            .card { @apply rounded-lg border border-border bg-card shadow-card; }
-            .badge { @apply inline-flex items-center rounded-md border border-border bg-card px-2.5 py-0.5 text-xs font-semibold; }
-            .badge-signal { @apply border-transparent bg-signal-soft text-signal; }
-            .badge-accent { @apply border-transparent bg-accent-soft text-[#7A5000]; }
-            .input { @apply flex h-11 w-full rounded-md border border-input bg-card px-3 py-2 text-[15px] placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2; }
-            .nav-link { @apply text-sm font-medium text-muted-foreground hover:text-foreground transition-colors; }
-            .eyebrow { @apply text-sm font-semibold text-signal; }
-            .fiber-dot { @apply inline-block h-2 w-2 rounded-full bg-accent; box-shadow: 0 0 0 4px #FFF3D6; }
-            .marquee { @apply relative overflow-hidden; -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent); }
-            .marquee-track { @apply flex w-max; animation: marquee 32s linear infinite; }
-            .marquee:hover .marquee-track { animation-play-state: paused; }
-            @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-        }
-    </style>
+    <link rel="stylesheet" href="public/tw-landing.css">
 </head>
 <body>
 

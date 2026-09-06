@@ -1,0 +1,15 @@
+{
+  "name": "einvabill-ui",
+  "private": true,
+  "description": "Tailwind build for the EinvaBill admin shell and landing page. The compiled CSS in public/ is committed, so production servers do not need Node.",
+  "scripts": {
+    "build:css": "npm run build:app && npm run build:landing",
+    "build:app": "tailwindcss -c tailwind.app.config.js -i src/css/app.css -o public/tw-app.css --minify",
+    "build:landing": "tailwindcss -c tailwind.landing.config.js -i src/css/landing.css -o public/tw-landing.css --minify",
+    "watch:app": "tailwindcss -c tailwind.app.config.js -i src/css/app.css -o public/tw-app.css --watch",
+    "watch:landing": "tailwindcss -c tailwind.landing.config.js -i src/css/landing.css -o public/tw-landing.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
+  }
+}

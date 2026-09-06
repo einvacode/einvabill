@@ -44,3 +44,6 @@ data/*
 
 # WhatsApp gateway shared secret
 wa-gateway/.gateway_token
+
+# Node tooling for the Tailwind build (compiled CSS in public/ is committed)
+node_modules/

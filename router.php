@@ -25,7 +25,8 @@ foreach ($denied_dirs as $d) {
     }
 }
 if (preg_match('~\.(sqlite|sqlite-wal|sqlite-shm|sqlite-journal|log|env|example|bat|sh|md|lock)$~i', $uri)
-    || preg_match('~/\.(env|git|htaccess)~i', $uri)) {
+    || preg_match('~/.(env|git|htaccess)~i', $uri)
+    || preg_match('~^/(package(-lock)?.json|tailwind..*.js|src/)~i', $uri)) {
     http_response_code(403);
     echo 'Forbidden';
     return true;

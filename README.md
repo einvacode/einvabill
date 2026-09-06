@@ -75,3 +75,16 @@ Jika ada pihak yang berminat membeli lisensi aplikasi ini atau membutuhkan layan
 - **Kontak Penjualan:** 0823-4626-8845
 
 Kami akan membantu proses lisensi, pemasangan di server, dan opsi dukungan lanjutan.
+
+## 🎨 Build CSS (Tailwind)
+
+Tampilan admin dan landing page memakai Tailwind yang sudah dikompilasi ke `public/tw-app.css` dan `public/tw-landing.css`. File hasil kompilasi ikut di-commit, jadi **server produksi tidak butuh Node**.
+
+Kalau mengubah kelas Tailwind di `views/` atau token di `tailwind.tokens.js`, kompilasi ulang di komputer pengembang:
+
+```bash
+npm install
+npm run build:css
+```
+
+`npm run watch:app` atau `npm run watch:landing` untuk kompilasi otomatis saat mengedit.
