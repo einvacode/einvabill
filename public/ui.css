@@ -199,3 +199,17 @@
   .ui-shell th, .ui-shell td { padding: 10px 12px; }
   .ui-shell .stat-value { font-size: 20px; }
 }
+
+/* ---------- Accent bars ---------- */
+/* Legacy cards signal their category with a 4-5px coloured bar on the left
+   (inline styles all over the views). Flatten them to the normal 1px card
+   border; the label colours and badges inside already carry the meaning. */
+.ui-shell [style*="border-left:4px"], .ui-shell [style*="border-left: 4px"],
+.ui-shell [style*="border-left:5px"], .ui-shell [style*="border-left: 5px"],
+.ui-shell [style*="border-left:3px"], .ui-shell [style*="border-left: 3px"] {
+  border-left-width: 1px !important;
+  border-left-color: #D9E0E2 !important;
+  border-left-style: solid !important;
+}
+/* Those cards usually also carry a strong tinted background; soften it. */
+.ui-shell .glass-panel[style*="border-left"] { background-color: #FFFFFF !important; }

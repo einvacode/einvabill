@@ -109,7 +109,7 @@ foreach($targets as $t) {
 }
 ?>
 
-<div class="glass-panel" style="padding: 24px; margin-bottom: 30px; border-left: 5px solid #25D366; background: var(--hover-bg);">
+<div class="glass-panel" style="padding: 24px; margin-bottom: 30px;">
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px; margin-bottom:15px;">
         <div style="flex:1; min-width:300px;">
             <h3 style="font-size:18px; color:#25D366; margin:0;"><i class="fab fa-whatsapp"></i> Broadcast Pengingat WhatsApp</h3>

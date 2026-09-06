@@ -160,7 +160,7 @@ $stat_cards = [
 ?>
 
 <?php if ($success_data): ?>
-<div class="ui-card mb-5 border-l-4 border-l-signal p-4 sm:p-5">
+<div class="ui-card mb-5 p-4 sm:p-5">
     <div class="flex items-start justify-between gap-4">
         <div>
             <div class="flex items-center gap-2 text-[15px] font-bold text-signal"><i class="fas fa-check-circle"></i> Pembayaran berhasil</div>
@@ -175,7 +175,7 @@ $stat_cards = [
 <?php endif; ?>
 
 <?php if (LICENSE_ST === 'TRIAL'): ?>
-<div class="ui-card mb-5 flex flex-col gap-3 border-l-4 border-l-accent p-4 sm:flex-row sm:items-center sm:justify-between">
+<div class="ui-card mb-5 flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
     <div class="flex items-center gap-3 text-sm font-semibold text-accent-ink"><i class="fas fa-clock text-accent"></i> <?= LICENSE_MSG ?></div>
     <a href="index.php?page=admin_license" class="ui-btn ui-btn-sm ui-btn-primary">Aktivasi sekarang</a>
 </div>
