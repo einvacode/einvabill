@@ -223,7 +223,7 @@ function svg_icon(string $name, string $class = 'h-5 w-5'): string {
     <div class="card mt-10 p-10 text-center text-muted-foreground">Daftar paket sedang disiapkan. Hubungi kami lewat WhatsApp untuk harga terbaru.</div>
     <?php endif; ?>
 
-    <p class="mt-6 text-sm text-muted-foreground">Butuh kecepatan lebih tinggi untuk kantor, sekolah, atau RT/RW Net? <a href="<?= htmlspecialchars($wa_link) ?>" target="_blank" rel="noopener" class="font-semibold text-foreground underline underline-offset-4">Minta penawaran khusus.</a></p>
+    <p class="mt-6 text-sm text-muted-foreground">Butuh kecepatan lebih tinggi untuk kantor, sekolah, atau kebutuhan lingkungan? <a href="<?= htmlspecialchars($wa_link) ?>" target="_blank" rel="noopener" class="font-semibold text-foreground underline underline-offset-4">Minta penawaran khusus.</a></p>
 </section>
 
 <!-- How to subscribe: a real sequence, so it is numbered -->
