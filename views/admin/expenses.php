@@ -3,6 +3,21 @@ $action = $_GET['action'] ?? 'list';
 $u_id = $_SESSION['user_id'];
 $u_role = $_SESSION['user_role'] ?? 'admin';
 
+// Expense categories (tab "Kategori"); managed by admin only, used by everyone.
+$tenant_id = $_SESSION['tenant_id'] ?? 1;
+expense_categories_ensure($db, (int)$tenant_id);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cat_action'])) {
+    $redirect = 'index.php?page=admin_expenses&tab=categories';
+    if ($u_role !== 'admin') { header('Location: ' . $redirect . '&err=' . urlencode('Hanya admin yang boleh mengubah kategori.')); exit; }
+    $err = $_POST['cat_action'] === 'delete'
+        ? expense_categories_delete($db, (int)$tenant_id, intval($_POST['cat_id'] ?? 0))
+        : expense_categories_save($db, (int)$tenant_id, intval($_POST['cat_id'] ?? 0), (string)($_POST['cat_name'] ?? ''), (string)($_POST['cat_description'] ?? ''));
+    header('Location: ' . $redirect . ($err ? '&err=' . urlencode($err) : '&msg=' . ($_POST['cat_action'] === 'delete' ? 'cat_deleted' : 'cat_saved')));
+    exit;
+}
+$categories = expense_categories_list($db, (int)$tenant_id);
+$active_tab = ($_GET['tab'] ?? '') === 'categories' ? 'categories' : 'expenses';
+
 // Handle ADD Expense
 if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $category = $_POST['category'];
@@ -79,15 +94,123 @@ $total_expense_month = $db->query("SELECT SUM(amount) FROM expenses e $scope_whe
     </div>
 </div>
 
-<?php if(isset($_GET['msg'])): ?>
-    <div class="ui-card mb-5 p-4 text-sm font-semibold text-signal">
-        <?php
-            if($_GET['msg'] == 'added') echo "Pengeluaran berhasil ditambahkan.";
-            if($_GET['msg'] == 'updated') echo "Data pengeluaran diperbarui.";
-            if($_GET['msg'] == 'deleted') echo "Catatan pengeluaran dihapus.";
-        ?>
-    </div>
+<?php
+$tab_active = 'rounded-sm bg-card px-3 py-1.5 text-sm font-semibold text-foreground shadow-card no-underline';
+$tab_idle = 'rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground no-underline';
+?>
+<div class="mb-5 flex w-fit flex-wrap gap-1 rounded-md bg-muted p-1" role="tablist">
+    <a href="index.php?page=admin_expenses" class="<?= $active_tab === 'expenses' ? $tab_active : $tab_idle ?>">Pengeluaran</a>
+    <a href="index.php?page=admin_expenses&tab=categories" class="<?= $active_tab === 'categories' ? $tab_active : $tab_idle ?>">Kategori <span class="tabular-nums text-muted-foreground">(<?= count($categories) ?>)</span></a>
+</div>
+
+<?php
+$flash = ['added' => 'Pengeluaran berhasil ditambahkan.', 'updated' => 'Data pengeluaran diperbarui.', 'deleted' => 'Catatan pengeluaran dihapus.', 'cat_saved' => 'Kategori tersimpan.', 'cat_deleted' => 'Kategori dihapus.'][$_GET['msg'] ?? ''] ?? '';
+$flash_err = trim((string)($_GET['err'] ?? ''));
+if ($flash): ?>
+    <div class="ui-card mb-5 p-4 text-sm"><span class="font-semibold text-signal">Berhasil.</span> <?= htmlspecialchars($flash) ?></div>
+<?php elseif ($flash_err): ?>
+    <div class="ui-card mb-5 p-4 text-sm border-danger/40"><span class="font-semibold text-danger">Gagal.</span> <?= htmlspecialchars($flash_err) ?></div>
 <?php endif; ?>
+
+<?php if ($active_tab === 'categories'): ?>
+<div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+    <section class="ui-card overflow-hidden">
+        <div class="border-b border-solid border-border px-4 py-3 sm:px-5">
+            <h3 class="m-0 text-[15px] font-bold">Kategori pengeluaran</h3>
+            <p class="m-0 text-xs text-muted-foreground">Pilihan kategori pada form pengeluaran. Mengubah nama ikut memperbarui semua catatan yang memakainya.</p>
+        </div>
+        <?php if (empty($categories)): ?>
+            <div class="px-5 py-10 text-center text-sm text-muted-foreground">Belum ada kategori.</div>
+        <?php else: ?>
+        <div class="overflow-x-auto">
+            <table class="w-full border-collapse text-sm">
+                <thead>
+                    <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                        <th class="px-4 py-2.5 font-semibold sm:px-5">Kategori</th>
+                        <th class="px-3 py-2.5 text-right font-semibold">Dipakai</th>
+                        <?php if ($u_role === 'admin'): ?><th class="px-4 py-2.5 text-right font-semibold sm:px-5">Aksi</th><?php endif; ?>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($categories as $cat): ?>
+                    <tr class="border-t border-solid border-border" id="catRow-<?= intval($cat['id']) ?>">
+                        <td class="px-4 py-3 sm:px-5">
+                            <div class="font-semibold"><?= htmlspecialchars($cat['name']) ?></div>
+                            <?php if (!empty($cat['description'])): ?><div class="text-xs text-muted-foreground"><?= htmlspecialchars($cat['description']) ?></div><?php endif; ?>
+                        </td>
+                        <td class="px-3 py-3 text-right tabular-nums whitespace-nowrap"><?= number_format($cat['used']) ?> catatan</td>
+                        <?php if ($u_role === 'admin'): ?>
+                        <td class="px-4 py-3 sm:px-5">
+                            <div class="flex justify-end gap-1.5">
+                                <button type="button" class="ui-btn ui-btn-sm ui-btn-outline" title="Ubah" onclick="editCategory(<?= intval($cat['id']) ?>)"><i class="fas fa-edit"></i><span class="hidden sm:inline">Ubah</span></button>
+                                <form method="POST" action="index.php?page=admin_expenses" class="m-0" onsubmit="return confirm('Hapus kategori ini?')">
+<?= csrf_field() ?>
+                                    <input type="hidden" name="cat_action" value="delete">
+                                    <input type="hidden" name="cat_id" value="<?= intval($cat['id']) ?>">
+                                    <button type="submit" class="ui-btn ui-btn-sm ui-btn-outline text-danger<?= $cat['used'] > 0 ? ' cursor-not-allowed opacity-50' : '' ?>" title="<?= $cat['used'] > 0 ? 'Masih dipakai catatan pengeluaran' : 'Hapus' ?>" <?= $cat['used'] > 0 ? 'disabled' : '' ?>><i class="fas fa-trash"></i><span class="hidden sm:inline">Hapus</span></button>
+                                </form>
+                            </div>
+                        </td>
+                        <?php endif; ?>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php endif; ?>
+    </section>
+
+    <?php if ($u_role === 'admin'): ?>
+    <aside class="lg:sticky lg:top-24">
+        <section class="ui-card p-4 sm:p-5">
+            <h3 class="m-0 text-[15px] font-bold" id="catFormTitle">Tambah kategori</h3>
+            <p class="m-0 mt-1 text-xs text-muted-foreground">Kategori yang masih dipakai catatan tidak bisa dihapus, tetapi bisa diubah namanya.</p>
+            <form method="POST" action="index.php?page=admin_expenses" id="catForm" class="mt-4 grid gap-4">
+<?= csrf_field() ?>
+                <input type="hidden" name="cat_action" value="save">
+                <input type="hidden" name="cat_id" id="cat_id" value="0">
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Nama kategori <span class="text-danger">*</span></span>
+                    <input type="text" name="cat_name" id="cat_name" class="form-control" placeholder="Contoh: Transportasi" maxlength="60" required>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Keterangan</span>
+                    <input type="text" name="cat_description" id="cat_description" class="form-control" placeholder="Opsional, contoh: BBM dan tol teknisi" maxlength="200">
+                </label>
+                <div class="grid gap-2">
+                    <button type="submit" class="ui-btn ui-btn-primary w-full" id="catSubmitBtn">Simpan kategori</button>
+                    <button type="button" class="ui-btn ui-btn-outline w-full hidden" id="catCancelBtn" onclick="resetCategoryForm()">Batal ubah</button>
+                </div>
+            </form>
+        </section>
+    </aside>
+    <?php endif; ?>
+</div>
+
+<script>
+const EXPENSE_CATEGORIES = <?= json_encode(array_map(fn($c) => ['id' => intval($c['id']), 'name' => $c['name'], 'description' => (string)$c['description']], $categories)) ?>;
+function editCategory(id) {
+    const c = EXPENSE_CATEGORIES.find(x => x.id === id); if (!c) return;
+    document.getElementById('cat_id').value = c.id;
+    document.getElementById('cat_name').value = c.name;
+    document.getElementById('cat_description').value = c.description;
+    document.getElementById('catFormTitle').innerText = 'Ubah kategori';
+    document.getElementById('catSubmitBtn').innerText = 'Simpan perubahan';
+    document.getElementById('catCancelBtn').classList.remove('hidden');
+    document.querySelectorAll('[id^="catRow-"]').forEach(r => r.classList.toggle('bg-muted', r.id === 'catRow-' + id));
+    document.getElementById('cat_name').focus();
+}
+function resetCategoryForm() {
+    document.getElementById('cat_id').value = 0;
+    document.getElementById('cat_name').value = '';
+    document.getElementById('cat_description').value = '';
+    document.getElementById('catFormTitle').innerText = 'Tambah kategori';
+    document.getElementById('catSubmitBtn').innerText = 'Simpan kategori';
+    document.getElementById('catCancelBtn').classList.add('hidden');
+    document.querySelectorAll('[id^="catRow-"]').forEach(r => r.classList.remove('bg-muted'));
+}
+</script>
+<?php else: ?>
 
 <!-- Stats -->
 <div class="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
@@ -184,10 +307,9 @@ $total_expense_month = $db->query("SELECT SUM(amount) FROM expenses e $scope_whe
                 <label class="block sm:col-span-2">
                     <span class="mb-1 block text-xs font-medium text-muted-foreground">Kategori</span>
                     <select name="category" class="form-control" required>
-                        <option value="Operasional">Operasional (Listrik, Sewa, dll)</option>
-                        <option value="Belanja Barang">Belanja Barang (Alat Teknik, Kabel, dll)</option>
-                        <option value="Insentif">Insentif / Gaji</option>
-                        <option value="Lain-lain">Lain-lain</option>
+                        <?php foreach ($categories as $cat): ?>
+                            <option value="<?= htmlspecialchars($cat['name']) ?>"><?= htmlspecialchars($cat['name']) ?><?= !empty($cat['description']) ? ' (' . htmlspecialchars($cat['description']) . ')' : '' ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </label>
                 <label class="block sm:col-span-2">
@@ -225,10 +347,9 @@ $total_expense_month = $db->query("SELECT SUM(amount) FROM expenses e $scope_whe
                 <label class="block sm:col-span-2">
                     <span class="mb-1 block text-xs font-medium text-muted-foreground">Kategori</span>
                     <select name="category" id="editCategory" class="form-control" required>
-                        <option value="Operasional">Operasional</option>
-                        <option value="Belanja Barang">Belanja Barang</option>
-                        <option value="Insentif">Insentif</option>
-                        <option value="Lain-lain">Lain-lain</option>
+                        <?php foreach ($categories as $cat): ?>
+                            <option value="<?= htmlspecialchars($cat['name']) ?>"><?= htmlspecialchars($cat['name']) ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </label>
                 <label class="block sm:col-span-2">
@@ -248,9 +369,12 @@ $total_expense_month = $db->query("SELECT SUM(amount) FROM expenses e $scope_whe
 function editExpense(data) {
     document.getElementById('editId').value = data.id;
     document.getElementById('editDate').value = data.date;
-    document.getElementById('editCategory').value = data.category;
+    const sel = document.getElementById('editCategory');
+    if (data.category && ![...sel.options].some(o => o.value === data.category)) sel.add(new Option(data.category, data.category));
+    sel.value = data.category;
     document.getElementById('editAmount').value = data.amount;
     document.getElementById('editDescription').value = data.description;
     document.getElementById('editExpenseModal').style.display = 'flex';
 }
 </script>
+<?php endif; ?>
