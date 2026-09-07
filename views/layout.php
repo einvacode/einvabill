@@ -485,6 +485,8 @@ function updateWAIndicators(c) {
 }
 
 window.sendWAGateway = async function (phone, message, fallback, btn) {
+    // A missing fallback used to open about:blank when the gateway failed.
+    fallback = fallback || ('https://api.whatsapp.com/send?phone=' + encodeURIComponent(phone) + '&text=' + encodeURIComponent(message));
     if (!btn) return;
     const old = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
     try {

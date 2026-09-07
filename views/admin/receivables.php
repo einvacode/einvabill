@@ -50,6 +50,12 @@ foreach ($all as $r) {
 }
 $shown_total = array_sum(array_map(fn($r) => (float)$r['total'], $rows));
 
+// Only one page of customers is rendered: at 5.000 pelanggan the full list was a 15 MB page.
+$per_page = 50;
+$total_pages = max(1, (int)ceil(count($rows) / $per_page));
+$page_no = max(1, min($total_pages, (int)($_GET['p'] ?? 1)));
+$page_rows = array_slice($rows, ($page_no - 1) * $per_page, $per_page);
+
 $settings_wa = $db->query("SELECT company_name, wa_template, bank_account, site_url FROM settings WHERE tenant_id = $tenant_id")->fetch(PDO::FETCH_ASSOC) ?: [];
 $wa_tpl = $settings_wa['wa_template'] ?? "Halo {nama}, tagihan internet Anda {tagihan} ({bulan}) jatuh tempo pada {jatuh_tempo}. Hubungi admin untuk info pembayaran.";
 $base_url = !empty($settings_wa['site_url']) ? rtrim($settings_wa['site_url'], '/') : get_app_url();
@@ -145,7 +151,7 @@ $bucket_tone = ['current' => 'ui-badge-muted', 'b30' => 'ui-badge-accent', 'b60'
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($rows as $r):
+                    <?php foreach ($page_rows as $r):
                         $over60 = $r['b90'] + $r['b90p'];
                         $wa_num = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', (string)$r['contact']));
                         $portal_link = $base_url . '/index.php?page=customer_portal&code=' . urlencode($r['customer_code'] ?: $r['id']);
@@ -187,6 +193,20 @@ $bucket_tone = ['current' => 'ui-badge-muted', 'b30' => 'ui-badge-accent', 'b60'
                 </tfoot>
             </table>
         </div>
+        <?php if ($total_pages > 1):
+            $q = $_GET; unset($q['p']);
+            $pg = 'index.php?' . http_build_query(array_merge(['page' => 'admin_receivables'], $q)) . '&p=';
+            $from = max(1, $page_no - 2); $to = min($total_pages, $page_no + 2);
+        ?>
+        <div class="flex flex-wrap items-center justify-center gap-1.5 border-t border-solid border-border px-4 py-3">
+            <span class="mr-2 text-xs text-muted-foreground">Halaman <?= $page_no ?> dari <?= $total_pages ?> &middot; <?= number_format(count($rows)) ?> pelanggan</span>
+            <?php if ($page_no > 1): ?><a href="<?= $pg . ($page_no - 1) ?>" class="ui-btn ui-btn-sm ui-btn-outline" aria-label="Sebelumnya">&laquo;</a><?php endif; ?>
+            <?php for ($i = $from; $i <= $to; $i++): ?>
+                <a href="<?= $pg . $i ?>" class="ui-btn ui-btn-sm <?= $i === $page_no ? 'ui-btn-primary' : 'ui-btn-outline' ?>"<?= $i === $page_no ? ' aria-current="page"' : '' ?>><?= $i ?></a>
+            <?php endfor; ?>
+            <?php if ($page_no < $total_pages): ?><a href="<?= $pg . ($page_no + 1) ?>" class="ui-btn ui-btn-sm ui-btn-outline" aria-label="Berikutnya">&raquo;</a><?php endif; ?>
+        </div>
+        <?php endif; ?>
         <?php endif; ?>
     </section>
 </div>

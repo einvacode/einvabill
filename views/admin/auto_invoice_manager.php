@@ -219,6 +219,11 @@ try {
                 </tbody>
             </table>
         </div>
+        <?php if (!empty($report['details_hidden'])): ?>
+        <p class="mt-3 text-xs text-muted-foreground">Menampilkan 
+            <?= number_format(count($report['details'])) ?> baris pertama; <?= number_format($report['details_hidden']) ?> pelanggan lain tidak ditampilkan agar halaman tetap ringan.
+            Angka ringkasan di atas tetap menghitung seluruh pelanggan.</p>
+        <?php endif; ?>
     </div>
 </section>
 <?php endif; ?>

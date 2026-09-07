@@ -4,38 +4,79 @@
  * Company scope only (partner-registered customers and partner expenses excluded).
  */
 
+/**
+ * One grouped query per metric over the whole window instead of four queries per
+ * month: at 60k invoices the per-month version cost about half a second, and the
+ * dashboard asks for the trend three times. Results are memoised per request, and
+ * a shorter window is sliced off a longer one that was already computed.
+ */
 function finance_trend(PDO $db, int $tenant_id, int $months = 6): array {
+    static $cache = [];
+    $key = $tenant_id . ':' . $months;
+    if (isset($cache[$key])) return $cache[$key];
+    foreach ($cache as $k => $rows) {
+        [$t, $m] = array_map('intval', explode(':', $k));
+        if ($t === $tenant_id && $m > $months) return $cache[$key] = array_slice($rows, -$months);
+    }
+
     $sc = cash_company_scope($db, $tenant_id);
     $bulan = [1=>'Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-    $out = [];
-    $q_rev = $db->prepare("SELECT COALESCE(SUM(p.amount),0) FROM payments p JOIN invoices i ON i.id = p.invoice_id JOIN customers c ON c.id = i.customer_id
-        WHERE p.tenant_id = :t AND strftime('%Y-%m', p.payment_date) = :ym {$sc['c']}");
-    $q_exp = $db->prepare("SELECT COALESCE(SUM(e.amount),0) FROM expenses e WHERE e.tenant_id = :t AND strftime('%Y-%m', e.date) = :ym {$sc['e']}");
-    $q_new = $db->prepare("SELECT COUNT(*) FROM customers c WHERE c.tenant_id = :t AND c.type = 'customer' AND strftime('%Y-%m', c.registration_date) = :ym {$sc['c']}");
-    $q_bill = $db->prepare("SELECT COUNT(i.id) AS n, COALESCE(SUM(i.amount - COALESCE(i.discount,0)),0) AS billed,
+
+    // Month keys oldest first, plus the half-open date range that covers them.
+    $yms = [];
+    for ($k = $months - 1; $k >= 0; $k--) $yms[] = date('Y-m', strtotime("first day of -$k month"));
+    $from = $yms[0] . '-01';
+    $to   = date('Y-m-01', strtotime('first day of next month'));
+
+    // Ranges on the raw date columns keep the existing indexes usable; strftime() would not.
+    $map = function (string $sql) use ($db, $tenant_id, $from, $to): array {
+        $q = $db->prepare($sql);
+        $q->execute([':t' => $tenant_id, ':from' => $from, ':to' => $to]);
+        $out = [];
+        foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $r) { $ym = array_shift($r); $out[$ym] = $r; }
+        return $out;
+    };
+
+    $rev = $map("SELECT substr(p.payment_date,1,7) AS ym, COALESCE(SUM(p.amount),0) AS v
+        FROM payments p JOIN invoices i ON i.id = p.invoice_id JOIN customers c ON c.id = i.customer_id
+        WHERE p.tenant_id = :t AND p.payment_date >= :from AND p.payment_date < :to {$sc['c']} GROUP BY ym");
+    $exp = $map("SELECT substr(e.date,1,7) AS ym, COALESCE(SUM(e.amount),0) AS v
+        FROM expenses e WHERE e.tenant_id = :t AND e.date >= :from AND e.date < :to {$sc['e']} GROUP BY ym");
+    $new = $map("SELECT substr(c.registration_date,1,7) AS ym, COUNT(*) AS v
+        FROM customers c WHERE c.tenant_id = :t AND c.type = 'customer'
+          AND c.registration_date >= :from AND c.registration_date < :to {$sc['c']} GROUP BY ym");
+    $bill = $map("SELECT substr(i.due_date,1,7) AS ym, COUNT(i.id) AS n,
+            COALESCE(SUM(i.amount - COALESCE(i.discount,0)),0) AS billed,
             COALESCE(SUM(CASE WHEN i.status = 'Lunas' THEN i.amount - COALESCE(i.discount,0) ELSE 0 END),0) AS paid,
-            SUM(CASE WHEN i.status = 'Lunas' THEN 1 ELSE 0 END) AS paid_n
-        FROM invoices i JOIN customers c ON c.id = i.customer_id WHERE i.tenant_id = :t AND strftime('%Y-%m', i.due_date) = :ym {$sc['c']}");
-    for ($k = $months - 1; $k >= 0; $k--) {
-        $ym = date('Y-m', strtotime("first day of -$k month"));
-        $q_rev->execute([':t' => $tenant_id, ':ym' => $ym]); $rev = (float)$q_rev->fetchColumn();
-        $q_exp->execute([':t' => $tenant_id, ':ym' => $ym]); $exp = (float)$q_exp->fetchColumn();
-        $q_new->execute([':t' => $tenant_id, ':ym' => $ym]); $new = (int)$q_new->fetchColumn();
-        $q_bill->execute([':t' => $tenant_id, ':ym' => $ym]); $b = $q_bill->fetch(PDO::FETCH_ASSOC);
+            COALESCE(SUM(CASE WHEN i.status = 'Lunas' THEN 1 ELSE 0 END),0) AS paid_n
+        FROM invoices i JOIN customers c ON c.id = i.customer_id
+        WHERE i.tenant_id = :t AND i.due_date >= :from AND i.due_date < :to {$sc['c']} GROUP BY ym");
+
+    $out = [];
+    foreach ($yms as $ym) {
+        $r = (float)($rev[$ym]['v'] ?? 0);
+        $e = (float)($exp[$ym]['v'] ?? 0);
+        $b = $bill[$ym] ?? ['n' => 0, 'billed' => 0, 'paid' => 0, 'paid_n' => 0];
         $out[] = [
             'ym' => $ym, 'label' => $bulan[(int)substr($ym, 5, 2)] . ' ' . substr($ym, 2, 2),
             'label_long' => $bulan[(int)substr($ym, 5, 2)] . ' ' . substr($ym, 0, 4),
-            'revenue' => $rev, 'expenses' => $exp, 'profit' => $rev - $exp, 'new_customers' => $new,
-            'billed' => (float)$b['billed'], 'billed_n' => (int)$b['n'], 'paid' => (float)$b['paid'], 'paid_n' => (int)$b['paid_n'],
+            'revenue' => $r, 'expenses' => $e, 'profit' => $r - $e,
+            'new_customers' => (int)($new[$ym]['v'] ?? 0),
+            'billed' => (float)$b['billed'], 'billed_n' => (int)$b['n'],
+            'paid' => (float)$b['paid'], 'paid_n' => (int)$b['paid_n'],
             'rate' => $b['billed'] > 0 ? round($b['paid'] / $b['billed'] * 100) : null,
         ];
     }
-    return $out;
+    return $cache[$key] = $out;
 }
 
 /** Plain-text monthly summary for the owner (WhatsApp). */
 function finance_month_summary_text(PDO $db, int $tenant_id, string $ym, array $company): string {
-    $trend = finance_trend($db, $tenant_id, 13);
+    // Only the requested month and the one before it are used, so ask for that
+    // window instead of a fixed year; the dashboard then reuses its cached trend.
+    $back = 0; $cursor = date('Y-m');
+    while ($cursor > $ym && $back < 60) { $back++; $cursor = date('Y-m', strtotime("first day of -$back month")); }
+    $trend = finance_trend($db, $tenant_id, max(2, $back + 2));
     $cur = null; $prev = null;
     foreach ($trend as $i => $m) if ($m['ym'] === $ym) { $cur = $m; $prev = $trend[$i - 1] ?? null; }
     if (!$cur) return '';

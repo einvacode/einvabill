@@ -33,6 +33,7 @@ function generate_invoices_auto($db, $tenant_id = 1, $simulate = false, ?int $le
     $report = [
         'success' => true, 'simulate' => $simulate, 'timestamp' => date('Y-m-d H:i:s'), 'tenant_id' => $tenant_id, 'lead_days' => $lead_days,
         'customers_processed' => 0, 'invoices_created' => 0, 'invoices_skipped' => 0, 'skip_reasons' => [], 'errors' => [], 'details' => [],
+        'details_cap' => 200, 'details_hidden' => 0,
     ];
 
     try {
@@ -46,6 +47,17 @@ function generate_invoices_auto($db, $tenant_id = 1, $simulate = false, ?int $le
             WHERE tenant_id = $tenant_id AND type IN ('customer', 'partner') AND monthly_fee > 0
               AND (created_by NOT IN ($partner_list) OR created_by = 0 OR created_by IS NULL)
             ORDER BY id ASC")->fetchAll(PDO::FETCH_ASSOC);
+
+        // Keep the report bounded: at 5.000 pelanggan every customer produced a row,
+        // which is 1,5 MB of JSON nobody reads past the first screen.
+        $add_detail = function (array $row) use (&$report) {
+            if (count($report['details']) < $report['details_cap']) $report['details'][] = $row;
+            else $report['details_hidden']++;
+        };
+
+        // One transaction for the whole run instead of 5.000 separate commits.
+        $in_tx = false;
+        if (!$simulate && !$db->inTransaction()) { $db->beginTransaction(); $in_tx = true; }
 
         $exists = $db->prepare("SELECT id FROM invoices WHERE customer_id = ? AND tenant_id = ? AND strftime('%Y-%m', due_date) = ? LIMIT 1");
         $insert = $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, created_at, discount, tenant_id) VALUES (?, ?, ?, 'Belum Lunas', CURRENT_TIMESTAMP, 0, ?)");
@@ -65,8 +77,8 @@ function generate_invoices_auto($db, $tenant_id = 1, $simulate = false, ?int $le
 
                 $exists->execute([$cust_id, $tenant_id, $ym]);
                 if ($exists->fetchColumn()) {
-                    if ($ym === $months[0]) { $report['invoices_skipped']++; $report['skip_reasons'][$cust_id] = 'Invoice already exists for this month';
-                        $report['details'][] = ['customer_id' => $cust_id, 'customer_name' => $cust_name, 'billing_date' => $billing_day, 'due_date' => $due_date, 'status' => 'SKIPPED', 'reason' => 'Tagihan bulan ini sudah ada', 'amount' => $monthly_fee]; }
+                    if ($ym === $months[0]) { $report['invoices_skipped']++;
+                        $add_detail(['customer_id' => $cust_id, 'customer_name' => $cust_name, 'billing_date' => $billing_day, 'due_date' => $due_date, 'status' => 'SKIPPED', 'reason' => 'Tagihan bulan ini sudah ada', 'amount' => $monthly_fee]); }
                     $handled = true;
                     continue;
                 }
@@ -75,19 +87,20 @@ function generate_invoices_auto($db, $tenant_id = 1, $simulate = false, ?int $le
                     catch (Exception $e) { $report['errors'][] = "Customer $cust_name (ID: $cust_id): " . $e->getMessage(); continue; }
                 }
                 $report['invoices_created']++;
-                $report['details'][] = ['customer_id' => $cust_id, 'customer_name' => $cust_name, 'billing_date' => $billing_day, 'due_date' => $due_date, 'status' => $simulate ? 'WOULD BE CREATED' : 'CREATED', 'amount' => $monthly_fee];
+                $add_detail(['customer_id' => $cust_id, 'customer_name' => $cust_name, 'billing_date' => $billing_day, 'due_date' => $due_date, 'status' => $simulate ? 'WOULD BE CREATED' : 'CREATED', 'amount' => $monthly_fee]);
                 $handled = true;
             }
 
             if (!$handled) {
                 $due_date = auto_invoice_due($months[0], $billing_day);
                 $report['invoices_skipped']++;
-                $report['skip_reasons'][$cust_id] = 'Billing date not yet reached';
-                $report['details'][] = ['customer_id' => $cust_id, 'customer_name' => $cust_name, 'billing_date' => $billing_day, 'due_date' => $due_date, 'status' => 'WAITING', 'reason' => "Dibuat mulai " . date('d/m/Y', strtotime($due_date . " -$lead_days days")), 'amount' => $monthly_fee];
+                $add_detail(['customer_id' => $cust_id, 'customer_name' => $cust_name, 'billing_date' => $billing_day, 'due_date' => $due_date, 'status' => 'WAITING', 'reason' => "Dibuat mulai " . date('d/m/Y', strtotime($due_date . " -$lead_days days")), 'amount' => $monthly_fee]);
             }
         }
+        if ($in_tx && $db->inTransaction()) { $db->commit(); $in_tx = false; }
         $report['success'] = true;
     } catch (Exception $e) {
+        if (!empty($in_tx) && $db->inTransaction()) $db->rollBack();
         $report['success'] = false;
         $report['errors'][] = "System error: " . $e->getMessage();
     }
@@ -107,7 +120,9 @@ function auto_invoice_autorun(PDO $db, int $tenant_id): int {
     $_SESSION[$key] = time();
     $report = generate_invoices_auto($db, $tenant_id, false, $cfg['lead_days']);
     if ($report['invoices_created'] > 0) {
-        try { $db->prepare("INSERT INTO auto_invoice_logs (tenant_id, report_json, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)")->execute([$tenant_id, json_encode(['auto' => true] + $report)]); } catch (Exception $e) {}
+        $log = ['auto' => true] + $report;
+        unset($log['details'], $log['skip_reasons']); // the row list made single log rows megabytes wide
+        try { $db->prepare("INSERT INTO auto_invoice_logs (tenant_id, report_json, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)")->execute([$tenant_id, json_encode($log)]); } catch (Exception $e) {}
     }
     return (int)$report['invoices_created'];
 }

@@ -999,6 +999,8 @@ if ($action === 'print') {
 <script>
     // Function to send message via Gateway
     async function sendWAGateway(phone, message, fallback, btn) {
+    // A missing fallback used to open about:blank when the gateway failed.
+    fallback = fallback || ('https://api.whatsapp.com/send?phone=' + encodeURIComponent(phone) + '&text=' + encodeURIComponent(message));
         if (btn) {
             const originalHtml = btn.innerHTML;
             btn.disabled = true;

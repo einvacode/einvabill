@@ -82,33 +82,89 @@ function cash_default_account_id(PDO $db, int $tenant_id): int {
     return (int)$q->fetchColumn();
 }
 
-/** SQL expression resolving the account a payment row (alias p) belongs to. */
-function cash_payment_account_sql(int $tenant_id, int $default_id): string {
-    return "COALESCE(p.account_id, (SELECT a.id FROM cash_accounts a WHERE a.owner_user_id = p.received_by AND a.tenant_id = $tenant_id LIMIT 1), $default_id)";
+/**
+ * SQL expression resolving the account a payment row (alias p) belongs to.
+ * The owner wallets are folded into a CASE built once per request; the earlier
+ * correlated sub-select was evaluated for every payment row scanned.
+ */
+function cash_payment_account_sql(int $tenant_id, int $default_id, ?PDO $db = null): string {
+    static $when = [];
+    if (!isset($when[$tenant_id]) && $db) {
+        $seen = []; $sql = '';
+        foreach ($db->query("SELECT owner_user_id, id FROM cash_accounts WHERE tenant_id = $tenant_id AND COALESCE(owner_user_id,0) > 0 ORDER BY id ASC") as $r) {
+            $o = (int)$r['owner_user_id'];
+            if (isset($seen[$o])) continue;
+            $seen[$o] = 1;
+            $sql .= " WHEN $o THEN " . (int)$r['id'];
+        }
+        $when[$tenant_id] = $sql;
+    }
+    $case = $when[$tenant_id] ?? '';
+    return $case === ''
+        ? "COALESCE(p.account_id, $default_id)"
+        : "COALESCE(p.account_id, CASE p.received_by$case ELSE NULL END, $default_id)";
 }
 
-/** Accounts with balances as of $as_of (inclusive date, Y-m-d). */
+/** Drop the memoised balances after any write that changes them. */
+function cash_balances_flush(): void { cash_accounts_with_balances_cache(true); }
+
+/** Internal store for the per-request balance cache. */
+function &cash_accounts_with_balances_cache(bool $reset = false): array {
+    static $cache = [];
+    if ($reset) $cache = [];
+    return $cache;
+}
+
+/**
+ * Accounts with balances as of $as_of (inclusive date, Y-m-d).
+ * One grouped query per source instead of a correlated sub-select per account:
+ * with 59k payments the old shape cost 0.2-0.7 s and the dashboard asks three times.
+ */
 function cash_accounts_with_balances(PDO $db, int $tenant_id, ?string $as_of = null): array {
     $as_of = $as_of ?: date('Y-m-d');
+    $cache = &cash_accounts_with_balances_cache();
+    $ck = $tenant_id . '|' . $as_of;
+    if (isset($cache[$ck])) return $cache[$ck];
+
     $to_dt = $as_of . ' 23:59:59';
     $def = cash_default_account_id($db, $tenant_id);
-    $pacc = cash_payment_account_sql($tenant_id, $def);
+    $pacc = cash_payment_account_sql($tenant_id, $def, $db);
     $sc = cash_company_scope($db, $tenant_id);
-    $q = $db->prepare("SELECT a.*, u.name AS owner_name, u.role AS owner_role,
-            COALESCE((SELECT SUM(p.amount) FROM payments p JOIN invoices i ON i.id = p.invoice_id JOIN customers c ON c.id = i.customer_id
-                      WHERE p.tenant_id = :t AND p.payment_date <= :to_dt AND $pacc = a.id {$sc['c']}), 0) AS in_payments,
-            COALESCE((SELECT SUM(e.amount) FROM expenses e WHERE e.tenant_id = :t AND e.date <= :to_d AND COALESCE(e.account_id, :def) = a.id {$sc['e']}), 0) AS out_expenses,
-            COALESCE((SELECT SUM(x.amount) FROM cash_transfers x WHERE x.tenant_id = :t AND x.date <= :to_d AND x.to_account_id = a.id), 0) AS in_transfers,
-            COALESCE((SELECT SUM(x.amount) FROM cash_transfers x WHERE x.tenant_id = :t AND x.date <= :to_d AND x.from_account_id = a.id), 0) AS out_transfers
+
+    $q = $db->prepare("SELECT a.*, u.name AS owner_name, u.role AS owner_role
         FROM cash_accounts a LEFT JOIN users u ON u.id = a.owner_user_id
         WHERE a.tenant_id = :t ORDER BY a.is_default DESC, a.type ASC, a.name ASC");
-    $q->execute([':t' => $tenant_id, ':to_dt' => $to_dt, ':to_d' => $as_of, ':def' => $def]);
+    $q->execute([':t' => $tenant_id]);
     $rows = $q->fetchAll(PDO::FETCH_ASSOC);
+
+    $group = function (string $sql, array $params) use ($db): array {
+        $st = $db->prepare($sql);
+        $st->execute($params);
+        $m = [];
+        foreach ($st->fetchAll(PDO::FETCH_NUM) as [$k, $v]) $m[(int)$k] = (float)$v;
+        return $m;
+    };
+    $in_payments = $group("SELECT $pacc AS acc, SUM(p.amount) FROM payments p
+        JOIN invoices i ON i.id = p.invoice_id JOIN customers c ON c.id = i.customer_id
+        WHERE p.tenant_id = :t AND p.payment_date <= :to_dt {$sc['c']} GROUP BY acc", [':t' => $tenant_id, ':to_dt' => $to_dt]);
+    $out_expenses = $group("SELECT COALESCE(e.account_id, :def) AS acc, SUM(e.amount) FROM expenses e
+        WHERE e.tenant_id = :t AND e.date <= :to_d {$sc['e']} GROUP BY acc", [':t' => $tenant_id, ':to_d' => $as_of, ':def' => $def]);
+    $in_transfers = $group("SELECT x.to_account_id AS acc, SUM(x.amount) FROM cash_transfers x
+        WHERE x.tenant_id = :t AND x.date <= :to_d GROUP BY acc", [':t' => $tenant_id, ':to_d' => $as_of]);
+    $out_transfers = $group("SELECT x.from_account_id AS acc, SUM(x.amount) FROM cash_transfers x
+        WHERE x.tenant_id = :t AND x.date <= :to_d GROUP BY acc", [':t' => $tenant_id, ':to_d' => $as_of]);
+
     foreach ($rows as &$r) {
+        $id = (int)$r['id'];
+        $r['in_payments']   = $in_payments[$id] ?? 0.0;
+        $r['out_expenses']  = $out_expenses[$id] ?? 0.0;
+        $r['in_transfers']  = $in_transfers[$id] ?? 0.0;
+        $r['out_transfers'] = $out_transfers[$id] ?? 0.0;
         $opening = (!empty($r['opening_date']) && $r['opening_date'] > $as_of) ? 0 : (float)$r['opening_balance'];
         $r['balance'] = $opening + $r['in_payments'] - $r['out_expenses'] + $r['in_transfers'] - $r['out_transfers'];
     }
-    return $rows;
+    unset($r);
+    return $cache[$ck] = $rows;
 }
 
 function cash_total_balance(PDO $db, int $tenant_id, ?string $as_of = null): float {
@@ -137,6 +193,7 @@ function cash_account_save(PDO $db, int $tenant_id, int $id, array $d): string {
         // Always keep exactly one default.
         $has = $db->prepare("SELECT COUNT(*) FROM cash_accounts WHERE tenant_id = ? AND is_default = 1"); $has->execute([$tenant_id]);
         if ((int)$has->fetchColumn() === 0) $db->prepare("UPDATE cash_accounts SET is_default = 1 WHERE id = (SELECT MIN(id) FROM cash_accounts WHERE tenant_id = ?)")->execute([$tenant_id]);
+        cash_balances_flush();
         return '';
     } catch (Exception $e) { return 'Gagal menyimpan akun.'; }
 }
@@ -152,6 +209,7 @@ function cash_account_delete(PDO $db, int $tenant_id, int $id): string {
         $used->execute([':id' => $id]);
         if ((int)$used->fetchColumn() > 0) return 'Akun masih punya mutasi. Nonaktifkan saja agar riwayat tetap utuh.';
         $db->prepare("DELETE FROM cash_accounts WHERE id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
+        cash_balances_flush();
         return '';
     } catch (Exception $e) { return 'Gagal menghapus akun.'; }
 }
@@ -179,12 +237,13 @@ function cash_transfer_save(PDO $db, int $tenant_id, int $user_id, array $d): st
     try {
         $db->prepare("INSERT INTO cash_transfers (tenant_id, type, from_account_id, to_account_id, amount, date, note, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
            ->execute([$tenant_id, $type, $from, $to, $amount, $date, $note, $user_id, date('Y-m-d H:i:s')]);
+        cash_balances_flush();
         return '';
     } catch (Exception $e) { return 'Gagal menyimpan transaksi.'; }
 }
 
 function cash_transfer_delete(PDO $db, int $tenant_id, int $id): void {
-    try { $db->prepare("DELETE FROM cash_transfers WHERE id = ? AND tenant_id = ?")->execute([$id, $tenant_id]); } catch (Exception $e) {}
+    try { $db->prepare("DELETE FROM cash_transfers WHERE id = ? AND tenant_id = ?")->execute([$id, $tenant_id]); cash_balances_flush(); } catch (Exception $e) {}
 }
 
 /** Unified ledger rows for a period, optionally one account. Newest first. */
@@ -226,6 +285,7 @@ function cash_reassign(PDO $db, int $tenant_id, string $kind, int $id, int $acco
         if ($kind === 'payment') $db->prepare("UPDATE payments SET account_id = ? WHERE id = ? AND tenant_id = ?")->execute([$account_id, $id, $tenant_id]);
         elseif ($kind === 'expense') $db->prepare("UPDATE expenses SET account_id = ? WHERE id = ? AND tenant_id = ?")->execute([$account_id, $id, $tenant_id]);
         else return 'Jenis transaksi tidak dikenal.';
+        cash_balances_flush();
         return '';
     } catch (Exception $e) { return 'Gagal memindahkan transaksi.'; }
 }
@@ -256,5 +316,5 @@ function cash_posted_account(PDO $db, int $tenant_id, ?int $posted = null): ?int
 /** Stamp the account on payments just inserted for an invoice (or one payment id). */
 function cash_tag_payment(PDO $db, int $tenant_id, int $payment_id, ?int $account_id): void {
     if (!$account_id || !$payment_id) return;
-    try { $db->prepare("UPDATE payments SET account_id = ? WHERE id = ? AND tenant_id = ?")->execute([$account_id, $payment_id, $tenant_id]); } catch (Exception $e) {}
+    try { $db->prepare("UPDATE payments SET account_id = ? WHERE id = ? AND tenant_id = ?")->execute([$account_id, $payment_id, $tenant_id]); cash_balances_flush(); } catch (Exception $e) {}
 }

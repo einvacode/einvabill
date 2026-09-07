@@ -4,6 +4,27 @@ $u_id = $_SESSION['user_id'];
 $u_role = app_scope_role();
 $id = intval($_GET['id'] ?? 0);
 
+// Customer lookup for the manual-invoice picker (JSON, answered before any output).
+if ($action === 'customer_search') {
+    $tenant_id = $_SESSION['tenant_id'] ?? 1;
+    $type = in_array($_GET['type'] ?? '', ['customer', 'partner', 'note', 'temp']) ? $_GET['type'] : 'customer';
+    $q = trim((string)($_GET['q'] ?? ''));
+    $scope = ($u_role === 'admin')
+        ? " AND (created_by NOT IN (SELECT id FROM users WHERE role = 'partner' AND tenant_id = $tenant_id) OR created_by = 0 OR created_by IS NULL)"
+        : " AND created_by = " . intval($u_id);
+    $sql = "SELECT id, name, customer_code FROM customers WHERE tenant_id = ? AND type = ?" . $scope;
+    $params = [$tenant_id, $type];
+    if ($q !== '') { $sql .= " AND (name LIKE ? OR customer_code LIKE ? OR contact LIKE ?)"; $like = "%$q%"; array_push($params, $like, $like, $like); }
+    $sql .= " ORDER BY name ASC LIMIT 30";
+    $st = $db->prepare($sql);
+    $st->execute($params);
+    $out = [];
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $out[] = ['id' => (int)$r['id'], 'name' => $r['name'], 'code' => $r['customer_code']];
+    header('Content-Type: application/json');
+    echo json_encode($out, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 // Fetch current user templates and global settings
 $tenant_id = $_SESSION['tenant_id'] ?? 1;
 $me = $db->query("SELECT wa_template, wa_template_paid FROM users WHERE id = $u_id AND tenant_id = $tenant_id")->fetch();
@@ -1205,6 +1226,8 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
 
     // Function to send message via Gateway (Standardized to use Global WAApiProxy)
     async function sendWAGateway(phone, message, fallback, btn) {
+    // A missing fallback used to open about:blank when the gateway failed.
+    fallback = fallback || ('https://api.whatsapp.com/send?phone=' + encodeURIComponent(phone) + '&text=' + encodeURIComponent(message));
         if (!btn) {
             // Background sends (e.g. from startMassWaWeb)
             try {
@@ -1295,6 +1318,42 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
     function hideBulkInvoiceModal() {
         document.getElementById('bulkInvoiceModal').style.display = 'none';
     }
+    // Customer picker for the manual invoice modal: the list is fetched while typing
+    // instead of shipping every customer as an <option> on each page load.
+    let custSearchTimer = null;
+    function custSearch(q) {
+        clearTimeout(custSearchTimer);
+        custSearchTimer = setTimeout(() => {
+            const box = document.getElementById('custResults');
+            const type = document.getElementById('custSearchInput').dataset.type || 'customer';
+            fetch('index.php?page=admin_invoices&action=customer_search&type=' + encodeURIComponent(type) + '&q=' + encodeURIComponent(q || ''))
+                .then(r => r.json())
+                .then(rows => {
+                    if (!rows.length) {
+                        box.innerHTML = '<div class="px-3 py-2 text-xs text-muted-foreground">Tidak ada pelanggan yang cocok.</div>';
+                        box.hidden = false;
+                        return;
+                    }
+                    box.innerHTML = rows.map(r =>
+                        '<button type="button" class="block w-full border-0 bg-transparent px-3 py-2 text-left text-sm hover:bg-muted" onclick="custPick(' + r.id + ', this)" data-name="' + r.name.replace(/"/g, '') + '">' +
+                        '<span class="font-medium">' + r.name.replace(/[<>&]/g, '') + '</span>' +
+                        (r.code ? '<span class="ml-2 text-xs text-muted-foreground">' + r.code.replace(/[<>&]/g, '') + '</span>' : '') +
+                        '</button>').join('');
+                    box.hidden = false;
+                })
+                .catch(() => { box.hidden = true; });
+        }, 250);
+    }
+    function custPick(id, el) {
+        document.getElementById('custPickedId').value = id;
+        const label = el.dataset.name || el.innerText.trim();
+        document.getElementById('custSearchInput').value = label;
+        document.getElementById('custResults').hidden = true;
+        const badge = document.getElementById('custPicked');
+        badge.textContent = 'Terpilih: ' + label;
+        badge.classList.remove('hidden');
+    }
+
     function showManualInvoiceModal() {
         document.getElementById('manualInvoiceModal').style.display = 'flex';
     }
@@ -1479,15 +1538,11 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
             <div class="grid gap-4 sm:grid-cols-2">
                 <label class="block">
                     <span class="mb-1 block text-xs font-medium text-muted-foreground">Pilih pelanggan (<?= htmlspecialchars($filter_type ?: 'customer') ?>)</span>
-                    <select name="customer_id" class="form-control" required>
-                        <option value="">- Cari nama pelanggan -</option>
-                        <?php
-                            $cust_list = $db->query("SELECT id, name, type FROM customers c WHERE type = " . $db->quote($filter_type ?: 'customer') . " $scope_where ORDER BY name ASC")->fetchAll();
-                            foreach($cust_list as $cl):
-                        ?>
-                            <option value="<?= $cl['id'] ?>"><?= htmlspecialchars($cl['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <?php // Searched on demand: rendering every customer as an <option> made this page ~500 KB at 5.000 pelanggan. ?>
+                    <input type="text" id="custSearchInput" class="form-control" placeholder="Ketik nama, kode, atau nomor HP" autocomplete="off" oninput="custSearch(this.value)" onfocus="custSearch(this.value)">
+                    <input type="hidden" name="customer_id" id="custPickedId" required>
+                    <div id="custPicked" class="mt-1 hidden text-xs font-semibold text-signal"></div>
+                    <div id="custResults" class="mt-1 max-h-56 overflow-y-auto rounded-md border border-solid border-border bg-card" hidden></div>
                 </label>
                 <label class="block">
                     <span class="mb-1 block text-xs font-medium text-muted-foreground">Tanggal jatuh tempo</span>

@@ -134,7 +134,7 @@ $tenant_id_map = $_SESSION['tenant_id'] ?? 1;
 $scope_where_map = " AND tenant_id = $tenant_id_map ";
 
 $assets = $db->query("SELECT * FROM infrastructure_assets WHERE lat IS NOT NULL AND lat != '' AND tenant_id = $tenant_id_map")->fetchAll();
-$customers = $db->query("SELECT * FROM customers WHERE lat IS NOT NULL AND lat != '' $scope_where_map")->fetchAll();
+$customers = $db->query("SELECT id, name, customer_code, lat, lng, odp_id, path_json FROM customers WHERE lat IS NOT NULL AND lat != '' $scope_where_map")->fetchAll();
 
 // Fetch Registered Customers without Coordinates for the Picker
 $existing_customers = $db->query("SELECT id, name, customer_code FROM customers WHERE (lat IS NULL OR lat = '') $scope_where_map ORDER BY name ASC")->fetchAll();
@@ -547,8 +547,9 @@ $existing_customers = $db->query("SELECT id, name, customer_code FROM customers 
         });
 
         // Customers to Assets
-        Object.keys(customerData).forEach(id => {
+        Object.keys(customerMarkers).forEach(id => {
             const c = customerData[id];
+            if (!c) return;
             if(c.odp_id > 0) {
                 const asset = assetData[c.odp_id];
                 if(asset) {
@@ -692,50 +693,96 @@ $existing_customers = $db->query("SELECT id, name, customer_code FROM customers 
     // Initialize Connections
     drawAllConnections();
 
-    // Render Customers
-    <?php foreach($customers as $c): ?>
-        customerData[<?= $c['id'] ?>] = <?= json_encode($c) ?>;
-        var marker = L.marker([<?= $c['lat'] ?>, <?= $c['lng'] ?>], {
-            icon: subIcon, 
-            draggable: true,
-            bubblingMouseEvents: false,
-            zIndexOffset: 500
-        })
-            .addTo(map);
+    // Customer markers: one compact array plus markers built in JS, and only for
+    // what is inside the current view. Emitting a marker block per customer made
+    // this page 14 MB and 5.000 DOM markers at 5.000 pelanggan.
+    const CUSTOMER_POINTS = <?= json_encode(array_map(fn($c) => [
+        'id'   => (int)$c['id'],
+        'name' => (string)$c['name'],
+        'code' => (string)($c['customer_code'] ?? ''),
+        'lat'  => (float)$c['lat'],
+        'lng'  => (float)$c['lng'],
+        'odp_id'    => (int)($c['odp_id'] ?? 0),
+        'path_json' => $c['path_json'] ?: null,
+    ], $customers), JSON_UNESCAPED_UNICODE) ?>;
+    const ODP_OPTIONS = <?= json_encode($odp_options_html) ?>;
+    const MAX_CUSTOMER_MARKERS = 600;
 
-        var cPopup = `
+    CUSTOMER_POINTS.forEach(p => { customerData[p.id] = p; bounds.extend([p.lat, p.lng]); });
+
+    function escapeHtml(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    }
+
+    function customerPopupHtml(p) {
+        const opts = ODP_OPTIONS.replace("value='" + p.odp_id + "'", "value='" + p.odp_id + "' selected");
+        return `
             <div style="font-family:inherit; color:black;">
-                <b style="font-size:14px;"><?= htmlspecialchars($c['name']) ?></b><br>
-                ID: <?= htmlspecialchars($c['customer_code']) ?><br>
+                <b style="font-size:14px;">${escapeHtml(p.name)}</b><br>
+                ID: ${escapeHtml(p.code)}<br>
                 <hr style="margin:5px 0; border:0; border-top:1px solid #eee;">
                 <div style="font-size:10px; color:#666; margin-bottom:5px;"><b>Ubah Jalur (ODP):</b></div>
-                <select class="form-control" style="font-size:10px; height:24px; padding:2px; margin-bottom:10px;" onchange="changeUplink('customer', <?= $c['id'] ?>, this.value)">
-                    <?= str_replace("value='{$c['odp_id']}'", "value='{$c['odp_id']}' selected", $odp_options_html) ?>
-                </select>
+                <select class="form-control" style="font-size:10px; height:24px; padding:2px; margin-bottom:10px;" onchange="changeUplink('customer', ${p.id}, this.value)">${opts}</select>
                 <div style="display:flex; gap:5px; margin-bottom:10px;">
-                    <button class="btn btn-sm btn-primary" style="flex:2; font-size:10px;" onclick="window.open('index.php?page=admin_customers&action=details&id=<?= $c['id'] ?>', '_blank')">Detail</button>
-                    <button class="btn btn-sm btn-ghost" style="flex:3; font-size:10px; color:var(--primary); border:1px solid var(--primary); padding:2px;" onclick="startEditPath('customer', <?= $c['id'] ?>)"><i class="fas fa-route"></i> Edit Rute</button>
+                    <button class="btn btn-sm btn-primary" style="flex:2; font-size:10px;" onclick="window.open('index.php?page=admin_customers&action=details&id=${p.id}', '_blank')">Detail</button>
+                    <button class="btn btn-sm btn-ghost" style="flex:3; font-size:10px; color:var(--primary); border:1px solid var(--primary); padding:2px;" onclick="startEditPath('customer', ${p.id})"><i class="fas fa-route"></i> Edit Rute</button>
                 </div>
-                <div style="margin-top:5px; font-size:9px; color:#999; text-align:center;">Klik & Tahan ikon untuk menggeser posisi</div>
-            </div>
-        `;
-        marker.bindPopup(cPopup);
+                <div style="margin-top:5px; font-size:9px; color:#999; text-align:center;">Klik &amp; Tahan ikon untuk menggeser posisi</div>
+            </div>`;
+    }
 
-        marker.on('dragend', function(e) {
-            updatePosition('customer', <?= $c['id'] ?>, e.target.getLatLng());
+    function makeCustomerMarker(p) {
+        const marker = L.marker([p.lat, p.lng], { icon: subIcon, draggable: true, bubblingMouseEvents: false, zIndexOffset: 500 }).addTo(map);
+        marker.bindPopup(() => customerPopupHtml(customerData[p.id] || p));
+        marker.on('dragstart', () => marker.setZIndexOffset(2000));
+        marker.on('dragend', function (e) {
+            marker.setZIndexOffset(500);
+            updatePosition('customer', p.id, e.target.getLatLng());
         });
+        customerMarkers[p.id] = marker;
+        return marker;
+    }
 
-        marker.on('dragstart', () => { marker.setZIndexOffset(2000); });
-        marker.on('dragend', () => { marker.setZIndexOffset(500); });
-        
-        customerMarkers[<?= $c['id'] ?>] = marker;
-        bounds.extend(marker.getLatLng());
-    <?php endforeach; ?>
-    
+    const customerCounter = L.control({ position: 'bottomleft' });
+    customerCounter.onAdd = function () {
+        this._div = L.DomUtil.create('div', 'map-customer-counter');
+        this._div.style.cssText = 'background:#fff;border:1px solid #D9E0E2;border-radius:8px;padding:4px 10px;font-size:11px;color:#5B6B72;box-shadow:0 1px 3px rgba(0,0,0,.12)';
+        return this._div;
+    };
+    if (CUSTOMER_POINTS.length) customerCounter.addTo(map);
+
+    function renderCustomerMarkers() {
+        const view = map.getBounds();
+        const keep = {};
+        let shown = 0, inView = 0;
+        for (const p of CUSTOMER_POINTS) {
+            if (!view.contains([p.lat, p.lng])) continue;
+            inView++;
+            if (shown >= MAX_CUSTOMER_MARKERS) continue;
+            keep[p.id] = true;
+            shown++;
+            if (!customerMarkers[p.id]) makeCustomerMarker(p);
+        }
+        Object.keys(customerMarkers).forEach(id => {
+            if (keep[id]) return;
+            map.removeLayer(customerMarkers[id]);
+            delete customerMarkers[id];
+        });
+        if (customerCounter._div) {
+            customerCounter._div.innerHTML = inView > shown
+                ? shown + ' dari ' + inView + ' pelanggan di layar &middot; perbesar peta untuk melihat sisanya'
+                : shown + ' dari ' + CUSTOMER_POINTS.length + ' pelanggan';
+        }
+        drawAllConnections();
+    }
+
+    map.on('moveend', renderCustomerMarkers);
+
     // Initial redraw to catch customer connections
     drawAllConnections();
 
     if(bounds.isValid()) map.fitBounds(bounds, {padding: [50, 50]});
+    renderCustomerMarkers();
 
     function centerMap() {
         if(bounds.isValid()) map.fitBounds(bounds, {padding: [50, 50]});
