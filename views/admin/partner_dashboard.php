@@ -84,6 +84,8 @@ if (!function_exists('rp')) { function rp($n): string { return 'Rp ' . number_fo
 $months = [];
 for ($i = 0; $i < 12; $i++) $months[] = date('Y-m', strtotime("first day of -$i month"));
 $months = array_values(array_unique($months));
+
+if (($_GET['action'] ?? '') === 'detail') { require __DIR__ . '/partner_detail.php'; return; }
 ?>
 
 <div>
@@ -186,10 +188,10 @@ $months = array_values(array_unique($months));
                         </td>
                         <td class="px-4 py-3 align-top sm:px-5">
                             <div class="flex justify-end gap-1.5">
+                                <a class="ui-btn ui-btn-sm ui-btn-primary" href="index.php?page=admin_partner_dashboard&action=detail&id=<?= intval($r['id']) ?>&period=<?= urlencode($period) ?>" title="Detail pelanggan mitra"><i class="fas fa-eye"></i><span class="hidden sm:inline">Detail</span></a>
                                 <?php if (!empty($r['customer_id'])): ?>
-                                    <a class="ui-btn ui-btn-sm ui-btn-outline" href="index.php?page=admin_customers&action=details&id=<?= intval($r['customer_id']) ?>" title="Detail mitra"><i class="fas fa-eye"></i><span class="hidden sm:inline">Detail</span></a>
+                                    <a class="ui-btn ui-btn-sm ui-btn-outline" href="index.php?page=admin_customers&action=details&id=<?= intval($r['customer_id']) ?>" title="Tagihan kolektif mitra"><i class="fas fa-handshake"></i><span class="hidden sm:inline">Kolektif</span></a>
                                 <?php endif; ?>
-                                <a class="ui-btn ui-btn-sm ui-btn-outline" href="index.php?page=admin_users" title="Akun mitra"><i class="fas fa-user"></i><span class="hidden sm:inline">Akun</span></a>
                             </div>
                         </td>
                     </tr>
