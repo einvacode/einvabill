@@ -17,6 +17,7 @@ require_once __DIR__ . '/expense_categories.php';
 require_once __DIR__ . '/finance_report.php';
 require_once __DIR__ . '/cash_accounts.php';
 require_once __DIR__ . '/recurring_expenses.php';
+require_once __DIR__ . '/finance_trend.php';
 error_reporting(E_ALL & ~E_NOTICE);
 
 ini_set('display_errors', 0);

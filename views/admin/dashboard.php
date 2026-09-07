@@ -234,6 +234,8 @@ if ($cash_tile) $stat_cards[] = $cash_tile;
     <?php endforeach; ?>
 </div>
 
+<?php require __DIR__ . '/../components/finance_trend.php'; ?>
+
 <!-- Reminder / broadcast widget (existing component) -->
 <?php require __DIR__ . '/../components/wa_broadcast.php'; ?>
 
