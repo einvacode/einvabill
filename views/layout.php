@@ -214,17 +214,21 @@ function nav_heading(string $text): string {
     <aside id="appSidebar" class="fixed inset-y-0 left-0 z-50 flex w-[256px] -translate-x-full flex-col bg-sidebar text-white transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0">
         <div class="flex h-14 shrink-0 items-center gap-3 border-b border-solid border-white/10 px-4">
             <?php if ($logo_src): ?>
-                <span class="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-md bg-white p-0.5">
-                    <img src="<?= htmlspecialchars($logo_src) ?>" alt="" class="max-h-full max-w-full object-contain">
+                <?php // Company logos are wide banners (this one is 4,9:1); a 36 px square shrank it
+                      // to an unreadable stripe. The plate follows the logo instead of boxing it, and
+                      // the company name is dropped here because the logo already carries it — it is
+                      // still in the topbar under the page title. ?>
+                <span class="inline-flex min-w-0 items-center justify-center rounded-md bg-white p-1">
+                    <img src="<?= htmlspecialchars($logo_src) ?>" alt="<?= htmlspecialchars($company_name) ?>" class="h-7 w-auto max-w-[168px] object-contain">
                 </span>
             <?php else: ?>
                 <span class="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-white/10"><i class="fas fa-wifi text-[15px]"></i></span>
+                <div class="min-w-0">
+                    <div class="truncate text-[13.5px] font-bold leading-tight"><?= htmlspecialchars($company_name) ?></div>
+                    <div class="truncate text-[11px] text-white/50 leading-tight">EinvaBill</div>
+                </div>
             <?php endif; ?>
-            <div class="min-w-0">
-                <div class="truncate text-[13.5px] font-bold leading-tight"><?= htmlspecialchars($company_name) ?></div>
-                <div class="truncate text-[11px] text-white/50 leading-tight">EinvaBill</div>
-            </div>
-            <button type="button" class="ml-auto grid h-8 w-8 place-items-center rounded-md text-white/70 hover:bg-white/10 lg:hidden" onclick="closeSidebar()" aria-label="Tutup menu"><i class="fas fa-times"></i></button>
+            <button type="button" class="ml-auto grid h-8 w-8 shrink-0 place-items-center rounded-md text-white/70 hover:bg-white/10 lg:hidden" onclick="closeSidebar()" aria-label="Tutup menu"><i class="fas fa-times"></i></button>
         </div>
 
         <nav class="app-sidebar-nav flex-1 overflow-y-auto px-3 pb-4">
