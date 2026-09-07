@@ -19,6 +19,10 @@
 
 @layer base {
   html { -webkit-font-smoothing: antialiased; }
+  /* Preflight is off (legacy CSS), but its border reset is still needed:
+     without it `border-t border-solid` leaves the other three sides at the
+     browser default "medium" (3px). Zero specificity so every utility wins. */
+  :where(body.ui-shell) *, :where(body.ui-shell) ::before, :where(body.ui-shell) ::after { border-width: 0; border-style: solid; border-color: theme('colors.border'); }
   body { @apply bg-background text-foreground font-sans; background-image: none !important; }
   :focus-visible { @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }

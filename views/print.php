@@ -160,6 +160,12 @@ if (($invoice['status'] ?? '') === 'Lunas') {
             <div class="divider"></div>
             
                 <strong>Nama:</strong> <?= htmlspecialchars($invoice['name']) ?><br>
+                <?php if(!empty($invoice['billing_company'])): ?>
+                    <strong>Perusahaan:</strong> <?= htmlspecialchars($invoice['billing_company']) ?><br>
+                <?php endif; ?>
+                <?php if(!empty($invoice['billing_npwp'])): ?>
+                    <strong>NPWP:</strong> <?= htmlspecialchars($invoice['billing_npwp']) ?><br>
+                <?php endif; ?>
                 <?php if(empty($invoice_items) && !empty($invoice['package_name'])): ?>
                     <strong>Paket:</strong> <?= htmlspecialchars($invoice['package_name']) ?><br>
                 <?php endif; ?>
@@ -352,16 +358,21 @@ if (($invoice['status'] ?? '') === 'Lunas') {
             <div class="details-grid">
                 <div>
                     <div style="color:#64748b; margin-bottom:3px; font-size:12px; font-weight:bold;">Ditagihkan Kepada:</div>
+                    <?php
+                        $a4_addr  = !empty($invoice['billing_address']) ? $invoice['billing_address'] : ($invoice['address'] ?? '');
+                        $a4_phone = !empty($invoice['billing_phone']) ? $invoice['billing_phone'] : ($invoice['contact'] ?? '');
+                    ?>
                     <div style="font-size:16px; font-weight:bold;"><?= htmlspecialchars($invoice['name']) ?></div>
-                    <div style="font-size:13px; color:#475569; margin-top:2px;"><?= htmlspecialchars($invoice['address'] ?: '-') ?></div>
-                    <div style="font-size:13px; color:#475569;">WA/Telp: <?= htmlspecialchars($invoice['contact'] ?: '-') ?></div>
-                    <?php if(!empty($invoice['billing_email']) || !empty($invoice['billing_phone']) || !empty($invoice['billing_address'])): ?>
-                        <div style="margin-top:8px; font-size:13px; color:#475569;">
-                            <strong>Kontak Penagihan:</strong><br>
-                            <?= htmlspecialchars($invoice['billing_address'] ?? '-') ?><br>
-                            <?= !empty($invoice['billing_phone']) ? 'Telp: '.htmlspecialchars($invoice['billing_phone']) . '<br>' : '' ?>
-                            <?= !empty($invoice['billing_email']) ? 'Email: '.htmlspecialchars($invoice['billing_email']) . '<br>' : '' ?>
-                        </div>
+                    <?php if(!empty($invoice['billing_company'])): ?>
+                        <div style="font-size:13px; font-weight:bold; color:#334155;"><?= htmlspecialchars($invoice['billing_company']) ?></div>
+                    <?php endif; ?>
+                    <div style="font-size:13px; color:#475569; margin-top:2px; white-space:pre-line;"><?= htmlspecialchars($a4_addr ?: '-') ?></div>
+                    <div style="font-size:13px; color:#475569;">WA/Telp: <?= htmlspecialchars($a4_phone ?: '-') ?></div>
+                    <?php if(!empty($invoice['billing_email'])): ?>
+                        <div style="font-size:13px; color:#475569;">Email: <?= htmlspecialchars($invoice['billing_email']) ?></div>
+                    <?php endif; ?>
+                    <?php if(!empty($invoice['billing_npwp'])): ?>
+                        <div style="font-size:13px; color:#475569;">NPWP: <?= htmlspecialchars($invoice['billing_npwp']) ?></div>
                     <?php endif; ?>
                 </div>
                 
@@ -375,21 +386,6 @@ if (($invoice['status'] ?? '') === 'Lunas') {
             </div>
 
             <div style="margin-top:10px; display:flex; justify-content:flex-end; gap:20px; align-items:center;">
-                <div style="text-align:right; font-size:13px; color:#475569;">
-                    <div><strong>Dibuat Oleh:</strong></div>
-                    <div><?= htmlspecialchars($invoice['issued_by_name'] ?? ($_SESSION['user_name'] ?? '-')) ?></div>
-                </div>
-            </div>
-
-            <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center; gap:20px;">
-                <div style="font-size:13px; color:#475569;">
-                    <?php if(!empty($invoice['billing_address']) || !empty($invoice['billing_phone']) || !empty($invoice['billing_email'])): ?>
-                        <strong>Kontak Penagihan:</strong><br>
-                        <?= htmlspecialchars($invoice['billing_address'] ?? '-') ?><br>
-                        <?= !empty($invoice['billing_phone']) ? 'Telp: '.htmlspecialchars($invoice['billing_phone']) . '<br>' : '' ?>
-                        <?= !empty($invoice['billing_email']) ? 'Email: '.htmlspecialchars($invoice['billing_email']) . '<br>' : '' ?>
-                    <?php endif; ?>
-                </div>
                 <div style="text-align:right; font-size:13px; color:#475569;">
                     <div><strong>Dibuat Oleh:</strong></div>
                     <div><?= htmlspecialchars($invoice['issued_by_name'] ?? ($_SESSION['user_name'] ?? '-')) ?></div>

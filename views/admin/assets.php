@@ -17,6 +17,50 @@ function inferAssetCategory($name) {
     return 'Lainnya';
 }
 
+/**
+ * Create or refresh the manual-entry customer record behind an external
+ * invoice so the recipient's full details (company, address, phone, email,
+ * NPWP) can be picked again next time. Only 'note'/'temp' customers are
+ * ever updated from the invoice form; real subscribers are left untouched.
+ * Returns the customer id, or 0 when nothing could be saved.
+ */
+function quick_invoice_upsert_customer(PDO $db, int $customer_id, array $data, int $tenant_id): int {
+    try { $cols = $db->query("PRAGMA table_info(customers)")->fetchAll(PDO::FETCH_COLUMN, 1); } catch (Exception $e) { $cols = []; }
+    $fields = ['name', 'address', 'contact', 'email', 'company_name', 'npwp'];
+    $name = trim((string)($data['name'] ?? ''));
+
+    if ($customer_id > 0) {
+        $st = $db->prepare("SELECT type FROM customers WHERE id = ? AND tenant_id = ? LIMIT 1");
+        $st->execute([$customer_id, $tenant_id]);
+        $type = $st->fetchColumn();
+        if ($type === false) return 0;
+        if (!in_array($type, ['note', 'temp'])) return $customer_id;
+        $set = []; $vals = [];
+        foreach ($fields as $col) {
+            if (!in_array($col, $cols)) continue;
+            if ($col === 'name' && $name === '') continue;
+            $set[] = "$col = ?"; $vals[] = trim((string)($data[$col] ?? ''));
+        }
+        if ($set) {
+            $vals[] = $customer_id; $vals[] = $tenant_id;
+            try { $db->prepare("UPDATE customers SET " . implode(', ', $set) . " WHERE id = ? AND tenant_id = ?")->execute($vals); } catch (Exception $e) {}
+        }
+        return $customer_id;
+    }
+
+    if ($name === '') return 0;
+    $insCols = ['name', 'type', 'created_by', 'registration_date', 'tenant_id'];
+    $insVals = [$name, 'note', 0, date('Y-m-d H:i:s'), $tenant_id];
+    foreach ($fields as $col) {
+        if ($col === 'name' || !in_array($col, $cols)) continue;
+        $insCols[] = $col; $insVals[] = trim((string)($data[$col] ?? ''));
+    }
+    try {
+        $db->prepare("INSERT INTO customers (" . implode(', ', $insCols) . ") VALUES (" . implode(', ', array_fill(0, count($insCols), '?')) . ")")->execute($insVals);
+        return (int)$db->lastInsertId();
+    } catch (Exception $e) { return 0; }
+}
+
 function extractAssetCode($description) {
     if (!is_string($description)) return '';
     if (preg_match('/Kode:\s*([^|\n]+)/i', $description, $m)) {
@@ -162,27 +206,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $billing_address = trim($_POST['billing_address'] ?? '');
         $billing_phone = trim($_POST['billing_phone'] ?? '');
         $billing_email = trim($_POST['billing_email'] ?? '');
+        $billing_company = trim($_POST['billing_company'] ?? '');
+        $billing_npwp = trim($_POST['billing_npwp'] ?? '');
+        $payment_instructions = trim($_POST['payment_instructions'] ?? '');
 
         if ($customer_id > 0) {
             try {
                 $tenant_id = $_SESSION['tenant_id'] ?? 1;
-                $cust_stmt = $db->prepare("SELECT name, address, contact, package_name, monthly_fee FROM customers WHERE id = ? AND tenant_id = ? LIMIT 1");
+                $cust_stmt = $db->prepare("SELECT * FROM customers WHERE id = ? AND tenant_id = ? LIMIT 1");
                 $cust_stmt->execute([$customer_id, $tenant_id]);
                 $customer = $cust_stmt->fetch(PDO::FETCH_ASSOC);
                 if ($customer) {
                     if ($recipient_name === '') $recipient_name = trim($customer['name'] ?? '');
                     if ($billing_address === '') $billing_address = trim($customer['address'] ?? '');
                     if ($billing_phone === '') $billing_phone = trim($customer['contact'] ?? '');
-                    if ($billing_email === '') {
-                        try {
-                            $cust_cols = $db->query("PRAGMA table_info(customers)")->fetchAll(PDO::FETCH_COLUMN, 1);
-                            if (is_array($cust_cols) && in_array('email', $cust_cols)) {
-                                $email_val = $db->prepare("SELECT email FROM customers WHERE id = ? AND tenant_id = ? LIMIT 1");
-                                $email_val->execute([$customer_id, $tenant_id]);
-                                $billing_email = trim((string)$email_val->fetchColumn());
-                            }
-                        } catch (Exception $e) {}
-                    }
+                    if ($billing_email === '') $billing_email = trim((string)($customer['email'] ?? ''));
+                    if ($billing_company === '') $billing_company = trim((string)($customer['company_name'] ?? ''));
+                    if ($billing_npwp === '') $billing_npwp = trim((string)($customer['npwp'] ?? ''));
                     $base_amount = floatval($customer['monthly_fee'] ?? 0);
                     $customer_tax_total = compute_customer_invoice_total_from_amount($base_amount, $customer['ppn_active'] ?? 0, $customer['bhp_active'] ?? 0, $customer['uso_active'] ?? 0)['total'];
                     if ($amount <= 0) $amount = $customer_tax_total;
@@ -205,20 +245,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $issued_by_id = $u_id;
             $issued_by_name = $_SESSION['user_name'] ?? '';
 
-            // If no customer selected but recipient name provided, create a temporary customer record so invoice history can reference it
-            if ($customer_id <= 0 && !empty($recipient_name)) {
-                try {
-                    // Create a temporary customer record
-                    $tenant_id = $_SESSION['tenant_id'] ?? 1;
-                    $stmt_c = $db->prepare("INSERT INTO customers (customer_code, name, address, contact, type, created_by, registration_date, tenant_id) VALUES (?, ?, ?, ?, 'note', ?, datetime('now'), ?)");
-                    $cust_code = null;
-                    $stmt_c->execute([$cust_code, $recipient_name, $billing_address, $billing_phone, 0, $tenant_id]);
-                    $customer_id = $db->lastInsertId();
-                } catch (Exception $e) {
-                    // fallback: leave customer_id as 0
-                    $customer_id = 0;
-                }
-            }
+            // Save the recipient's full details on a manual-entry customer record
+            // (new record when none was picked, refreshed record otherwise) so the
+            // invoice history can reference it and the data can be reused.
+            $tenant_id = $_SESSION['tenant_id'] ?? 1;
+            $customer_id = quick_invoice_upsert_customer($db, $customer_id, [
+                'name' => $recipient_name,
+                'address' => $billing_address,
+                'contact' => $billing_phone,
+                'email' => $billing_email,
+                'company_name' => $billing_company,
+                'npwp' => $billing_npwp,
+            ], (int)$tenant_id);
 
             // Ensure invoices table has extended columns (auto-migrate if needed)
             try {
@@ -232,7 +270,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'issued_by_id' => 'INTEGER DEFAULT 0',
                 'issued_by_name' => 'TEXT',
                 'payment_instructions' => 'TEXT',
-                'created_via' => 'TEXT'
+                'created_via' => 'TEXT',
+                'billing_company' => 'TEXT',
+                'billing_npwp' => 'TEXT'
             ];
             foreach ($ensure_cols as $col => $def) {
                 if (!in_array($col, $existing)) {
@@ -336,16 +376,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
-            // Save payment_instructions if provided and column exists
-            $payment_instructions = trim($_POST['payment_instructions'] ?? '');
-            if ($payment_instructions) {
-                try {
-                    $cols = $db->query("PRAGMA table_info(invoices)")->fetchAll(PDO::FETCH_COLUMN, 1);
-                    if (is_array($cols) && in_array('payment_instructions', $cols)) {
-                        $db->prepare("UPDATE invoices SET payment_instructions = ? WHERE id = ?")->execute([$payment_instructions, $invoice_id]);
-                    }
-                } catch (Exception $e) {}
-            }
+            // Save payment instructions, company and NPWP on the invoice (columns exist since v26)
+            try {
+                $cols = $db->query("PRAGMA table_info(invoices)")->fetchAll(PDO::FETCH_COLUMN, 1);
+                $extra = ['payment_instructions' => $payment_instructions, 'billing_company' => $billing_company, 'billing_npwp' => $billing_npwp];
+                $set = []; $vals = [];
+                foreach ($extra as $col => $val) {
+                    if (is_array($cols) && in_array($col, $cols)) { $set[] = "$col = ?"; $vals[] = $val; }
+                }
+                if ($set) { $vals[] = $invoice_id; $db->prepare("UPDATE invoices SET " . implode(', ', $set) . " WHERE id = ?")->execute($vals); }
+            } catch (Exception $e) {}
 
             // Optionally mark asset as sold (set status to 'Sold') if requested
             if (isset($_POST['mark_sold']) && intval($_POST['mark_sold']) === 1 && $asset_id > 0) {
@@ -398,8 +438,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $billing_phone = trim($_POST['billing_phone'] ?? '');
         $billing_email = trim($_POST['billing_email'] ?? '');
         $payment_instructions = trim($_POST['payment_instructions'] ?? '');
+        $billing_company = trim($_POST['billing_company'] ?? '');
+        $billing_npwp = trim($_POST['billing_npwp'] ?? '');
+        $recipient_name = trim($_POST['recipient_name'] ?? '');
         $due_date = $_POST['due_date'] ?? $invoice['due_date'];
         $status = $_POST['status'] ?? $invoice['status'];
+
+        // Keep the manual-entry customer record in sync with the edited header
+        $tenant_id = $_SESSION['tenant_id'] ?? 1;
+        quick_invoice_upsert_customer($db, (int)($invoice['customer_id'] ?? 0), [
+            'name' => $recipient_name,
+            'address' => $billing_address,
+            'contact' => $billing_phone,
+            'email' => $billing_email,
+            'company_name' => $billing_company,
+            'npwp' => $billing_npwp,
+        ], (int)$tenant_id);
 
         // compute total from posted items
         $total_amount = 0;
@@ -427,6 +481,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // minimal update
             $db->prepare("UPDATE invoices SET amount = ?, due_date = ?, status = ? WHERE id = ?")->execute([$total_amount, $due_date, $status, $invoice_id]);
         }
+        try {
+            $set = []; $vals = [];
+            foreach (['billing_company' => $billing_company, 'billing_npwp' => $billing_npwp] as $col => $val) {
+                if (is_array($cols) && in_array($col, $cols)) { $set[] = "$col = ?"; $vals[] = $val; }
+            }
+            if ($set) { $vals[] = $invoice_id; $db->prepare("UPDATE invoices SET " . implode(', ', $set) . " WHERE id = ?")->execute($vals); }
+        } catch (Exception $e) {}
 
         // Replace invoice items: delete existing then insert posted
         try { $db->prepare("DELETE FROM invoice_items WHERE invoice_id = ?")->execute([$invoice_id]); } catch (Exception $e) {}

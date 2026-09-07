@@ -175,3 +175,9 @@ Tanpa ikon besar, tanpa emoji.
 - Hapus `<style>` sebaris hanya bila seluruh kelasnya sudah tidak dipakai.
 - Setelah selesai: `php -l` harus bersih, halaman harus kembali 200 di
   server lokal, dan tidak ada `PHP Fatal`/`Warning` baru di log.
+
+## Catatan teknis
+
+Preflight Tailwind dimatikan, tetapi `src/css/app.css` memuat reset border
+ala preflight yang dibatasi ke `body.ui-shell` (spesifisitas nol). Tanpa itu,
+`border-b border-solid` membuat tiga sisi lain ikut tampil setebal 3 px.

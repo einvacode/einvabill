@@ -228,9 +228,9 @@ function run_database_setup($db) {
 
     // 2. Incremental Schema Migrations (Safety check for existing databases)
     $cols_to_add = [
-        'customers' => ['router_id' => 'INTEGER DEFAULT 0', 'pppoe_name' => 'TEXT', 'customer_code' => 'TEXT', 'area' => 'TEXT', 'created_by' => 'INTEGER DEFAULT 0', 'lat' => 'TEXT', 'lng' => 'TEXT', 'odp_id' => 'INTEGER DEFAULT 0', 'odp_port' => 'INTEGER', 'path_json' => 'TEXT', 'collector_id' => 'INTEGER DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1', 'ppn_active' => 'INTEGER DEFAULT 0', 'bhp_active' => 'INTEGER DEFAULT 0', 'uso_active' => 'INTEGER DEFAULT 0'],
+        'customers' => ['router_id' => 'INTEGER DEFAULT 0', 'pppoe_name' => 'TEXT', 'customer_code' => 'TEXT', 'area' => 'TEXT', 'created_by' => 'INTEGER DEFAULT 0', 'lat' => 'TEXT', 'lng' => 'TEXT', 'odp_id' => 'INTEGER DEFAULT 0', 'odp_port' => 'INTEGER', 'path_json' => 'TEXT', 'collector_id' => 'INTEGER DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1', 'ppn_active' => 'INTEGER DEFAULT 0', 'bhp_active' => 'INTEGER DEFAULT 0', 'uso_active' => 'INTEGER DEFAULT 0', 'email' => 'TEXT', 'company_name' => 'TEXT', 'npwp' => 'TEXT'],
         'users' => ['area' => 'TEXT', 'customer_id' => 'INTEGER', 'brand_name' => 'TEXT', 'brand_logo' => 'TEXT', 'brand_qris' => 'TEXT', 'brand_address' => 'TEXT', 'brand_contact' => 'TEXT', 'brand_bank' => 'TEXT', 'brand_rekening' => 'TEXT', 'wa_template' => 'TEXT', 'wa_template_paid' => 'TEXT', 'tenant_id' => 'INTEGER DEFAULT 1', 'must_change_password' => 'INTEGER DEFAULT 0'],
-        'invoices' => ['discount' => 'REAL DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1', 'billing_address' => 'TEXT', 'billing_phone' => 'TEXT', 'billing_email' => 'TEXT', 'issued_by_id' => 'INTEGER', 'issued_by_name' => 'TEXT', 'payment_instructions' => 'TEXT', 'created_via' => 'TEXT'],
+        'invoices' => ['discount' => 'REAL DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1', 'billing_address' => 'TEXT', 'billing_phone' => 'TEXT', 'billing_email' => 'TEXT', 'issued_by_id' => 'INTEGER', 'issued_by_name' => 'TEXT', 'payment_instructions' => 'TEXT', 'created_via' => 'TEXT', 'billing_company' => 'TEXT', 'billing_npwp' => 'TEXT'],
         'routers' => ['created_by' => 'INTEGER DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1'],
         'packages' => ['created_by' => 'INTEGER DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1'],
         'expenses' => ['created_by' => 'INTEGER DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1'],
@@ -299,9 +299,9 @@ function run_database_setup($db) {
     $check_settings = $db->query("SELECT COUNT(*) FROM settings")->fetchColumn();
     if ($check_settings == 0) {
         $db->exec("INSERT INTO settings (id, company_name, company_tagline, company_address, wa_template, landing_hero_title, landing_hero_text, db_version) 
-                  VALUES (1, 'EinvaBill ISP', 'Internet Cepat & Layanan Prima', 'Alamat Perusahaan Anda', 'Halo {nama}, tagihan Anda sebesar {tagihan} sudah terbit.', 'Koneksi Super Cepat & Stabil', 'Solusi internet dan IT untuk kebutuhan personal dan korporasi.', 25)");
+                  VALUES (1, 'EinvaBill ISP', 'Internet Cepat & Layanan Prima', 'Alamat Perusahaan Anda', 'Halo {nama}, tagihan Anda sebesar {tagihan} sudah terbit.', 'Koneksi Super Cepat & Stabil', 'Solusi internet dan IT untuk kebutuhan personal dan korporasi.', 26)");
     } else {
-        $db->exec("UPDATE settings SET db_version = 25 WHERE id = 1");
+        $db->exec("UPDATE settings SET db_version = 26 WHERE id = 1");
     }
 
     // Default Users
