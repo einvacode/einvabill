@@ -1151,19 +1151,17 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
 </div>
 
 <!-- Floating broadcast bar (appears when items are selected) -->
-<div id="floatingBroadcastBar" class="floating-broadcast-bar !rounded-md !border-0 !bg-primary !shadow-lift !backdrop-blur-none">
-    <div class="flex items-center gap-3">
-        <i class="fab fa-whatsapp text-xl"></i>
-        <div>
-            <div id="waSelectedCountFloating" class="text-sm font-bold">0 terpilih</div>
-            <div id="waProgressTextFloating" class="text-xs text-white/70">Pesan tagihan siap dikirim</div>
+<div id="floatingBroadcastBar" class="floating-broadcast-bar rounded-lg bg-primary shadow-lift">
+    <div class="fbb-info flex min-w-0 flex-nowrap items-center gap-3">
+        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-lg"><i class="fab fa-whatsapp"></i></span>
+        <div class="min-w-0">
+            <div id="waSelectedCountFloating" class="truncate text-sm font-semibold leading-tight">0 terpilih</div>
+            <div id="waProgressTextFloating" class="truncate text-xs leading-tight text-white/70">Pesan tagihan siap dikirim</div>
         </div>
     </div>
-    <div class="flex gap-2">
-        <button type="button" onclick="startMassWaWeb()" id="btnMassWa" class="ui-btn ui-btn-sm ui-btn-wa">
-            <i class="fas fa-paper-plane"></i> Kirim sekarang
-        </button>
-        <button type="button" onclick="uncheckAllInvoices()" class="ui-btn ui-btn-sm border-white/10 bg-white/10 text-white hover:bg-white/10" aria-label="Batal pilih"><i class="fas fa-times"></i></button>
+    <div class="fbb-actions flex shrink-0 flex-nowrap items-center gap-2">
+        <button type="button" onclick="startMassWaWeb()" id="btnMassWa" class="ui-btn ui-btn-sm ui-btn-wa"><i class="fas fa-paper-plane"></i> Kirim sekarang</button>
+        <button type="button" onclick="uncheckAllInvoices()" class="ui-btn ui-btn-sm border-white/20 bg-white/10 text-white hover:bg-white/20" aria-label="Batal pilih"><i class="fas fa-times"></i></button>
     </div>
 </div>
 
@@ -1177,7 +1175,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
         
         if(count > 0) {
             floatingBar.classList.add('active');
-            countDisplay.innerText = count + ' Pelanggan Terpilih';
+            countDisplay.innerText = count + ' tagihan terpilih';
         } else {
             floatingBar.classList.remove('active');
         }
@@ -1286,7 +1284,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
         }
 
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-paper-plane"></i> KIRIM SEKARANG';
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim sekarang';
         progText.innerHTML = '<span style="color:#ffffff; font-weight:800;">Selesai! Seluruh pesan berhasil diproses.</span>';
         updateWaSelectedCount();
     }
