@@ -94,6 +94,8 @@ $tab_idle = 'cursor-pointer rounded-sm border-0 bg-transparent px-3 py-1.5 text-
     #invoiceItemsTable .row-remove { width:34px; height:34px; padding:0; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; }
     </style>
 
+<?php require __DIR__ . '/../components/invoice_item_suggestions.php'; ?>
+
     <div id="createSection">
         <form method="POST" action="index.php?page=admin_assets&action=invoice_create" id="externalInvoiceForm" class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
 <?= csrf_field() ?>
@@ -160,7 +162,7 @@ $tab_idle = 'cursor-pointer rounded-sm border-0 bg-transparent px-3 py-1.5 text-
                     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-solid border-border px-4 py-3 sm:px-5">
                         <div>
                             <h3 class="m-0 text-[15px] font-bold">Rincian tagihan</h3>
-                            <p class="m-0 text-xs text-muted-foreground">Total per baris dihitung otomatis dari jumlah dan harga satuan.</p>
+                            <p class="m-0 text-xs text-muted-foreground">Ketik deskripsi untuk memilih item yang pernah disimpan; harga satuan terisi otomatis.</p>
                         </div>
                         <button type="button" class="ui-btn ui-btn-sm ui-btn-outline" onclick="CreateInvoice.addItemRow()"><i class="fas fa-plus"></i> Tambah baris</button>
                     </div>
@@ -177,7 +179,7 @@ $tab_idle = 'cursor-pointer rounded-sm border-0 bg-transparent px-3 py-1.5 text-
                             </thead>
                             <tbody>
                                 <tr class="border-t border-solid border-border">
-                                    <td class="pl-4 sm:pl-5"><input type="text" name="item_desc[]" class="form-control" placeholder="Contoh: Instalasi jaringan kantor" required></td>
+                                    <td class="pl-4 sm:pl-5"><input type="text" name="item_desc[]" class="form-control" placeholder="Contoh: Instalasi jaringan kantor" list="itemSuggestions" autocomplete="off" oninput="CreateInvoice.suggest(this)" required></td>
                                     <td><input type="number" name="item_qty[]" class="form-control" value="1" min="1" required oninput="CreateInvoice.recalculateRow(this)"></td>
                                     <td><input type="number" name="item_unit[]" class="form-control" value="0" min="0" required oninput="CreateInvoice.recalculateRow(this)"></td>
                                     <td><input type="number" name="item_amount[]" class="form-control" value="0" readonly tabindex="-1"></td>
@@ -376,7 +378,7 @@ $tab_idle = 'cursor-pointer rounded-sm border-0 bg-transparent px-3 py-1.5 text-
 window.CreateInvoice = (function(){
     function rowTemplate() {
         return `
-            <td class="pl-4 sm:pl-5"><input type="text" name="item_desc[]" class="form-control" placeholder="Deskripsi item" required></td>
+            <td class="pl-4 sm:pl-5"><input type="text" name="item_desc[]" class="form-control" placeholder="Deskripsi item" list="itemSuggestions" autocomplete="off" oninput="CreateInvoice.suggest(this)" required></td>
             <td><input type="number" name="item_qty[]" class="form-control" value="1" min="1" required oninput="CreateInvoice.recalculateRow(this)"></td>
             <td><input type="number" name="item_unit[]" class="form-control" value="0" min="0" required oninput="CreateInvoice.recalculateRow(this)"></td>
             <td><input type="number" name="item_amount[]" class="form-control" value="0" readonly tabindex="-1"></td>
@@ -437,7 +439,8 @@ window.CreateInvoice = (function(){
         if (!el) return;
         el.style.display = (el.style.display === 'none' || el.style.display === '') ? 'table-row' : 'none';
     }
-    return { addItemRow, removeItemRow, clearItemRows, recalculateRow, updateGrandTotal, init, toggleInvoiceItems };
+    function suggest(el) { if (window.applyItemSuggestion) window.applyItemSuggestion(el, recalculateRow); }
+    return { addItemRow, removeItemRow, clearItemRows, recalculateRow, updateGrandTotal, init, toggleInvoiceItems, suggest };
 })();
 
 document.addEventListener('DOMContentLoaded', function(){ try{ if(window.CreateInvoice) window.CreateInvoice.init(); }catch(e){} });

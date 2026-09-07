@@ -53,6 +53,7 @@ $inv_no = 'INV-' . str_pad($invoice['id'], 5, '0', STR_PAD_LEFT);
     #editItemsTable .row-remove { width:34px; height:34px; padding:0; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; }
     </style>
 
+<?php require __DIR__ . '/../components/invoice_item_suggestions.php'; ?>
     <form method="POST" action="index.php?page=admin_assets&action=invoice_update" class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
 <?= csrf_field() ?>
         <input type="hidden" name="invoice_id" value="<?= intval($invoice['id']) ?>">
@@ -99,7 +100,7 @@ $inv_no = 'INV-' . str_pad($invoice['id'], 5, '0', STR_PAD_LEFT);
                 <div class="flex flex-wrap items-center justify-between gap-3 border-b border-solid border-border px-4 py-3 sm:px-5">
                     <div>
                         <h3 class="m-0 text-[15px] font-bold">Rincian tagihan</h3>
-                        <p class="m-0 text-xs text-muted-foreground">Total per baris dihitung otomatis dari jumlah dan harga satuan.</p>
+                        <p class="m-0 text-xs text-muted-foreground">Ketik deskripsi untuk memilih item yang pernah disimpan; harga satuan terisi otomatis.</p>
                     </div>
                     <button type="button" class="ui-btn ui-btn-sm ui-btn-outline" onclick="EditInvoice.addEditRow()"><i class="fas fa-plus"></i> Tambah baris</button>
                 </div>
@@ -122,7 +123,7 @@ $inv_no = 'INV-' . str_pad($invoice['id'], 5, '0', STR_PAD_LEFT);
                                 if ($unit <= 0 && $qty > 0) $unit = round($amt / $qty);
                             ?>
                             <tr class="border-t border-solid border-border">
-                                <td class="pl-4 sm:pl-5"><input type="text" name="item_desc[]" class="form-control" value="<?= htmlspecialchars($it['description']) ?>" required></td>
+                                <td class="pl-4 sm:pl-5"><input type="text" name="item_desc[]" class="form-control" value="<?= htmlspecialchars($it['description']) ?>" list="itemSuggestions" autocomplete="off" oninput="EditInvoice.suggest(this)" required></td>
                                 <td><input type="number" name="item_qty[]" class="form-control" value="<?= $qty ?>" min="1" oninput="EditInvoice.recalculateEditRow(this)"></td>
                                 <td><input type="number" name="item_unit[]" class="form-control" value="<?= $unit ?>" min="0" oninput="EditInvoice.recalculateEditRow(this)"></td>
                                 <td><input type="number" name="item_amount[]" class="form-control" value="<?= $amt ?>" readonly tabindex="-1"></td>
@@ -196,7 +197,7 @@ $inv_no = 'INV-' . str_pad($invoice['id'], 5, '0', STR_PAD_LEFT);
 window.EditInvoice = (function(){
     function rowTemplate() {
         return `
-            <td class="pl-4 sm:pl-5"><input type="text" name="item_desc[]" class="form-control" placeholder="Deskripsi item" required></td>
+            <td class="pl-4 sm:pl-5"><input type="text" name="item_desc[]" class="form-control" placeholder="Deskripsi item" list="itemSuggestions" autocomplete="off" oninput="EditInvoice.suggest(this)" required></td>
             <td><input type="number" name="item_qty[]" class="form-control" value="1" min="1" oninput="EditInvoice.recalculateEditRow(this)"></td>
             <td><input type="number" name="item_unit[]" class="form-control" value="0" min="0" oninput="EditInvoice.recalculateEditRow(this)"></td>
             <td><input type="number" name="item_amount[]" class="form-control" value="0" readonly tabindex="-1"></td>
@@ -234,7 +235,8 @@ window.EditInvoice = (function(){
         const count = document.getElementById('edit_invoice_item_count'); if (count) count.innerText = amounts.length;
     }
     function init(){ document.querySelectorAll('#editItemsTable input[name="item_qty[]"]').forEach(i => recalculateEditRow(i)); updateEditGrandTotal(); }
-    return { addEditRow, removeEditRow, clearEditItemRows, recalculateEditRow, updateEditGrandTotal, init };
+    function suggest(el) { if (window.applyItemSuggestion) window.applyItemSuggestion(el, recalculateEditRow); }
+    return { addEditRow, removeEditRow, clearEditItemRows, recalculateEditRow, updateEditGrandTotal, init, suggest };
 })();
 
 document.addEventListener('DOMContentLoaded', function(){ try{ if(window.EditInvoice) window.EditInvoice.init(); }catch(e){} });
