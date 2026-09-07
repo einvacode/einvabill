@@ -13,10 +13,19 @@ $bulan_id = [1=>'Januari','Februari','Maret','April','Mei','Juni','Juli','Agustu
 $month_label = function (string $ym) use ($bulan_id): string { return $bulan_id[(int)substr($ym, 5, 2)] . ' ' . substr($ym, 0, 4); };
 $period_label = $period === 'all' ? 'semua periode' : 'jatuh tempo ' . $month_label($period);
 
-$partners = $db->prepare("SELECT u.id, u.name, u.customer_id, c.name AS pop_name, c.customer_code AS pop_code, c.address AS pop_address
-    FROM users u LEFT JOIN customers c ON c.id = u.customer_id
-    WHERE u.role = 'partner' AND u.tenant_id = ? ORDER BY u.name ASC");
-$partners->execute([$tenant_id]);
+// A "mitra" is a POP customer record (type 'partner'), the same thing the main
+// dashboard counts. Its login account (users.role = 'partner') is optional:
+// only accounts can register their own customers in the system. Accounts not
+// linked to any POP record are listed too so nothing is hidden.
+$partners = $db->prepare("SELECT c.id AS customer_id, c.name AS pop_name, c.customer_code AS pop_code, c.address AS pop_address, u.id AS id, u.name AS name
+    FROM customers c LEFT JOIN users u ON u.customer_id = c.id AND u.role = 'partner' AND u.tenant_id = :t
+    WHERE c.type = 'partner' AND c.tenant_id = :t
+    UNION ALL
+    SELECT NULL, NULL, NULL, NULL, u.id, u.name FROM users u
+    WHERE u.role = 'partner' AND u.tenant_id = :t
+      AND (u.customer_id IS NULL OR u.customer_id NOT IN (SELECT id FROM customers WHERE type = 'partner' AND tenant_id = :t))
+    ORDER BY 2, 6");
+$partners->execute([':t' => $tenant_id]);
 $partners = $partners->fetchAll(PDO::FETCH_ASSOC);
 
 // Invoices of the partner's own customers (what the partner collects).
@@ -42,15 +51,19 @@ $q_cust = $db->prepare("SELECT COUNT(*) AS total,
     FROM customers WHERE created_by = :uid AND tenant_id = :tenant AND type = 'customer'");
 
 $rows = [];
-$tot = ['partners' => count($partners), 'customers' => 0, 'paid' => 0, 'unpaid' => 0, 'pop_paid' => 0, 'pop_unpaid' => 0];
+$tot = ['partners' => count(array_filter($partners, fn($p) => !empty($p['customer_id']))), 'orphans' => count(array_filter($partners, fn($p) => empty($p['customer_id']))), 'accounts' => count(array_filter($partners, fn($p) => !empty($p['id']) && !empty($p['customer_id']))), 'customers' => 0, 'paid' => 0, 'unpaid' => 0, 'pop_paid' => 0, 'pop_unpaid' => 0];
 foreach ($partners as $p) {
-    $q_cust->execute([':uid' => $p['id'], ':tenant' => $tenant_id, ':month' => $period === 'all' ? date('Y-m') : $period]);
-    $cust = $q_cust->fetch(PDO::FETCH_ASSOC);
+    $cust = ['total' => 0, 'new_n' => 0, 'mrr' => 0];
+    $ci = ['paid_amt' => 0, 'paid_n' => 0, 'unpaid_amt' => 0, 'unpaid_n' => 0, 'unpaid_cust' => 0];
+    if (!empty($p['id'])) {
+        $q_cust->execute([':uid' => $p['id'], ':tenant' => $tenant_id, ':month' => $period === 'all' ? date('Y-m') : $period]);
+        $cust = $q_cust->fetch(PDO::FETCH_ASSOC) ?: $cust;
 
-    $params = [':uid' => $p['id'], ':tenant' => $tenant_id];
-    if ($period !== 'all') $params[':period'] = $period;
-    $q_cust_inv->execute($params);
-    $ci = $q_cust_inv->fetch(PDO::FETCH_ASSOC);
+        $params = [':uid' => $p['id'], ':tenant' => $tenant_id];
+        if ($period !== 'all') $params[':period'] = $period;
+        $q_cust_inv->execute($params);
+        $ci = $q_cust_inv->fetch(PDO::FETCH_ASSOC) ?: $ci;
+    }
 
     $pi = ['paid_amt' => 0, 'unpaid_amt' => 0, 'unpaid_n' => 0];
     if (!empty($p['customer_id'])) {
@@ -110,9 +123,9 @@ if (($_GET['action'] ?? '') === 'detail') { require __DIR__ . '/partner_detail.p
 
     <div class="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div class="ui-card p-4 sm:p-5">
-            <div class="text-xs font-medium text-muted-foreground">Mitra aktif</div>
+            <div class="text-xs font-medium text-muted-foreground">Total mitra</div>
             <div class="mt-1 text-2xl font-extrabold tabular-nums"><?= number_format($tot['partners']) ?></div>
-            <div class="text-xs text-muted-foreground"><?= number_format($tot['customers']) ?> pelanggan di bawah mitra</div>
+            <div class="text-xs text-muted-foreground"><?= number_format($tot['accounts']) ?> punya akun &middot; <?= number_format($tot['customers']) ?> pelanggan tercatat<?= $tot['orphans'] > 0 ? ' &middot; ' . number_format($tot['orphans']) . ' akun belum terhubung ke POP' : '' ?></div>
         </div>
         <div class="ui-card p-4 sm:p-5">
             <div class="text-xs font-medium text-muted-foreground">Sudah bayar (pelanggan mitra)</div>
@@ -137,13 +150,13 @@ if (($_GET['action'] ?? '') === 'detail') { require __DIR__ . '/partner_detail.p
             <p class="m-0 text-xs text-muted-foreground">Diurutkan dari tunggakan terbesar. Tagihan pelanggan adalah tagihan yang dibuat mitra untuk pelanggannya; tagihan kolektif adalah tagihan perusahaan ke mitra.</p>
         </div>
         <?php if (empty($rows)): ?>
-            <div class="px-5 py-10 text-center text-sm text-muted-foreground">Belum ada akun mitra. Tambahkan lewat menu Akses Pengguna.</div>
+            <div class="px-5 py-10 text-center text-sm text-muted-foreground">Belum ada data mitra. Tambahkan lewat menu Kemitraan (B2B).</div>
         <?php else: ?>
         <div class="overflow-x-auto">
             <table class="w-full border-collapse text-sm">
                 <thead>
                     <tr class="text-left text-[11px] font-semibold text-muted-foreground">
-                        <th class="px-4 py-2.5 font-semibold sm:px-5">Mitra</th>
+                        <th class="min-w-[220px] px-4 py-2.5 font-semibold sm:px-5">Mitra</th>
                         <th class="px-3 py-2.5 text-right font-semibold">Pelanggan</th>
                         <th class="px-3 py-2.5 text-right font-semibold">Sudah bayar</th>
                         <th class="px-3 py-2.5 text-right font-semibold">Belum bayar</th>
@@ -156,8 +169,8 @@ if (($_GET['action'] ?? '') === 'detail') { require __DIR__ . '/partner_detail.p
                     <?php foreach ($rows as $r): ?>
                     <tr class="border-t border-solid border-border">
                         <td class="px-4 py-3 align-top sm:px-5">
-                            <div class="font-semibold"><?= htmlspecialchars($r['name']) ?></div>
-                            <div class="text-xs text-muted-foreground"><?= htmlspecialchars($r['pop_name'] ?: 'Belum terhubung ke data POP') ?><?= !empty($r['pop_code']) ? ' &middot; ' . htmlspecialchars($r['pop_code']) : '' ?></div>
+                            <div class="font-semibold"><?= htmlspecialchars($r['pop_name'] ?: $r['name']) ?></div>
+                            <div class="text-xs text-muted-foreground"><?= !empty($r['pop_code']) ? htmlspecialchars($r['pop_code']) . ' &middot; ' : '' ?><?= !empty($r['id']) ? ($r['pop_name'] ? 'akun ' . htmlspecialchars($r['name']) : 'Akun belum terhubung ke data POP') : 'Belum punya akun mitra' ?></div>
                         </td>
                         <td class="px-3 py-3 text-right align-top tabular-nums whitespace-nowrap">
                             <div class="font-semibold"><?= number_format($r['cust_total']) ?></div>
@@ -188,7 +201,7 @@ if (($_GET['action'] ?? '') === 'detail') { require __DIR__ . '/partner_detail.p
                         </td>
                         <td class="px-4 py-3 align-top sm:px-5">
                             <div class="flex justify-end gap-1.5">
-                                <a class="ui-btn ui-btn-sm ui-btn-primary" href="index.php?page=admin_partner_dashboard&action=detail&id=<?= intval($r['id']) ?>&period=<?= urlencode($period) ?>" title="Detail pelanggan mitra"><i class="fas fa-eye"></i><span class="hidden sm:inline">Detail</span></a>
+                                <a class="ui-btn ui-btn-sm ui-btn-primary" href="index.php?page=admin_partner_dashboard&action=detail&<?= !empty($r['id']) ? 'id=' . intval($r['id']) : 'cid=' . intval($r['customer_id']) ?>&period=<?= urlencode($period) ?>" title="Detail pelanggan mitra"><i class="fas fa-eye"></i><span class="hidden sm:inline">Detail</span></a>
                                 <?php if (!empty($r['customer_id'])): ?>
                                     <a class="ui-btn ui-btn-sm ui-btn-outline" href="index.php?page=admin_customers&action=details&id=<?= intval($r['customer_id']) ?>" title="Tagihan kolektif mitra"><i class="fas fa-handshake"></i><span class="hidden sm:inline">Kolektif</span></a>
                                 <?php endif; ?>

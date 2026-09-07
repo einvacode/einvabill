@@ -3,12 +3,24 @@
 // chosen period, plus the collective invoices billed to the partner.
 // Included from partner_dashboard.php (which already validated admin role,
 // $tenant_id, $period, $period_sql, $month_label, $period_label, $months, rp()).
+// Addressed either by account (id = users.id) or by POP record (cid = customers.id).
 $pid = intval($_GET['id'] ?? 0);
-$st = $db->prepare("SELECT u.id, u.name, u.username, u.customer_id, c.name AS pop_name, c.customer_code AS pop_code, c.contact AS pop_contact, c.address AS pop_address, c.monthly_fee AS pop_fee, c.billing_date AS pop_billing_date
-    FROM users u LEFT JOIN customers c ON c.id = u.customer_id WHERE u.id = ? AND u.role = 'partner' AND u.tenant_id = ?");
-$st->execute([$pid, $tenant_id]);
+$cid = intval($_GET['cid'] ?? 0);
+if ($pid > 0) {
+    $st = $db->prepare("SELECT u.id, u.name, u.username, u.customer_id, c.name AS pop_name, c.customer_code AS pop_code, c.contact AS pop_contact, c.address AS pop_address, c.monthly_fee AS pop_fee, c.billing_date AS pop_billing_date
+        FROM users u LEFT JOIN customers c ON c.id = u.customer_id WHERE u.id = ? AND u.role = 'partner' AND u.tenant_id = ?");
+    $st->execute([$pid, $tenant_id]);
+} else {
+    $st = $db->prepare("SELECT u.id, COALESCE(u.name, c.name) AS name, u.username, c.id AS customer_id, c.name AS pop_name, c.customer_code AS pop_code, c.contact AS pop_contact, c.address AS pop_address, c.monthly_fee AS pop_fee, c.billing_date AS pop_billing_date
+        FROM customers c LEFT JOIN users u ON u.customer_id = c.id AND u.role = 'partner' AND u.tenant_id = ?
+        WHERE c.id = ? AND c.type = 'partner' AND c.tenant_id = ?");
+    $st->execute([$tenant_id, $cid, $tenant_id]);
+}
 $partner = $st->fetch(PDO::FETCH_ASSOC);
 if (!$partner) { echo "<div class='ui-card p-5 text-sm text-muted-foreground'>Mitra tidak ditemukan.</div>"; return; }
+$pid = intval($partner['id'] ?? 0);
+$has_account = $pid > 0;
+$detail_url = 'index.php?page=admin_partner_dashboard&action=detail&' . ($has_account ? 'id=' . $pid : 'cid=' . intval($partner['customer_id']));
 
 $search = trim((string)($_GET['search'] ?? ''));
 $status_filter = in_array($_GET['status'] ?? '', ['lunas', 'belum', 'none']) ? $_GET['status'] : '';
@@ -29,8 +41,8 @@ $params = [':uid' => $pid, ':tenant' => $tenant_id];
 if ($period !== 'all') $params[':period'] = $period;
 if ($search !== '') { $sql .= " AND (c.name LIKE :q OR c.customer_code LIKE :q OR c.contact LIKE :q)"; $params[':q'] = '%' . $search . '%'; }
 $sql .= " GROUP BY c.id ORDER BY unpaid_amt DESC, c.name ASC";
-$st = $db->prepare($sql); $st->execute($params);
-$customers = $st->fetchAll(PDO::FETCH_ASSOC);
+$customers = [];
+if ($has_account) { $st = $db->prepare($sql); $st->execute($params); $customers = $st->fetchAll(PDO::FETCH_ASSOC); }
 
 foreach ($customers as &$c) {
     $c['state'] = $c['unpaid_n'] > 0 ? 'belum' : ($c['paid_amt'] > 0 ? 'lunas' : 'none');
@@ -72,7 +84,7 @@ $fmt_date = fn($d) => $d ? date('d/m/Y', strtotime($d)) : '-';
             <h2 class="m-0 text-xl font-bold sm:text-2xl"><?= htmlspecialchars($partner['name']) ?></h2>
             <p class="m-0 mt-1 text-sm text-muted-foreground">
                 <?= htmlspecialchars($partner['pop_name'] ?: 'Belum terhubung ke data POP') ?><?= !empty($partner['pop_code']) ? ' &middot; ' . htmlspecialchars($partner['pop_code']) : '' ?><?= !empty($partner['pop_contact']) ? ' &middot; ' . htmlspecialchars($partner['pop_contact']) : '' ?>
-                &middot; akun <span class="font-medium text-foreground"><?= htmlspecialchars($partner['username']) ?></span>
+                &middot; <?= $has_account ? 'akun <span class="font-medium text-foreground">' . htmlspecialchars($partner['username']) . '</span>' : '<span class="text-accent-ink">belum punya akun mitra</span>' ?>
             </p>
         </div>
         <div class="flex flex-wrap items-end gap-2">
@@ -82,7 +94,7 @@ $fmt_date = fn($d) => $d ? date('d/m/Y', strtotime($d)) : '-';
             <form method="get" class="block">
                 <input type="hidden" name="page" value="admin_partner_dashboard">
                 <input type="hidden" name="action" value="detail">
-                <input type="hidden" name="id" value="<?= $pid ?>">
+                <input type="hidden" name="<?= $has_account ? 'id' : 'cid' ?>" value="<?= $has_account ? $pid : intval($partner['customer_id']) ?>">
                 <?php if ($search !== ''): ?><input type="hidden" name="search" value="<?= htmlspecialchars($search) ?>"><?php endif; ?>
                 <?php if ($status_filter): ?><input type="hidden" name="status" value="<?= $status_filter ?>"><?php endif; ?>
                 <select name="period" class="form-control h-10 w-[200px]" onchange="this.form.submit()" aria-label="Periode">
@@ -128,7 +140,7 @@ $fmt_date = fn($d) => $d ? date('d/m/Y', strtotime($d)) : '-';
                 <form method="get" class="flex flex-wrap gap-2">
                     <input type="hidden" name="page" value="admin_partner_dashboard">
                     <input type="hidden" name="action" value="detail">
-                    <input type="hidden" name="id" value="<?= $pid ?>">
+                    <input type="hidden" name="<?= $has_account ? 'id' : 'cid' ?>" value="<?= $has_account ? $pid : intval($partner['customer_id']) ?>">
                     <input type="hidden" name="period" value="<?= htmlspecialchars($period) ?>">
                     <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" class="form-control h-9 w-[180px] text-sm" placeholder="Nama, kode, atau HP">
                     <select name="status" class="form-control h-9 w-[150px] text-sm" onchange="this.form.submit()">
@@ -141,7 +153,7 @@ $fmt_date = fn($d) => $d ? date('d/m/Y', strtotime($d)) : '-';
                 </form>
             </div>
             <?php if (empty($customers)): ?>
-                <div class="px-5 py-10 text-center text-sm text-muted-foreground"><?= $sum['n'] === 0 ? 'Mitra ini belum memiliki pelanggan.' : 'Tidak ada pelanggan yang cocok dengan filter.' ?></div>
+                <div class="px-5 py-10 text-center text-sm text-muted-foreground"><?= !$has_account ? 'Mitra ini belum punya akun login, jadi pelanggannya tidak tercatat di sistem. Buat akun mitra di menu Akses Pengguna dan hubungkan ke data POP ini.' : ($sum['n'] === 0 ? 'Mitra ini belum memiliki pelanggan.' : 'Tidak ada pelanggan yang cocok dengan filter.') ?></div>
             <?php else: ?>
             <div class="overflow-x-auto">
                 <table class="w-full border-collapse text-sm">
