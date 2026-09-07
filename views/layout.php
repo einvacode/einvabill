@@ -516,5 +516,59 @@ window.closeMobileMenu = () => { const o = document.getElementById('mobileMenuOv
 window.openImagePreview = (src) => { const m = document.getElementById('globalImageModal'), i = document.getElementById('modalImg'); if (m && i) { m.style.display = 'flex'; i.src = src; document.body.style.overflow = 'hidden'; } };
 window.closeImagePreview = () => { const m = document.getElementById('globalImageModal'); if (m) { m.style.display = 'none'; document.body.style.overflow = ''; } };
 </script>
+<?php if ($role === 'admin' && function_exists('cash_company_accounts')): $__cash_accounts = cash_company_accounts($db, (int)($_SESSION['tenant_id'] ?? 1)); $__cash_last = intval($_SESSION['cash_last_account'] ?? 0); ?>
+    <!-- Kas & Bank: admin picks where a recorded payment goes -->
+    <div id="cashAccountModal" class="fixed inset-0 z-[1100] items-center justify-center bg-black/50 p-4" style="display:none;" onclick="if(event.target===this)closeCashAccountModal()">
+        <div class="ui-card w-full max-w-sm p-5">
+            <div class="mb-1 text-base font-bold">Catat pembayaran</div>
+            <div class="mb-4 text-sm text-muted-foreground" id="cashAccountModalText"></div>
+            <label class="block">
+                <span class="mb-1 block text-xs font-medium text-muted-foreground">Uang masuk ke</span>
+                <select id="cashAccountModalSelect" class="form-control">
+                    <?php foreach ($__cash_accounts as $pa): ?><option value="<?= intval($pa['id']) ?>" <?= ($__cash_last ? $__cash_last === intval($pa['id']) : $pa['is_default']) ? 'selected' : '' ?>><?= htmlspecialchars($pa['name']) ?></option><?php endforeach; ?>
+                </select>
+            </label>
+            <div class="mt-5 flex justify-end gap-2">
+                <button type="button" class="ui-btn ui-btn-outline" onclick="closeCashAccountModal()">Batal</button>
+                <button type="button" class="ui-btn ui-btn-primary" id="cashAccountModalOk">Tandai lunas</button>
+            </div>
+        </div>
+    </div>
+    <script>
+    (function () {
+        let pending = null;
+        window.chooseCashAccount = function (text, cb) {
+            pending = cb;
+            document.getElementById('cashAccountModalText').textContent = text || '';
+            document.getElementById('cashAccountModal').style.display = 'flex';
+            document.getElementById('cashAccountModalSelect').focus();
+        };
+        window.closeCashAccountModal = function () { pending = null; document.getElementById('cashAccountModal').style.display = 'none'; };
+        document.getElementById('cashAccountModalOk').addEventListener('click', function () {
+            const v = document.getElementById('cashAccountModalSelect').value; const cb = pending;
+            closeCashAccountModal(); if (cb) cb(v);
+        });
+        // Single "Tandai lunas" links: ask for the account, then POST with account_id
+        // (replaces the inline confirm on those links; runs in capture phase so the
+        // inline onclick never fires).
+        document.addEventListener('click', function (e) {
+            const a = e.target.closest && e.target.closest('a[data-method="post"]');
+            if (!a) return;
+            const href = a.getAttribute('href') || '';
+            if (!/action=(mark_paid|invoice_mark_paid)(&|$)/.test(href)) return;
+            e.preventDefault(); e.stopPropagation();
+            const label = (a.closest('tr') || a.closest('.ui-card') || a.parentElement);
+            const name = label ? (label.querySelector('.font-semibold, .font-bold, strong') || {}).textContent : '';
+            window.chooseCashAccount((name || '').trim().slice(0, 60), function (accountId) {
+                const f = document.createElement('form');
+                f.method = 'post'; f.action = href; f.style.display = 'none';
+                const i = document.createElement('input'); i.type = 'hidden'; i.name = 'account_id'; i.value = accountId; f.appendChild(i);
+                const t = document.createElement('input'); t.type = 'hidden'; t.name = '_token'; t.value = window.CSRF_TOKEN; f.appendChild(t);
+                document.body.appendChild(f); f.submit();
+            });
+        }, true);
+    })();
+    </script>
+<?php endif; ?>
 </body>
 </html>

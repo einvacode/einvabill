@@ -610,7 +610,8 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $c = $db->query("SELECT billing_date FROM customers WHERE id = $customer_id AND tenant_id = $tenant_id")->fetch();
     if (!$c) { header("Location: index.php?page=admin_customers&msg=forbidden"); exit; }
     $bday = str_pad($c['billing_date'] ?: 1, 2, '0', STR_PAD_LEFT);
-    
+    $pay_account = cash_posted_account($db, (int)$tenant_id);
+
     // Find the latest invoice due date to start from
     $last_due = $db->query("SELECT due_date FROM invoices WHERE customer_id = $customer_id AND tenant_id = $tenant_id ORDER BY due_date DESC LIMIT 1")->fetchColumn();
     
@@ -629,6 +630,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 $db->prepare("UPDATE invoices SET status = 'Lunas' WHERE id = ? AND tenant_id = ?")->execute([$inv_id, $tenant_id]);
                 $db->prepare("INSERT INTO payments (invoice_id, amount, received_by, payment_date, tenant_id) VALUES (?, ?, ?, ?, ?)")
                    ->execute([$inv_id, $amount_per_month, $receiver_id, date('Y-m-d H:i:s'), $tenant_id]);
+                cash_tag_payment($db, (int)$tenant_id, (int)$db->lastInsertId(), $pay_account);
             }
         } else {
             $db->prepare("INSERT INTO invoices (customer_id, amount, due_date, status, tenant_id) VALUES (?, ?, ?, 'Lunas', ?)")
@@ -636,6 +638,7 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $inv_id = $db->lastInsertId();
             $db->prepare("INSERT INTO payments (invoice_id, amount, received_by, payment_date, tenant_id) VALUES (?, ?, ?, ?, ?)")
                ->execute([$inv_id, $amount_per_month, $receiver_id, date('Y-m-d H:i:s'), $tenant_id]);
+            cash_tag_payment($db, (int)$tenant_id, (int)$db->lastInsertId(), $pay_account);
         }
     }
     
@@ -1982,6 +1985,15 @@ document.addEventListener("DOMContentLoaded", () => {
 <?= csrf_field() ?>
                 <input type="hidden" name="customer_id" value="<?= $id ?>">
                 <input type="hidden" name="amount_per_month" value="<?= $c['monthly_fee'] ?>">
+
+                <?php if (($_SESSION['user_role'] ?? '') === 'admin'): $pay_accounts = cash_company_accounts($db, (int)($_SESSION['tenant_id'] ?? 1)); $pay_last = intval($_SESSION['cash_last_account'] ?? 0); ?>
+                <label class="mb-4 block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Uang masuk ke</span>
+                    <select name="account_id" class="form-control">
+                        <?php foreach ($pay_accounts as $pa): ?><option value="<?= intval($pa['id']) ?>" <?= ($pay_last ? $pay_last === intval($pa['id']) : $pa['is_default']) ? 'selected' : '' ?>><?= htmlspecialchars($pa['name']) ?></option><?php endforeach; ?>
+                    </select>
+                </label>
+                <?php endif; ?>
 
                 <label class="mb-4 block">
                     <span class="mb-1 block text-xs font-medium text-muted-foreground">Jumlah bulan</span>

@@ -319,16 +319,21 @@ if ($cash_tile) $stat_cards[] = $cash_tile;
 <?= csrf_field() ?>
     <input type="hidden" name="customer_id" id="qp_cust_id">
     <input type="hidden" name="num_months" id="qp_num_months">
+    <input type="hidden" name="account_id" id="qp_account_id">
 </form>
 
 <script>
 function quickPay(custId, name, months, total) {
     const formattedTotal = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(total);
-    if (confirm(`Proses pembayaran cepat untuk ${name}?\n\nTotal: ${formattedTotal} (${months} bulan)\n\nTindakan ini akan menandai tagihan tertua sebagai LUNAS.`)) {
+    const go = function (accountId) {
         document.getElementById('qp_cust_id').value = custId;
         document.getElementById('qp_num_months').value = months;
+        document.getElementById('qp_account_id').value = accountId || '';
         document.getElementById('quickPayForm').submit();
-    }
+    };
+    // Admin chooses where the money goes (kas kantor / bank); other roles keep the plain confirm.
+    if (window.chooseCashAccount) { window.chooseCashAccount(`${name}: ${formattedTotal} (${months} bulan)`, go); return; }
+    if (confirm(`Proses pembayaran cepat untuk ${name}?\n\nTotal: ${formattedTotal} (${months} bulan)\n\nTindakan ini akan menandai tagihan tertua sebagai LUNAS.`)) go('');
 }
 
 // Refresh the summary numbers without reloading the page

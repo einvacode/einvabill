@@ -39,6 +39,17 @@ function cash_accounts_ensure(PDO $db, int $tenant_id): void {
         foreach ($users->fetchAll(PDO::FETCH_ASSOC) as $u) {
             $ins->execute([$tenant_id, 'Kas petugas ' . $u['name'], $u['id'], date('Y-m-d H:i:s')]);
         }
+        // Office cash + bank account exist from the start: admin picks one when recording a payment.
+        $db->prepare("UPDATE cash_accounts SET name = 'Kas kantor' WHERE tenant_id = ? AND name = 'Kas utama'")->execute([$tenant_id]);
+        $bank = $db->prepare("SELECT COUNT(*) FROM cash_accounts WHERE tenant_id = ? AND type = 'bank'"); $bank->execute([$tenant_id]);
+        if ((int)$bank->fetchColumn() === 0) {
+            $s = $db->prepare("SELECT bank_account FROM settings WHERE tenant_id = ?"); $s->execute([$tenant_id]);
+            $line = trim(strtok((string)$s->fetchColumn(), "\n"));
+            $name = 'Rekening bank'; $number = '';
+            if ($line !== '' && preg_match('/^([A-Za-z .]+?)\s*[:\-]\s*([0-9 ]{6,})/', $line, $m)) { $name = 'Rekening ' . trim($m[1]); $number = trim($m[2]); }
+            $db->prepare("INSERT INTO cash_accounts (tenant_id, name, type, owner_user_id, account_number, opening_balance, opening_date, is_default, is_active, created_at) VALUES (?, ?, 'bank', NULL, ?, 0, NULL, 0, 1, ?)")
+               ->execute([$tenant_id, $name, $number, date('Y-m-d H:i:s')]);
+        }
         // Remove wallets that belong to partner accounts and were never used explicitly.
         $db->prepare("DELETE FROM cash_accounts WHERE tenant_id = ? AND owner_user_id IN (SELECT id FROM users WHERE role = 'partner')
             AND id NOT IN (SELECT COALESCE(account_id,0) FROM payments) AND id NOT IN (SELECT COALESCE(account_id,0) FROM expenses)
@@ -217,4 +228,33 @@ function cash_reassign(PDO $db, int $tenant_id, string $kind, int $id, int $acco
         else return 'Jenis transaksi tidak dikenal.';
         return '';
     } catch (Exception $e) { return 'Gagal memindahkan transaksi.'; }
+}
+
+/** Active office accounts (cash, bank, e-wallet) an admin can receive money into. */
+function cash_company_accounts(PDO $db, int $tenant_id): array {
+    try {
+        $q = $db->prepare("SELECT id, name, type, is_default FROM cash_accounts WHERE tenant_id = ? AND is_active = 1 AND owner_user_id IS NULL OR (tenant_id = ? AND is_active = 1 AND owner_user_id IN (SELECT id FROM users WHERE role = 'admin')) ORDER BY is_default DESC, CASE type WHEN 'cash' THEN 0 WHEN 'bank' THEN 1 ELSE 2 END, name");
+        $q->execute([$tenant_id, $tenant_id]);
+        return $q->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) { return []; }
+}
+
+/**
+ * Account chosen on a payment form (admin only). Falls back to the last one
+ * used in this session, then to the default account. Returns null for roles
+ * whose payments go to their own wallet (collector, partner).
+ */
+function cash_posted_account(PDO $db, int $tenant_id, ?int $posted = null): ?int {
+    if (($_SESSION['user_role'] ?? '') !== 'admin') return null;
+    $ids = array_map(fn($a) => intval($a['id']), cash_company_accounts($db, $tenant_id));
+    $posted = $posted ?? intval($_POST['account_id'] ?? 0);
+    $pick = in_array($posted, $ids, true) ? $posted : (in_array(intval($_SESSION['cash_last_account'] ?? 0), $ids, true) ? intval($_SESSION['cash_last_account']) : ($ids[0] ?? null));
+    if ($pick) $_SESSION['cash_last_account'] = $pick;
+    return $pick;
+}
+
+/** Stamp the account on payments just inserted for an invoice (or one payment id). */
+function cash_tag_payment(PDO $db, int $tenant_id, int $payment_id, ?int $account_id): void {
+    if (!$account_id || !$payment_id) return;
+    try { $db->prepare("UPDATE payments SET account_id = ? WHERE id = ? AND tenant_id = ?")->execute([$account_id, $payment_id, $tenant_id]); } catch (Exception $e) {}
 }

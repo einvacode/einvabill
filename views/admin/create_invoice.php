@@ -313,7 +313,7 @@ $tab_idle = 'cursor-pointer rounded-sm border-0 bg-transparent px-3 py-1.5 text-
                                 <td class="px-4 py-3 align-top sm:px-5">
                                     <div class="flex justify-end gap-1.5">
                                     <?php if (!$is_paid): ?>
-                                        <a class="ui-btn ui-btn-sm ui-btn-primary" title="Tandai lunas" href="index.php?page=admin_assets&action=invoice_mark_paid&id=<?= intval($inv['id']) ?>" onclick="return confirm('Tandai sebagai sudah dibayar?')"><i class="fas fa-money-bill-wave"></i></a>
+                                        <a data-method="post" class="ui-btn ui-btn-sm ui-btn-primary" title="Tandai lunas" href="index.php?page=admin_assets&action=invoice_mark_paid&id=<?= intval($inv['id']) ?>" onclick="return confirm('Tandai sebagai sudah dibayar?')"><i class="fas fa-money-bill-wave"></i></a>
                                     <?php endif; ?>
                                         <a class="ui-btn ui-btn-sm ui-btn-outline" title="Cetak" href="index.php?page=admin_invoices&action=print&id=<?= intval($inv['id']) ?>"><i class="fas fa-print"></i></a>
                                         <a class="ui-btn ui-btn-sm ui-btn-outline" title="Edit" href="index.php?page=admin_edit_quick_invoice&id=<?= intval($inv['id']) ?>"><i class="fas fa-edit"></i></a>

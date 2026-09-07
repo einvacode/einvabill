@@ -568,6 +568,7 @@ if ($action === 'invoice_mark_paid') {
             try {
                 $db->prepare("UPDATE invoices SET status = 'Lunas' WHERE id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
                 $db->prepare("INSERT INTO payments (invoice_id, amount, received_by, payment_date, tenant_id) VALUES (?, ?, ?, ?, ?)")->execute([$id, $net_amount, $receiver_id, $payment_date, $tenant_id]);
+                cash_tag_payment($db, (int)$tenant_id, (int)$db->lastInsertId(), cash_posted_account($db, (int)$tenant_id));
             } catch (Exception $e) {}
         }
     }

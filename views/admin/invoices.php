@@ -239,6 +239,7 @@ if ($action === 'mark_paid') {
         $tenant_id = $_SESSION['tenant_id'] ?? 1;
         $db->prepare("UPDATE invoices SET status = 'Lunas' WHERE id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
         $db->prepare("INSERT INTO payments (invoice_id, amount, received_by, payment_date, tenant_id) VALUES (?, ?, ?, ?, ?)")->execute([$id, $net_amount, $receiver_id, $payment_date, $tenant_id]);
+        cash_tag_payment($db, (int)$tenant_id, (int)$db->lastInsertId(), cash_posted_account($db, (int)$tenant_id));
     }
     
     $ref = $_GET['ref'] ?? '';
@@ -273,10 +274,12 @@ if ($action === 'mark_paid_bulk' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $unpaid = $db->query("SELECT id, amount, discount FROM invoices WHERE customer_id = $customer_id AND status = 'Belum Lunas' AND tenant_id = $tenant_id ORDER BY due_date ASC LIMIT $num_months")->fetchAll();
     
     $last_id = 0;
+    $pay_account = cash_posted_account($db, (int)$tenant_id);
     foreach ($unpaid as $inv) {
         $net_amount = $inv['amount'] - ($inv['discount'] ?? 0);
         $db->prepare("UPDATE invoices SET status = 'Lunas' WHERE id = ? AND tenant_id = ?")->execute([$inv['id'], $tenant_id]);
         $db->prepare("INSERT INTO payments (invoice_id, amount, received_by, payment_date, tenant_id) VALUES (?, ?, ?, ?, ?)")->execute([$inv['id'], $net_amount, $receiver_id, $payment_date, $tenant_id]);
+        cash_tag_payment($db, (int)$tenant_id, (int)$db->lastInsertId(), $pay_account);
         $last_id = $inv['id'];
         $total_paid_accum += $net_amount;
     }
@@ -1368,6 +1371,15 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
         <form action="index.php?page=admin_invoices&action=mark_paid_bulk" method="POST">
 <?= csrf_field() ?>
             <input type="hidden" name="customer_id" id="bulkCustId">
+
+            <?php if (($_SESSION['user_role'] ?? '') === 'admin'): $pay_accounts = cash_company_accounts($db, (int)($_SESSION['tenant_id'] ?? 1)); $pay_last = intval($_SESSION['cash_last_account'] ?? 0); ?>
+            <label class="mb-4 block">
+                <span class="mb-1 block text-xs font-medium text-muted-foreground">Uang masuk ke</span>
+                <select name="account_id" class="form-control">
+                    <?php foreach ($pay_accounts as $pa): ?><option value="<?= intval($pa['id']) ?>" <?= ($pay_last ? $pay_last === intval($pa['id']) : $pa['is_default']) ? 'selected' : '' ?>><?= htmlspecialchars($pa['name']) ?></option><?php endforeach; ?>
+                </select>
+            </label>
+            <?php endif; ?>
 
             <label class="mb-4 block">
                 <span class="mb-1 block text-xs font-medium text-muted-foreground">Berapa bulan?</span>
