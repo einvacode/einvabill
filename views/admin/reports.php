@@ -303,239 +303,98 @@ if ($action === 'export') {
     exit;
 }
 
-if ($action === 'print_balance_sheet') {
+// Laporan keuangan untuk SPT Tahunan: dua berkas terpisah, dihitung di app/finance_report.php.
+if ($action === 'print_profit_loss' || $action === 'print_position') {
+    if ($u_role !== 'admin') { header('Location: index.php?page=admin_reports'); exit; }
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
-    $company = $db->query("SELECT * FROM settings WHERE tenant_id = $tenant_id")->fetch();
-    if (!$company) $company = ['company_name' => 'ISP', 'company_address' => '', 'company_contact' => '', 'company_logo' => ''];
-    $total_income = $lunas_tepat + $tunggakan_dibayar;
+    $fs = finance_statements($db, (int)$tenant_id, $date_from, $date_to, $scope_where, $scope_with_external);
+    $company = $fs['meta']['company'] ?: ['company_name' => 'ISP', 'company_address' => '', 'company_contact' => '', 'company_logo' => ''];
+    $pl = $fs['pl']; $bs = $fs['bs'];
+    $periode = 'Untuk periode ' . fin_tanggal($date_from) . ' sampai ' . fin_tanggal($date_to);
 
-    $exp_scope_print = ($u_role === 'admin') ? "" : " AND e.created_by = " . intval($u_id);
-    $q_expenses_print = $db->prepare("
-        SELECT e.*, u.name as creator_name, u.role as creator_role 
-        FROM expenses e
-        LEFT JOIN users u ON e.created_by = u.id
-        WHERE e.date BETWEEN ? AND ? $exp_scope_print
-        ORDER BY e.date ASC
-    ");
-    $q_expenses_print->execute([$date_from, $date_to]);
-    $expenses_list = $q_expenses_print->fetchAll();
-    $total_expenses_print = 0;
-    $expense_summary = [];
-    foreach ($expenses_list as $e) {
-        $total_expenses_print += floatval($e['amount']);
-        $cat = trim($e['category'] ?: 'Lainnya');
-        if (!isset($expense_summary[$cat])) $expense_summary[$cat] = 0;
-        $expense_summary[$cat] += floatval($e['amount']);
-    }
-
-    $profit = $total_income - $total_expenses_print;
-    $cash_balance = $profit;
-    $receivables = max(0, floatval($belum_bayar));
-    $current_assets = $cash_balance + $receivables;
-    $fixed_assets = 0;
-    $total_assets = $current_assets + $fixed_assets;
-    $liabilities = 0;
-    $equity = $total_assets - $liabilities;
-    $year_label = $filter_year ?: date('Y');
-    $logo_src = '';
-    if (!empty($company['company_logo'])) {
-        $logo_src = preg_match('/^http/', $company['company_logo']) ? $company['company_logo'] : '/' . str_replace(' ', '%20', $company['company_logo']);
-    }
-    ?>
-    <!DOCTYPE html>
-    <html lang="id">
-    <head>
-        <meta charset="UTF-8">
-        <title>Laporan Neraca dan Laba Rugi - <?= htmlspecialchars($year_label) ?></title>
-        <style>
-            body { font-family: Arial, sans-serif; color: #111827; margin: 0; padding: 32px; background: #fff; }
-            .header { border-bottom: 3px solid #0f172a; padding-bottom: 16px; margin-bottom: 24px; }
-            .header h1 { margin: 0 0 6px; font-size: 24px; text-transform: uppercase; }
-            .muted { color: #64748b; font-size: 12px; }
-            .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
-            .box { border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; background: #f8fafc; }
-            .box h3 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; color: #64748b; }
-            .box .value { font-size: 18px; font-weight: 700; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; }
-            th { background: #f1f5f9; text-align: left; padding: 8px 10px; border-bottom: 2px solid #cbd5e1; }
-            td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
-            .section-title { font-size: 15px; font-weight: 700; margin: 24px 0 10px; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; }
-            .summary-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
-            .footer { margin-top: 30px; font-size: 11px; color: #64748b; }
-            @media print { body { padding: 12px; } }
-        </style>
-    </head>
-    <body>
-        <div class="header">
-            <h1>Laporan Neraca dan Laba Rugi</h1>
-            <div class="muted">Perusahaan: <?= htmlspecialchars($company['company_name']) ?></div>
-            <div class="muted">Periode: <?= htmlspecialchars($period_display) ?></div>
-        </div>
-
-        <div class="section-title">Neraca Sederhana</div>
+    if ($action === 'print_profit_loss') {
+        fin_print_open($company, 'Laporan Laba Rugi', $periode);
+        ?>
+        <div class="section">Pendapatan usaha</div>
         <table>
-            <tr><th colspan="2">Aset</th></tr>
-            <tr><td>Aset Lancar</td><td>Rp <?= number_format($current_assets, 0, ',', '.') ?></td></tr>
-            <tr><td>Kas / Saldo Laba</td><td>Rp <?= number_format($cash_balance, 0, ',', '.') ?></td></tr>
-            <tr><td>Piutang</td><td>Rp <?= number_format($receivables, 0, ',', '.') ?></td></tr>
-            <tr><td>Aset Tetap</td><td>Rp <?= number_format($fixed_assets, 0, ',', '.') ?></td></tr>
-            <tr><td><strong>Total Aset</strong></td><td><strong>Rp <?= number_format($total_assets, 0, ',', '.') ?></strong></td></tr>
-        </table>
-        <table>
-            <tr><th colspan="2">Kewajiban dan Ekuitas</th></tr>
-            <tr><td>Liabilitas</td><td>Rp <?= number_format($liabilities, 0, ',', '.') ?></td></tr>
-            <tr><td><strong>Ekuitas</strong></td><td><strong>Rp <?= number_format($equity, 0, ',', '.') ?></strong></td></tr>
-        </table>
-
-        <div class="section-title">Laba Rugi</div>
-        <div class="grid">
-            <div class="box">
-                <h3>Total Pendapatan</h3>
-                <div class="value">Rp <?= number_format($total_income, 0, ',', '.') ?></div>
-            </div>
-            <div class="box">
-                <h3>Total Pengeluaran</h3>
-                <div class="value">Rp <?= number_format($total_expenses_print, 0, ',', '.') ?></div>
-            </div>
-            <div class="box">
-                <h3>Laba / Rugi</h3>
-                <div class="value">Rp <?= number_format($profit, 0, ',', '.') ?></div>
-            </div>
-        </div>
-
-        <div class="section-title">Ringkasan Pendapatan</div>
-        <table>
-            <tr><th>Jenis</th><th>Nominal</th></tr>
-            <tr><td>Pembayaran Tepat Waktu</td><td>Rp <?= number_format($lunas_tepat, 0, ',', '.') ?></td></tr>
-            <tr><td>Pembayaran Tunggakan</td><td>Rp <?= number_format($tunggakan_dibayar, 0, ',', '.') ?></td></tr>
-            <tr><td><strong>Total Pendapatan</strong></td><td><strong>Rp <?= number_format($total_income, 0, ',', '.') ?></strong></td></tr>
-        </table>
-
-        <div class="section-title">Ringkasan Pengeluaran</div>
-        <table>
-            <tr><th>Kategori</th><th>Nominal</th></tr>
-            <?php if (!empty($expense_summary)): foreach ($expense_summary as $cat => $amount): ?>
-                <tr><td><?= htmlspecialchars($cat) ?></td><td>Rp <?= number_format($amount, 0, ',', '.') ?></td></tr>
-            <?php endforeach; else: ?>
-                <tr><td colspan="2" class="muted">Tidak ada pengeluaran dalam periode ini.</td></tr>
+            <?php foreach ($pl['revenue_lines'] as $r): ?>
+            <tr><td class="indent"><?= htmlspecialchars($r['jenis']) ?></td><td class="num"><?= fin_rp($r['total']) ?></td></tr>
+            <?php endforeach; if (empty($pl['revenue_lines'])): ?>
+            <tr><td class="indent muted">Tidak ada penerimaan dalam periode ini</td><td class="num">Rp 0</td></tr>
             <?php endif; ?>
-            <tr><td><strong>Total Pengeluaran</strong></td><td><strong>Rp <?= number_format($total_expenses_print, 0, ',', '.') ?></strong></td></tr>
+            <tr class="sub"><td>Jumlah pendapatan usaha</td><td class="num"><?= fin_rp($pl['revenue']) ?></td></tr>
         </table>
 
-        <div class="footer">
-            <div>Dicetak oleh: <?= htmlspecialchars($_SESSION['user_name'] ?? 'System') ?></div>
-            <div>Waktu cetak: <?= date('d/m/Y H:i:s') ?> WIB</div>
+        <div class="section">Beban usaha</div>
+        <table>
+            <?php foreach ($pl['expense_lines'] as $e): ?>
+            <tr><td class="indent"><?= htmlspecialchars($e['kategori']) ?></td><td class="num"><?= fin_rp($e['total']) ?></td></tr>
+            <?php endforeach; ?>
+            <tr><td class="indent">Beban penyusutan aset tetap</td><td class="num"><?= fin_rp($pl['depreciation']) ?></td></tr>
+            <tr class="sub"><td>Jumlah beban usaha</td><td class="num"><?= fin_rp($pl['expenses'] + $pl['depreciation']) ?></td></tr>
+        </table>
+
+        <table>
+            <tr class="sub"><td>Laba (rugi) usaha sebelum pajak</td><td class="num"><?= fin_rp($pl['operating_profit']) ?></td></tr>
+            <tr><td class="indent">PPh final <?= rtrim(rtrim(number_format($fs['meta']['tax_rate'], 2, ',', '.'), '0'), ',') ?>% dari peredaran bruto (PP 55/2022)</td><td class="num">(<?= fin_rp($pl['tax']) ?>)</td></tr>
+            <tr class="total"><td>Laba (rugi) bersih setelah pajak</td><td class="num"><?= fin_rp($pl['net_profit']) ?></td></tr>
+        </table>
+
+        <div class="note">
+            Catatan: pendapatan diakui saat pembayaran diterima (basis kas); beban diakui saat dibayar. Penyusutan aset tetap memakai metode garis lurus
+            <?= (int)$fs['meta']['life_years'] ?> tahun tanpa nilai sisa, dihitung dari harga perolehan pada menu Aset Perusahaan.
+            PPh final dihitung dari peredaran bruto untuk wajib pajak yang memakai tarif PP 55/2022 dan bersifat informasi; sesuaikan dengan status perpajakan perusahaan.
         </div>
-        <script>window.onload = function() { window.print(); }</script>
-    </body>
-    </html>
-    <?php
-    exit;
-}
-
-if ($action === 'print_profit_loss') {
-    $tenant_id = $_SESSION['tenant_id'] ?? 1;
-    $company = $db->query("SELECT * FROM settings WHERE tenant_id = $tenant_id")->fetch();
-    if (!$company) $company = ['company_name' => 'ISP', 'company_address' => '', 'company_contact' => '', 'company_logo' => ''];
-    $total_income = $lunas_tepat + $tunggakan_dibayar;
-
-    $exp_scope_print = ($u_role === 'admin') ? "" : " AND e.created_by = " . intval($u_id);
-    $q_expenses_print = $db->prepare("
-        SELECT e.*, u.name as creator_name, u.role as creator_role 
-        FROM expenses e
-        LEFT JOIN users u ON e.created_by = u.id
-        WHERE e.date BETWEEN ? AND ? $exp_scope_print
-        ORDER BY e.date ASC
-    ");
-    $q_expenses_print->execute([$date_from, $date_to]);
-    $expenses_list = $q_expenses_print->fetchAll();
-    $total_expenses_print = 0;
-    $expense_summary = [];
-    foreach ($expenses_list as $e) {
-        $total_expenses_print += floatval($e['amount']);
-        $cat = trim($e['category'] ?: 'Lainnya');
-        if (!isset($expense_summary[$cat])) $expense_summary[$cat] = 0;
-        $expense_summary[$cat] += floatval($e['amount']);
+        <?php
+        fin_print_close($company);
+        exit;
     }
 
-    $profit = $total_income - $total_expenses_print;
-    $year_label = $filter_year ?: date('Y');
-    $logo_src = '';
-    if (!empty($company['company_logo'])) {
-        $logo_src = preg_match('/^http/', $company['company_logo']) ? $company['company_logo'] : '/' . str_replace(' ', '%20', $company['company_logo']);
-    }
+    fin_print_open($company, 'Laporan Posisi Keuangan', 'Per ' . fin_tanggal($date_to));
     ?>
-    <!DOCTYPE html>
-    <html lang="id">
-    <head>
-        <meta charset="UTF-8">
-        <title>Laporan Laba Rugi - <?= htmlspecialchars($year_label) ?></title>
-        <style>
-            body { font-family: Arial, sans-serif; color: #111827; margin: 0; padding: 32px; background: #fff; }
-            .header { border-bottom: 3px solid #0f172a; padding-bottom: 16px; margin-bottom: 24px; }
-            .header h1 { margin: 0 0 6px; font-size: 24px; text-transform: uppercase; }
-            .muted { color: #64748b; font-size: 12px; }
-            .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
-            .box { border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; background: #f8fafc; }
-            .box h3 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; color: #64748b; }
-            .box .value { font-size: 18px; font-weight: 700; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; }
-            th { background: #f1f5f9; text-align: left; padding: 8px 10px; border-bottom: 2px solid #cbd5e1; }
-            td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
-            .section-title { font-size: 15px; font-weight: 700; margin: 24px 0 10px; text-transform: uppercase; }
-            .footer { margin-top: 30px; font-size: 11px; color: #64748b; }
-            @media print { body { padding: 12px; } }
-        </style>
-    </head>
-    <body>
-        <div class="header">
-            <h1>Laporan Laba Rugi</h1>
-            <div class="muted">Perusahaan: <?= htmlspecialchars($company['company_name']) ?></div>
-            <div class="muted">Periode: <?= htmlspecialchars($period_display) ?></div>
-        </div>
+    <div class="section">Aset</div>
+    <table>
+        <tr><td colspan="2"><strong>Aset lancar</strong></td></tr>
+        <tr><td class="indent">Kas dan setara kas</td><td class="num"><?= fin_rp($bs['cash']) ?></td></tr>
+        <tr><td class="indent">Piutang usaha</td><td class="num"><?= fin_rp($bs['receivables']) ?></td></tr>
+        <tr class="sub"><td>Jumlah aset lancar</td><td class="num"><?= fin_rp($bs['cash'] + $bs['receivables']) ?></td></tr>
+        <tr><td colspan="2"><strong>Aset tetap</strong></td></tr>
+        <tr><td class="indent">Harga perolehan</td><td class="num"><?= fin_rp($bs['fixed_cost']) ?></td></tr>
+        <tr><td class="indent">Akumulasi penyusutan</td><td class="num">(<?= fin_rp($bs['fixed_accum']) ?>)</td></tr>
+        <tr class="sub"><td>Nilai buku aset tetap</td><td class="num"><?= fin_rp($bs['fixed_net']) ?></td></tr>
+        <tr class="total"><td>Jumlah aset</td><td class="num"><?= fin_rp($bs['total_assets']) ?></td></tr>
+    </table>
 
-        <div class="grid">
-            <div class="box">
-                <h3>Total Pendapatan</h3>
-                <div class="value">Rp <?= number_format($total_income, 0, ',', '.') ?></div>
-            </div>
-            <div class="box">
-                <h3>Total Pengeluaran</h3>
-                <div class="value">Rp <?= number_format($total_expenses_print, 0, ',', '.') ?></div>
-            </div>
-            <div class="box">
-                <h3>Laba / Rugi</h3>
-                <div class="value">Rp <?= number_format($profit, 0, ',', '.') ?></div>
-            </div>
-        </div>
+    <div class="section">Liabilitas dan ekuitas</div>
+    <table>
+        <tr><td colspan="2"><strong>Liabilitas</strong></td></tr>
+        <tr><td class="indent">Utang usaha / pinjaman</td><td class="num"><?= fin_rp($bs['liabilities']) ?></td></tr>
+        <tr class="sub"><td>Jumlah liabilitas</td><td class="num"><?= fin_rp($bs['liabilities']) ?></td></tr>
+        <tr><td colspan="2"><strong>Ekuitas</strong></td></tr>
+        <tr><td class="indent">Modal disetor</td><td class="num"><?= fin_rp($bs['paid_capital']) ?></td></tr>
+        <tr><td class="indent">Laba ditahan (termasuk laba periode berjalan)</td><td class="num"><?= fin_rp($bs['retained']) ?></td></tr>
+        <tr class="sub"><td>Jumlah ekuitas</td><td class="num"><?= fin_rp($bs['paid_capital'] + $bs['retained']) ?></td></tr>
+        <tr class="total"><td>Jumlah liabilitas dan ekuitas</td><td class="num"><?= fin_rp($bs['total_liab_equity']) ?></td></tr>
+    </table>
 
-        <div class="section-title">Ringkasan Pendapatan</div>
-        <table>
-            <tr><th>Jenis</th><th>Nominal</th></tr>
-            <tr><td>Pembayaran Tepat Waktu</td><td>Rp <?= number_format($lunas_tepat, 0, ',', '.') ?></td></tr>
-            <tr><td>Pembayaran Tunggakan</td><td>Rp <?= number_format($tunggakan_dibayar, 0, ',', '.') ?></td></tr>
-            <tr><td><strong>Total Pendapatan</strong></td><td><strong>Rp <?= number_format($total_income, 0, ',', '.') ?></strong></td></tr>
-        </table>
+    <?php if (!empty($bs['asset_lines'])): ?>
+    <div class="section">Rincian aset tetap</div>
+    <table>
+        <tr><th>Aset</th><th>Perolehan</th><th class="num">Harga perolehan</th><th class="num">Akum. penyusutan</th><th class="num">Nilai buku</th></tr>
+        <?php foreach ($bs['asset_lines'] as $a): ?>
+        <tr><td><?= htmlspecialchars($a['name']) ?> <span class="muted">(<?= htmlspecialchars($a['type']) ?>)</span></td><td><?= date('d/m/Y', strtotime($a['acquired'])) ?></td><td class="num"><?= fin_rp($a['cost']) ?></td><td class="num"><?= fin_rp($a['accum']) ?></td><td class="num"><?= fin_rp($a['book']) ?></td></tr>
+        <?php endforeach; ?>
+    </table>
+    <?php endif; ?>
 
-        <div class="section-title">Ringkasan Pengeluaran</div>
-        <table>
-            <tr><th>Kategori</th><th>Nominal</th></tr>
-            <?php if (!empty($expense_summary)): foreach ($expense_summary as $cat => $amount): ?>
-                <tr><td><?= htmlspecialchars($cat) ?></td><td>Rp <?= number_format($amount, 0, ',', '.') ?></td></tr>
-            <?php endforeach; else: ?>
-                <tr><td colspan="2" class="muted">Tidak ada pengeluaran dalam periode ini.</td></tr>
-            <?php endif; ?>
-            <tr><td><strong>Total Pengeluaran</strong></td><td><strong>Rp <?= number_format($total_expenses_print, 0, ',', '.') ?></strong></td></tr>
-        </table>
-
-        <div class="footer">
-            <div>Dicetak oleh: <?= htmlspecialchars($_SESSION['user_name'] ?? 'System') ?></div>
-            <div>Waktu cetak: <?= date('d/m/Y H:i:s') ?> WIB</div>
-        </div>
-        <script>window.onload = function() { window.print(); }</script>
-    </body>
-    </html>
+    <div class="note">
+        Catatan: kas dihitung dari saldo kas awal<?= $fs['meta']['has_opening'] ? ' per ' . fin_tanggal($fs['meta']['opening_date']) : '' ?> (<?= fin_rp($bs['opening_cash']) ?>) ditambah seluruh penerimaan
+        dan dikurangi seluruh pengeluaran yang tercatat sampai tanggal laporan. Piutang usaha adalah tagihan jatuh tempo yang belum dilunasi per tanggal laporan.
+        Modal disetor dan utang diisi pada menu Pengaturan; laba ditahan merupakan selisih yang menyeimbangkan neraca.
+        <?php if (!$fs['meta']['has_opening']): ?><br><strong>Saldo kas awal belum diatur.</strong> Isi tanggal awal pembukuan dan saldo kas di Pengaturan agar angka kas mencerminkan rekening sebenarnya.<?php endif; ?>
+    </div>
     <?php
+    fin_print_close($company);
     exit;
 }
 
@@ -867,7 +726,10 @@ if ($action === 'print') {
     </div>
     <div class="flex flex-wrap gap-2">
         <a href="index.php?page=admin_reports&action=export&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&user_id=<?= $filter_user ?>" class="ui-btn ui-btn-outline"><i class="fas fa-file-excel"></i> Ekspor</a>
-        <a href="index.php?page=admin_reports&action=print_balance_sheet&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&user_id=<?= $filter_user ?>&year=<?= $filter_year ?>" target="_blank" class="ui-btn ui-btn-outline">Neraca &amp; laba rugi</a>
+        <?php if ($u_role === 'admin'): ?>
+        <a href="index.php?page=admin_reports&action=print_profit_loss&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&year=<?= $filter_year ?>" target="_blank" class="ui-btn ui-btn-outline" title="Laporan Laba Rugi untuk SPT Tahunan">Laba rugi</a>
+        <a href="index.php?page=admin_reports&action=print_position&date_from=<?= $date_from ?>&date_to=<?= $date_to ?>&year=<?= $filter_year ?>" target="_blank" class="ui-btn ui-btn-outline" title="Laporan Posisi Keuangan (neraca) untuk SPT Tahunan">Posisi keuangan</a>
+        <?php endif; ?>
         <?php if ($u_role === 'admin'): ?>
         <a href="index.php?page=admin_report_assets" class="ui-btn ui-btn-outline">Aset</a>
         <?php endif; ?>

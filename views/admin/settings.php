@@ -58,6 +58,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
     $stmt = $db->prepare("UPDATE settings SET company_name=?, company_tagline=?, company_contact=?, company_address=?, site_url=?, company_logo=?, company_qris=?, wa_template=?, wa_template_paid=?, bank_account=?, router_ip=?, router_user=?, router_pass=?, router_port=?, acs_url=?, acs_user=?, acs_pass=? WHERE tenant_id=?");
     $stmt->execute([$company_name, $company_tagline, $company_contact, $company_address, $site_url, $company_logo, $company_qris, $wa_template, $wa_template_paid, $bank_account, $router_ip, $router_user, $router_pass, $router_port, $acs_url, $acs_user, $acs_pass, $tenant_id]);
+
+    // Laporan keuangan (neraca & laba rugi): saldo awal dan parameter pajak
+    $fin_num = fn($k) => (float)preg_replace('/[^0-9.\-]/', '', (string)($_POST[$k] ?? '0'));
+    $fin_opening_date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_POST['fin_opening_date'] ?? '') ? $_POST['fin_opening_date'] : null;
+    try {
+        $db->prepare("UPDATE settings SET fin_opening_date=?, fin_opening_cash=?, fin_paid_capital=?, fin_liabilities=?, fin_asset_life_years=?, fin_tax_rate=? WHERE tenant_id=?")
+           ->execute([$fin_opening_date, $fin_num('fin_opening_cash'), $fin_num('fin_paid_capital'), $fin_num('fin_liabilities'), max(1, (int)$fin_num('fin_asset_life_years')), max(0, $fin_num('fin_tax_rate')), $tenant_id]);
+    } catch (Exception $e) {}
     
     $success = "Pengaturan berhasil disimpan.";
 }
@@ -141,6 +149,38 @@ if (!$settings) {
                     <span class="mb-1 block text-xs font-medium text-muted-foreground">Info rekening pembayaran</span>
                     <textarea name="bank_account" class="form-control" rows="2" placeholder="BCA: 123xxxx a/n Nama"><?= htmlspecialchars($settings['bank_account'] ?? '') ?></textarea>
                 </label>
+
+                <div class="rounded-md border border-solid border-border bg-background p-4">
+                    <div class="text-sm font-semibold">Laporan keuangan untuk SPT Tahunan</div>
+                    <p class="m-0 mb-3 mt-1 text-xs text-muted-foreground">Dipakai oleh Laporan Posisi Keuangan dan Laba Rugi di menu Laporan. Isi sesuai kondisi saat pembukuan di aplikasi ini dimulai.</p>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-medium text-muted-foreground">Tanggal awal pembukuan</span>
+                            <input type="date" name="fin_opening_date" class="form-control" value="<?= htmlspecialchars($settings['fin_opening_date'] ?? '') ?>">
+                        </label>
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-medium text-muted-foreground">Saldo kas awal (Rp)</span>
+                            <input type="number" name="fin_opening_cash" class="form-control" min="0" step="1" value="<?= (int)($settings['fin_opening_cash'] ?? 0) ?>">
+                        </label>
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-medium text-muted-foreground">Modal disetor (Rp)</span>
+                            <input type="number" name="fin_paid_capital" class="form-control" min="0" step="1" value="<?= (int)($settings['fin_paid_capital'] ?? 0) ?>">
+                        </label>
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-medium text-muted-foreground">Utang usaha / pinjaman (Rp)</span>
+                            <input type="number" name="fin_liabilities" class="form-control" min="0" step="1" value="<?= (int)($settings['fin_liabilities'] ?? 0) ?>">
+                        </label>
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-medium text-muted-foreground">Masa manfaat aset tetap (tahun)</span>
+                            <input type="number" name="fin_asset_life_years" class="form-control" min="1" max="20" step="1" value="<?= (int)($settings['fin_asset_life_years'] ?? 4) ?>">
+                        </label>
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-medium text-muted-foreground">Tarif PPh final (%)</span>
+                            <input type="number" name="fin_tax_rate" class="form-control" min="0" max="100" step="0.01" value="<?= htmlspecialchars((string)($settings['fin_tax_rate'] ?? 0.5)) ?>">
+                        </label>
+                    </div>
+                    <p class="m-0 mt-3 text-xs text-muted-foreground">Kas di neraca = saldo kas awal + seluruh penerimaan − seluruh pengeluaran sejak tanggal awal. Perangkat jaringan (kelompok 1) umumnya disusutkan 4 tahun; PPh final 0,5% berlaku bagi wajib pajak yang memakai PP 55/2022.</p>
+                </div>
 
                 <div class="rounded-md border border-solid border-border bg-background p-4">
                     <div class="mb-3 text-sm font-semibold">Foto QRIS pembayaran</div>
