@@ -218,6 +218,14 @@ function run_database_setup($db) {
             FOREIGN KEY(sent_by) REFERENCES users(id)
         );
 
+        CREATE TABLE IF NOT EXISTS invoice_item_catalog (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_id INTEGER DEFAULT 1,
+            description TEXT NOT NULL,
+            unit_price REAL DEFAULT 0,
+            created_at TEXT
+        );
+
         CREATE TABLE IF NOT EXISTS login_attempts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT,
@@ -256,6 +264,21 @@ function run_database_setup($db) {
     try {
         $db->exec("DELETE FROM settings WHERE company_name = 'Perusahaan Baru'
                    AND id NOT IN (SELECT MIN(id) FROM settings GROUP BY tenant_id)");
+    } catch (Exception $e) {}
+
+    // Seed the saved-item catalog from line items already used on invoices
+    // (one row per description per tenant); idempotent.
+    try {
+        $db->exec("INSERT INTO invoice_item_catalog (tenant_id, description, unit_price, created_at)
+                   SELECT i.tenant_id, TRIM(ii.description),
+                          MAX(CASE WHEN ii.unit_price > 0 THEN ii.unit_price
+                                   WHEN ii.qty > 0 THEN ROUND(ii.amount / ii.qty) ELSE ii.amount END),
+                          datetime('now')
+                   FROM invoice_items ii JOIN invoices i ON i.id = ii.invoice_id
+                   WHERE ii.description IS NOT NULL AND TRIM(ii.description) <> ''
+                     AND NOT EXISTS (SELECT 1 FROM invoice_item_catalog c
+                                     WHERE c.tenant_id = i.tenant_id AND LOWER(c.description) = LOWER(TRIM(ii.description)))
+                   GROUP BY i.tenant_id, LOWER(TRIM(ii.description))");
     } catch (Exception $e) {}
 
     // 3. Performance Indexes
@@ -299,9 +322,9 @@ function run_database_setup($db) {
     $check_settings = $db->query("SELECT COUNT(*) FROM settings")->fetchColumn();
     if ($check_settings == 0) {
         $db->exec("INSERT INTO settings (id, company_name, company_tagline, company_address, wa_template, landing_hero_title, landing_hero_text, db_version) 
-                  VALUES (1, 'EinvaBill ISP', 'Internet Cepat & Layanan Prima', 'Alamat Perusahaan Anda', 'Halo {nama}, tagihan Anda sebesar {tagihan} sudah terbit.', 'Koneksi Super Cepat & Stabil', 'Solusi internet dan IT untuk kebutuhan personal dan korporasi.', 26)");
+                  VALUES (1, 'EinvaBill ISP', 'Internet Cepat & Layanan Prima', 'Alamat Perusahaan Anda', 'Halo {nama}, tagihan Anda sebesar {tagihan} sudah terbit.', 'Koneksi Super Cepat & Stabil', 'Solusi internet dan IT untuk kebutuhan personal dan korporasi.', 27)");
     } else {
-        $db->exec("UPDATE settings SET db_version = 26 WHERE id = 1");
+        $db->exec("UPDATE settings SET db_version = 27 WHERE id = 1");
     }
 
     // Default Users

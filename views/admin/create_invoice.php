@@ -13,6 +13,26 @@ if ($u_role === 'admin') {
     } catch (Exception $e) { /* ignore migration errors */ }
 }
 
+// Saved-item catalog actions (tab "Item tersimpan"); CSRF is enforced globally for POST.
+$tenant_id = $_SESSION['tenant_id'] ?? 1;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['catalog_action'])) {
+    $redirect = 'index.php?page=admin_create_invoice&tab=items';
+    if ($_POST['catalog_action'] === 'save') {
+        $err = invoice_catalog_save($db, (int)$tenant_id, intval($_POST['catalog_id'] ?? 0), (string)($_POST['catalog_description'] ?? ''), floatval($_POST['catalog_unit_price'] ?? 0));
+        header('Location: ' . $redirect . ($err ? '&err=' . urlencode($err) : '&msg=item_saved'));
+        exit;
+    }
+    if ($_POST['catalog_action'] === 'delete') {
+        invoice_catalog_delete($db, (int)$tenant_id, intval($_POST['catalog_id'] ?? 0));
+        header('Location: ' . $redirect . '&msg=item_deleted');
+        exit;
+    }
+}
+$catalog_items = invoice_catalog_list($db, (int)$tenant_id);
+$initial_tab = in_array($_GET['tab'] ?? '', ['create', 'history', 'temps', 'items']) ? $_GET['tab'] : 'create';
+$flash_msg = ['item_saved' => 'Item tersimpan.', 'item_deleted' => 'Item dihapus.', 'updated' => 'Invoice diperbarui.'][$_GET['msg'] ?? ''] ?? '';
+$flash_err = trim((string)($_GET['err'] ?? ''));
+
 // Fetch recent invoices issued by this user for history tab (safe with migrations)
 $u_id = $_SESSION['user_id'] ?? 0;
 $u_name = $_SESSION['user_name'] ?? '';
@@ -75,7 +95,14 @@ $tab_idle = 'cursor-pointer rounded-sm border-0 bg-transparent px-3 py-1.5 text-
         <button type="button" class="<?= $tab_active ?>" id="tabCreateBtn" onclick="showTab('create')">Buat invoice</button>
         <button type="button" class="<?= $tab_idle ?>" id="tabHistoryBtn" onclick="showTab('history')">Riwayat<?= $invoices ? ' <span class="tabular-nums text-muted-foreground">(' . count($invoices) . ')</span>' : '' ?></button>
         <button type="button" class="<?= $tab_idle ?>" id="tabTempsBtn" onclick="showTab('temps')">Pelanggan input manual</button>
+        <button type="button" class="<?= $tab_idle ?>" id="tabItemsBtn" onclick="showTab('items')">Item tersimpan<?= $catalog_items ? ' <span class="tabular-nums text-muted-foreground">(' . count($catalog_items) . ')</span>' : '' ?></button>
     </div>
+
+    <?php if ($flash_msg): ?>
+        <div class="ui-card mb-5 p-4 text-sm"><span class="font-semibold text-signal">Berhasil.</span> <?= htmlspecialchars($flash_msg) ?></div>
+    <?php elseif ($flash_err): ?>
+        <div class="ui-card mb-5 p-4 text-sm border-danger/40"><span class="font-semibold text-danger">Gagal.</span> <?= htmlspecialchars($flash_err) ?></div>
+    <?php endif; ?>
 
     <style>
     /* Item table: fixed column widths shared by static and JS-created rows */
@@ -372,6 +399,75 @@ $tab_idle = 'cursor-pointer rounded-sm border-0 bg-transparent px-3 py-1.5 text-
             <?php endif; ?>
         </section>
     </div>
+
+    <div id="itemsSection" style="display:none;">
+        <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+            <section class="ui-card overflow-hidden">
+                <div class="border-b border-solid border-border px-4 py-3 sm:px-5">
+                    <h3 class="m-0 text-[15px] font-bold">Item tersimpan</h3>
+                    <p class="m-0 text-xs text-muted-foreground">Muncul sebagai saran di kolom Deskripsi. Item baru yang dipakai pada invoice ditambahkan otomatis.</p>
+                </div>
+                <?php if (empty($catalog_items)): ?>
+                    <div class="px-5 py-10 text-center text-sm text-muted-foreground">Belum ada item tersimpan. Tambahkan lewat form di samping.</div>
+                <?php else: ?>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse text-sm">
+                            <thead>
+                                <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                                    <th class="px-4 py-2.5 font-semibold sm:px-5">Deskripsi</th>
+                                    <th class="px-3 py-2.5 text-right font-semibold">Harga satuan</th>
+                                    <th class="px-4 py-2.5 text-right font-semibold sm:px-5">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($catalog_items as $ci): ?>
+                                <tr class="border-t border-solid border-border" id="catalogRow-<?= intval($ci['id']) ?>">
+                                    <td class="px-4 py-3 font-medium sm:px-5"><?= htmlspecialchars($ci['description']) ?></td>
+                                    <td class="px-3 py-3 text-right tabular-nums whitespace-nowrap"><?= $ci['unit_price'] > 0 ? 'Rp ' . number_format($ci['unit_price'], 0, ',', '.') : '<span class="text-muted-foreground">-</span>' ?></td>
+                                    <td class="px-4 py-3 sm:px-5">
+                                        <div class="flex justify-end gap-1.5">
+                                            <button type="button" class="ui-btn ui-btn-sm ui-btn-outline" title="Ubah" onclick="editCatalogItem(<?= intval($ci['id']) ?>)"><i class="fas fa-edit"></i><span class="hidden sm:inline">Ubah</span></button>
+                                            <form method="POST" action="index.php?page=admin_create_invoice" class="m-0" onsubmit="return confirm('Hapus item ini dari daftar tersimpan?')">
+<?= csrf_field() ?>
+                                                <input type="hidden" name="catalog_action" value="delete">
+                                                <input type="hidden" name="catalog_id" value="<?= intval($ci['id']) ?>">
+                                                <button type="submit" class="ui-btn ui-btn-sm ui-btn-outline text-danger" title="Hapus"><i class="fas fa-trash"></i><span class="hidden sm:inline">Hapus</span></button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+            </section>
+
+            <aside class="lg:sticky lg:top-24">
+                <section class="ui-card p-4 sm:p-5">
+                    <h3 class="m-0 text-[15px] font-bold" id="catalogFormTitle">Tambah item</h3>
+                    <p class="m-0 mt-1 text-xs text-muted-foreground">Harga satuan dipakai untuk mengisi otomatis saat item dipilih.</p>
+                    <form method="POST" action="index.php?page=admin_create_invoice" id="catalogForm" class="mt-4 grid gap-4">
+<?= csrf_field() ?>
+                        <input type="hidden" name="catalog_action" value="save">
+                        <input type="hidden" name="catalog_id" id="catalog_id" value="0">
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-medium text-muted-foreground">Deskripsi <span class="text-danger">*</span></span>
+                            <input type="text" name="catalog_description" id="catalog_description" class="form-control" placeholder="Contoh: Instalasi jaringan kantor" maxlength="200" required>
+                        </label>
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-medium text-muted-foreground">Harga satuan (Rp)</span>
+                            <input type="number" name="catalog_unit_price" id="catalog_unit_price" class="form-control" value="0" min="0" step="1">
+                        </label>
+                        <div class="grid gap-2">
+                            <button type="submit" class="ui-btn ui-btn-primary w-full" id="catalogSubmitBtn">Simpan item</button>
+                            <button type="button" class="ui-btn ui-btn-outline w-full hidden" id="catalogCancelBtn" onclick="resetCatalogForm()">Batal ubah</button>
+                        </div>
+                    </form>
+                </section>
+            </aside>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -448,9 +544,9 @@ document.addEventListener('DOMContentLoaded', function(){ try{ if(window.CreateI
 const TAB_ACTIVE = <?= json_encode($tab_active) ?>;
 const TAB_IDLE = <?= json_encode($tab_idle) ?>;
 function showTab(name) {
-    const map = { create: 'createSection', history: 'historySection', temps: 'tempsSection' };
+    const map = { create: 'createSection', history: 'historySection', temps: 'tempsSection', items: 'itemsSection' };
     Object.keys(map).forEach(k => { const s = document.getElementById(map[k]); if (s) s.style.display = (k === name) ? 'block' : 'none'; });
-    const btns = { create: 'tabCreateBtn', history: 'tabHistoryBtn', temps: 'tabTempsBtn' };
+    const btns = { create: 'tabCreateBtn', history: 'tabHistoryBtn', temps: 'tabTempsBtn', items: 'tabItemsBtn' };
     Object.keys(btns).forEach(k => { const b = document.getElementById(btns[k]); if (b) b.className = (k === name) ? TAB_ACTIVE : TAB_IDLE; });
 }
 
@@ -529,5 +625,28 @@ function useExistingCustomer(id) {
     if (window.CreateInvoice) CreateInvoice.updateGrandTotal();
 }
 
-document.addEventListener('DOMContentLoaded', function(){ showTab('create'); });
+document.addEventListener('DOMContentLoaded', function(){ showTab(<?= json_encode($initial_tab) ?>); });
+
+// Saved-item catalog form helpers
+const CATALOG_ITEMS = <?= json_encode(array_map(fn($c) => ['id' => intval($c['id']), 'description' => $c['description'], 'unit_price' => floatval($c['unit_price'])], $catalog_items)) ?>;
+function editCatalogItem(id) {
+    const item = CATALOG_ITEMS.find(c => c.id === id); if (!item) return;
+    document.getElementById('catalog_id').value = item.id;
+    document.getElementById('catalog_description').value = item.description;
+    document.getElementById('catalog_unit_price').value = item.unit_price;
+    document.getElementById('catalogFormTitle').innerText = 'Ubah item';
+    document.getElementById('catalogSubmitBtn').innerText = 'Simpan perubahan';
+    document.getElementById('catalogCancelBtn').classList.remove('hidden');
+    document.querySelectorAll('[id^="catalogRow-"]').forEach(r => r.classList.toggle('bg-muted', r.id === 'catalogRow-' + id));
+    document.getElementById('catalog_description').focus();
+}
+function resetCatalogForm() {
+    document.getElementById('catalog_id').value = 0;
+    document.getElementById('catalog_description').value = '';
+    document.getElementById('catalog_unit_price').value = 0;
+    document.getElementById('catalogFormTitle').innerText = 'Tambah item';
+    document.getElementById('catalogSubmitBtn').innerText = 'Simpan item';
+    document.getElementById('catalogCancelBtn').classList.add('hidden');
+    document.querySelectorAll('[id^="catalogRow-"]').forEach(r => r.classList.remove('bg-muted'));
+}
 </script>

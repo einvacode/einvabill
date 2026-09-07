@@ -349,6 +349,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $q = intval($qtys[$i] ?? 1);
                     $u = floatval($units[$i] ?? 0);
                     if ($d !== '' && $a >= 0) {
+                        invoice_catalog_remember($db, (int)$tenant_id, $d, $u);
                         if ($has_qty && $has_unit) {
                             $stmt_item->execute([$invoice_id, $d, $a, $q, $u]);
                         } else {
@@ -520,6 +521,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $q = intval($qtys[$i] ?? 1);
             $u = floatval($units[$i] ?? 0);
             if ($d === '') continue;
+            invoice_catalog_remember($db, (int)$tenant_id, $d, $u);
             if ($has_qty && $has_unit) {
                 $stmt_item->execute([$invoice_id, $d, $a, $q, $u]);
             } else {
