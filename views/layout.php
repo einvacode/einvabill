@@ -30,6 +30,7 @@ $page_titles = [
     'admin_assets' => 'Manajemen Aset (OLT/ODP)',
     'admin_map' => 'Peta Sebaran Jaringan',
     'admin_invoices' => 'Manajemen Tagihan',
+    'admin_partner_dashboard' => 'Dashboard Mitra',
     'admin_create_invoice' => 'Invoice Eksternal',
     'admin_edit_quick_invoice' => 'Edit Invoice',
     'admin_expenses' => 'Manajemen Pengeluaran',
@@ -229,6 +230,7 @@ function nav_heading(string $text): string {
                 <?= nav_item('index.php?page=admin_customers&filter_type=customer', 'fas fa-users', 'Pelanggan Rumahan', $page == 'admin_customers' && ($_GET['filter_type'] ?? '') == 'customer') ?>
                 <?= nav_item('index.php?page=admin_new_customers', 'fas fa-star', 'Pelanggan Baru', $page == 'admin_new_customers') ?>
                 <?= nav_item('index.php?page=admin_customers&filter_type=partner', 'fas fa-handshake', 'Kemitraan (B2B)', $page == 'admin_customers' && ($_GET['filter_type'] ?? '') == 'partner') ?>
+                <?= nav_item('index.php?page=admin_partner_dashboard', 'fas fa-chart-pie', 'Dashboard Mitra', $page == 'admin_partner_dashboard') ?>
 
                 <?= nav_heading('Keuangan') ?>
                 <?= nav_item('index.php?page=admin_invoices&filter_type=customer', 'fas fa-file-invoice-dollar', 'Tagihan Pelanggan', $page == 'admin_invoices' && ($_GET['filter_type'] ?? '') == 'customer' && ($filter_status ?? '') != 'belum') ?>
@@ -393,6 +395,7 @@ function nav_heading(string $text): string {
                 <button type="button" class="grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-muted bg-transparent border-0" onclick="closeMobileMenu()" aria-label="Tutup"><i class="fas fa-times"></i></button>
             </div>
             <div class="grid grid-cols-3 gap-2">
+                <a href="index.php?page=admin_partner_dashboard" class="sheet-item <?= $page == 'admin_partner_dashboard' ? 'active' : '' ?>"><i class="fas fa-chart-pie"></i>Mitra</a>
                 <a href="index.php?page=admin_users" class="sheet-item <?= $page == 'admin_users' ? 'active' : '' ?>"><i class="fas fa-user-shield"></i>Pengguna</a>
                 <a href="index.php?page=admin_invoices&filter_status=belum" class="sheet-item <?= $page == 'admin_invoices' && ($filter_status ?? '') == 'belum' ? 'active' : '' ?>"><i class="fas fa-user-clock" style="color:#B42318"></i>Tunggakan</a>
                 <a href="index.php?page=admin_packages" class="sheet-item <?= $page == 'admin_packages' ? 'active' : '' ?>"><i class="fas fa-box"></i>Paket</a>

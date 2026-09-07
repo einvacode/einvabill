@@ -229,6 +229,9 @@ switch ($page) {
     case 'admin_invoices':
         require __DIR__ . '/views/admin/invoices.php';
         break;
+    case 'admin_partner_dashboard':
+        require __DIR__ . '/views/admin/partner_dashboard.php';
+        break;
     case 'admin_create_invoice':
         require __DIR__ . '/views/admin/create_invoice.php';
         break;
