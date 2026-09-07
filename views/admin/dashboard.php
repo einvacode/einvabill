@@ -151,6 +151,7 @@ $latest = $db->query("
 $cash_tile = null;
 if ($u_role === 'admin' && function_exists('cash_accounts_with_balances')) {
     try {
+        if (function_exists('recurring_expenses_run')) recurring_expenses_run($db, (int)$tenant_id, (int)$u_id);
         cash_accounts_ensure($db, (int)$tenant_id);
         $cash_rows = array_filter(cash_accounts_with_balances($db, (int)$tenant_id), fn($a) => $a['is_active']);
         $cash_total = array_sum(array_map(fn($a) => $a['balance'], $cash_rows));

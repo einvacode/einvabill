@@ -16,7 +16,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cat_action'])) {
     exit;
 }
 $categories = expense_categories_list($db, (int)$tenant_id);
-$active_tab = ($_GET['tab'] ?? '') === 'categories' ? 'categories' : 'expenses';
+$active_tab = in_array($_GET['tab'] ?? '', ['categories', 'recurring']) ? $_GET['tab'] : 'expenses';
+
+// Biaya berulang (tab "Biaya berulang"); admin only. Due templates are posted on every admin visit.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['rec_action'])) {
+    $redirect = 'index.php?page=admin_expenses&tab=recurring';
+    if ($u_role !== 'admin') { header('Location: ' . $redirect . '&err=' . urlencode('Hanya admin yang boleh mengubah biaya berulang.')); exit; }
+    $rid = intval($_POST['rec_id'] ?? 0);
+    if ($_POST['rec_action'] === 'delete') { recurring_expense_delete($db, (int)$tenant_id, $rid); header('Location: ' . $redirect . '&msg=rec_deleted'); exit; }
+    if ($_POST['rec_action'] === 'run') { $n = recurring_expenses_run($db, (int)$tenant_id, (int)$u_id, $rid); header('Location: ' . $redirect . '&msg=rec_run&n=' . $n); exit; }
+    $err = recurring_expense_save($db, (int)$tenant_id, $rid, $_POST);
+    header('Location: ' . $redirect . ($err ? '&err=' . urlencode($err) : '&msg=rec_saved'));
+    exit;
+}
+if ($u_role === 'admin') $recurring_posted = recurring_expenses_run($db, (int)$tenant_id, (int)$u_id);
+$recurring = $u_role === 'admin' ? recurring_expenses_list($db, (int)$tenant_id) : [];
 
 // Bukti struk: gambar di public/uploads/receipts, disimpan sebagai path relatif.
 $receipt_dir = __DIR__ . '/../../public/uploads/receipts';
@@ -132,10 +146,15 @@ $tab_idle = 'rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground ho
 <div class="mb-5 flex w-fit flex-wrap gap-1 rounded-md bg-muted p-1" role="tablist">
     <a href="index.php?page=admin_expenses" class="<?= $active_tab === 'expenses' ? $tab_active : $tab_idle ?>">Pengeluaran</a>
     <a href="index.php?page=admin_expenses&tab=categories" class="<?= $active_tab === 'categories' ? $tab_active : $tab_idle ?>">Kategori <span class="tabular-nums text-muted-foreground">(<?= count($categories) ?>)</span></a>
+    <?php if ($u_role === 'admin'): ?>
+    <a href="index.php?page=admin_expenses&tab=recurring" class="<?= $active_tab === 'recurring' ? $tab_active : $tab_idle ?>">Biaya berulang<?= $recurring ? ' <span class="tabular-nums text-muted-foreground">(' . count($recurring) . ')</span>' : '' ?></a>
+    <?php endif; ?>
 </div>
 
 <?php
-$flash = ['added' => 'Pengeluaran berhasil ditambahkan.', 'updated' => 'Data pengeluaran diperbarui.', 'deleted' => 'Catatan pengeluaran dihapus.', 'cat_saved' => 'Kategori tersimpan.', 'cat_deleted' => 'Kategori dihapus.'][$_GET['msg'] ?? ''] ?? '';
+$flash = ['added' => 'Pengeluaran berhasil ditambahkan.', 'updated' => 'Data pengeluaran diperbarui.', 'deleted' => 'Catatan pengeluaran dihapus.', 'cat_saved' => 'Kategori tersimpan.', 'cat_deleted' => 'Kategori dihapus.',
+          'rec_saved' => 'Biaya berulang tersimpan.', 'rec_deleted' => 'Biaya berulang dihapus. Catatan yang sudah dibuat tetap ada.', 'rec_run' => intval($_GET['n'] ?? 0) > 0 ? intval($_GET['n']) . ' catatan pengeluaran dibuat.' : 'Tidak ada yang perlu dibuat; bulan ini sudah tercatat.'][$_GET['msg'] ?? ''] ?? '';
+if (!empty($recurring_posted) && !$flash) $flash = $recurring_posted . ' biaya berulang jatuh tempo dan sudah dicatat otomatis.';
 $flash_err = trim((string)($_GET['err'] ?? ''));
 if ($flash): ?>
     <div class="ui-card mb-5 p-4 text-sm"><span class="font-semibold text-signal">Berhasil.</span> <?= htmlspecialchars($flash) ?></div>
@@ -239,6 +258,160 @@ function resetCategoryForm() {
     document.getElementById('catSubmitBtn').innerText = 'Simpan kategori';
     document.getElementById('catCancelBtn').classList.add('hidden');
     document.querySelectorAll('[id^="catRow-"]').forEach(r => r.classList.remove('bg-muted'));
+}
+</script>
+<?php elseif ($active_tab === 'recurring'): ?>
+<?php
+$bulan_id = [1=>'Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+$rec_month_total = array_sum(array_map(fn($r) => $r['is_active'] ? (float)$r['amount'] : 0, $recurring));
+?>
+<div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+    <section class="ui-card overflow-hidden">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-solid border-border px-4 py-3 sm:px-5">
+            <div>
+                <h3 class="m-0 text-[15px] font-bold">Biaya berulang</h3>
+                <p class="m-0 text-xs text-muted-foreground">Dicatat otomatis ke daftar pengeluaran setiap bulan pada tanggalnya. Total aktif <span class="font-semibold tabular-nums text-foreground">Rp <?= number_format($rec_month_total, 0, ',', '.') ?></span> / bulan.</p>
+            </div>
+        </div>
+        <?php if (empty($recurring)): ?>
+            <div class="px-5 py-10 text-center text-sm text-muted-foreground">Belum ada biaya berulang. Tambahkan sewa upstream, listrik, gaji, atau cicilan lewat form di samping.</div>
+        <?php else: ?>
+        <div class="overflow-x-auto">
+            <table class="w-full border-collapse text-sm">
+                <thead>
+                    <tr class="text-left text-[11px] font-semibold text-muted-foreground">
+                        <th class="min-w-[220px] px-4 py-2.5 font-semibold sm:px-5">Biaya</th>
+                        <th class="px-3 py-2.5 text-right font-semibold">Jumlah</th>
+                        <th class="px-3 py-2.5 font-semibold">Jadwal</th>
+                        <th class="px-4 py-2.5 text-right font-semibold sm:px-5"><span class="sr-only">Aksi</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($recurring as $r): $next = $r['is_active'] ? recurring_next_due($r) : null; $this_month_done = !empty($r['last_date']) && substr($r['last_date'], 0, 7) === date('Y-m'); ?>
+                    <tr class="border-t border-solid border-border <?= $r['is_active'] ? '' : 'opacity-60' ?>" id="recRow-<?= intval($r['id']) ?>">
+                        <td class="px-4 py-3 align-top sm:px-5">
+                            <div class="flex flex-wrap items-center gap-2"><span class="font-semibold"><?= htmlspecialchars($r['name']) ?></span><?php if (!$r['is_active']): ?><span class="ui-badge ui-badge-muted">Nonaktif</span><?php endif; ?></div>
+                            <div class="text-xs text-muted-foreground"><?= htmlspecialchars($r['category']) ?><?= !empty($r['account_name']) ? ' &middot; dari ' . htmlspecialchars($r['account_name']) : '' ?><?= !empty($r['description']) ? ' &middot; ' . htmlspecialchars($r['description']) : '' ?></div>
+                        </td>
+                        <td class="px-3 py-3 text-right align-top font-semibold tabular-nums whitespace-nowrap">Rp <?= number_format($r['amount'], 0, ',', '.') ?></td>
+                        <td class="px-3 py-3 align-top whitespace-nowrap">
+                            <div>Tiap tanggal <span class="font-medium tabular-nums"><?= intval($r['day_of_month']) ?></span></div>
+                            <div class="text-xs text-muted-foreground"><?= $next ? 'Berikutnya ' . date('d/m/Y', strtotime($next)) : 'Selesai' ?><?= !empty($r['end_date']) ? ' &middot; sampai ' . date('d/m/Y', strtotime($r['end_date'])) : '' ?></div>
+                            <div class="text-xs text-muted-foreground"><?= !empty($r['last_date']) ? 'Terakhir ' . date('d/m/Y', strtotime($r['last_date'])) . ' &middot; ' . number_format($r['generated_n']) . ' catatan' : 'Belum pernah dibuat' ?></div>
+                        </td>
+                        <td class="px-4 py-3 align-top sm:px-5">
+                            <div class="flex justify-end gap-1.5 whitespace-nowrap">
+                                <?php if ($r['is_active'] && !$this_month_done): ?>
+                                <form method="POST" action="index.php?page=admin_expenses" class="m-0" onsubmit="return confirm('Catat biaya ini untuk bulan <?= $bulan_id[(int)date('n')] ?> sekarang?')">
+<?= csrf_field() ?>
+                                    <input type="hidden" name="rec_action" value="run"><input type="hidden" name="rec_id" value="<?= intval($r['id']) ?>">
+                                    <button type="submit" class="ui-btn ui-btn-sm ui-btn-outline" title="Catat bulan ini sekarang"><i class="fas fa-bolt"></i></button>
+                                </form>
+                                <?php endif; ?>
+                                <button type="button" class="ui-btn ui-btn-sm ui-btn-outline" title="Ubah" onclick="editRecurring(<?= intval($r['id']) ?>)"><i class="fas fa-edit"></i></button>
+                                <form method="POST" action="index.php?page=admin_expenses" class="m-0" onsubmit="return confirm('Hapus biaya berulang ini? Catatan yang sudah dibuat tetap ada.')">
+<?= csrf_field() ?>
+                                    <input type="hidden" name="rec_action" value="delete"><input type="hidden" name="rec_id" value="<?= intval($r['id']) ?>">
+                                    <button type="submit" class="ui-btn ui-btn-sm ui-btn-outline text-danger" title="Hapus"><i class="fas fa-trash"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php endif; ?>
+    </section>
+
+    <aside class="lg:sticky lg:top-24">
+        <section class="ui-card p-4 sm:p-5">
+            <h3 class="m-0 text-[15px] font-bold" id="recFormTitle">Tambah biaya berulang</h3>
+            <p class="m-0 mt-1 text-xs text-muted-foreground">Contoh: Sewa bandwidth upstream tiap tanggal 5.</p>
+            <form method="POST" action="index.php?page=admin_expenses" id="recForm" class="mt-4 grid gap-4">
+<?= csrf_field() ?>
+                <input type="hidden" name="rec_action" value="save">
+                <input type="hidden" name="rec_id" id="rec_id" value="0">
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Nama biaya <span class="text-danger">*</span></span>
+                    <input type="text" name="name" id="rec_name" class="form-control" placeholder="Sewa bandwidth upstream" maxlength="100" required>
+                </label>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Kategori</span>
+                        <select name="category" id="rec_category" class="form-control" required>
+                            <?php foreach ($categories as $cat): ?><option value="<?= htmlspecialchars($cat['name']) ?>"><?= htmlspecialchars($cat['name']) ?></option><?php endforeach; ?>
+                        </select>
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Jumlah (Rp) <span class="text-danger">*</span></span>
+                        <input type="number" name="amount" id="rec_amount" class="form-control" min="1" step="1" required>
+                    </label>
+                </div>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Tiap tanggal</span>
+                        <input type="number" name="day_of_month" id="rec_day" class="form-control" min="1" max="31" value="1" required>
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Dibayar dari</span>
+                        <select name="account_id" id="rec_account" class="form-control">
+                            <?php foreach ($cash_accounts as $ca): ?><option value="<?= intval($ca['id']) ?>" <?= intval($ca['id']) === intval($cash_default_id) ? 'selected' : '' ?>><?= htmlspecialchars($ca['name']) ?></option><?php endforeach; ?>
+                        </select>
+                    </label>
+                </div>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Mulai bulan</span>
+                        <input type="date" name="start_date" id="rec_start" class="form-control" value="<?= date('Y-m-01') ?>" required>
+                    </label>
+                    <label class="block">
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Selesai (opsional)</span>
+                        <input type="date" name="end_date" id="rec_end" class="form-control">
+                    </label>
+                </div>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Keterangan</span>
+                    <input type="text" name="description" id="rec_desc" class="form-control" placeholder="Opsional, contoh: ID pelanggan PLN" maxlength="200">
+                </label>
+                <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="is_active" id="rec_active" value="1" checked> Aktif</label>
+                <div class="grid gap-2">
+                    <button type="submit" class="ui-btn ui-btn-primary w-full" id="recSubmitBtn">Simpan biaya berulang</button>
+                    <button type="button" class="ui-btn ui-btn-outline w-full hidden" id="recCancelBtn" onclick="resetRecurringForm()">Batal ubah</button>
+                </div>
+                <p class="m-0 text-xs text-muted-foreground">Bulan yang sudah lewat sejak tanggal mulai akan dicatat sekaligus saat disimpan. Untuk cicilan, isi tanggal selesai.</p>
+            </form>
+        </section>
+    </aside>
+</div>
+
+<script>
+const RECURRING = <?= json_encode(array_map(fn($r) => ['id' => intval($r['id']), 'name' => $r['name'], 'category' => $r['category'], 'amount' => (float)$r['amount'], 'day_of_month' => intval($r['day_of_month']), 'account_id' => intval($r['account_id'] ?? 0), 'start_date' => (string)$r['start_date'], 'end_date' => (string)$r['end_date'], 'description' => (string)$r['description'], 'is_active' => (int)$r['is_active']], $recurring)) ?>;
+function editRecurring(id) {
+    const r = RECURRING.find(x => x.id === id); if (!r) return;
+    document.getElementById('rec_id').value = r.id;
+    document.getElementById('rec_name').value = r.name;
+    const cat = document.getElementById('rec_category'); if (r.category && ![...cat.options].some(o => o.value === r.category)) cat.add(new Option(r.category, r.category)); cat.value = r.category;
+    document.getElementById('rec_amount').value = r.amount;
+    document.getElementById('rec_day').value = r.day_of_month;
+    if (r.account_id) document.getElementById('rec_account').value = r.account_id;
+    document.getElementById('rec_start').value = r.start_date;
+    document.getElementById('rec_end').value = r.end_date;
+    document.getElementById('rec_desc').value = r.description;
+    document.getElementById('rec_active').checked = !!r.is_active;
+    document.getElementById('recFormTitle').innerText = 'Ubah biaya berulang';
+    document.getElementById('recSubmitBtn').innerText = 'Simpan perubahan';
+    document.getElementById('recCancelBtn').classList.remove('hidden');
+    document.querySelectorAll('[id^="recRow-"]').forEach(x => x.classList.toggle('bg-muted', x.id === 'recRow-' + id));
+    document.getElementById('rec_name').focus();
+}
+function resetRecurringForm() {
+    document.getElementById('recForm').reset();
+    document.getElementById('rec_id').value = 0;
+    document.getElementById('recFormTitle').innerText = 'Tambah biaya berulang';
+    document.getElementById('recSubmitBtn').innerText = 'Simpan biaya berulang';
+    document.getElementById('recCancelBtn').classList.add('hidden');
+    document.querySelectorAll('[id^="recRow-"]').forEach(x => x.classList.remove('bg-muted'));
 }
 </script>
 <?php else: ?>
