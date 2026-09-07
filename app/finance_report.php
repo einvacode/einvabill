@@ -43,8 +43,9 @@ function finance_statements(PDO $db, int $tenant_id, string $date_from, string $
     $revenue_lines = $q->fetchAll(PDO::FETCH_ASSOC);
 
     // --- Beban usaha per kategori ---
-    $q = $db->prepare("SELECT COALESCE(NULLIF(TRIM(category),''),'Lain-lain') AS kategori, COALESCE(SUM(amount),0) AS total
-        FROM expenses WHERE tenant_id = ? AND date BETWEEN ? AND ? GROUP BY kategori ORDER BY total DESC");
+    $esc = function_exists('cash_company_scope') ? cash_company_scope($db, $tenant_id)['e'] : ''; // beban mitra bukan beban perusahaan
+    $q = $db->prepare("SELECT COALESCE(NULLIF(TRIM(e.category),''),'Lain-lain') AS kategori, COALESCE(SUM(e.amount),0) AS total
+        FROM expenses e WHERE e.tenant_id = ? AND e.date BETWEEN ? AND ? $esc GROUP BY kategori ORDER BY total DESC");
     $q->execute([$tenant_id, $date_from, $date_to]);
     $expense_lines = $q->fetchAll(PDO::FETCH_ASSOC);
     $expenses = array_sum(array_column($expense_lines, 'total'));
@@ -79,7 +80,7 @@ function finance_statements(PDO $db, int $tenant_id, string $date_from, string $
         WHERE p.payment_date BETWEEN ? AND ? $scope_ext $scope_where");
     $q->execute([$open_dt, $to_dt]);
     $cash_in_all = (float)$q->fetchColumn();
-    $q = $db->prepare("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE tenant_id = ? AND date BETWEEN ? AND ?");
+    $q = $db->prepare("SELECT COALESCE(SUM(e.amount),0) FROM expenses e WHERE e.tenant_id = ? AND e.date BETWEEN ? AND ? $esc");
     $q->execute([$tenant_id, $open_d, $date_to]);
     $cash_out_all = (float)$q->fetchColumn();
     // Kas: jumlah saldo seluruh akun Kas & Bank per tanggal laporan (termasuk dompet petugas);

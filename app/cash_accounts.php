@@ -10,9 +10,9 @@
  *   transfers -> OUT from from_account_id / IN to to_account_id
  *                (type 'adjustment' touches one account only, amount may be negative).
  *
- * Every user who can receive money (admin, collector, partner) gets a wallet
- * account (owner_user_id) so cash held by field collectors is visible until
- * they deposit it to the office ("setoran").
+ * Every field collector gets a wallet account (owner_user_id) so cash they hold
+ * is visible until deposited to the office ("setoran"). Partner (mitra) money is
+ * never company cash: only the collective invoices billed to the POP count.
  */
 
 function cash_accounts_ensure(PDO $db, int $tenant_id): void {
@@ -30,15 +30,39 @@ function cash_accounts_ensure(PDO $db, int $tenant_id): void {
             $db->prepare("INSERT INTO cash_accounts (tenant_id, name, type, owner_user_id, account_number, opening_balance, opening_date, is_default, is_active, created_at) VALUES (?, 'Kas utama', 'cash', ?, '', ?, ?, 1, 1, ?)")
                ->execute([$tenant_id, $admin_id ?: null, (float)($s['fin_opening_cash'] ?? 0), $s['fin_opening_date'] ?: null, date('Y-m-d H:i:s')]);
         }
-        // A wallet for every non-admin user who has recorded a payment or can collect.
-        $users = $db->prepare("SELECT u.id, u.name, u.role FROM users u WHERE u.tenant_id = ? AND u.role IN ('collector','partner')
+        // A wallet for every field collector: money they receive is company money
+        // until deposited. Partners are NOT company cash (see cash_company_scope).
+        $users = $db->prepare("SELECT u.id, u.name FROM users u WHERE u.tenant_id = ? AND u.role = 'collector'
             AND NOT EXISTS (SELECT 1 FROM cash_accounts a WHERE a.owner_user_id = u.id AND a.tenant_id = ?)");
         $users->execute([$tenant_id, $tenant_id]);
         $ins = $db->prepare("INSERT INTO cash_accounts (tenant_id, name, type, owner_user_id, account_number, opening_balance, opening_date, is_default, is_active, created_at) VALUES (?, ?, 'wallet', ?, '', 0, NULL, 0, 1, ?)");
         foreach ($users->fetchAll(PDO::FETCH_ASSOC) as $u) {
-            $ins->execute([$tenant_id, 'Kas ' . ($u['role'] === 'partner' ? 'mitra ' : 'petugas ') . $u['name'], $u['id'], date('Y-m-d H:i:s')]);
+            $ins->execute([$tenant_id, 'Kas petugas ' . $u['name'], $u['id'], date('Y-m-d H:i:s')]);
         }
+        // Remove wallets that belong to partner accounts and were never used explicitly.
+        $db->prepare("DELETE FROM cash_accounts WHERE tenant_id = ? AND owner_user_id IN (SELECT id FROM users WHERE role = 'partner')
+            AND id NOT IN (SELECT COALESCE(account_id,0) FROM payments) AND id NOT IN (SELECT COALESCE(account_id,0) FROM expenses)
+            AND id NOT IN (SELECT COALESCE(from_account_id,0) FROM cash_transfers) AND id NOT IN (SELECT COALESCE(to_account_id,0) FROM cash_transfers)")->execute([$tenant_id]);
     } catch (Exception $e) {}
+}
+
+/**
+ * Company-money scope. Partners (mitra) run their own books: what their own
+ * customers pay them is not company cash, and their expenses are not company
+ * expenses. The company only sees the collective invoices billed to the POP.
+ * Returns SQL fragments for a customers alias c and an expenses alias e.
+ */
+function cash_company_scope(PDO $db, int $tenant_id): array {
+    static $cache = [];
+    if (!isset($cache[$tenant_id])) {
+        $ids = $db->query("SELECT id FROM users WHERE role = 'partner' AND tenant_id = $tenant_id")->fetchAll(PDO::FETCH_COLUMN);
+        $list = $ids ? implode(',', array_map('intval', $ids)) : '0';
+        $cache[$tenant_id] = [
+            'c' => " AND (c.created_by NOT IN ($list) OR c.created_by = 0 OR c.created_by IS NULL)",
+            'e' => " AND (e.created_by NOT IN ($list) OR e.created_by = 0 OR e.created_by IS NULL)",
+        ];
+    }
+    return $cache[$tenant_id];
 }
 
 function cash_default_account_id(PDO $db, int $tenant_id): int {
@@ -58,9 +82,11 @@ function cash_accounts_with_balances(PDO $db, int $tenant_id, ?string $as_of = n
     $to_dt = $as_of . ' 23:59:59';
     $def = cash_default_account_id($db, $tenant_id);
     $pacc = cash_payment_account_sql($tenant_id, $def);
+    $sc = cash_company_scope($db, $tenant_id);
     $q = $db->prepare("SELECT a.*, u.name AS owner_name, u.role AS owner_role,
-            COALESCE((SELECT SUM(p.amount) FROM payments p WHERE p.tenant_id = :t AND p.payment_date <= :to_dt AND $pacc = a.id), 0) AS in_payments,
-            COALESCE((SELECT SUM(e.amount) FROM expenses e WHERE e.tenant_id = :t AND e.date <= :to_d AND COALESCE(e.account_id, :def) = a.id), 0) AS out_expenses,
+            COALESCE((SELECT SUM(p.amount) FROM payments p JOIN invoices i ON i.id = p.invoice_id JOIN customers c ON c.id = i.customer_id
+                      WHERE p.tenant_id = :t AND p.payment_date <= :to_dt AND $pacc = a.id {$sc['c']}), 0) AS in_payments,
+            COALESCE((SELECT SUM(e.amount) FROM expenses e WHERE e.tenant_id = :t AND e.date <= :to_d AND COALESCE(e.account_id, :def) = a.id {$sc['e']}), 0) AS out_expenses,
             COALESCE((SELECT SUM(x.amount) FROM cash_transfers x WHERE x.tenant_id = :t AND x.date <= :to_d AND x.to_account_id = a.id), 0) AS in_transfers,
             COALESCE((SELECT SUM(x.amount) FROM cash_transfers x WHERE x.tenant_id = :t AND x.date <= :to_d AND x.from_account_id = a.id), 0) AS out_transfers
         FROM cash_accounts a LEFT JOIN users u ON u.id = a.owner_user_id
@@ -110,7 +136,7 @@ function cash_account_delete(PDO $db, int $tenant_id, int $id): string {
         $acc = $a->fetch(PDO::FETCH_ASSOC);
         if (!$acc) return 'Akun tidak ditemukan.';
         if ($acc['is_default']) return 'Akun utama tidak bisa dihapus. Jadikan akun lain sebagai utama dulu.';
-        if ($acc['owner_user_id']) return 'Dompet petugas/mitra tidak bisa dihapus; nonaktifkan saja.';
+        if ($acc['owner_user_id']) return 'Dompet petugas tidak bisa dihapus; nonaktifkan saja.';
         $used = $db->prepare("SELECT (SELECT COUNT(*) FROM payments WHERE account_id = :id) + (SELECT COUNT(*) FROM expenses WHERE account_id = :id) + (SELECT COUNT(*) FROM cash_transfers WHERE from_account_id = :id OR to_account_id = :id)");
         $used->execute([':id' => $id]);
         if ((int)$used->fetchColumn() > 0) return 'Akun masih punya mutasi. Nonaktifkan saja agar riwayat tetap utuh.';
@@ -154,8 +180,9 @@ function cash_transfer_delete(PDO $db, int $tenant_id, int $id): void {
 function cash_ledger(PDO $db, int $tenant_id, string $date_from, string $date_to, int $account_id = 0, int $limit = 300): array {
     $def = cash_default_account_id($db, $tenant_id);
     $pacc = cash_payment_account_sql($tenant_id, $def);
-    $acc_p = $account_id ? " AND $pacc = :acc" : '';
-    $acc_e = $account_id ? " AND COALESCE(e.account_id, $def) = :acc" : '';
+    $sc = cash_company_scope($db, $tenant_id);
+    $acc_p = ($account_id ? " AND $pacc = :acc" : '') . $sc['c'];
+    $acc_e = ($account_id ? " AND COALESCE(e.account_id, $def) = :acc" : '') . $sc['e'];
     $acc_x = $account_id ? " AND (x.from_account_id = :acc OR x.to_account_id = :acc)" : '';
     $sql = "SELECT * FROM (
         SELECT 'payment' AS kind, p.id, p.payment_date AS at, p.amount AS amount, $pacc AS account_id, NULL AS counter_account_id,

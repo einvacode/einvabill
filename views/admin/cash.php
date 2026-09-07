@@ -30,7 +30,7 @@ $wallets = array_values(array_filter($active_accounts, fn($a) => $a['type'] === 
 $office = array_values(array_filter($active_accounts, fn($a) => $a['type'] !== 'wallet' && empty($a['owner_user_id'])));
 $held_by_staff = array_sum(array_map(fn($a) => $a['balance'], array_filter($wallets, fn($a) => $a['owner_role'] !== 'admin')));
 $acc_by_id = []; foreach ($accounts as $a) $acc_by_id[$a['id']] = $a;
-$staff = $db->query("SELECT id, name, role FROM users WHERE tenant_id = $tenant_id AND role IN ('admin','collector','partner') ORDER BY role, name")->fetchAll(PDO::FETCH_ASSOC);
+$staff = $db->query("SELECT id, name, role FROM users WHERE tenant_id = $tenant_id AND role IN ('admin','collector') ORDER BY role, name")->fetchAll(PDO::FETCH_ASSOC);
 
 $type_label = ['cash' => 'Kas tunai', 'bank' => 'Rekening bank', 'ewallet' => 'Dompet digital', 'wallet' => 'Dompet petugas'];
 if (!function_exists('rp')) { function rp($n): string { return 'Rp ' . number_format((float)($n ?: 0), 0, ',', '.'); } }
@@ -49,7 +49,7 @@ $l_acc = intval($_GET['account'] ?? 0);
     <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
             <h2 class="m-0 text-xl font-bold sm:text-2xl">Kas &amp; bank</h2>
-            <p class="m-0 mt-1 text-sm text-muted-foreground">Saldo tiap akun, uang yang masih dipegang petugas, dan mutasi masuk keluar.</p>
+            <p class="m-0 mt-1 text-sm text-muted-foreground">Saldo tiap akun, uang yang masih dipegang petugas, dan mutasi masuk keluar. Keuangan mitra tidak termasuk; kantor hanya mencatat setoran kolektif mitra.</p>
         </div>
         <?php if ($tab === 'accounts'): ?>
         <form method="get" class="flex items-end gap-2">
@@ -87,7 +87,7 @@ $l_acc = intval($_GET['account'] ?? 0);
             <div class="text-xs text-muted-foreground"><?= count($office) ?> akun</div>
         </div>
         <div class="ui-card p-4 sm:p-5">
-            <div class="text-xs font-medium text-muted-foreground">Masih dipegang petugas / mitra</div>
+            <div class="text-xs font-medium text-muted-foreground">Masih dipegang petugas</div>
             <div class="mt-1 text-2xl font-extrabold tabular-nums <?= $held_by_staff > 0 ? 'text-accent-ink' : '' ?>"><?= rp($held_by_staff) ?></div>
             <div class="text-xs text-muted-foreground">Belum disetor ke kantor</div>
         </div>
@@ -179,11 +179,11 @@ $l_acc = intval($_GET['account'] ?? 0);
                         </label>
                     </div>
                     <label class="block">
-                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Pemegang (untuk dompet petugas/mitra)</span>
+                        <span class="mb-1 block text-xs font-medium text-muted-foreground">Pemegang (untuk dompet petugas)</span>
                         <select name="owner_user_id" id="acc_owner" class="form-control">
                             <option value="">Tidak ada (akun kantor)</option>
                             <?php foreach ($staff as $s): ?>
-                                <option value="<?= intval($s['id']) ?>"><?= htmlspecialchars($s['name']) ?> (<?= $s['role'] === 'admin' ? 'admin' : ($s['role'] === 'collector' ? 'petugas' : 'mitra') ?>)</option>
+                                <option value="<?= intval($s['id']) ?>"><?= htmlspecialchars($s['name']) ?> (<?= $s['role'] === 'admin' ? 'admin' : 'petugas' ?>)</option>
                             <?php endforeach; ?>
                         </select>
                     </label>

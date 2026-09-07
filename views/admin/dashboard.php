@@ -155,7 +155,7 @@ if ($u_role === 'admin' && function_exists('cash_accounts_with_balances')) {
         $cash_rows = array_filter(cash_accounts_with_balances($db, (int)$tenant_id), fn($a) => $a['is_active']);
         $cash_total = array_sum(array_map(fn($a) => $a['balance'], $cash_rows));
         $cash_held = array_sum(array_map(fn($a) => $a['balance'], array_filter($cash_rows, fn($a) => !empty($a['owner_user_id']) && ($a['owner_role'] ?? '') !== 'admin')));
-        $cash_tile = ['id' => 'stat-cash-balance', 'label' => 'Saldo kas & bank', 'value' => rp($cash_total), 'sub_id' => '', 'sub' => $cash_held > 0 ? rp($cash_held) . ' masih di petugas / mitra' : 'Semua akun aktif', 'href' => 'index.php?page=admin_cash', 'icon' => 'fa-vault'];
+        $cash_tile = ['id' => 'stat-cash-balance', 'label' => 'Saldo kas & bank', 'value' => rp($cash_total), 'sub_id' => '', 'sub' => $cash_held > 0 ? rp($cash_held) . ' masih di petugas' : 'Semua akun aktif', 'href' => 'index.php?page=admin_cash', 'icon' => 'fa-vault'];
     } catch (Exception $e) { $cash_tile = null; }
 }
 $stat_cards = [
