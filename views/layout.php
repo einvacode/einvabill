@@ -30,7 +30,7 @@ $page_titles = [
     'admin_assets' => 'Manajemen Aset (OLT/ODP)',
     'admin_map' => 'Peta Sebaran Jaringan',
     'admin_invoices' => 'Manajemen Tagihan',
-    'admin_create_invoice' => 'Buat Invoice Baru',
+    'admin_create_invoice' => 'Invoice Eksternal',
     'admin_edit_quick_invoice' => 'Edit Invoice',
     'admin_expenses' => 'Manajemen Pengeluaran',
     'admin_reports' => 'Laporan Keuangan',
@@ -233,7 +233,7 @@ function nav_heading(string $text): string {
                 <?= nav_heading('Keuangan') ?>
                 <?= nav_item('index.php?page=admin_invoices&filter_type=customer', 'fas fa-file-invoice-dollar', 'Tagihan Pelanggan', $page == 'admin_invoices' && ($_GET['filter_type'] ?? '') == 'customer' && ($filter_status ?? '') != 'belum') ?>
                 <?= nav_item('index.php?page=admin_invoices&filter_type=partner', 'fas fa-handshake', 'Tagihan Kemitraan', $page == 'admin_invoices' && ($_GET['filter_type'] ?? '') == 'partner') ?>
-                <?= nav_item('index.php?page=admin_create_invoice', 'fas fa-plus-circle', 'Buat Invoice Baru', $page == 'admin_create_invoice') ?>
+                <?= nav_item('index.php?page=admin_create_invoice', 'fas fa-file-invoice', 'Invoice Eksternal', $page == 'admin_create_invoice') ?>
                 <?= nav_item('index.php?page=admin_expenses', 'fas fa-wallet', 'Pengeluaran / Biaya', $page == 'admin_expenses') ?>
 
                 <?= nav_heading('Infrastruktur') ?>
@@ -400,7 +400,7 @@ function nav_heading(string $text): string {
                 <a href="index.php?page=admin_expenses" class="sheet-item <?= $page == 'admin_expenses' ? 'active' : '' ?>"><i class="fas fa-wallet"></i>Pengeluaran</a>
                 <a href="index.php?page=admin_router" class="sheet-item <?= $page == 'admin_router' ? 'active' : '' ?>"><i class="fas fa-network-wired"></i>Router</a>
                 <a href="index.php?page=admin_new_customers" class="sheet-item <?= $page == 'admin_new_customers' ? 'active' : '' ?>"><i class="fas fa-star"></i>Pelanggan Baru</a>
-                <a href="index.php?page=admin_create_invoice" class="sheet-item <?= $page == 'admin_create_invoice' ? 'active' : '' ?>"><i class="fas fa-plus-circle"></i>Buat Invoice</a>
+                <a href="index.php?page=admin_create_invoice" class="sheet-item <?= $page == 'admin_create_invoice' ? 'active' : '' ?>"><i class="fas fa-file-invoice"></i>Invoice Eksternal</a>
                 <a href="index.php?page=admin_assets" class="sheet-item <?= $page == 'admin_assets' ? 'active' : '' ?>"><i class="fas fa-boxes"></i>Aset</a>
                 <a href="index.php?page=admin_auto_invoice" class="sheet-item <?= $page == 'admin_auto_invoice' ? 'active' : '' ?>"><i class="fas fa-magic"></i>Auto Tagihan</a>
                 <a href="index.php?page=admin_landing" class="sheet-item <?= $page == 'admin_landing' ? 'active' : '' ?>"><i class="fas fa-globe"></i>Web Profil</a>

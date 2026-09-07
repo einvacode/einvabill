@@ -202,7 +202,7 @@ $stat_cards = [
     <a href="index.php?page=admin_invoices" class="ui-btn ui-btn-sm ui-btn-outline"><i class="fas fa-file-invoice"></i> Data tagihan</a>
     <a href="index.php?page=admin_reports" class="ui-btn ui-btn-sm ui-btn-outline"><i class="fas fa-chart-line"></i> Laporan</a>
     <a href="index.php?page=admin_expenses" class="ui-btn ui-btn-sm ui-btn-outline"><i class="fas fa-receipt"></i> Pengeluaran</a>
-    <a href="index.php?page=admin_create_invoice" class="ui-btn ui-btn-sm ui-btn-primary"><i class="fas fa-plus"></i> Buat invoice</a>
+    <a href="index.php?page=admin_create_invoice" class="ui-btn ui-btn-sm ui-btn-primary"><i class="fas fa-file-invoice"></i> Invoice eksternal</a>
 </div>
 
 <!-- Stats -->
