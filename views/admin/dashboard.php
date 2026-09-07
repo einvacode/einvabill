@@ -93,6 +93,10 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'stats') {
     exit;
 }
 
+// Monthly invoices are generated a few days before each billing date (Auto Tagihan),
+// at most once per hour per session, before the numbers below are computed.
+$auto_created = ($u_role === 'admin' && function_exists('auto_invoice_autorun')) ? auto_invoice_autorun($db, (int)$tenant_id) : 0;
+
 // Initial Page Load Stats
 $s = get_dashboard_stats($db, $scope_where, $c_scope);
 
@@ -170,6 +174,10 @@ $stat_cards = [
 ];
 if ($cash_tile) $stat_cards[] = $cash_tile;
 ?>
+
+<?php if (!empty($auto_created)): ?>
+<div class="ui-card mb-5 p-4 text-sm"><span class="font-semibold text-signal">Auto Tagihan.</span> <?= (int)$auto_created ?> tagihan bulan ini dibuat otomatis karena tanggal tagihannya sudah dekat. Pengingat H-3 ada di bagian Broadcast di bawah.</div>
+<?php endif; ?>
 
 <?php if ($success_data): ?>
 <div class="ui-card mb-5 p-4 sm:p-5">

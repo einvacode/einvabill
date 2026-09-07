@@ -9,11 +9,24 @@ if ($_SESSION['user_role'] !== 'admin') {
     exit;
 }
 
-require_once __DIR__ . '/../../app/auto_invoice_generator.php';
+require_once __DIR__ . '/../../app/auto_invoice_generator.php'; // already loaded by init.php; kept for direct includes
 
 $action = $_GET['action'] ?? 'view';
 $tenant_id = $_SESSION['tenant_id'] ?? 1;
 $report = null;
+
+// Pengaturan mode otomatis (dijalankan saat admin membuka dashboard) dan hari pembuatan sebelum jatuh tempo
+$auto_msg = '';
+if ($action === 'settings' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $enabled = !empty($_POST['auto_invoice_enabled']) ? 1 : 0;
+    $lead = max(0, min(15, intval($_POST['auto_invoice_lead_days'] ?? 3)));
+    try {
+        $db->prepare("UPDATE settings SET auto_invoice_enabled = ?, auto_invoice_lead_days = ? WHERE tenant_id = ?")->execute([$enabled, $lead, $tenant_id]);
+        unset($_SESSION['auto_invoice_last_run_' . $tenant_id]);
+        $auto_msg = 'Pengaturan auto tagihan tersimpan.';
+    } catch (Exception $e) { $auto_msg = 'Gagal menyimpan pengaturan.'; }
+}
+$auto_cfg = auto_invoice_settings($db, (int)$tenant_id);
 
 if ($action === 'run' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $mode = $_POST['mode'] ?? 'run'; // 'run' atau 'simulate'
@@ -61,10 +74,32 @@ try {
 <div class="ui-card mb-5 p-4 sm:p-5">
     <h3 class="m-0 mb-1 text-[15px] font-bold">Bagaimana cara kerjanya?</h3>
     <p class="m-0 text-sm leading-relaxed text-muted-foreground">
-        Sistem akan <strong>otomatis membuat tagihan</strong> untuk pelanggan yang sudah mencapai tanggal tagihan mereka di bulan ini.
-        Setiap pelanggan memiliki <strong>"Tanggal Tagihan" (billing_date)</strong> yang bisa diatur di profil pelanggan.
-        Jika hari ini ≥ tanggal tagihan pelanggan DAN belum ada tagihan bulan ini, sistem akan otomatis membuatnya.
+        Setiap pelanggan dan POP punya <strong>tanggal tagihan</strong> di profilnya. Tagihan bulan berjalan dibuat otomatis
+        <strong><?= (int)$auto_cfg['lead_days'] ?> hari sebelum</strong> tanggal itu, satu tagihan per pelanggan per bulan, dengan jatuh tempo pada tanggal tagihannya.
+        Dengan begitu pengingat H-3 di dashboard sempat terkirim sebelum jatuh tempo. Pelanggan yang didaftarkan mitra tidak ikut; itu ditagih oleh mitra.
+        <?= $auto_cfg['enabled'] ? 'Mode otomatis <strong>aktif</strong>: proses berjalan sendiri setiap admin membuka dashboard (paling sering sekali per jam).' : 'Mode otomatis <strong>nonaktif</strong>: tagihan hanya dibuat saat tombol "Jalankan sekarang" ditekan atau lewat cron.' ?>
     </p>
+</div>
+
+<?php if ($auto_msg): ?>
+<div class="ui-card mb-5 p-4 text-sm"><span class="font-semibold text-signal">Tersimpan.</span> <?= htmlspecialchars($auto_msg) ?></div>
+<?php endif; ?>
+
+<div class="ui-card mb-5 p-4 sm:p-5">
+    <h3 class="m-0 mb-3 text-[15px] font-bold">Pengaturan otomatis</h3>
+    <form method="POST" action="index.php?page=admin_auto_invoice&action=settings" class="grid gap-4 sm:grid-cols-[1fr_220px_auto] sm:items-end">
+<?= csrf_field() ?>
+        <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="auto_invoice_enabled" value="1" <?= $auto_cfg['enabled'] ? 'checked' : '' ?>>
+            Buat tagihan otomatis saat admin membuka dashboard
+        </label>
+        <label class="block">
+            <span class="mb-1 block text-xs font-medium text-muted-foreground">Dibuat berapa hari sebelum tanggal tagihan</span>
+            <input type="number" name="auto_invoice_lead_days" class="form-control" min="0" max="15" value="<?= (int)$auto_cfg['lead_days'] ?>">
+        </label>
+        <button type="submit" class="ui-btn ui-btn-primary">Simpan</button>
+    </form>
+    <p class="m-0 mt-3 text-xs text-muted-foreground">Untuk berjalan tanpa bergantung pada login admin, tambahkan cron di server: <code>0 6 * * * php /var/www/einvabill/app/auto_invoice_generator.php</code></p>
 </div>
 
 <!-- Control Panel -->

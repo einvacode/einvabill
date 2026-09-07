@@ -299,7 +299,7 @@ function run_database_setup($db) {
         'banners' => ['tenant_id' => 'INTEGER DEFAULT 1'],
         'landing_packages' => ['tenant_id' => 'INTEGER DEFAULT 1'],
         'landing_logos' => ['tenant_id' => 'INTEGER DEFAULT 1'],
-        'settings' => ['license_key' => 'TEXT', 'license_expiry' => 'TEXT', 'license_type' => 'TEXT', 'installation_date' => 'TEXT', 'site_url' => "TEXT DEFAULT 'http://fibernodeinternet.com'", 'acs_url' => 'TEXT', 'acs_user' => 'TEXT', 'acs_pass' => 'TEXT', 'landing_hero_title' => 'TEXT', 'landing_hero_text' => 'TEXT', 'landing_about_us' => 'TEXT', 'db_version' => 'INTEGER DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1', 'debug_mode' => 'INTEGER DEFAULT 0', 'company_qris' => 'TEXT', 'company_contact' => 'TEXT', 'fin_opening_date' => 'TEXT', 'fin_opening_cash' => 'REAL DEFAULT 0', 'fin_paid_capital' => 'REAL DEFAULT 0', 'fin_liabilities' => 'REAL DEFAULT 0', 'fin_asset_life_years' => 'INTEGER DEFAULT 4', 'fin_tax_rate' => 'REAL DEFAULT 0.5']
+        'settings' => ['license_key' => 'TEXT', 'license_expiry' => 'TEXT', 'license_type' => 'TEXT', 'installation_date' => 'TEXT', 'site_url' => "TEXT DEFAULT 'http://fibernodeinternet.com'", 'acs_url' => 'TEXT', 'acs_user' => 'TEXT', 'acs_pass' => 'TEXT', 'landing_hero_title' => 'TEXT', 'landing_hero_text' => 'TEXT', 'landing_about_us' => 'TEXT', 'db_version' => 'INTEGER DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1', 'debug_mode' => 'INTEGER DEFAULT 0', 'company_qris' => 'TEXT', 'company_contact' => 'TEXT', 'fin_opening_date' => 'TEXT', 'fin_opening_cash' => 'REAL DEFAULT 0', 'fin_paid_capital' => 'REAL DEFAULT 0', 'fin_liabilities' => 'REAL DEFAULT 0', 'fin_asset_life_years' => 'INTEGER DEFAULT 4', 'fin_tax_rate' => 'REAL DEFAULT 0.5', 'auto_invoice_enabled' => 'INTEGER DEFAULT 1', 'auto_invoice_lead_days' => 'INTEGER DEFAULT 3']
     ];
 
     foreach ($cols_to_add as $table => $cols) {
@@ -373,9 +373,9 @@ function run_database_setup($db) {
     $check_settings = $db->query("SELECT COUNT(*) FROM settings")->fetchColumn();
     if ($check_settings == 0) {
         $db->exec("INSERT INTO settings (id, company_name, company_tagline, company_address, wa_template, landing_hero_title, landing_hero_text, db_version) 
-                  VALUES (1, 'EinvaBill ISP', 'Internet Cepat & Layanan Prima', 'Alamat Perusahaan Anda', 'Halo {nama}, tagihan Anda sebesar {tagihan} sudah terbit.', 'Koneksi Super Cepat & Stabil', 'Solusi internet dan IT untuk kebutuhan personal dan korporasi.', 32)");
+                  VALUES (1, 'EinvaBill ISP', 'Internet Cepat & Layanan Prima', 'Alamat Perusahaan Anda', 'Halo {nama}, tagihan Anda sebesar {tagihan} sudah terbit.', 'Koneksi Super Cepat & Stabil', 'Solusi internet dan IT untuk kebutuhan personal dan korporasi.', 33)");
     } else {
-        $db->exec("UPDATE settings SET db_version = 32 WHERE id = 1");
+        $db->exec("UPDATE settings SET db_version = 33 WHERE id = 1");
     }
 
     // Default Users
