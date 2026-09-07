@@ -54,10 +54,15 @@ if ($action === 'bulk_delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!empty($ids)) {
         $id_placeholders = implode(',', array_fill(0, count($ids), '?'));
         $tenant_id = $_SESSION['tenant_id'] ?? 1;
-        $scope_cond = ($u_role === 'admin') ? "(created_by = ? OR created_by = 0 OR created_by IS NULL) AND tenant_id = ?" : "created_by = ? AND tenant_id = ?";
-        $stmt = $db->prepare("DELETE FROM packages WHERE id IN ($id_placeholders) AND $scope_cond");
-        $params = array_merge($ids, [$u_id, $tenant_id]);
-        $stmt->execute($params);
+        // Admin may remove any package of the tenant (including ones created by
+        // partner/collector accounts), matching the single-row delete above.
+        if ($u_role === 'admin') {
+            $stmt = $db->prepare("DELETE FROM packages WHERE id IN ($id_placeholders) AND tenant_id = ?");
+            $stmt->execute(array_merge(array_map('intval', $ids), [$tenant_id]));
+        } else {
+            $stmt = $db->prepare("DELETE FROM packages WHERE id IN ($id_placeholders) AND created_by = ? AND tenant_id = ?");
+            $stmt->execute(array_merge(array_map('intval', $ids), [$u_id, $tenant_id]));
+        }
         
         header("Location: index.php?page=admin_packages&msg=bulk_deleted");
         exit;
