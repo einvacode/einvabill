@@ -238,6 +238,10 @@ function nav_heading(string $text): string {
                 <?= nav_item('index.php?page=admin_create_invoice', 'fas fa-file-invoice', 'Invoice Eksternal', $page == 'admin_create_invoice') ?>
                 <?= nav_item('index.php?page=admin_expenses', 'fas fa-wallet', 'Pengeluaran / Biaya', $page == 'admin_expenses') ?>
 
+                <?= nav_heading('Laporan') ?>
+                <?= nav_item('index.php?page=admin_reports', 'fas fa-chart-line', 'Laporan Keuangan', $page == 'admin_reports') ?>
+                <?= nav_item('index.php?page=admin_report_assets', 'fas fa-file-contract', 'Laporan Aset', $page == 'admin_report_assets') ?>
+
                 <?= nav_heading('Infrastruktur') ?>
                 <?= nav_item('index.php?page=admin_router', 'fas fa-network-wired', 'Router', $page == 'admin_router') ?>
                 <?= nav_item('index.php?page=admin_assets', 'fas fa-boxes', 'Aset Perusahaan', $page == 'admin_assets') ?>
@@ -248,30 +252,13 @@ function nav_heading(string $text): string {
                 <?= nav_item('index.php?page=admin_areas', 'fas fa-map-marker-alt', 'Manajemen Area', $page == 'admin_areas') ?>
                 <?= nav_item('index.php?page=admin_users', 'fas fa-user-shield', 'Akses Pengguna', $page == 'admin_users') ?>
 
-                <?php $settings_pages = ['admin_wa_gateway', 'admin_auto_invoice', 'admin_settings', 'admin_backup', 'admin_banners', 'admin_landing']; ?>
-                <div class="nav-group mt-1 <?= in_array($page, $settings_pages) ? 'open' : '' ?>">
-                    <button type="button" class="nav-item w-full text-left text-white/70 hover:bg-white/5 hover:text-white bg-transparent border-0" onclick="toggleDropdown(this)">
-                        <i class="fas fa-sliders-h w-5 text-center text-[15px]"></i><span class="flex-1">Pengaturan</span><i class="fas fa-chevron-down nav-chevron text-[11px] transition-transform"></i>
-                    </button>
-                    <div class="nav-group-body ml-4 border-l border-solid border-white/10 pl-2">
-                        <?= nav_item('index.php?page=admin_wa_gateway', 'fab fa-whatsapp', 'WA Perangkat', $page == 'admin_wa_gateway', '<span class="wa-status-sidebar-badge ml-auto"></span>') ?>
-                        <?= nav_item('index.php?page=admin_auto_invoice', 'fas fa-magic', 'Auto Tagihan', $page == 'admin_auto_invoice') ?>
-                        <?= nav_item('index.php?page=admin_settings', 'fas fa-cog', 'Profil & Apps', $page == 'admin_settings') ?>
-                        <?= nav_item('index.php?page=admin_landing', 'fas fa-globe', 'Web Profil', $page == 'admin_landing') ?>
-                        <?= nav_item('index.php?page=admin_banners', 'fas fa-scroll', 'Banner', $page == 'admin_banners') ?>
-                        <?= nav_item('index.php?page=admin_backup', 'fas fa-shield-alt', 'Backup', $page == 'admin_backup') ?>
-                    </div>
-                </div>
-
-                <div class="nav-group <?= in_array($page, ['admin_reports', 'admin_report_assets']) ? 'open' : '' ?>">
-                    <button type="button" class="nav-item w-full text-left text-white/70 hover:bg-white/5 hover:text-white bg-transparent border-0" onclick="toggleDropdown(this)">
-                        <i class="fas fa-chart-bar w-5 text-center text-[15px]"></i><span class="flex-1">Laporan</span><i class="fas fa-chevron-down nav-chevron text-[11px] transition-transform"></i>
-                    </button>
-                    <div class="nav-group-body ml-4 border-l border-solid border-white/10 pl-2">
-                        <?= nav_item('index.php?page=admin_reports', 'fas fa-chart-line', 'Keuangan', $page == 'admin_reports') ?>
-                        <?= nav_item('index.php?page=admin_report_assets', 'fas fa-file-contract', 'Aset', $page == 'admin_report_assets') ?>
-                    </div>
-                </div>
+                <?= nav_heading('Pengaturan') ?>
+                <?= nav_item('index.php?page=admin_settings', 'fas fa-cog', 'Profil & Aplikasi', $page == 'admin_settings') ?>
+                <?= nav_item('index.php?page=admin_wa_gateway', 'fab fa-whatsapp', 'WA Perangkat', $page == 'admin_wa_gateway', '<span class="wa-status-sidebar-badge ml-auto"></span>') ?>
+                <?= nav_item('index.php?page=admin_auto_invoice', 'fas fa-magic', 'Auto Tagihan', $page == 'admin_auto_invoice') ?>
+                <?= nav_item('index.php?page=admin_landing', 'fas fa-globe', 'Web Profil', $page == 'admin_landing') ?>
+                <?= nav_item('index.php?page=admin_banners', 'fas fa-scroll', 'Banner Informasi', $page == 'admin_banners') ?>
+                <?= nav_item('index.php?page=admin_backup', 'fas fa-shield-alt', 'Backup & Restore', $page == 'admin_backup') ?>
 
             <?php elseif ($role === 'collector'): ?>
                 <?php $cq = "&date_from=" . urlencode($date_from) . "&date_to=" . urlencode($date_to); $ct = $coll_tab ?? 'summary'; ?>
@@ -405,9 +392,12 @@ function nav_heading(string $text): string {
                 <a href="index.php?page=admin_new_customers" class="sheet-item <?= $page == 'admin_new_customers' ? 'active' : '' ?>"><i class="fas fa-star"></i>Pelanggan Baru</a>
                 <a href="index.php?page=admin_create_invoice" class="sheet-item <?= $page == 'admin_create_invoice' ? 'active' : '' ?>"><i class="fas fa-file-invoice"></i>Invoice Eksternal</a>
                 <a href="index.php?page=admin_assets" class="sheet-item <?= $page == 'admin_assets' ? 'active' : '' ?>"><i class="fas fa-boxes"></i>Aset</a>
+                <a href="index.php?page=admin_reports" class="sheet-item <?= $page == 'admin_reports' ? 'active' : '' ?>"><i class="fas fa-chart-line"></i>Laporan Keuangan</a>
+                <a href="index.php?page=admin_report_assets" class="sheet-item <?= $page == 'admin_report_assets' ? 'active' : '' ?>"><i class="fas fa-file-contract"></i>Laporan Aset</a>
+                <a href="index.php?page=admin_wa_gateway" class="sheet-item <?= $page == 'admin_wa_gateway' ? 'active' : '' ?>"><i class="fab fa-whatsapp"></i>WA Perangkat</a>
                 <a href="index.php?page=admin_auto_invoice" class="sheet-item <?= $page == 'admin_auto_invoice' ? 'active' : '' ?>"><i class="fas fa-magic"></i>Auto Tagihan</a>
                 <a href="index.php?page=admin_landing" class="sheet-item <?= $page == 'admin_landing' ? 'active' : '' ?>"><i class="fas fa-globe"></i>Web Profil</a>
-                <a href="index.php?page=admin_settings" class="sheet-item <?= $page == 'admin_settings' ? 'active' : '' ?>"><i class="fas fa-cog"></i>Pengaturan</a>
+                <a href="index.php?page=admin_settings" class="sheet-item <?= $page == 'admin_settings' ? 'active' : '' ?>"><i class="fas fa-cog"></i>Profil &amp; Aplikasi</a>
                 <a href="index.php?page=admin_banners" class="sheet-item <?= $page == 'admin_banners' ? 'active' : '' ?>"><i class="fas fa-scroll"></i>Banner</a>
                 <a href="index.php?page=admin_backup" class="sheet-item <?= $page == 'admin_backup' ? 'active' : '' ?>"><i class="fas fa-shield-alt"></i>Backup</a>
                 <a href="index.php?page=admin_wa_gateway" class="sheet-item <?= $page == 'admin_wa_gateway' ? 'active' : '' ?>"><i class="fab fa-whatsapp" style="color:#1DA851"></i>WA Perangkat</a>
