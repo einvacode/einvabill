@@ -1,6 +1,6 @@
 <?php
 // External / quick invoice: bill a company, agency or individual that is not a subscriber.
-$u_role = $_SESSION['user_role'] ?? 'guest';
+$u_role = app_scope_role();
 if (!in_array($u_role, ['admin','partner'])) {
     echo "<div class='ui-card p-10 text-center'><h2 class='m-0 text-xl font-bold'>Akses ditolak</h2></div>"; return;
 }

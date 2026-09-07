@@ -277,6 +277,21 @@ function run_database_setup($db) {
             created_at TEXT
         );
 
+        CREATE TABLE IF NOT EXISTS audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_id INTEGER DEFAULT 1,
+            user_id INTEGER,
+            user_name TEXT,
+            user_role TEXT,
+            action TEXT NOT NULL,
+            entity TEXT,
+            entity_id TEXT,
+            summary TEXT,
+            meta_json TEXT,
+            ip TEXT,
+            created_at TEXT
+        );
+
         CREATE TABLE IF NOT EXISTS login_attempts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT,
@@ -345,6 +360,7 @@ function run_database_setup($db) {
     $db->exec("CREATE INDEX IF NOT EXISTS idx_customers_created_by ON customers(created_by)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_customers_collector ON customers(collector_id)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_audit_tenant_date ON audit_logs(tenant_id, created_at)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_customers_tenant ON customers(tenant_id)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_invoices_tenant_status_due ON invoices(tenant_id, status, due_date)");
@@ -373,9 +389,9 @@ function run_database_setup($db) {
     $check_settings = $db->query("SELECT COUNT(*) FROM settings")->fetchColumn();
     if ($check_settings == 0) {
         $db->exec("INSERT INTO settings (id, company_name, company_tagline, company_address, wa_template, landing_hero_title, landing_hero_text, db_version) 
-                  VALUES (1, 'EinvaBill ISP', 'Internet Cepat & Layanan Prima', 'Alamat Perusahaan Anda', 'Halo {nama}, tagihan Anda sebesar {tagihan} sudah terbit.', 'Koneksi Super Cepat & Stabil', 'Solusi internet dan IT untuk kebutuhan personal dan korporasi.', 33)");
+                  VALUES (1, 'EinvaBill ISP', 'Internet Cepat & Layanan Prima', 'Alamat Perusahaan Anda', 'Halo {nama}, tagihan Anda sebesar {tagihan} sudah terbit.', 'Koneksi Super Cepat & Stabil', 'Solusi internet dan IT untuk kebutuhan personal dan korporasi.', 34)");
     } else {
-        $db->exec("UPDATE settings SET db_version = 33 WHERE id = 1");
+        $db->exec("UPDATE settings SET db_version = 34 WHERE id = 1");
     }
 
     // Default Users

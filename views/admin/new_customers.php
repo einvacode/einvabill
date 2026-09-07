@@ -6,7 +6,7 @@
 
 $action = $_GET['action'] ?? 'list';
 $tenant_id = $_SESSION['tenant_id'] ?? 1;
-$u_role = $_SESSION['user_role'] ?? 'admin';
+$u_role = app_scope_role();
 
 // RBAC: Get partner IDs for scoping
 $partner_ids = $db->query("SELECT id FROM users WHERE role = 'partner' AND tenant_id = $tenant_id")->fetchAll(PDO::FETCH_COLUMN);

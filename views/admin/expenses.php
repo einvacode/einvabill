@@ -1,7 +1,7 @@
 <?php
 $action = $_GET['action'] ?? 'list';
 $u_id = $_SESSION['user_id'];
-$u_role = $_SESSION['user_role'] ?? 'admin';
+$u_role = app_scope_role();
 
 // Expense categories (tab "Kategori"); managed by admin only, used by everyone.
 $tenant_id = $_SESSION['tenant_id'] ?? 1;
@@ -109,8 +109,10 @@ if ($action === 'delete') {
     $is_owner = ($u_role === 'admin') ? ($check['tenant_id'] == $tenant_id) : ($check['created_by'] == $u_id);
 
     if ($is_owner) {
+        $before = $db->query("SELECT category, amount, date, description FROM expenses WHERE id = $id")->fetch(PDO::FETCH_ASSOC) ?: [];
         $receipt_unlink($check['receipt_path'] ?? null);
         $db->prepare("DELETE FROM expenses WHERE id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
+        audit_log($db, 'expense_delete', 'expenses', $id, 'Menghapus pengeluaran ' . ($before['category'] ?? '-') . ' Rp ' . number_format((float)($before['amount'] ?? 0), 0, ',', '.') . ' (' . ($before['date'] ?? '-') . ')' . (!empty($before['description']) ? ': ' . $before['description'] : ''), $before);
         header("Location: index.php?page=admin_expenses&msg=deleted");
     } else {
         header("Location: index.php?page=admin_expenses&msg=forbidden");

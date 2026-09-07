@@ -1,6 +1,6 @@
 <?php
 // Kas & Bank: saldo per akun, setoran petugas / transfer antar akun, dan buku mutasi.
-if (($_SESSION['user_role'] ?? '') !== 'admin') {
+if (app_scope_role() !== 'admin') {
     echo "<div class='ui-card p-10 text-center'><h2 class='m-0 text-xl font-bold'>Akses ditolak</h2></div>"; return;
 }
 $tenant_id = intval($_SESSION['tenant_id'] ?? 1);
@@ -15,9 +15,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cash_action'])) {
     $err = ''; $msg = '';
     if ($act === 'account_save') { $err = cash_account_save($db, $tenant_id, intval($_POST['account_id'] ?? 0), $_POST); $msg = 'account_saved'; $back .= 'accounts'; }
     elseif ($act === 'account_delete') { $err = cash_account_delete($db, $tenant_id, intval($_POST['account_id'] ?? 0)); $msg = 'account_deleted'; $back .= 'accounts'; }
-    elseif ($act === 'transfer_save') { $err = cash_transfer_save($db, $tenant_id, $u_id, $_POST); $msg = ($_POST['type'] ?? '') === 'adjustment' ? 'adjust_saved' : 'transfer_saved'; $back .= 'transfers'; }
-    elseif ($act === 'transfer_delete') { cash_transfer_delete($db, $tenant_id, intval($_POST['transfer_id'] ?? 0)); $msg = 'transfer_deleted'; $back .= 'transfers'; }
-    elseif ($act === 'reassign') { $err = cash_reassign($db, $tenant_id, (string)($_POST['kind'] ?? ''), intval($_POST['row_id'] ?? 0), intval($_POST['account_id'] ?? 0)); $msg = 'reassigned'; $back .= 'ledger&' . http_build_query(['account' => $_POST['ret_account'] ?? '', 'date_from' => $_POST['ret_from'] ?? '', 'date_to' => $_POST['ret_to'] ?? '']); }
+    elseif ($act === 'transfer_save') {
+        $err = cash_transfer_save($db, $tenant_id, $u_id, $_POST);
+        $is_adjust = ($_POST['type'] ?? '') === 'adjustment';
+        if (!$err) audit_log($db, 'cash_transfer', 'cash_transfers', $db->lastInsertId(),
+            ($is_adjust ? 'Penyesuaian saldo ' : 'Transfer kas ') . 'Rp ' . number_format(abs((float)($_POST['amount'] ?? 0)), 0, ',', '.') . ' tanggal ' . ($_POST['date'] ?? '-') . (!empty($_POST['note']) ? ': ' . $_POST['note'] : ''),
+            ['type' => $_POST['type'] ?? 'transfer', 'from' => $_POST['from_account_id'] ?? null, 'to' => $_POST['to_account_id'] ?? null]);
+        $msg = $is_adjust ? 'adjust_saved' : 'transfer_saved'; $back .= 'transfers';
+    }
+    elseif ($act === 'transfer_delete') {
+        $tid = intval($_POST['transfer_id'] ?? 0);
+        $before = $db->query("SELECT type, amount, date, note FROM cash_transfers WHERE id = $tid")->fetch(PDO::FETCH_ASSOC) ?: [];
+        cash_transfer_delete($db, $tenant_id, $tid);
+        audit_log($db, 'cash_transfer_delete', 'cash_transfers', $tid, 'Menghapus mutasi kas Rp ' . number_format((float)($before['amount'] ?? 0), 0, ',', '.') . ' tanggal ' . ($before['date'] ?? '-') . (!empty($before['note']) ? ': ' . $before['note'] : ''), $before);
+        $msg = 'transfer_deleted'; $back .= 'transfers';
+    }
+    elseif ($act === 'reassign') {
+        $kind = (string)($_POST['kind'] ?? ''); $row_id = intval($_POST['row_id'] ?? 0); $acc = intval($_POST['account_id'] ?? 0);
+        $err = cash_reassign($db, $tenant_id, $kind, $row_id, $acc);
+        if (!$err) {
+            $acc_name = $db->query("SELECT name FROM cash_accounts WHERE id = $acc")->fetchColumn();
+            audit_log($db, 'cash_reassign', $kind === 'payment' ? 'payments' : 'expenses', $row_id, 'Memindahkan ' . ($kind === 'payment' ? 'pembayaran' : 'pengeluaran') . ' ke akun ' . ($acc_name ?: $acc), ['account_id' => $acc]);
+        }
+        $msg = 'reassigned'; $back .= 'ledger&' . http_build_query(['account' => $_POST['ret_account'] ?? '', 'date_from' => $_POST['ret_from'] ?? '', 'date_to' => $_POST['ret_to'] ?? '']);
+    }
     header('Location: ' . $back . ($err ? '&err=' . urlencode($err) : '&msg=' . $msg));
     exit;
 }

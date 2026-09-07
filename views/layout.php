@@ -33,6 +33,7 @@ $page_titles = [
     'admin_partner_dashboard' => 'Dashboard Mitra',
     'admin_create_invoice' => 'Invoice Eksternal',
     'admin_edit_quick_invoice' => 'Edit Invoice',
+    'admin_audit' => 'Jejak Audit',
     'admin_receivables' => 'Umur Piutang',
     'admin_cash' => 'Kas & Bank',
     'admin_expenses' => 'Manajemen Pengeluaran',
@@ -263,6 +264,29 @@ function nav_heading(string $text): string {
                 <?= nav_item('index.php?page=admin_landing', 'fas fa-globe', 'Web Profil', $page == 'admin_landing') ?>
                 <?= nav_item('index.php?page=admin_banners', 'fas fa-scroll', 'Banner Informasi', $page == 'admin_banners') ?>
                 <?= nav_item('index.php?page=admin_backup', 'fas fa-shield-alt', 'Backup & Restore', $page == 'admin_backup') ?>
+                <?= nav_item('index.php?page=admin_audit', 'fas fa-clipboard-list', 'Jejak Audit', $page == 'admin_audit') ?>
+
+            <?php elseif ($role === 'bendahara'): ?>
+                <?= nav_heading('Keuangan') ?>
+                <?= nav_item('index.php?page=admin_dashboard', 'fas fa-home', 'Dashboard', $page == 'admin_dashboard') ?>
+                <?= nav_item('index.php?page=admin_cash', 'fas fa-vault', 'Kas & Bank', $page == 'admin_cash') ?>
+                <?= nav_item('index.php?page=admin_expenses', 'fas fa-wallet', 'Pengeluaran / Biaya', $page == 'admin_expenses') ?>
+                <?= nav_item('index.php?page=admin_receivables', 'fas fa-hourglass-half', 'Umur Piutang', $page == 'admin_receivables') ?>
+
+                <?= nav_heading('Tagihan') ?>
+                <?= nav_item('index.php?page=admin_invoices&filter_type=customer', 'fas fa-file-invoice-dollar', 'Tagihan Pelanggan', $page == 'admin_invoices' && ($_GET['filter_type'] ?? '') == 'customer') ?>
+                <?= nav_item('index.php?page=admin_invoices&filter_type=partner', 'fas fa-handshake', 'Tagihan Kemitraan', $page == 'admin_invoices' && ($_GET['filter_type'] ?? '') == 'partner') ?>
+                <?= nav_item('index.php?page=admin_create_invoice', 'fas fa-file-invoice', 'Invoice Eksternal', $page == 'admin_create_invoice') ?>
+                <?= nav_item('index.php?page=admin_partner_dashboard', 'fas fa-chart-pie', 'Dashboard Mitra', $page == 'admin_partner_dashboard') ?>
+
+                <?= nav_heading('Laporan') ?>
+                <?= nav_item('index.php?page=admin_reports', 'fas fa-chart-line', 'Laporan Keuangan', $page == 'admin_reports') ?>
+                <?= nav_item('index.php?page=admin_report_assets', 'fas fa-file-contract', 'Laporan Aset', $page == 'admin_report_assets') ?>
+                <?= nav_item('index.php?page=admin_audit', 'fas fa-clipboard-list', 'Jejak Audit', $page == 'admin_audit') ?>
+
+                <?= nav_heading('Data') ?>
+                <?= nav_item('index.php?page=admin_customers&filter_type=customer', 'fas fa-users', 'Pelanggan Rumahan', $page == 'admin_customers' && ($_GET['filter_type'] ?? '') == 'customer') ?>
+                <?= nav_item('index.php?page=admin_packages', 'fas fa-box', 'Manajemen Paket', $page == 'admin_packages') ?>
 
             <?php elseif ($role === 'collector'): ?>
                 <?php $cq = "&date_from=" . urlencode($date_from) . "&date_to=" . urlencode($date_to); $ct = $coll_tab ?? 'summary'; ?>
@@ -353,6 +377,14 @@ function nav_heading(string $text): string {
         <a href="index.php?page=admin_reports" class="bottom-nav-item <?= $page == 'admin_reports' ? 'active' : '' ?>"><i class="fas fa-chart-line"></i><span>Keuangan</span></a>
         <a href="index.php?page=admin_report_assets" class="bottom-nav-item <?= $page == 'admin_report_assets' ? 'active' : '' ?>"><i class="fas fa-file-contract"></i><span>Aset</span></a>
         <a href="#" class="bottom-nav-item" onclick="toggleMobileMenu(event)" id="mobileMenuToggle"><i class="fas fa-ellipsis-h"></i><span>Lainnya</span></a>
+    </div>
+    <?php elseif ($role === 'bendahara'): ?>
+    <div class="grid grid-cols-5">
+        <a href="index.php?page=admin_dashboard" class="bottom-nav-item <?= $page == 'admin_dashboard' ? 'active' : '' ?>"><i class="fas fa-home"></i><span>Home</span></a>
+        <a href="index.php?page=admin_cash" class="bottom-nav-item <?= $page == 'admin_cash' ? 'active' : '' ?>"><i class="fas fa-vault"></i><span>Kas</span></a>
+        <a href="index.php?page=admin_expenses" class="bottom-nav-item <?= $page == 'admin_expenses' ? 'active' : '' ?>"><i class="fas fa-wallet"></i><span>Biaya</span></a>
+        <a href="index.php?page=admin_receivables" class="bottom-nav-item <?= $page == 'admin_receivables' ? 'active' : '' ?>"><i class="fas fa-hourglass-half"></i><span>Piutang</span></a>
+        <a href="index.php?page=admin_reports" class="bottom-nav-item <?= $page == 'admin_reports' ? 'active' : '' ?>"><i class="fas fa-chart-line"></i><span>Laporan</span></a>
     </div>
     <?php elseif ($role === 'collector'): ?>
     <?php $cq = "&date_from=" . urlencode($date_from) . "&date_to=" . urlencode($date_to); $ct = $coll_tab ?? 'summary'; ?>

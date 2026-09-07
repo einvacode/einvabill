@@ -64,7 +64,9 @@ if ($action === 'delete') {
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
     // Prevent deleting self or primary admin (id=1)
     if ($id > 1 && $id != $_SESSION['user_id']) {
+        $before = $db->query("SELECT username, name, role FROM users WHERE id = $id")->fetch(PDO::FETCH_ASSOC) ?: [];
         $db->prepare("DELETE FROM users WHERE id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
+        audit_log($db, 'user_delete', 'users', $id, 'Menghapus akun ' . ($before['name'] ?? '-') . ' (' . ($before['username'] ?? '-') . ', ' . ($before['role'] ?? '-') . ')', $before);
     }
     header("Location: index.php?page=admin_users");
     exit;
@@ -212,6 +214,7 @@ if ($_SESSION['user_id'] == 1 && $action !== 'list') {
                     <?php if ($_SESSION['user_id'] == 1): ?>
                         <option value="admin" <?= $current_role=='admin'?'selected':'' ?>>Administrator (pemilik tenant)</option>
                     <?php endif; ?>
+                    <option value="bendahara" <?= $current_role=='bendahara'?'selected':'' ?>>Bendahara (keuangan, tanpa hapus data)</option>
                     <option value="collector" <?= $current_role=='collector'?'selected':'' ?>>Penagih / collector</option>
                     <option value="partner" <?= $current_role=='partner'?'selected':'' ?>>Mitra (akses mandiri)</option>
                 </select>

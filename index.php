@@ -42,7 +42,7 @@ if ($page === 'login_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($user && password_verify($password, $user['password'])) {
         // One login for everyone: the account's own role decides where it lands
         // (see "Default page based on role" below), so no portal to pick.
-        if (!in_array($user['role'], ['admin', 'collector', 'partner'])) {
+        if (!in_array($user['role'], ['admin', 'bendahara', 'collector', 'partner'])) {
             $error = 'Akun ini tidak punya akses ke aplikasi. Hubungi admin.';
             $page = 'login';
         } else {
@@ -125,7 +125,7 @@ if (LICENSE_ST === 'EXPIRED' && !in_array($page, $license_exempt_pages)) {
 // Default page based on role
 if ($page === 'home') {
     if (isset($_SESSION['user_role'])) {
-        if ($_SESSION['user_role'] === 'admin') $page = 'admin_dashboard';
+        if (in_array($_SESSION['user_role'], ['admin', 'bendahara'])) $page = 'admin_dashboard';
         elseif ($_SESSION['user_role'] === 'collector') $page = 'collector';
         elseif ($_SESSION['user_role'] === 'partner') $page = 'partner';
     } else {
@@ -136,6 +136,11 @@ if ($page === 'home') {
 // Access Control (RBAC)
 $permissions = [
     'admin' => '*', // Full access
+    // Bendahara: seluruh sisi keuangan, tanpa pengaturan sistem, pengguna, dan backup.
+    'bendahara' => ['admin_dashboard', 'admin_cash', 'admin_expenses', 'admin_receivables', 'admin_reports', 'admin_report_assets',
+        'admin_invoices', 'admin_create_invoice', 'admin_edit_quick_invoice', 'admin_customers', 'admin_new_customers',
+        'admin_partner_dashboard', 'admin_packages', 'admin_areas', 'admin_assets', 'admin_map', 'admin_audit',
+        'invoice_print', 'admin_wa_gateway', 'change_password', 'change_password_post'],
     'collector' => ['collector', 'admin_customers', 'admin_invoices', 'invoice_print', 'router_data', 'admin_areas', 'admin_map', 'admin_wa_gateway', 'collector_settings', 'change_password', 'change_password_post'],
     'partner' => ['partner', 'partner_collection', 'partner_settings', 'partner_isp_invoices', 'partner_reports', 'admin_expenses', 'invoice_print', 'admin_invoices', 'partner_wa_device', 'change_password', 'change_password_post']
 ];
@@ -155,6 +160,27 @@ if ($user_role === 'admin') {
 
 if (!$is_allowed) {
     $page = '403'; // Set to a forbidden page
+}
+
+// Bendahara mengelola uang, bukan data induk: penghapusan yang menghilangkan
+// jejak keuangan ditolak di gerbang, bukan hanya disembunyikan di tampilan.
+$role_blocked_actions = [
+    'bendahara' => [
+        'admin_customers' => ['delete', 'bulk_delete', 'assign_partner'],
+        'admin_invoices'  => ['delete'],
+        'admin_reports'   => ['delete_tx'],
+        'admin_assets'    => ['delete', 'invoice_delete_quick'],
+        'admin_packages'  => ['delete', 'bulk_delete'],
+        'admin_areas'     => ['delete'],
+    ],
+];
+if (isset($role_blocked_actions[$user_role][$page])) {
+    $requested_action = $_GET['action'] ?? $_POST['action'] ?? '';
+    if (in_array($requested_action, $role_blocked_actions[$user_role][$page], true)) {
+        session_write_close();
+        header('Location: index.php?page=' . urlencode($page) . '&msg=forbidden_role');
+        exit;
+    }
 }
 
 // Actions that change data must arrive as POST (with a CSRF token).
@@ -233,6 +259,9 @@ switch ($page) {
         break;
     case 'admin_edit_quick_invoice':
         require __DIR__ . '/views/admin/edit_quick_invoice.php';
+        break;
+    case 'admin_audit':
+        require __DIR__ . '/views/admin/audit_log.php';
         break;
     case 'admin_receivables':
         require __DIR__ . '/views/admin/receivables.php';

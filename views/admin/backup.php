@@ -64,6 +64,8 @@ if ($action === 'restore_local') {
         $pre_restore = 'pre_restore_' . date('Y-m-d_His') . '.sqlite';
         copy($db_path, $backup_dir . $pre_restore);
         
+        // Catat sebelum menimpa: setelah restore, database yang aktif adalah yang lama.
+        audit_log($db, 'data_restore', 'database', null, 'Memulihkan database dari backup ' . $file . ' (cadangan sebelum restore: ' . $pre_restore . ')', ['file' => $file, 'pre_restore' => $pre_restore]);
         copy($filepath, $db_path);
         header("Location: index.php?page=admin_backup&msg=restored");
         exit;
@@ -88,6 +90,7 @@ if ($action === 'reset_data' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     // 1. Pre-reset Backup for safety
     $pre_reset = 'pre_reset_' . date('Y-m-d_His') . '.sqlite';
     copy($db_path, $backup_dir . $pre_reset);
+    audit_log($db, 'data_reset', 'database', null, 'Mereset data operasional (pelanggan, tagihan, pembayaran, pengeluaran, aset). Cadangan: ' . $pre_reset, ['pre_reset' => $pre_reset]);
 
     // 2. Clear Tables
     $tables = [

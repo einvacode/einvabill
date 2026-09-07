@@ -1,6 +1,6 @@
 <?php
 // Dashboard Mitra: per-partner customer count and billing (paid / unpaid) for admin.
-if (($_SESSION['user_role'] ?? '') !== 'admin') {
+if (app_scope_role() !== 'admin') {
     echo "<div class='ui-card p-10 text-center'><h2 class='m-0 text-xl font-bold'>Akses ditolak</h2></div>"; return;
 }
 $tenant_id = intval($_SESSION['tenant_id'] ?? 1);

@@ -2,7 +2,7 @@
 // Handle Asset Actions
 $action = $_GET['action'] ?? 'list';
 $u_id = $_SESSION['user_id'];
-$u_role = $_SESSION['user_role'] ?? 'admin';
+$u_role = app_scope_role();
 $tenant_id = $_SESSION['tenant_id'] ?? 1;
 $scope_where = " AND (a.tenant_id = $tenant_id) ";
 
@@ -238,7 +238,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Ownership / permission: only admin or creator can issue invoice
         $u_id = $_SESSION['user_id'];
-        $u_role = $_SESSION['user_role'] ?? 'guest';
+        $u_role = app_scope_role();
 
         if ($u_role === 'admin' || $u_role === 'partner') {
             $created_at = date('Y-m-d H:i:s');
@@ -429,7 +429,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // permission: only admin or issuer can edit
-        $u_id = $_SESSION['user_id']; $u_role = $_SESSION['user_role'] ?? 'guest';
+        $u_id = $_SESSION['user_id']; $u_role = app_scope_role();
         $can_edit = false;
         if ($u_role === 'admin' || $u_role === 'partner') $can_edit = true;
         if (!$can_edit) { header("Location: index.php?page=admin_create_invoice&msg=forbidden"); exit; }

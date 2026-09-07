@@ -74,7 +74,7 @@ if (isset($_GET['sid'])) {
 // Fetch all packages for dropdowns (Scoped by Tenant)
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
     $u_id = $_SESSION['user_id'];
-    $u_role = $_SESSION['user_role'] ?? 'admin';
+    $u_role = app_scope_role();
     
     // Dynamic logic to identify partners in this tenant
     $partner_ids = $db->query("SELECT id FROM users WHERE role = 'partner' AND tenant_id = $tenant_id")->fetchAll(PDO::FETCH_COLUMN);
@@ -249,8 +249,10 @@ if ($action === 'delete') {
     }
 
     // Safe to delete - no related invoices
+    $before = $db->query("SELECT name, customer_code, type, package_name, monthly_fee FROM customers WHERE id = $id")->fetch(PDO::FETCH_ASSOC) ?: [];
     $db->prepare("DELETE FROM customers WHERE id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
-    
+    audit_log($db, 'customer_delete', 'customers', $id, 'Menghapus pelanggan ' . ($before['name'] ?? '-') . ' (' . ($before['customer_code'] ?? '-') . ')', $before);
+
     header("Location: index.php?page=admin_customers&msg=deleted");
     exit;
 }
@@ -302,7 +304,7 @@ if ($action === 'bulk_move' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if ($action === 'bulk_assign_partner' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $u_role = $_SESSION['user_role'] ?? '';
+    $u_role = app_scope_role();
     if ($u_role !== 'admin') {
         header("Location: index.php?page=admin_customers&msg=forbidden");
         exit;
@@ -1268,14 +1270,14 @@ document.addEventListener("DOMContentLoaded", function() {
         // Ownership Check
         if ($c) {
             $u_id = $_SESSION['user_id'];
-            $u_role = $_SESSION['user_role'];
+            $u_role = app_scope_role();
             if (!$c) {
                 echo "<div class='ui-card p-10 text-center'><h3 class='m-0 text-lg font-bold'>Akses ditolak</h3><p class='mt-1 text-sm text-muted-foreground'>Anda tidak berwenang mengedit data ini.</p><a href='index.php?page=admin_customers' class='ui-btn ui-btn-primary mt-4'>Kembali</a></div>";
                 return;
             }
         }
     } else {
-        $u_role = $_SESSION['user_role'] ?? 'admin';
+        $u_role = app_scope_role();
         $default_type = ($u_role === 'partner') ? 'customer' : ($_GET['type'] ?? 'customer');
         $c = ['type'=>$default_type, 'registration_date'=>date('Y-m-d'), 'billing_date'=>'', 'router_id'=>0, 'pppoe_name'=>'', 'name'=>'', 'address'=>'', 'contact'=>'', 'package_name'=>'', 'monthly_fee'=>'', 'ip_address'=>'', 'area'=>'', 'ppn_active'=>0, 'bhp_active'=>0, 'uso_active'=>0];
     }

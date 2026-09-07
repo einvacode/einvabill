@@ -19,6 +19,18 @@ require_once __DIR__ . '/cash_accounts.php';
 require_once __DIR__ . '/recurring_expenses.php';
 require_once __DIR__ . '/finance_trend.php';
 require_once __DIR__ . '/auto_invoice_generator.php';
+require_once __DIR__ . '/audit_log.php';
+
+/**
+ * Peran untuk cakupan data. Bendahara melihat data satu tenant persis seperti
+ * admin; yang dibatasi adalah apa yang boleh dilakukannya (lihat daftar izin
+ * dan aksi terblokir di index.php). Peran asli tetap di $_SESSION['user_role']
+ * sehingga sidebar dan jejak audit tahu siapa yang sebenarnya bekerja.
+ */
+function app_scope_role(): string {
+    $role = $_SESSION['user_role'] ?? 'guest';
+    return $role === 'bendahara' ? 'admin' : $role;
+}
 error_reporting(E_ALL & ~E_NOTICE);
 
 ini_set('display_errors', 0);
@@ -187,7 +199,7 @@ $db->exec("PRAGMA optimize;");
 $db->exec("PRAGMA threads = 4;");
 
 // --- VERSIONED SCHEMA MANAGEMENT ---
-define('APP_DB_VERSION', 33); // Sync with database_setup.php
+define('APP_DB_VERSION', 34); // Sync with database_setup.php
 define('APP_VERSION', '2.34.1-1');
 
 $current_db_ver = 0;

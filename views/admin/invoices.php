@@ -1,7 +1,7 @@
 <?php
 $action = $_GET['action'] ?? 'list';
 $u_id = $_SESSION['user_id'];
-$u_role = $_SESSION['user_role'] ?? 'guest';
+$u_role = app_scope_role();
 $id = intval($_GET['id'] ?? 0);
 
 // Fetch current user templates and global settings
@@ -146,7 +146,7 @@ if ($action === 'delete') {
     
     if ($invoice) {
         $u_id = $_SESSION['user_id'];
-        $u_role = $_SESSION['user_role'];
+        $u_role = app_scope_role();
         
         $is_allowed = true;
         if ($u_role === 'partner' || $u_role === 'collector') {
@@ -156,10 +156,12 @@ if ($action === 'delete') {
         }
         
         if ($is_allowed) {
+            $cust_name = $db->query("SELECT name FROM customers WHERE id = " . intval($invoice['customer_id']))->fetchColumn();
             // Cascade delete manual
             $db->exec("DELETE FROM payments WHERE invoice_id = $id AND tenant_id = $tenant_id");
             $db->exec("DELETE FROM invoice_items WHERE invoice_id = $id");
             $db->exec("DELETE FROM invoices WHERE id = $id AND tenant_id = $tenant_id");
+            audit_log($db, 'invoice_delete', 'invoices', $id, 'Menghapus tagihan INV-' . str_pad((string)$id, 5, '0', STR_PAD_LEFT) . ' Rp ' . number_format((float)$invoice['amount'], 0, ',', '.') . ' atas nama ' . ($cust_name ?: '-') . ' (jatuh tempo ' . $invoice['due_date'] . ')', ['amount' => $invoice['amount'], 'status' => $invoice['status']]);
         } else {
             header("Location: index.php?page=admin_invoices&msg=forbidden");
             exit;
@@ -183,7 +185,7 @@ if ($action === 'edit_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $due_date = $_POST['due_date'];
     
     $u_id = $_SESSION['user_id'];
-    $u_role = $_SESSION['user_role'];
+    $u_role = app_scope_role();
     
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
     $scope_check = "";
@@ -239,7 +241,11 @@ if ($action === 'mark_paid') {
         $tenant_id = $_SESSION['tenant_id'] ?? 1;
         $db->prepare("UPDATE invoices SET status = 'Lunas' WHERE id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
         $db->prepare("INSERT INTO payments (invoice_id, amount, received_by, payment_date, tenant_id) VALUES (?, ?, ?, ?, ?)")->execute([$id, $net_amount, $receiver_id, $payment_date, $tenant_id]);
-        cash_tag_payment($db, (int)$tenant_id, (int)$db->lastInsertId(), cash_posted_account($db, (int)$tenant_id));
+        $pay_id = (int)$db->lastInsertId();
+        $pay_account = cash_posted_account($db, (int)$tenant_id);
+        cash_tag_payment($db, (int)$tenant_id, $pay_id, $pay_account);
+        $cust_name = $db->query("SELECT c.name FROM invoices i JOIN customers c ON c.id = i.customer_id WHERE i.id = " . intval($id))->fetchColumn();
+        audit_log($db, 'payment_create', 'payments', $pay_id, 'Mencatat pembayaran Rp ' . number_format($net_amount, 0, ',', '.') . ' dari ' . ($cust_name ?: '-') . ' untuk INV-' . str_pad((string)$id, 5, '0', STR_PAD_LEFT), ['invoice_id' => $id, 'account_id' => $pay_account]);
     }
     
     $ref = $_GET['ref'] ?? '';
@@ -300,7 +306,7 @@ if ($action === 'unpay') {
     
     if ($inv && $inv['status'] === 'Lunas') {
         $u_id = $_SESSION['user_id'];
-        $u_role = $_SESSION['user_role'];
+        $u_role = app_scope_role();
         
         // Multi-Tenancy Check: Since query already filters by tenant_id, we just need to confirm if it belongs to this tenant
         if ($inv) {
@@ -316,8 +322,10 @@ if ($action === 'unpay') {
                 exit;
             }
             
+            $cust_name = $db->query("SELECT name FROM customers WHERE id = " . intval($inv['customer_id']))->fetchColumn();
             $db->prepare("DELETE FROM payments WHERE invoice_id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
             $db->prepare("UPDATE invoices SET status = 'Belum Lunas' WHERE id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
+            audit_log($db, 'invoice_unpay', 'invoices', $id, 'Membatalkan status lunas INV-' . str_pad((string)$id, 5, '0', STR_PAD_LEFT) . ' Rp ' . number_format((float)$inv['amount'], 0, ',', '.') . ' atas nama ' . ($cust_name ?: '-') . ', pembayarannya dihapus', ['amount' => $inv['amount'], 'due_date' => $inv['due_date']]);
             $msg_type = "unpay_success";
         } else {
             $msg_type = "forbidden";
@@ -335,7 +343,7 @@ if ($action === 'create_auto_bulk' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $due_date = $_POST['due_date'];   // format 2023-10-10
     
     $u_id = $_SESSION['user_id'];
-    $u_role = $_SESSION['user_role'];
+    $u_role = app_scope_role();
     $filter_type = $_POST['filter_type'] ?? 'customer';
     
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
@@ -402,7 +410,7 @@ if ($action === 'print') {
     // Additional role-based checks for partners/collectors:
     if ($_SESSION['user_role'] === 'partner' || $_SESSION['user_role'] === 'collector') {
         $u_id = $_SESSION['user_id'];
-        $u_role = $_SESSION['user_role'];
+        $u_role = app_scope_role();
         
         $is_allowed = false;
         if ($u_role === 'partner') {
@@ -511,7 +519,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
     
     // Scoping Logic (Multi-tenancy/Silo)
     $u_id = $_SESSION['user_id'];
-    $u_role = $_SESSION['user_role'];
+    $u_role = app_scope_role();
     
     // Partner-specific view mode (Tab selection)
     $view_mode = $_GET['view_mode'] ?? 'customers'; 

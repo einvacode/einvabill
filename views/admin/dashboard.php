@@ -5,7 +5,7 @@
  * get_dashboard_stats() dan bisa diperbarui lewat ?ajax=stats.
  */
 $u_id = $_SESSION['user_id'];
-$u_role = $_SESSION['user_role'] ?? 'admin';
+$u_role = app_scope_role();
 $tenant_id = $_SESSION['tenant_id'] ?? 1;
 
 // --- SCOPE OPTIMIZATION ---

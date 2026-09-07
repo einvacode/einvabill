@@ -1,7 +1,7 @@
 <?php
 $action = $_GET['action'] ?? 'list';
 $u_id = $_SESSION['user_id'];
-$u_role = $_SESSION['user_role'] ?? 'admin';
+$u_role = app_scope_role();
 
 if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = $_POST['name'];

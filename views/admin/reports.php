@@ -1,7 +1,7 @@
 <?php
 $action = $_GET['action'] ?? 'view';
 $u_id = $_SESSION['user_id'];
-$u_role = $_SESSION['user_role'] ?? 'admin';
+$u_role = app_scope_role();
 
 // Admin delete handler for report transactions (payments, invoices, expenses)
 if ($action === 'delete_tx' && ($u_role === 'admin')) {
@@ -11,14 +11,20 @@ if ($action === 'delete_tx' && ($u_role === 'admin')) {
     if ($del_id > 0) {
         try {
             if ($tx === 'payment') {
+                $before = $db->query("SELECT p.amount, p.payment_date, c.name FROM payments p LEFT JOIN invoices i ON i.id = p.invoice_id LEFT JOIN customers c ON c.id = i.customer_id WHERE p.id = " . $del_id)->fetch(PDO::FETCH_ASSOC) ?: [];
                 $db->prepare("DELETE FROM payments WHERE id = ? AND tenant_id = ?")->execute([$del_id, $tenant_id]);
+                audit_log($db, 'payment_delete', 'payments', $del_id, 'Menghapus pembayaran Rp ' . number_format((float)($before['amount'] ?? 0), 0, ',', '.') . ' dari ' . ($before['name'] ?? 'pelanggan') . ' (' . ($before['payment_date'] ?? '-') . ')', $before);
             } elseif ($tx === 'invoice') {
+                $before = $db->query("SELECT i.amount, i.due_date, i.status, c.name FROM invoices i LEFT JOIN customers c ON c.id = i.customer_id WHERE i.id = " . $del_id)->fetch(PDO::FETCH_ASSOC) ?: [];
                 // cascade delete: payments, items, invoice
                 $db->prepare("DELETE FROM payments WHERE invoice_id = ? AND tenant_id = ?")->execute([$del_id, $tenant_id]);
                 $db->prepare("DELETE FROM invoice_items WHERE invoice_id = ?")->execute([$del_id]);
                 $db->prepare("DELETE FROM invoices WHERE id = ? AND tenant_id = ?")->execute([$del_id, $tenant_id]);
+                audit_log($db, 'invoice_delete', 'invoices', $del_id, 'Menghapus tagihan INV-' . str_pad((string)$del_id, 5, '0', STR_PAD_LEFT) . ' Rp ' . number_format((float)($before['amount'] ?? 0), 0, ',', '.') . ' atas nama ' . ($before['name'] ?? '-') . ', beserta pembayarannya', $before);
             } elseif ($tx === 'expense') {
+                $before = $db->query("SELECT category, amount, date, description FROM expenses WHERE id = " . $del_id)->fetch(PDO::FETCH_ASSOC) ?: [];
                 $db->prepare("DELETE FROM expenses WHERE id = ? AND tenant_id = ?")->execute([$del_id, $tenant_id]);
+                audit_log($db, 'expense_delete', 'expenses', $del_id, 'Menghapus pengeluaran ' . ($before['category'] ?? '-') . ' Rp ' . number_format((float)($before['amount'] ?? 0), 0, ',', '.') . ' (' . ($before['date'] ?? '-') . ')', $before);
             }
             header('Location: index.php?page=admin_reports&msg=deleted');
             exit;
