@@ -1275,8 +1275,10 @@ tbody tr:hover {
     min-height: 42px;
   }
   
-  /* Grid fixes */
-  .flex { flex-wrap: wrap; }
+  /* Grid fixes: legacy pages only. Inside the Tailwind shell .flex must keep
+     its Tailwind meaning (display:flex, no wrapping) or button rows and card
+     headers break apart on phones. */
+  body:not(.ui-shell) .flex { flex-wrap: wrap; }
   
   /* Login box mobile */
   .login-box {

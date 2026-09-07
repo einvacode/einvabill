@@ -53,6 +53,12 @@
   .sheet-item i { @apply text-xl text-primary; }
   .sheet-item.active { @apply bg-primary-soft; }
 
+  /* A scroll container must be positioned, otherwise an absolutely positioned
+     child (Tailwind's .sr-only, for one) escapes the clip and drags the whole
+     page sideways on phones. :where() keeps the specificity at one class so a
+     position utility on the same element still wins. */
+  :where(.ui-shell) .overflow-x-auto { position: relative; }
+
   /* Floating bulk-action bar (WhatsApp broadcast on the invoice list) */
   .floating-broadcast-bar {
     position: fixed;
