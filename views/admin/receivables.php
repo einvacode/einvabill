@@ -66,20 +66,47 @@ $bucket_tone = ['current' => 'ui-badge-muted', 'b30' => 'ui-badge-accent', 'b60'
         <a href="index.php?page=admin_invoices&filter_status=belum" class="ui-btn ui-btn-outline">Daftar tagihan belum lunas</a>
     </div>
 
-    <div class="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <a href="index.php?page=admin_receivables<?= $f_type ? '&type=' . $f_type : '' ?>" class="ui-card p-4 no-underline <?= $f_bucket === '' ? 'ring-2 ring-primary' : '' ?>">
-            <div class="text-xs font-medium text-muted-foreground">Total piutang</div>
-            <div class="mt-1 text-xl font-extrabold tabular-nums text-danger"><?= rp($sum['total']) ?></div>
-            <div class="text-xs text-muted-foreground"><?= number_format($sum['cust']) ?> pelanggan</div>
-        </a>
-        <?php foreach ($buckets as $k => $label): $v = $sum[$col[$k]]; ?>
-        <a href="index.php?page=admin_receivables&bucket=<?= $k ?><?= $f_type ? '&type=' . $f_type : '' ?>" class="ui-card p-4 no-underline <?= $f_bucket === $k ? 'ring-2 ring-primary' : '' ?>">
-            <div class="text-xs font-medium text-muted-foreground"><?= $label ?></div>
-            <div class="mt-1 text-xl font-extrabold tabular-nums <?= in_array($k, ['b90', 'b90p']) && $v > 0 ? 'text-danger' : '' ?>"><?= rp($v) ?></div>
-            <div class="text-xs text-muted-foreground"><?= $sum['total'] > 0 ? round($v / $sum['total'] * 100) : 0 ?>% dari total</div>
-        </a>
-        <?php endforeach; ?>
-    </div>
+    <?php
+    // Age composition: neutral for not-yet-due, one red ramp (light -> dark) for overdue severity.
+    $bucket_color = ['current' => '#C9D3D6', 'b30' => '#F2C4BF', 'b60' => '#E5958D', 'b90' => '#CE5A50', 'b90p' => '#B42318'];
+    $inv_total = array_sum(array_map(fn($r) => (int)$r['inv_n'], $all));
+    $overdue = $sum['total'] - $sum['b_current'];
+    $type_qs = $f_type ? '&type=' . $f_type : '';
+    ?>
+    <section class="ui-card mb-5 p-4 sm:p-5">
+        <div class="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start">
+            <div>
+                <div class="text-xs font-medium text-muted-foreground">Total piutang</div>
+                <div class="mt-1 text-3xl font-extrabold leading-tight tabular-nums"><?= rp($sum['total']) ?></div>
+                <div class="mt-1 text-sm text-muted-foreground"><?= number_format($sum['cust']) ?> pelanggan &middot; <?= number_format($inv_total) ?> tagihan</div>
+                <dl class="m-0 mt-4 grid gap-2 border-t border-solid border-border pt-4 text-sm">
+                    <div class="flex items-center justify-between gap-3"><dt class="text-muted-foreground">Lewat jatuh tempo</dt><dd class="m-0 font-semibold tabular-nums whitespace-nowrap"><?= rp($overdue) ?></dd></div>
+                    <div class="flex items-center justify-between gap-3"><dt class="text-muted-foreground">Di atas 60 hari</dt><dd class="m-0 font-semibold tabular-nums whitespace-nowrap <?= $sum['over60'] > 0 ? 'text-danger' : '' ?>"><?= rp($sum['over60']) ?></dd></div>
+                    <div class="flex items-center justify-between gap-3"><dt class="text-muted-foreground">Pelanggan &gt; 60 hari</dt><dd class="m-0 font-semibold tabular-nums"><?= number_format($sum['over60_n']) ?></dd></div>
+                </dl>
+            </div>
+            <div>
+                <div class="mb-2 flex items-center justify-between gap-3">
+                    <div class="text-xs font-medium text-muted-foreground">Komposisi menurut umur tagihan</div>
+                    <?php if ($f_bucket): ?><a href="index.php?page=admin_receivables<?= $type_qs ?>" class="text-xs font-medium text-primary no-underline">Tampilkan semua</a><?php endif; ?>
+                </div>
+                <div class="flex h-3 w-full gap-0.5 overflow-hidden rounded-md bg-muted" role="img" aria-label="Komposisi piutang menurut umur">
+                    <?php foreach ($buckets as $k => $label): $v = $sum[$col[$k]]; $pct = $sum['total'] > 0 ? $v / $sum['total'] * 100 : 0; if ($pct <= 0) continue; ?>
+                    <div style="width:<?= max(1.5, $pct) ?>%;background:<?= $bucket_color[$k] ?>" title="<?= htmlspecialchars($label . ': ' . rp($v) . ' (' . round($pct) . '%)') ?>"></div>
+                    <?php endforeach; ?>
+                </div>
+                <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+                    <?php foreach ($buckets as $k => $label): $v = $sum[$col[$k]]; $pct = $sum['total'] > 0 ? round($v / $sum['total'] * 100) : 0; $active = $f_bucket === $k; ?>
+                    <a href="index.php?page=admin_receivables&bucket=<?= $k ?><?= $type_qs ?>" class="rounded-md border border-solid p-3 no-underline transition-colors <?= $active ? 'border-primary bg-primary-soft' : 'border-border hover:bg-muted' ?>" aria-current="<?= $active ? 'true' : 'false' ?>">
+                        <div class="flex items-start gap-2 text-xs leading-tight text-muted-foreground"><span class="mt-0.5 inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:<?= $bucket_color[$k] ?>"></span><span><?= $label ?></span></div>
+                        <div class="mt-1.5 text-sm font-bold tabular-nums text-foreground"><?= rp($v) ?></div>
+                        <div class="text-[11px] tabular-nums text-muted-foreground"><?= $pct ?>% dari total</div>
+                    </a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+    </section>
 
     <form method="get" class="ui-card mb-5 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-[1fr_180px_200px_auto] lg:items-end">
         <input type="hidden" name="page" value="admin_receivables">
