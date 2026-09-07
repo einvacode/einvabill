@@ -388,10 +388,8 @@ if ($action === 'print_profit_loss' || $action === 'print_position') {
     <?php endif; ?>
 
     <div class="note">
-        Catatan: kas dihitung dari saldo kas awal<?= $fs['meta']['has_opening'] ? ' per ' . fin_tanggal($fs['meta']['opening_date']) : '' ?> (<?= fin_rp($bs['opening_cash']) ?>) ditambah seluruh penerimaan
-        dan dikurangi seluruh pengeluaran yang tercatat sampai tanggal laporan. Piutang usaha adalah tagihan jatuh tempo yang belum dilunasi per tanggal laporan.
+        Catatan: kas dan setara kas adalah jumlah saldo seluruh akun pada menu Kas &amp; Bank per tanggal laporan (saldo awal tiap akun ditambah penerimaan, dikurangi pengeluaran dan transfer keluar), termasuk uang yang masih dipegang petugas. Piutang usaha adalah tagihan jatuh tempo yang belum dilunasi per tanggal laporan.
         Modal disetor dan utang diisi pada menu Pengaturan; laba ditahan merupakan selisih yang menyeimbangkan neraca.
-        <?php if (!$fs['meta']['has_opening']): ?><br><strong>Saldo kas awal belum diatur.</strong> Isi tanggal awal pembukuan dan saldo kas di Pengaturan agar angka kas mencerminkan rekening sebenarnya.<?php endif; ?>
     </div>
     <?php
     fin_print_close($company);

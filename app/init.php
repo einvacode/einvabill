@@ -15,6 +15,7 @@ require_once __DIR__ . '/security.php';
 require_once __DIR__ . '/invoice_catalog.php';
 require_once __DIR__ . '/expense_categories.php';
 require_once __DIR__ . '/finance_report.php';
+require_once __DIR__ . '/cash_accounts.php';
 error_reporting(E_ALL & ~E_NOTICE);
 
 ini_set('display_errors', 0);
@@ -183,7 +184,7 @@ $db->exec("PRAGMA optimize;");
 $db->exec("PRAGMA threads = 4;");
 
 // --- VERSIONED SCHEMA MANAGEMENT ---
-define('APP_DB_VERSION', 30); // Sync with database_setup.php
+define('APP_DB_VERSION', 31); // Sync with database_setup.php
 define('APP_VERSION', '2.34.1-1');
 
 $current_db_ver = 0;

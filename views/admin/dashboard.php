@@ -148,6 +148,16 @@ $latest = $db->query("
     WHERE 1=1 $c_scope ORDER BY p.payment_date DESC LIMIT 10
 ")->fetchAll();
 
+$cash_tile = null;
+if ($u_role === 'admin' && function_exists('cash_accounts_with_balances')) {
+    try {
+        cash_accounts_ensure($db, (int)$tenant_id);
+        $cash_rows = array_filter(cash_accounts_with_balances($db, (int)$tenant_id), fn($a) => $a['is_active']);
+        $cash_total = array_sum(array_map(fn($a) => $a['balance'], $cash_rows));
+        $cash_held = array_sum(array_map(fn($a) => $a['balance'], array_filter($cash_rows, fn($a) => !empty($a['owner_user_id']) && ($a['owner_role'] ?? '') !== 'admin')));
+        $cash_tile = ['id' => 'stat-cash-balance', 'label' => 'Saldo kas & bank', 'value' => rp($cash_total), 'sub_id' => '', 'sub' => $cash_held > 0 ? rp($cash_held) . ' masih di petugas / mitra' : 'Semua akun aktif', 'href' => 'index.php?page=admin_cash', 'icon' => 'fa-vault'];
+    } catch (Exception $e) { $cash_tile = null; }
+}
 $stat_cards = [
     ['id' => 'stat-retail-count', 'label' => 'Total pelanggan', 'value' => number_format($total_customers, 0), 'sub_id' => 'stat-retail-est', 'sub' => 'Estimasi ' . rp($est_revenue_cust) . ' / bulan', 'href' => 'index.php?page=admin_customers&filter_type=customer', 'icon' => 'fa-users'],
     ['id' => 'stat-mitra-count', 'label' => 'Total mitra', 'value' => number_format($total_partners, 0), 'sub_id' => 'stat-mitra-est', 'sub' => 'Estimasi ' . rp($est_revenue_part) . ' / bulan', 'href' => 'index.php?page=admin_customers&filter_type=partner', 'icon' => 'fa-handshake'],
@@ -157,6 +167,7 @@ $stat_cards = [
     ['id' => 'stat-cash-all', 'label' => 'Kas masuk bulan ini', 'value' => rp($cash_monthly_all), 'sub_id' => '', 'sub' => 'Arus kas periode berjalan', 'href' => 'index.php?page=admin_reports', 'icon' => 'fa-arrow-trend-up', 'tone' => 'signal'],
     ['id' => 'stat-inv-external', 'label' => 'Invoice eksternal', 'value' => rp($s['ext_total'] ?? 0), 'sub_id' => 'stat-ext-count', 'sub' => number_format($s['ext_count'] ?? 0) . ' invoice', 'href' => 'index.php?page=admin_invoices', 'icon' => 'fa-file-export'],
 ];
+if ($cash_tile) $stat_cards[] = $cash_tile;
 ?>
 
 <?php if ($success_data): ?>

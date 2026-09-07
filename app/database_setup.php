@@ -235,6 +235,33 @@ function run_database_setup($db) {
             created_at TEXT
         );
 
+        CREATE TABLE IF NOT EXISTS cash_accounts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_id INTEGER DEFAULT 1,
+            name TEXT NOT NULL,
+            type TEXT DEFAULT 'cash',
+            owner_user_id INTEGER,
+            account_number TEXT,
+            opening_balance REAL DEFAULT 0,
+            opening_date TEXT,
+            is_default INTEGER DEFAULT 0,
+            is_active INTEGER DEFAULT 1,
+            created_at TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS cash_transfers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tenant_id INTEGER DEFAULT 1,
+            type TEXT DEFAULT 'transfer',
+            from_account_id INTEGER,
+            to_account_id INTEGER,
+            amount REAL NOT NULL,
+            date TEXT NOT NULL,
+            note TEXT,
+            created_by INTEGER,
+            created_at TEXT
+        );
+
         CREATE TABLE IF NOT EXISTS login_attempts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT,
@@ -250,9 +277,9 @@ function run_database_setup($db) {
         'invoices' => ['discount' => 'REAL DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1', 'billing_address' => 'TEXT', 'billing_phone' => 'TEXT', 'billing_email' => 'TEXT', 'issued_by_id' => 'INTEGER', 'issued_by_name' => 'TEXT', 'payment_instructions' => 'TEXT', 'created_via' => 'TEXT', 'billing_company' => 'TEXT', 'billing_npwp' => 'TEXT'],
         'routers' => ['created_by' => 'INTEGER DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1'],
         'packages' => ['created_by' => 'INTEGER DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1'],
-        'expenses' => ['created_by' => 'INTEGER DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1', 'receipt_path' => 'TEXT'],
+        'expenses' => ['created_by' => 'INTEGER DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1', 'receipt_path' => 'TEXT', 'account_id' => 'INTEGER'],
         'infrastructure_assets' => ['price' => 'REAL DEFAULT 0', 'status' => "TEXT DEFAULT 'Deployed'", 'installation_date' => 'TEXT', 'created_by' => 'INTEGER DEFAULT 0', 'path_json' => 'TEXT', 'tenant_id' => 'INTEGER DEFAULT 1'],
-        'payments' => ['tenant_id' => 'INTEGER DEFAULT 1'],
+        'payments' => ['tenant_id' => 'INTEGER DEFAULT 1', 'account_id' => 'INTEGER'],
         'areas' => ['tenant_id' => 'INTEGER DEFAULT 1'],
         'banners' => ['tenant_id' => 'INTEGER DEFAULT 1'],
         'landing_packages' => ['tenant_id' => 'INTEGER DEFAULT 1'],
@@ -331,9 +358,9 @@ function run_database_setup($db) {
     $check_settings = $db->query("SELECT COUNT(*) FROM settings")->fetchColumn();
     if ($check_settings == 0) {
         $db->exec("INSERT INTO settings (id, company_name, company_tagline, company_address, wa_template, landing_hero_title, landing_hero_text, db_version) 
-                  VALUES (1, 'EinvaBill ISP', 'Internet Cepat & Layanan Prima', 'Alamat Perusahaan Anda', 'Halo {nama}, tagihan Anda sebesar {tagihan} sudah terbit.', 'Koneksi Super Cepat & Stabil', 'Solusi internet dan IT untuk kebutuhan personal dan korporasi.', 30)");
+                  VALUES (1, 'EinvaBill ISP', 'Internet Cepat & Layanan Prima', 'Alamat Perusahaan Anda', 'Halo {nama}, tagihan Anda sebesar {tagihan} sudah terbit.', 'Koneksi Super Cepat & Stabil', 'Solusi internet dan IT untuk kebutuhan personal dan korporasi.', 31)");
     } else {
-        $db->exec("UPDATE settings SET db_version = 30 WHERE id = 1");
+        $db->exec("UPDATE settings SET db_version = 31 WHERE id = 1");
     }
 
     // Default Users

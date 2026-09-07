@@ -33,6 +33,7 @@ $page_titles = [
     'admin_partner_dashboard' => 'Dashboard Mitra',
     'admin_create_invoice' => 'Invoice Eksternal',
     'admin_edit_quick_invoice' => 'Edit Invoice',
+    'admin_cash' => 'Kas & Bank',
     'admin_expenses' => 'Manajemen Pengeluaran',
     'admin_reports' => 'Laporan Keuangan',
     'admin_report_assets' => 'Laporan Inventaris Aset',
@@ -237,6 +238,7 @@ function nav_heading(string $text): string {
                 <?= nav_item('index.php?page=admin_invoices&filter_type=partner', 'fas fa-handshake', 'Tagihan Kemitraan', $page == 'admin_invoices' && ($_GET['filter_type'] ?? '') == 'partner') ?>
                 <?= nav_item('index.php?page=admin_create_invoice', 'fas fa-file-invoice', 'Invoice Eksternal', $page == 'admin_create_invoice') ?>
                 <?= nav_item('index.php?page=admin_expenses', 'fas fa-wallet', 'Pengeluaran / Biaya', $page == 'admin_expenses') ?>
+                <?= nav_item('index.php?page=admin_cash', 'fas fa-vault', 'Kas & Bank', $page == 'admin_cash') ?>
 
                 <?= nav_heading('Laporan') ?>
                 <?= nav_item('index.php?page=admin_reports', 'fas fa-chart-line', 'Laporan Keuangan', $page == 'admin_reports') ?>
@@ -388,6 +390,7 @@ function nav_heading(string $text): string {
                 <a href="index.php?page=admin_packages" class="sheet-item <?= $page == 'admin_packages' ? 'active' : '' ?>"><i class="fas fa-box"></i>Paket</a>
                 <a href="index.php?page=admin_areas" class="sheet-item <?= $page == 'admin_areas' ? 'active' : '' ?>"><i class="fas fa-map-marker-alt"></i>Area</a>
                 <a href="index.php?page=admin_expenses" class="sheet-item <?= $page == 'admin_expenses' ? 'active' : '' ?>"><i class="fas fa-wallet"></i>Pengeluaran</a>
+                <a href="index.php?page=admin_cash" class="sheet-item <?= $page == 'admin_cash' ? 'active' : '' ?>"><i class="fas fa-vault"></i>Kas &amp; Bank</a>
                 <a href="index.php?page=admin_router" class="sheet-item <?= $page == 'admin_router' ? 'active' : '' ?>"><i class="fas fa-network-wired"></i>Router</a>
                 <a href="index.php?page=admin_new_customers" class="sheet-item <?= $page == 'admin_new_customers' ? 'active' : '' ?>"><i class="fas fa-star"></i>Pelanggan Baru</a>
                 <a href="index.php?page=admin_create_invoice" class="sheet-item <?= $page == 'admin_create_invoice' ? 'active' : '' ?>"><i class="fas fa-file-invoice"></i>Invoice Eksternal</a>

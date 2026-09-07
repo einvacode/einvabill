@@ -82,7 +82,11 @@ function finance_statements(PDO $db, int $tenant_id, string $date_from, string $
     $q = $db->prepare("SELECT COALESCE(SUM(amount),0) FROM expenses WHERE tenant_id = ? AND date BETWEEN ? AND ?");
     $q->execute([$tenant_id, $open_d, $date_to]);
     $cash_out_all = (float)$q->fetchColumn();
-    $cash = $opening_cash + $cash_in_all - $cash_out_all;
+    // Kas: jumlah saldo seluruh akun Kas & Bank per tanggal laporan (termasuk dompet petugas);
+    // fallback ke saldo awal + penerimaan - pengeluaran bila modul kas belum terpakai.
+    $cash = function_exists('cash_accounts_with_balances') && count(cash_accounts_with_balances($db, $tenant_id, $date_to)) > 0
+        ? cash_total_balance($db, $tenant_id, $date_to)
+        : $opening_cash + $cash_in_all - $cash_out_all;
 
     // Piutang usaha: tagihan belum lunas yang sudah jatuh tempo per tanggal neraca, dikurangi pembayaran sebagian
     $q = $db->prepare("SELECT COALESCE(SUM((i.amount - COALESCE(i.discount,0)) - COALESCE((SELECT SUM(p.amount) FROM payments p WHERE p.invoice_id = i.id AND p.payment_date <= ?),0)),0)

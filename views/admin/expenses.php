@@ -29,6 +29,16 @@ $receipt_unlink = function (?string $path): void {
     if ($path && preg_match('~^public/uploads/receipts/[A-Za-z0-9_.-]+$~', $path)) @unlink(__DIR__ . '/../../' . $path);
 };
 
+// Akun kas yang menanggung pengeluaran (Kas & Bank). Non-admin hanya boleh memakai dompetnya sendiri.
+cash_accounts_ensure($db, (int)$tenant_id);
+$cash_accounts = array_values(array_filter(cash_accounts_with_balances($db, (int)$tenant_id), fn($a) => $a['is_active'] && ($u_role === 'admin' || intval($a['owner_user_id']) === intval($u_id))));
+$cash_default_id = cash_default_account_id($db, (int)$tenant_id);
+$cash_names = []; foreach (cash_accounts_with_balances($db, (int)$tenant_id) as $ca) $cash_names[intval($ca['id'])] = $ca['name'];
+$cash_pick_account = function (int $wanted) use ($cash_accounts, $cash_default_id): ?int {
+    foreach ($cash_accounts as $a) if (intval($a['id']) === $wanted) return $wanted;
+    return $cash_accounts ? intval($cash_accounts[0]['id']) : ($cash_default_id ?: null);
+};
+
 // Handle ADD Expense
 if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $category = $_POST['category'];
@@ -39,8 +49,9 @@ if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
     $up = $receipt_upload();
     if ($up['error']) { header("Location: index.php?page=admin_expenses&err=" . urlencode($up['error'])); exit; }
-    $stmt = $db->prepare("INSERT INTO expenses (category, amount, description, date, created_by, tenant_id, receipt_path) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$category, $amount, $description, $date, $u_id, $tenant_id, $up['path']]);
+    $account_id = $cash_pick_account(intval($_POST['account_id'] ?? 0));
+    $stmt = $db->prepare("INSERT INTO expenses (category, amount, description, date, created_by, tenant_id, receipt_path, account_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$category, $amount, $description, $date, $u_id, $tenant_id, $up['path'], $account_id]);
     header("Location: index.php?page=admin_expenses&msg=added");
     exit;
 }
@@ -64,8 +75,9 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($up['error']) { header("Location: index.php?page=admin_expenses&err=" . urlencode($up['error'])); exit; }
         if ($up['path']) { $receipt_unlink($receipt_path); $receipt_path = $up['path']; }
         elseif (!empty($_POST['remove_receipt'])) { $receipt_unlink($receipt_path); $receipt_path = null; }
-        $stmt = $db->prepare("UPDATE expenses SET category=?, amount=?, description=?, date=?, receipt_path=? WHERE id=? AND tenant_id=?");
-        $stmt->execute([$category, $amount, $description, $date, $receipt_path, $id, $tenant_id]);
+        $account_id = $cash_pick_account(intval($_POST['account_id'] ?? 0));
+        $stmt = $db->prepare("UPDATE expenses SET category=?, amount=?, description=?, date=?, receipt_path=?, account_id=? WHERE id=? AND tenant_id=?");
+        $stmt->execute([$category, $amount, $description, $date, $receipt_path, $account_id, $id, $tenant_id]);
         header("Location: index.php?page=admin_expenses&msg=updated");
     } else {
         header("Location: index.php?page=admin_expenses&msg=forbidden");
@@ -286,6 +298,7 @@ function resetCategoryForm() {
                     </td>
                     <td class="px-3 py-3">
                         <span class="ui-badge ui-badge-muted"><?= htmlspecialchars($e['category']) ?></span>
+                        <div class="mt-1 text-[11px] text-muted-foreground">dari <?= htmlspecialchars($cash_names[$e['account_id'] ?? $cash_default_id] ?? 'Kas utama') ?></div>
                     </td>
                     <td class="px-3 py-3 text-muted-foreground">
                         <div><?= htmlspecialchars($e['description'] ?: '-') ?></div>
@@ -329,6 +342,12 @@ function resetCategoryForm() {
                 <label class="block">
                     <span class="mb-1 block text-xs font-medium text-muted-foreground">Jumlah (Rp)</span>
                     <input type="number" name="amount" class="form-control" placeholder="0" required>
+                </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Dibayar dari</span>
+                    <select name="account_id" class="form-control">
+                        <?php foreach ($cash_accounts as $ca): ?><option value="<?= intval($ca['id']) ?>" <?= intval($ca['id']) === intval($cash_default_id) ? 'selected' : '' ?>><?= htmlspecialchars($ca['name']) ?></option><?php endforeach; ?>
+                    </select>
                 </label>
                 <label class="block sm:col-span-2">
                     <span class="mb-1 block text-xs font-medium text-muted-foreground">Kategori</span>
@@ -375,6 +394,12 @@ function resetCategoryForm() {
                     <span class="mb-1 block text-xs font-medium text-muted-foreground">Jumlah (Rp)</span>
                     <input type="number" name="amount" id="editAmount" class="form-control" required>
                 </label>
+                <label class="block">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Dibayar dari</span>
+                    <select name="account_id" id="editAccount" class="form-control">
+                        <?php foreach ($cash_accounts as $ca): ?><option value="<?= intval($ca['id']) ?>"><?= htmlspecialchars($ca['name']) ?></option><?php endforeach; ?>
+                    </select>
+                </label>
                 <label class="block sm:col-span-2">
                     <span class="mb-1 block text-xs font-medium text-muted-foreground">Kategori</span>
                     <select name="category" id="editCategory" class="form-control" required>
@@ -413,6 +438,7 @@ function editExpense(data) {
     if (data.category && ![...sel.options].some(o => o.value === data.category)) sel.add(new Option(data.category, data.category));
     sel.value = data.category;
     document.getElementById('editAmount').value = data.amount;
+    const accSel = document.getElementById('editAccount'); if (accSel) accSel.value = data.account_id || <?= intval($cash_default_id) ?>;
     document.getElementById('editDescription').value = data.description;
     const cur = document.getElementById('editReceiptCurrent');
     if (data.receipt_path) { document.getElementById('editReceiptThumb').src = data.receipt_path; cur.classList.remove('hidden'); cur.classList.add('flex'); }

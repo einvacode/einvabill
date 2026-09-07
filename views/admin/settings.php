@@ -154,14 +154,11 @@ if (!$settings) {
                     <div class="text-sm font-semibold">Laporan keuangan untuk SPT Tahunan</div>
                     <p class="m-0 mb-3 mt-1 text-xs text-muted-foreground">Dipakai oleh Laporan Posisi Keuangan dan Laba Rugi di menu Laporan. Isi sesuai kondisi saat pembukuan di aplikasi ini dimulai.</p>
                     <div class="grid gap-4 sm:grid-cols-2">
-                        <label class="block">
-                            <span class="mb-1 block text-xs font-medium text-muted-foreground">Tanggal awal pembukuan</span>
-                            <input type="date" name="fin_opening_date" class="form-control" value="<?= htmlspecialchars($settings['fin_opening_date'] ?? '') ?>">
-                        </label>
-                        <label class="block">
-                            <span class="mb-1 block text-xs font-medium text-muted-foreground">Saldo kas awal (Rp)</span>
-                            <input type="number" name="fin_opening_cash" class="form-control" min="0" step="1" value="<?= (int)($settings['fin_opening_cash'] ?? 0) ?>">
-                        </label>
+                        <input type="hidden" name="fin_opening_date" value="<?= htmlspecialchars($settings['fin_opening_date'] ?? '') ?>">
+                        <input type="hidden" name="fin_opening_cash" value="<?= (int)($settings['fin_opening_cash'] ?? 0) ?>">
+                        <div class="rounded-md border border-solid border-border bg-card p-3 text-xs text-muted-foreground sm:col-span-2">
+                            Saldo kas awal diatur per akun di menu <a href="index.php?page=admin_cash" class="font-medium text-primary">Kas &amp; Bank</a> (saldo awal dan tanggalnya pada tiap akun). Kas di neraca adalah jumlah saldo seluruh akun.
+                        </div>
                         <label class="block">
                             <span class="mb-1 block text-xs font-medium text-muted-foreground">Modal disetor (Rp)</span>
                             <input type="number" name="fin_paid_capital" class="form-control" min="0" step="1" value="<?= (int)($settings['fin_paid_capital'] ?? 0) ?>">
