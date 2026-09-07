@@ -3,11 +3,9 @@ $site = $db->query("SELECT company_name, company_tagline, company_logo, company_
 
 $packages = [];
 $partner_logos = [];
-$partner_count = 0;
 try {
     $packages = $db->query("SELECT * FROM landing_packages WHERE is_active = 1 ORDER BY sort_order ASC, id ASC")->fetchAll();
     $partner_logos = $db->query("SELECT image_path FROM landing_logos ORDER BY sort_order ASC, id ASC")->fetchAll();
-    $partner_count = (int) $db->query("SELECT COUNT(*) FROM users WHERE role = 'partner'")->fetchColumn();
 } catch (Exception $e) {
     // Keep the page up even if optional tables are missing.
 }
@@ -155,7 +153,7 @@ function svg_icon(string $name, string $class = 'h-5 w-5'): string {
             </li>
             <li class="flex items-center gap-4 py-3.5">
                 <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-muted text-primary"><?= svg_icon('phone') ?></span>
-                <div class="min-w-0"><p class="font-semibold">Teknisi lokal yang bisa dihubungi</p><p class="text-sm text-muted-foreground">Gangguan ditangani orang yang tahu jaringannya.</p></div>
+                <div class="min-w-0"><p class="font-semibold">Dukungan teknis yang bisa dihubungi</p><p class="text-sm text-muted-foreground">Laporan gangguan ditangani langsung oleh tim teknis kami.</p></div>
             </li>
         </ul>
         <div class="mt-5 flex items-center justify-between rounded-md bg-primary px-4 py-3 text-primary-foreground">
@@ -179,7 +177,7 @@ function svg_icon(string $name, string $class = 'h-5 w-5'): string {
         </div>
         <div class="flex gap-4">
             <span class="text-primary shrink-0"><?= svg_icon('users', 'h-6 w-6') ?></span>
-            <div><p class="font-semibold"><?= $partner_count > 0 ? $partner_count . ' mitra desa' : 'Mitra desa' ?></p><p class="mt-1 text-sm text-muted-foreground leading-relaxed">Titik layanan dikelola bersama warga setempat, termasuk BUMDes.</p></div>
+            <div><p class="font-semibold">Rumah hingga korporasi</p><p class="mt-1 text-sm text-muted-foreground leading-relaxed">Melayani rumah tangga, UMKM, sekolah, dan perkantoran.</p></div>
         </div>
         <div class="flex gap-4">
             <span class="text-primary shrink-0"><?= svg_icon('clock', 'h-6 w-6') ?></span>
@@ -252,7 +250,7 @@ function svg_icon(string $name, string $class = 'h-5 w-5'): string {
             <li>
                 <span class="grid h-9 w-9 place-items-center rounded-md bg-primary text-primary-foreground text-sm font-bold">4</span>
                 <h3 class="mt-4 font-semibold">Aktif dan tagihan bulanan</h3>
-                <p class="mt-2 text-sm text-muted-foreground leading-relaxed">Anda mendapat kode pelanggan untuk cek tagihan. Bayar lewat mitra desa atau transfer.</p>
+                <p class="mt-2 text-sm text-muted-foreground leading-relaxed">Anda mendapat kode pelanggan untuk cek tagihan. Pembayaran lewat transfer bank atau tunai kepada petugas resmi kami.</p>
             </li>
         </ol>
     </div>
@@ -346,10 +344,11 @@ function svg_icon(string $name, string $class = 'h-5 w-5'): string {
             </ul>
         </div>
         <div>
-            <p class="font-semibold">Mitra dan staf</p>
+            <p class="font-semibold">Perusahaan</p>
             <ul class="mt-3 space-y-2 text-sm text-muted-foreground">
+                <li><a href="#tentang" class="hover:text-foreground">Tentang kami</a></li>
+                <li><a href="<?= htmlspecialchars($wa_link) ?>" target="_blank" rel="noopener" class="hover:text-foreground">Hubungi kami</a></li>
                 <li><a href="index.php?page=login" class="hover:text-foreground">Masuk aplikasi</a></li>
-                <li><a href="<?= htmlspecialchars($wa_link) ?>" target="_blank" rel="noopener" class="hover:text-foreground">Ingin jadi mitra desa?</a></li>
             </ul>
         </div>
     </div>
