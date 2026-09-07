@@ -18,16 +18,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cat_action'])) {
 $categories = expense_categories_list($db, (int)$tenant_id);
 $active_tab = ($_GET['tab'] ?? '') === 'categories' ? 'categories' : 'expenses';
 
+// Bukti struk: gambar di public/uploads/receipts, disimpan sebagai path relatif.
+$receipt_dir = __DIR__ . '/../../public/uploads/receipts';
+$receipt_upload = function () use ($receipt_dir): array {
+    if (!isset($_FILES['receipt']) || $_FILES['receipt']['error'] === UPLOAD_ERR_NO_FILE) return ['path' => null, 'error' => ''];
+    $up = save_uploaded_image($_FILES['receipt'], $receipt_dir, 'struk');
+    return $up['ok'] ? ['path' => 'public/uploads/receipts/' . $up['filename'], 'error' => ''] : ['path' => null, 'error' => 'Struk: ' . $up['error']];
+};
+$receipt_unlink = function (?string $path): void {
+    if ($path && preg_match('~^public/uploads/receipts/[A-Za-z0-9_.-]+$~', $path)) @unlink(__DIR__ . '/../../' . $path);
+};
+
 // Handle ADD Expense
 if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $category = $_POST['category'];
     $amount = $_POST['amount'];
     $description = $_POST['description'];
     $date = $_POST['date'];
-    
+
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
-    $stmt = $db->prepare("INSERT INTO expenses (category, amount, description, date, created_by, tenant_id) VALUES (?, ?, ?, ?, ?, ?)");
-    $stmt->execute([$category, $amount, $description, $date, $u_id, $tenant_id]);
+    $up = $receipt_upload();
+    if ($up['error']) { header("Location: index.php?page=admin_expenses&err=" . urlencode($up['error'])); exit; }
+    $stmt = $db->prepare("INSERT INTO expenses (category, amount, description, date, created_by, tenant_id, receipt_path) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$category, $amount, $description, $date, $u_id, $tenant_id, $up['path']]);
     header("Location: index.php?page=admin_expenses&msg=added");
     exit;
 }
@@ -42,12 +55,17 @@ if ($action === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
     // Ownership Check: Admin can manage all in tenant, others only their own
-    $check = $db->query("SELECT tenant_id, created_by FROM expenses WHERE id = $id")->fetch();
+    $check = $db->query("SELECT tenant_id, created_by, receipt_path FROM expenses WHERE id = $id")->fetch();
     $is_owner = ($u_role === 'admin') ? ($check['tenant_id'] == $tenant_id) : ($check['created_by'] == $u_id);
-    
+
     if ($is_owner) {
-        $stmt = $db->prepare("UPDATE expenses SET category=?, amount=?, description=?, date=? WHERE id=? AND tenant_id=?");
-        $stmt->execute([$category, $amount, $description, $date, $id, $tenant_id]);
+        $receipt_path = $check['receipt_path'] ?? null;
+        $up = $receipt_upload();
+        if ($up['error']) { header("Location: index.php?page=admin_expenses&err=" . urlencode($up['error'])); exit; }
+        if ($up['path']) { $receipt_unlink($receipt_path); $receipt_path = $up['path']; }
+        elseif (!empty($_POST['remove_receipt'])) { $receipt_unlink($receipt_path); $receipt_path = null; }
+        $stmt = $db->prepare("UPDATE expenses SET category=?, amount=?, description=?, date=?, receipt_path=? WHERE id=? AND tenant_id=?");
+        $stmt->execute([$category, $amount, $description, $date, $receipt_path, $id, $tenant_id]);
         header("Location: index.php?page=admin_expenses&msg=updated");
     } else {
         header("Location: index.php?page=admin_expenses&msg=forbidden");
@@ -61,10 +79,11 @@ if ($action === 'delete') {
     
     $tenant_id = $_SESSION['tenant_id'] ?? 1;
     // Ownership Check
-    $check = $db->query("SELECT tenant_id, created_by FROM expenses WHERE id = $id")->fetch();
+    $check = $db->query("SELECT tenant_id, created_by, receipt_path FROM expenses WHERE id = $id")->fetch();
     $is_owner = ($u_role === 'admin') ? ($check['tenant_id'] == $tenant_id) : ($check['created_by'] == $u_id);
-    
+
     if ($is_owner) {
+        $receipt_unlink($check['receipt_path'] ?? null);
         $db->prepare("DELETE FROM expenses WHERE id = ? AND tenant_id = ?")->execute([$id, $tenant_id]);
         header("Location: index.php?page=admin_expenses&msg=deleted");
     } else {
@@ -268,7 +287,14 @@ function resetCategoryForm() {
                     <td class="px-3 py-3">
                         <span class="ui-badge ui-badge-muted"><?= htmlspecialchars($e['category']) ?></span>
                     </td>
-                    <td class="px-3 py-3 text-muted-foreground"><?= htmlspecialchars($e['description'] ?: '-') ?></td>
+                    <td class="px-3 py-3 text-muted-foreground">
+                        <div><?= htmlspecialchars($e['description'] ?: '-') ?></div>
+                        <?php if (!empty($e['receipt_path'])): ?>
+                            <button type="button" class="mt-1 inline-flex items-center gap-1.5 rounded-md border border-solid border-border bg-card px-2 py-1 text-xs font-medium text-foreground hover:bg-muted" onclick="openReceipt(<?= htmlspecialchars(json_encode($e['receipt_path'])) ?>)"><i class="fas fa-receipt text-muted-foreground"></i> Lihat struk</button>
+                        <?php else: ?>
+                            <div class="mt-1 text-[11px] text-muted-foreground">Tanpa struk</div>
+                        <?php endif; ?>
+                    </td>
                     <td class="whitespace-nowrap px-3 py-3 text-right font-bold tabular-nums">Rp <?= number_format($e['amount'], 0, ',', '.') ?></td>
                     <td class="px-4 py-3 sm:px-5">
                         <div class="flex justify-end gap-1.5">
@@ -293,7 +319,7 @@ function resetCategoryForm() {
             <h3 class="m-0 text-lg font-bold">Tambah pengeluaran</h3>
             <button type="button" class="ui-btn ui-btn-sm ui-btn-ghost" onclick="document.getElementById('addExpenseModal').style.display='none'" aria-label="Tutup">&#x2715;</button>
         </div>
-        <form action="index.php?page=admin_expenses&action=add" method="POST">
+        <form action="index.php?page=admin_expenses&action=add" method="POST" enctype="multipart/form-data">
 <?= csrf_field() ?>
             <div class="grid gap-4 sm:grid-cols-2">
                 <label class="block">
@@ -316,6 +342,11 @@ function resetCategoryForm() {
                     <span class="mb-1 block text-xs font-medium text-muted-foreground">Keterangan</span>
                     <textarea name="description" class="form-control" rows="3" placeholder="Detail pengeluaran..."></textarea>
                 </label>
+                <label class="block sm:col-span-2">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Bukti struk / nota (opsional)</span>
+                    <input type="file" name="receipt" class="form-control" accept="image/*" capture="environment">
+                    <span class="mt-1 block text-xs text-muted-foreground">Foto JPG/PNG/WEBP maksimal 5 MB.</span>
+                </label>
             </div>
             <div class="mt-6 flex justify-end gap-2">
                 <button type="button" class="ui-btn ui-btn-outline" onclick="document.getElementById('addExpenseModal').style.display='none'">Batal</button>
@@ -332,7 +363,7 @@ function resetCategoryForm() {
             <h3 class="m-0 text-lg font-bold">Edit pengeluaran</h3>
             <button type="button" class="ui-btn ui-btn-sm ui-btn-ghost" onclick="document.getElementById('editExpenseModal').style.display='none'" aria-label="Tutup">&#x2715;</button>
         </div>
-        <form action="index.php?page=admin_expenses&action=update" method="POST">
+        <form action="index.php?page=admin_expenses&action=update" method="POST" enctype="multipart/form-data">
 <?= csrf_field() ?>
             <input type="hidden" name="id" id="editId">
             <div class="grid gap-4 sm:grid-cols-2">
@@ -356,6 +387,15 @@ function resetCategoryForm() {
                     <span class="mb-1 block text-xs font-medium text-muted-foreground">Keterangan</span>
                     <textarea name="description" id="editDescription" class="form-control" rows="3"></textarea>
                 </label>
+                <div class="block sm:col-span-2">
+                    <span class="mb-1 block text-xs font-medium text-muted-foreground">Bukti struk / nota</span>
+                    <div id="editReceiptCurrent" class="mb-2 hidden items-center gap-3">
+                        <img id="editReceiptThumb" src="" alt="Struk" class="h-14 w-20 cursor-pointer rounded-md border border-solid border-border object-cover" onclick="openReceipt(this.src)">
+                        <label class="flex items-center gap-2 text-xs text-muted-foreground"><input type="checkbox" name="remove_receipt" value="1" id="editRemoveReceipt"> Hapus struk ini</label>
+                    </div>
+                    <input type="file" name="receipt" class="form-control" accept="image/*" capture="environment">
+                    <span class="mt-1 block text-xs text-muted-foreground">Unggah foto baru untuk mengganti struk lama.</span>
+                </div>
             </div>
             <div class="mt-6 flex justify-end gap-2">
                 <button type="button" class="ui-btn ui-btn-outline" onclick="document.getElementById('editExpenseModal').style.display='none'">Batal</button>
@@ -374,7 +414,31 @@ function editExpense(data) {
     sel.value = data.category;
     document.getElementById('editAmount').value = data.amount;
     document.getElementById('editDescription').value = data.description;
+    const cur = document.getElementById('editReceiptCurrent');
+    if (data.receipt_path) { document.getElementById('editReceiptThumb').src = data.receipt_path; cur.classList.remove('hidden'); cur.classList.add('flex'); }
+    else { cur.classList.add('hidden'); cur.classList.remove('flex'); }
+    document.getElementById('editRemoveReceipt').checked = false;
     document.getElementById('editExpenseModal').style.display = 'flex';
 }
+function openReceipt(src) {
+    document.getElementById('receiptPreviewImg').src = src;
+    document.getElementById('receiptPreviewLink').href = src;
+    document.getElementById('receiptPreviewModal').style.display = 'flex';
+}
 </script>
+<?php endif; ?>
+<?php if ($active_tab !== 'categories'): ?>
+<!-- Receipt preview -->
+<div id="receiptPreviewModal" class="fixed inset-0 z-[1001] items-center justify-center bg-black/70 p-4" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+    <div class="ui-card max-h-full w-full max-w-2xl overflow-auto p-3">
+        <div class="mb-2 flex items-center justify-between gap-3 px-1">
+            <div class="text-sm font-semibold">Bukti struk</div>
+            <div class="flex gap-2">
+                <a id="receiptPreviewLink" href="#" target="_blank" class="ui-btn ui-btn-sm ui-btn-outline">Buka asli</a>
+                <button type="button" class="ui-btn ui-btn-sm ui-btn-ghost" onclick="document.getElementById('receiptPreviewModal').style.display='none'" aria-label="Tutup">&#x2715;</button>
+            </div>
+        </div>
+        <img id="receiptPreviewImg" src="" alt="Struk" class="mx-auto max-h-[75vh] max-w-full rounded-md object-contain">
+    </div>
+</div>
 <?php endif; ?>

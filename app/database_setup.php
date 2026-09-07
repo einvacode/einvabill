@@ -250,7 +250,7 @@ function run_database_setup($db) {
         'invoices' => ['discount' => 'REAL DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1', 'billing_address' => 'TEXT', 'billing_phone' => 'TEXT', 'billing_email' => 'TEXT', 'issued_by_id' => 'INTEGER', 'issued_by_name' => 'TEXT', 'payment_instructions' => 'TEXT', 'created_via' => 'TEXT', 'billing_company' => 'TEXT', 'billing_npwp' => 'TEXT'],
         'routers' => ['created_by' => 'INTEGER DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1'],
         'packages' => ['created_by' => 'INTEGER DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1'],
-        'expenses' => ['created_by' => 'INTEGER DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1'],
+        'expenses' => ['created_by' => 'INTEGER DEFAULT 0', 'tenant_id' => 'INTEGER DEFAULT 1', 'receipt_path' => 'TEXT'],
         'infrastructure_assets' => ['price' => 'REAL DEFAULT 0', 'status' => "TEXT DEFAULT 'Deployed'", 'installation_date' => 'TEXT', 'created_by' => 'INTEGER DEFAULT 0', 'path_json' => 'TEXT', 'tenant_id' => 'INTEGER DEFAULT 1'],
         'payments' => ['tenant_id' => 'INTEGER DEFAULT 1'],
         'areas' => ['tenant_id' => 'INTEGER DEFAULT 1'],
@@ -331,9 +331,9 @@ function run_database_setup($db) {
     $check_settings = $db->query("SELECT COUNT(*) FROM settings")->fetchColumn();
     if ($check_settings == 0) {
         $db->exec("INSERT INTO settings (id, company_name, company_tagline, company_address, wa_template, landing_hero_title, landing_hero_text, db_version) 
-                  VALUES (1, 'EinvaBill ISP', 'Internet Cepat & Layanan Prima', 'Alamat Perusahaan Anda', 'Halo {nama}, tagihan Anda sebesar {tagihan} sudah terbit.', 'Koneksi Super Cepat & Stabil', 'Solusi internet dan IT untuk kebutuhan personal dan korporasi.', 29)");
+                  VALUES (1, 'EinvaBill ISP', 'Internet Cepat & Layanan Prima', 'Alamat Perusahaan Anda', 'Halo {nama}, tagihan Anda sebesar {tagihan} sudah terbit.', 'Koneksi Super Cepat & Stabil', 'Solusi internet dan IT untuk kebutuhan personal dan korporasi.', 30)");
     } else {
-        $db->exec("UPDATE settings SET db_version = 29 WHERE id = 1");
+        $db->exec("UPDATE settings SET db_version = 30 WHERE id = 1");
     }
 
     // Default Users
