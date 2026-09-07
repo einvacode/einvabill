@@ -1,82 +1,90 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
-/* ===== BLUE-WHITE THEME (Default + Dark Toggle) ===== */
-:root, [data-theme="dark"] {
-  color-scheme: light;
-  --bg-color: #f4f8ff;
-  --bg-gradient-1: #ffffff;
-  --bg-gradient-2: #dbeafe;
-  --bg-gradient-3: #eff6ff;
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --primary: #2563eb;
-  --primary-rgb: 37, 99, 235;
-  --primary-hover: #1d4ed8;
-  --success: #0ea5e9;
-  --danger: #dc2626;
-  --warning: #d97706;
-  --glass-bg: rgba(255, 255, 255, 0.86);
-  --glass-border: rgba(37, 99, 235, 0.16);
-  --glass-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
-  --card-radius: 20px;
-  --sidebar-bg: #ffffff;
-  --input-bg: #ffffff;
-  --input-color: #0f172a;
-  --hover-bg: rgba(37, 99, 235, 0.06);
-  --table-header-bg: #eff6ff;
-  --nav-active-bg: rgba(37, 99, 235, 0.12);
-  --nav-active-color: #1d4ed8;
-  --stat-value-color: #0f172a;
-  --badge-danger-bg: rgba(220, 38, 38, 0.06);
-  --badge-danger-border: rgba(220, 38, 38, 0.18);
-  --gradient-text-from: #0f172a;
-  --gradient-text-to: #2563eb;
-  --btn-ghost-bg: #f8fbff;
-  --btn-ghost-color: #475569;
-  --btn-ghost-border: #dbeafe;
-  --btn-ghost-hover-bg: #eff6ff;
-  --modal-cancel-bg: #eff6ff;
-  --modal-cancel-color: #475569;
-  --progress-bg: #dbeafe;
-}
-
-/* ===== LIGHT THEME (Blue-White Variant) ===== */
+/* ===== CORPORATE THEME (light + dark) =====
+   Single source for the variables the pre-Tailwind pages read (login, penagih,
+   mitra, cetak nota). The Tailwind shell reads its own --c-* tokens from
+   src/css/app.css; both are switched by data-theme on <html>. */
+:root,
 [data-theme="light"] {
   color-scheme: light;
-  --bg-color: #f7faff;
-  --bg-gradient-1: #ffffff;
-  --bg-gradient-2: #e0ecff;
-  --bg-gradient-3: #f0f6ff;
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --primary: #2563eb;
-  --primary-rgb: 37, 99, 235;
-  --primary-hover: #1d4ed8;
-  --success: #0ea5e9;
-  --danger: #dc2626;
-  --warning: #d97706;
-  --glass-bg: rgba(255, 255, 255, 0.9);
-  --glass-border: rgba(37, 99, 235, 0.12);
-  --glass-shadow: 0 10px 30px rgba(15, 23, 42, 0.07);
-  --sidebar-bg: #ffffff;
-  --input-bg: #ffffff;
-  --input-color: #0f172a;
-  --hover-bg: rgba(37, 99, 235, 0.05);
-  --table-header-bg: #eff6ff;
-  --nav-active-bg: rgba(37, 99, 235, 0.09);
-  --nav-active-color: #1d4ed8;
-  --stat-value-color: #0f172a;
-  --badge-danger-bg: rgba(220, 38, 38, 0.05);
-  --badge-danger-border: rgba(220, 38, 38, 0.15);
-  --gradient-text-from: #0f172a;
-  --gradient-text-to: #2563eb;
-  --btn-ghost-bg: #f8fbff;
-  --btn-ghost-color: #475569;
-  --btn-ghost-border: #dbeafe;
-  --btn-ghost-hover-bg: #eff6ff;
-  --modal-cancel-bg: #eff6ff;
-  --modal-cancel-color: #475569;
-  --progress-bg: #dbeafe;
+  --bg-color: #F5F7F6;
+  --bg-gradient-1: #FFFFFF;
+  --bg-gradient-2: #E9EEEC;
+  --bg-gradient-3: #F0F3F2;
+  --text-primary: #172026;
+  --text-secondary: #5B6B72;
+  --primary: #0F3A47;
+  --primary-rgb: 15, 58, 71;
+  --primary-hover: #0A2A34;
+  --success: #1F8A5B;
+  --danger: #B42318;
+  --warning: #B85C0A;
+  --info: #0F3A47;
+  --glass-bg: #FFFFFF;
+  --glass-border: #D9E0E2;
+  --glass-shadow: 0 1px 2px rgba(23, 32, 38, .05);
+  --card-radius: 12px;
+  --sidebar-bg: #FFFFFF;
+  --input-bg: #FFFFFF;
+  --input-color: #172026;
+  --hover-bg: #E9EEEC;
+  --table-header-bg: #F0F3F2;
+  --nav-active-bg: #E4EDF0;
+  --nav-active-color: #0F3A47;
+  --stat-value-color: #172026;
+  --badge-danger-bg: rgba(180, 35, 24, .07);
+  --badge-danger-border: rgba(180, 35, 24, .20);
+  --gradient-text-from: #172026;
+  --gradient-text-to: #0F3A47;
+  --btn-ghost-bg: #FFFFFF;
+  --btn-ghost-color: #5B6B72;
+  --btn-ghost-border: #D9E0E2;
+  --btn-ghost-hover-bg: #E9EEEC;
+  --modal-cancel-bg: #E9EEEC;
+  --modal-cancel-color: #5B6B72;
+  --progress-bg: #E9EEEC;
+}
+
+/* Charcoal with a petrol cast, not black: the same corporate palette after
+   dark, with the brand petrol lifted so it still reads as an accent. */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-color: #0E1518;
+  --bg-gradient-1: #121C20;
+  --bg-gradient-2: #0F1A1F;
+  --bg-gradient-3: #101A1D;
+  --text-primary: #E6EDEF;
+  --text-secondary: #94A6AD;
+  --primary: #2F7F97;
+  --primary-rgb: 47, 127, 151;
+  --primary-hover: #3D93AC;
+  --success: #34B47C;
+  --danger: #E4695C;
+  --warning: #E0A93C;
+  --info: #2F7F97;
+  --glass-bg: #151F23;
+  --glass-border: #24333A;
+  --glass-shadow: 0 1px 2px rgba(0, 0, 0, .40);
+  --card-radius: 12px;
+  --sidebar-bg: #0A1D24;
+  --input-bg: #101A1E;
+  --input-color: #E6EDEF;
+  --hover-bg: #1B262B;
+  --table-header-bg: #18242A;
+  --nav-active-bg: #16323B;
+  --nav-active-color: #7FC2D6;
+  --stat-value-color: #E6EDEF;
+  --badge-danger-bg: rgba(228, 105, 92, .12);
+  --badge-danger-border: rgba(228, 105, 92, .28);
+  --gradient-text-from: #E6EDEF;
+  --gradient-text-to: #7FC2D6;
+  --btn-ghost-bg: #151F23;
+  --btn-ghost-color: #94A6AD;
+  --btn-ghost-border: #24333A;
+  --btn-ghost-hover-bg: #1B262B;
+  --modal-cancel-bg: #1B262B;
+  --modal-cancel-color: #94A6AD;
+  --progress-bg: #24333A;
 }
 
 * {

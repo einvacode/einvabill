@@ -1,7 +1,8 @@
 <?php $__login_company = $db->query("SELECT company_name FROM settings WHERE id=1")->fetchColumn() ?: ""; ?>
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en"<?= theme_attr() ?>>
 <head>
+<?= theme_boot_script() ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Masuk<?= !empty($__login_company) ? " · " . htmlspecialchars($__login_company) : "" ?></title>

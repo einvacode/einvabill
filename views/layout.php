@@ -82,8 +82,9 @@ function nav_heading(string $text): string {
 }
 ?>
 <!DOCTYPE html>
-<html lang="id" data-theme="light">
+<html lang="id"<?= theme_attr() ?>>
 <head>
+<?= theme_boot_script() ?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title><?= htmlspecialchars($topbar_title ?: 'Billing') ?> · <?= htmlspecialchars($company_name) ?></title>
@@ -210,7 +211,7 @@ function nav_heading(string $text): string {
 
     <!-- Sidebar: fixed drawer on small screens, static column from lg -->
     <div id="sidebarOverlay" class="fixed inset-0 z-40 bg-black/50 hidden lg:hidden" onclick="closeSidebar()"></div>
-    <aside id="appSidebar" class="fixed inset-y-0 left-0 z-50 flex w-[256px] -translate-x-full flex-col bg-primary-deep text-white transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0">
+    <aside id="appSidebar" class="fixed inset-y-0 left-0 z-50 flex w-[256px] -translate-x-full flex-col bg-sidebar text-white transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0">
         <div class="flex h-14 shrink-0 items-center gap-3 border-b border-solid border-white/10 px-4">
             <?php if ($logo_src): ?>
                 <span class="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-md bg-white p-0.5">
@@ -332,6 +333,7 @@ function nav_heading(string $text): string {
                 </div>
             </div>
             <?= nav_item('index.php?page=change_password', 'fas fa-key', 'Ganti Password', $page == 'change_password' || $page == 'change_password_post') ?>
+            <button type="button" data-theme-btn="nav" onclick="cycleTheme()" class="nav-item w-full cursor-pointer border-0 bg-transparent text-left text-white/70 hover:bg-white/5 hover:text-white"><i class="fas fa-adjust w-5 text-center text-[15px]"></i><span class="truncate">Tema: <span data-theme-label>Ikut sistem</span></span></button>
             <?= nav_item('index.php?page=logout', 'fas fa-sign-out-alt', 'Logout', false) ?>
         </div>
     </aside>
@@ -345,6 +347,7 @@ function nav_heading(string $text): string {
                 <div class="truncate text-[15px] font-bold leading-tight lg:text-base"><?= htmlspecialchars($topbar_title ?: $company_name) ?></div>
                 <div class="hidden truncate text-[11px] text-muted-foreground sm:block"><?= htmlspecialchars($company_name) ?></div>
             </div>
+            <button type="button" data-theme-btn="bar" onclick="cycleTheme()" class="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-solid border-border bg-card text-muted-foreground transition-colors hover:text-foreground" aria-label="Ganti tema" title="Ganti tema"><i class="fas fa-adjust"></i></button>
             <div class="wa-status-indicator hidden sm:block cursor-pointer" onclick="location.href='<?= $role === 'partner' ? 'index.php?page=partner_wa_device' : 'index.php?page=admin_wa_gateway' ?>'" title="Status perangkat WhatsApp"></div>
             <div class="hidden items-center gap-2 lg:flex">
                 <div class="text-right leading-tight">
@@ -501,6 +504,42 @@ window.sendWAGateway = async function (phone, message, fallback, btn) {
         window.open(fallback, '_blank'); Object.assign(btn, { innerHTML: old, disabled: false });
     }
 };
+
+/** THEME: terang / gelap / ikut sistem. The cookie is read back by PHP on the
+    next request so the page never loads in the wrong colours first. */
+const THEME_LABEL = { system: 'Ikut sistem', light: 'Terang', dark: 'Gelap' };
+const THEME_ICON = { system: 'fas fa-adjust', light: 'fas fa-sun', dark: 'fas fa-moon' };
+
+function applyTheme(mode) {
+    const root = document.documentElement;
+    const dark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    root.setAttribute('data-theme', dark ? 'dark' : 'light');
+    root.setAttribute('data-theme-mode', mode);
+    document.querySelectorAll('[data-theme-btn]').forEach(btn => {
+        const i = btn.querySelector('i');
+        if (i) i.className = THEME_ICON[mode] + (btn.dataset.themeBtn === 'nav' ? ' w-5 text-center text-[15px]' : '');
+        const label = btn.querySelector('[data-theme-label]');
+        if (label) label.textContent = THEME_LABEL[mode];
+        btn.title = 'Tema: ' + THEME_LABEL[mode] + ' · klik untuk ganti';
+        btn.setAttribute('aria-label', 'Tema: ' + THEME_LABEL[mode] + '. Klik untuk mengganti.');
+    });
+}
+
+window.cycleTheme = function () {
+    const order = ['system', 'light', 'dark'];
+    const now = document.documentElement.getAttribute('data-theme-mode') || 'system';
+    const next = order[(order.indexOf(now) + 1) % order.length];
+    document.cookie = 'eb_theme=' + next + ';path=/;max-age=31536000;samesite=lax';
+    applyTheme(next);
+};
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
+    if ((document.documentElement.getAttribute('data-theme-mode') || 'system') === 'system') applyTheme('system');
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+    applyTheme(document.documentElement.getAttribute('data-theme-mode') || 'system');
+});
 
 /** INIT & PERSISTENCE */
 window.addEventListener('DOMContentLoaded', () => {

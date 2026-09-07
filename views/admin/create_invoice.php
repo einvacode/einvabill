@@ -117,7 +117,7 @@ $tab_idle = 'cursor-pointer rounded-sm border-0 bg-transparent px-3 py-1.5 text-
     #invoiceItemsTable tbody td input[name="item_qty[]"] { text-align:center; }
     #invoiceItemsTable tbody td input[name="item_unit[]"],
     #invoiceItemsTable tbody td input[name="item_amount[]"] { text-align:right; }
-    #invoiceItemsTable tbody td input[readonly] { background:#F5F7F6; color:#5B6B72; }
+    #invoiceItemsTable tbody td input[readonly] { background:rgb(var(--c-muted)); color:rgb(var(--c-muted-foreground)); }
     #invoiceItemsTable .row-remove { width:34px; height:34px; padding:0; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; }
     </style>
 

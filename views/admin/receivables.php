@@ -74,7 +74,7 @@ $bucket_tone = ['current' => 'ui-badge-muted', 'b30' => 'ui-badge-accent', 'b60'
 
     <?php
     // Age composition: neutral for not-yet-due, one red ramp (light -> dark) for overdue severity.
-    $bucket_color = ['current' => '#C9D3D6', 'b30' => '#F2C4BF', 'b60' => '#E5958D', 'b90' => '#CE5A50', 'b90p' => '#B42318'];
+    $bucket_color = ['current' => 'var(--age-0)', 'b30' => 'var(--age-1)', 'b60' => 'var(--age-2)', 'b90' => 'var(--age-3)', 'b90p' => 'var(--age-4)'];
     $inv_total = array_sum(array_map(fn($r) => (int)$r['inv_n'], $all));
     $overdue = $sum['total'] - $sum['b_current'];
     $type_qs = $f_type ? '&type=' . $f_type : '';

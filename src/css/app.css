@@ -3,18 +3,99 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Bring the legacy theme variables in line with the new palette so pages
-   that still use public/style.css look like they belong. */
-:root, [data-theme="light"] {
-  --bg-color: #F5F7F6;
-  --primary: #0F3A47; --primary-rgb: 15, 58, 71; --primary-hover: #0A2A34;
-  --success: #1F8A5B; --danger: #B42318; --warning: #B85C0A; --info: #0F3A47;
-  --glass-bg: #FFFFFF; --glass-border: #D9E0E2; --glass-shadow: 0 1px 2px rgba(23,32,38,.05);
-  --card-radius: 12px; --hover-bg: #E9EEEC; --table-header-bg: #F0F3F2;
-  --nav-active-bg: #E4EDF0; --nav-active-color: #0F3A47;
-  --text-primary: #172026; --text-secondary: #5B6B72;
-  --btn-ghost-bg: #FFFFFF; --btn-ghost-border: #D9E0E2; --btn-ghost-hover-bg: #E9EEEC;
-  --gradient-text-from: #172026; --gradient-text-to: #0F3A47;
+/* Design tokens as raw RGB channels so Tailwind's opacity modifiers keep
+   working (border-danger/40 and friends). Hex equivalents live next to each
+   line; the legacy variables the older pages read are in public/style.css. */
+:root,
+[data-theme="light"] {
+  --c-background: 245 247 246;      /* #F5F7F6 */
+  --c-foreground: 23 32 38;         /* #172026 */
+  --c-card: 255 255 255;            /* #FFFFFF */
+  --c-border: 217 224 226;          /* #D9E0E2 */
+  --c-input: 217 224 226;           /* #D9E0E2 */
+  --c-ring: 15 58 71;               /* #0F3A47 */
+  --c-primary: 15 58 71;            /* #0F3A47 */
+  --c-primary-foreground: 255 255 255;
+  --c-primary-deep: 10 42 52;       /* #0A2A34 tekan/hover tombol utama */
+  --c-sidebar: 10 42 52;            /* #0A2A34 */
+  --c-primary-soft: 228 237 240;    /* #E4EDF0 */
+  --c-primary-ink: 15 58 71;        /* teks/tautan bermerek */
+  --c-muted: 233 238 236;           /* #E9EEEC */
+  --c-muted-foreground: 91 107 114; /* #5B6B72 */
+  --c-accent: 227 155 10;           /* #E39B0A */
+  --c-accent-foreground: 29 19 0;   /* #1D1300 */
+  --c-accent-soft: 255 243 214;     /* #FFF3D6 */
+  --c-accent-ink: 122 80 0;         /* #7A5000 */
+  --c-signal: 31 138 91;            /* #1F8A5B */
+  --c-signal-soft: 227 243 234;     /* #E3F3EA */
+  --c-danger: 180 35 24;            /* #B42318 */
+  --c-danger-soft: 251 233 231;     /* #FBE9E7 */
+  --c-wa: 29 168 81;                /* #1DA851 */
+  --c-wa-hover: 23 138 67;          /* #178A43 */
+
+  --shadow-card: 0 1px 2px rgba(23, 32, 38, .05), 0 1px 0 rgba(23, 32, 38, .02);
+  --shadow-lift: 0 12px 32px -12px rgba(15, 58, 71, .25);
+
+  /* Charts: two categorical hues that stay apart under colour-vision
+     deficiency, plus the recessive furniture around them. */
+  --chart-1: #2a78d6;
+  --chart-2: #d0691e;
+  --chart-grid: #E9EEEC;
+  --chart-axis: #D9E0E2;
+  --chart-label: #5B6B72;
+  --chart-value: #172026;
+  --chart-dot-ring: #FFFFFF;
+  /* Receivables ageing ramp: neutral, then warmer as the debt gets older. */
+  --age-0: #C9D3D6;
+  --age-1: #F2C4BF;
+  --age-2: #E5958D;
+  --age-3: #CE5A50;
+  --age-4: #B42318;
+}
+
+/* The same palette after dark. Surfaces are charcoal with a petrol cast rather
+   than black, and the brand petrol is lifted until white text clears AA on it. */
+[data-theme="dark"] {
+  --c-background: 14 21 24;         /* #0E1518 */
+  --c-foreground: 230 237 239;      /* #E6EDEF */
+  --c-card: 21 31 35;               /* #151F23 */
+  --c-border: 36 51 58;             /* #24333A */
+  --c-input: 36 51 58;              /* #24333A */
+  --c-ring: 79 163 188;             /* #4FA3BC */
+  --c-primary: 47 127 151;          /* #2F7F97 */
+  --c-primary-foreground: 255 255 255;
+  --c-primary-deep: 36 95 114;      /* #245F72 tekan/hover tombol utama */
+  --c-sidebar: 8 15 18;             /* #080F12, satu tingkat di bawah latar */
+  --c-primary-soft: 22 50 59;       /* #16323B */
+  --c-primary-ink: 127 194 214;     /* #7FC2D6, petrol untuk teks: #2F7F97 kurang kontras di latar gelap */
+  --c-muted: 27 38 43;              /* #1B262B */
+  --c-muted-foreground: 148 166 173;/* #94A6AD */
+  --c-accent: 224 169 60;           /* #E0A93C */
+  --c-accent-foreground: 29 19 0;   /* #1D1300 */
+  --c-accent-soft: 51 40 15;        /* #33280F */
+  --c-accent-ink: 233 193 118;      /* #E9C176 */
+  --c-signal: 52 180 124;           /* #34B47C */
+  --c-signal-soft: 18 49 42;        /* #12312A */
+  --c-danger: 228 105 92;           /* #E4695C */
+  --c-danger-soft: 51 25 27;        /* #33191B */
+  --c-wa: 29 168 81;                /* #1DA851 brand green, unchanged */
+  --c-wa-hover: 36 188 92;          /* #24BC5C */
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, .40);
+  --shadow-lift: 0 12px 32px -12px rgba(0, 0, 0, .65);
+
+  --chart-1: #6FA8E8;
+  --chart-2: #E0925A;
+  --chart-grid: #24333A;
+  --chart-axis: #2C3D45;
+  --chart-label: #94A6AD;
+  --chart-value: #E6EDEF;
+  --chart-dot-ring: #151F23;
+  --age-0: #2C3D45;
+  --age-1: #5B2F2C;
+  --age-2: #8A4038;
+  --age-3: #B4544A;
+  --age-4: #E4695C;
 }
 
 @layer base {
@@ -58,6 +139,10 @@
      page sideways on phones. :where() keeps the specificity at one class so a
      position utility on the same element still wins. */
   :where(.ui-shell) .overflow-x-auto { position: relative; }
+
+  /* Brand-coloured text needs a lighter petrol than the surface colour once
+     the background is dark, or it drops below 4.5:1. */
+  [data-theme="dark"] .text-primary { color: rgb(var(--c-primary-ink)); }
 
   /* Floating bulk-action bar (WhatsApp broadcast on the invoice list) */
   .floating-broadcast-bar {

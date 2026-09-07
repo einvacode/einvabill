@@ -176,6 +176,40 @@ Tanpa ikon besar, tanpa emoji.
 - Setelah selesai: `php -l` harus bersih, halaman harus kembali 200 di
   server lokal, dan tidak ada `PHP Fatal`/`Warning` baru di log.
 
+## Tema terang dan gelap
+
+Satu palet, dua mode. Semua warna berjalan lewat variabel CSS, jadi menambah
+warna baru berarti menambah token, bukan menulis hex di markup.
+
+| Lapisan | Berkas | Isi |
+| --- | --- | --- |
+| Token shell | `src/css/app.css` | `--c-*` sebagai kanal RGB mentah (`15 58 71`), blok `:root, [data-theme="light"]` dan `[data-theme="dark"]` |
+| Peta Tailwind | `tailwind.app.config.js` | setiap warna = `rgb(var(--c-nama) / <alpha-value>)`, sehingga `border-danger/40` tetap jalan |
+| Halaman lama | `public/style.css` | variabel `--bg-color`, `--text-primary`, dst. untuk halaman pra-Tailwind (login, penagih, mitra) |
+| Komponen lama | `public/ui.css` | seluruh warnanya memanggil `rgb(var(--c-*))`, tidak ada hex |
+
+Aturan yang gampang terlewat:
+
+- **Jangan tulis hex di markup atau di PHP.** Grafik SVG memakai
+  `var(--chart-1)`, `var(--chart-2)`, `var(--chart-grid)`; ramp umur piutang
+  memakai `var(--age-0)` sampai `var(--age-4)`.
+- **`primary` untuk bidang, `primary-ink` untuk teks.** Di mode gelap
+  `--c-primary` (#2F7F97) dipakai sebagai latar tombol dengan teks putih; teks
+  bermerek memakai `--c-primary-ink` (#7FC2D6) karena #2F7F97 di atas kartu
+  gelap hanya 3,7:1.
+- **Sidebar punya token sendiri** (`--c-sidebar`): tetap gelap di kedua mode,
+  jadi jangan pakai `bg-primary-deep` untuk itu — `primary-deep` sekarang
+  murni warna tekan/hover tombol utama.
+- **Halaman publik dikunci terang**: landing page dan portal cek tagihan tidak
+  ikut tema. Nota cetak juga selalu terang.
+
+Cara kerja saklarnya: pilihan (`light`, `dark`, `system`) disimpan di cookie
+`eb_theme`, PHP menempelkan `data-theme` di `<html>` lewat `theme_attr()` di
+`app/theme.php`, dan skrip sebaris `theme_boot_script()` menyelesaikan mode
+`system` sebelum CSS dimuat. Tanpa itu halaman berkedip putih dulu di tiap muat.
+Tombolnya ada di topbar dan di kaki sidebar; keduanya bertanda
+`data-theme-btn`.
+
 ## Catatan teknis
 
 Preflight Tailwind dimatikan, tetapi `src/css/app.css` memuat reset border

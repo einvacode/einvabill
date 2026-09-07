@@ -49,7 +49,7 @@ $inv_no = 'INV-' . str_pad($invoice['id'], 5, '0', STR_PAD_LEFT);
     #editItemsTable tbody td input[name="item_qty[]"] { text-align:center; }
     #editItemsTable tbody td input[name="item_unit[]"],
     #editItemsTable tbody td input[name="item_amount[]"] { text-align:right; }
-    #editItemsTable tbody td input[readonly] { background:#F5F7F6; color:#5B6B72; }
+    #editItemsTable tbody td input[readonly] { background:rgb(var(--c-muted)); color:rgb(var(--c-muted-foreground)); }
     #editItemsTable .row-remove { width:34px; height:34px; padding:0; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; }
     </style>
 

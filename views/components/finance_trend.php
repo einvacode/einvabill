@@ -32,8 +32,8 @@ $sum6_rev = array_sum(array_column($trend, 'revenue')); $sum6_exp = array_sum(ar
     <div class="grid gap-0 xl:grid-cols-[minmax(0,1fr)_280px]">
         <div class="p-4 sm:p-5">
             <div class="mb-2 flex flex-wrap items-center gap-4 text-xs">
-                <span class="inline-flex items-center gap-1.5"><span class="inline-block h-2.5 w-2.5 rounded-sm" style="background:#2a78d6"></span>Pendapatan</span>
-                <span class="inline-flex items-center gap-1.5"><span class="inline-block h-2.5 w-2.5 rounded-sm" style="background:#d0691e"></span>Pengeluaran</span>
+                <span class="inline-flex items-center gap-1.5"><span class="inline-block h-2.5 w-2.5 rounded-sm" style="background:var(--chart-1)"></span>Pendapatan</span>
+                <span class="inline-flex items-center gap-1.5"><span class="inline-block h-2.5 w-2.5 rounded-sm" style="background:var(--chart-2)"></span>Pengeluaran</span>
             </div>
             <?= finance_trend_svg($trend) ?>
             <div class="mt-4 text-xs font-medium text-muted-foreground">Tingkat tagih (tagihan jatuh tempo bulan itu yang sudah lunas)</div>

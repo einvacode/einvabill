@@ -9,22 +9,22 @@
 
 /* ---------- Panels ---------- */
 .ui-shell .glass-panel {
-  background: #FFFFFF;
+  background: rgb(var(--c-card));
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  border: 1px solid #D9E0E2;
+  border: 1px solid rgb(var(--c-border));
   border-radius: 12px;
-  box-shadow: 0 1px 2px rgba(23, 32, 38, .05), 0 1px 0 rgba(23, 32, 38, .02);
+  box-shadow: 0 1px 2px rgb(var(--c-foreground) / .05), 0 1px 0 rgb(var(--c-foreground) / .02);
 }
 .ui-shell .filter-panel {
-  background: #F0F3F2;
-  border: 1px solid #D9E0E2;
+  background: rgb(var(--c-muted));
+  border: 1px solid rgb(var(--c-border));
   border-radius: 10px;
 }
 .ui-shell .glass-stat-mini {
-  border: 1px solid #D9E0E2;
+  border: 1px solid rgb(var(--c-border));
   border-radius: 10px;
-  background: #FFFFFF;
+  background: rgb(var(--c-card));
   box-shadow: none;
 }
 
@@ -57,50 +57,50 @@
 .ui-shell .btn-xs { height: 28px; padding: 0 10px; font-size: 12px; border-radius: 6px; }
 .ui-shell .btn-block { width: 100%; }
 
-.ui-shell .btn-primary { background: #0F3A47; color: #fff; }
-.ui-shell .btn-primary:hover { background: #0A2A34; }
+.ui-shell .btn-primary { background: rgb(var(--c-primary)); color: #fff; }
+.ui-shell .btn-primary:hover { background: rgb(var(--c-primary-deep)); }
 
-.ui-shell .btn-success { background: #1F8A5B; color: #fff; }
-.ui-shell .btn-success:hover { background: #17724A; }
+.ui-shell .btn-success { background: rgb(var(--c-signal)); color: #fff; }
+.ui-shell .btn-success:hover { background: rgb(var(--c-signal) / .85); }
 
 .ui-shell .btn-ghost {
-  background: #FFFFFF;
-  color: #172026;
-  border-color: #D9E0E2;
+  background: rgb(var(--c-card));
+  color: rgb(var(--c-foreground));
+  border-color: rgb(var(--c-border));
 }
-.ui-shell .btn-ghost:hover { background: #E9EEEC; color: #172026; border-color: #D9E0E2; }
+.ui-shell .btn-ghost:hover { background: rgb(var(--c-muted)); color: rgb(var(--c-foreground)); border-color: rgb(var(--c-border)); }
 
 .ui-shell .btn-info {
-  background: #E4EDF0;
-  color: #0F3A47;
+  background: rgb(var(--c-primary-soft));
+  color: rgb(var(--c-primary-ink));
   border-color: transparent;
   border-radius: 8px;
   padding: 0 14px;
   font-size: 13.5px;
 }
-.ui-shell .btn-info:hover { background: #0F3A47; color: #fff; }
+.ui-shell .btn-info:hover { background: rgb(var(--c-primary)); color: #fff; }
 
 .ui-shell .btn-danger {
-  background: #FFFFFF;
-  color: #B42318;
-  border-color: #E7B1AB;
+  background: rgb(var(--c-card));
+  color: rgb(var(--c-danger));
+  border-color: rgb(var(--c-danger) / .45);
   border-radius: 8px;
   padding: 0 14px;
   font-size: 13.5px;
 }
 .ui-shell .btn-danger i { color: inherit; }
-.ui-shell .btn-danger:hover { background: #B42318; color: #fff; border-color: #B42318; }
+.ui-shell .btn-danger:hover { background: rgb(var(--c-danger)); color: #fff; border-color: rgb(var(--c-danger)); }
 .ui-shell .btn-danger:hover i { color: #fff; }
 
 .ui-shell .btn-warning {
-  background: #FFF3D6;
-  color: #7A5000;
+  background: rgb(var(--c-accent-soft));
+  color: rgb(var(--c-accent-ink));
   border-color: transparent;
   border-radius: 8px;
   padding: 0 14px;
   font-size: 13.5px;
 }
-.ui-shell .btn-warning:hover { background: #E39B0A; color: #1D1300; }
+.ui-shell .btn-warning:hover { background: rgb(var(--c-accent)); color: rgb(var(--c-accent-foreground)); }
 
 .ui-shell .btn-sm.btn-info, .ui-shell .btn-sm.btn-danger, .ui-shell .btn-sm.btn-warning { height: 32px; padding: 0 12px; font-size: 12.5px; }
 .ui-shell .btn-xs.btn-info, .ui-shell .btn-xs.btn-danger, .ui-shell .btn-xs.btn-warning { height: 28px; padding: 0 10px; font-size: 12px; }
@@ -115,35 +115,35 @@
   font-size: 11px;
   font-weight: 600;
   line-height: 18px;
-  border: 1px solid #D9E0E2;
-  background: #FFFFFF;
-  color: #172026;
+  border: 1px solid rgb(var(--c-border));
+  background: rgb(var(--c-card));
+  color: rgb(var(--c-foreground));
 }
-.ui-shell .badge-success { background: #E3F3EA; color: #1F8A5B; border-color: transparent; }
-.ui-shell .badge-danger { background: #FBE9E7; color: #B42318; border-color: transparent; }
-.ui-shell .badge-warning { background: #FFF3D6; color: #7A5000; border-color: transparent; }
+.ui-shell .badge-success { background: rgb(var(--c-signal-soft)); color: rgb(var(--c-signal)); border-color: transparent; }
+.ui-shell .badge-danger { background: rgb(var(--c-danger-soft)); color: rgb(var(--c-danger)); border-color: transparent; }
+.ui-shell .badge-warning { background: rgb(var(--c-accent-soft)); color: rgb(var(--c-accent-ink)); border-color: transparent; }
 
 /* ---------- Forms ---------- */
 .ui-shell .form-group { margin-bottom: 16px; }
 .ui-shell .form-group label {
   font-size: 13px;
   font-weight: 600;
-  color: #172026;
+  color: rgb(var(--c-foreground));
   margin-bottom: 6px;
 }
 .ui-shell .form-control {
   padding: 9px 12px;
   border-radius: 8px;
-  border: 1px solid #D9E0E2;
-  background: #FFFFFF;
-  color: #172026;
+  border: 1px solid rgb(var(--c-border));
+  background: rgb(var(--c-card));
+  color: rgb(var(--c-foreground));
   font-size: 14px;
   line-height: 1.4;
 }
-.ui-shell .form-control::placeholder { color: #8A979D; }
+.ui-shell .form-control::placeholder { color: rgb(var(--c-muted-foreground) / .8); }
 .ui-shell .form-control:focus {
-  border-color: #0F3A47;
-  box-shadow: 0 0 0 3px rgba(15, 58, 71, .18);
+  border-color: rgb(var(--c-primary));
+  box-shadow: 0 0 0 3px rgb(var(--c-primary) / .18);
 }
 .ui-shell select.form-control { padding-right: 32px; }
 .ui-shell textarea.form-control { min-height: 84px; }
@@ -152,15 +152,15 @@
 /* ---------- Tables ---------- */
 .ui-shell .table-container { border-radius: 10px; }
 .ui-shell table { font-size: 14px; }
-.ui-shell th, .ui-shell td { padding: 12px 14px; border-bottom: 1px solid #E5EAEC; vertical-align: middle; }
+.ui-shell th, .ui-shell td { padding: 12px 14px; border-bottom: 1px solid rgb(var(--c-border)); vertical-align: middle; }
 .ui-shell th {
   font-size: 12px;
   font-weight: 600;
-  color: #5B6B72;
-  background: #F0F3F2;
+  color: rgb(var(--c-muted-foreground));
+  background: rgb(var(--c-muted));
   white-space: nowrap;
 }
-.ui-shell tbody tr:hover { background: #F5F7F6; }
+.ui-shell tbody tr:hover { background: rgb(var(--c-background)); }
 
 /* ---------- Tabs / source nav ---------- */
 .ui-shell .source-nav { gap: 6px; margin: 12px 0 16px; }
@@ -169,30 +169,31 @@
   border-radius: 8px;
   font-size: 12.5px;
   font-weight: 600;
-  color: #172026;
-  background: #E9EEEC;
+  color: rgb(var(--c-foreground));
+  background: rgb(var(--c-muted));
   border: 1px solid transparent;
 }
-.ui-shell .source-nav-link:hover { background: #DDE5E8; }
-.ui-shell .source-nav-link.active { background: #0F3A47; color: #fff; }
+.ui-shell .source-nav-link:hover { background: rgb(var(--c-border)); }
+.ui-shell .source-nav-link.active { background: rgb(var(--c-primary)); color: #fff; }
 
 /* ---------- Stat cards ---------- */
 .ui-shell .stats-grid { gap: 14px; margin-bottom: 22px; }
 .ui-shell .stat-card { padding: 18px; }
-.ui-shell .stat-title { font-size: 12.5px; font-weight: 500; color: #5B6B72; }
+.ui-shell .stat-title { font-size: 12.5px; font-weight: 500; color: rgb(var(--c-muted-foreground)); }
 .ui-shell .stat-value { font-size: 24px; font-weight: 800; letter-spacing: -0.01em; }
 
 /* ---------- Misc ---------- */
 .ui-shell .grid-header { margin-bottom: 18px; }
 .ui-shell .pagination-nav a, .ui-shell .pagination-nav button { border-radius: 8px; }
-.ui-shell hr { border: 0; border-top: 1px solid #E5EAEC; }
-.ui-shell ::selection { background: #E4EDF0; }
+.ui-shell hr { border: 0; border-top: 1px solid rgb(var(--c-border)); }
+.ui-shell ::selection { background: rgb(var(--c-primary-soft)); }
 
 /* Legacy inline "glass" tints often use rgba(59,130,246,...) blue; keep them readable */
-.ui-shell .text-primary { color: #0F3A47 !important; }
-.ui-shell .text-danger { color: #B42318 !important; }
-.ui-shell .text-success { color: #1F8A5B !important; }
-.ui-shell .text-warning { color: #B85C0A !important; }
+/* Brand-coloured text, not a brand surface: needs the lighter petrol in dark. */
+.ui-shell .text-primary { color: rgb(var(--c-primary-ink)) !important; }
+.ui-shell .text-danger { color: rgb(var(--c-danger)) !important; }
+.ui-shell .text-success { color: rgb(var(--c-signal)) !important; }
+.ui-shell .text-warning { color: rgb(var(--c-accent-ink)) !important; }
 
 @media (max-width: 640px) {
   .ui-shell .btn { height: 36px; }
@@ -208,11 +209,11 @@
 .ui-shell [style*="border-left:5px"], .ui-shell [style*="border-left: 5px"],
 .ui-shell [style*="border-left:3px"], .ui-shell [style*="border-left: 3px"] {
   border-left-width: 1px !important;
-  border-left-color: #D9E0E2 !important;
+  border-left-color: rgb(var(--c-border)) !important;
   border-left-style: solid !important;
 }
 /* Those cards usually also carry a strong tinted background; soften it. */
-.ui-shell .glass-panel[style*="border-left"] { background-color: #FFFFFF !important; }
+.ui-shell .glass-panel[style*="border-left"] { background-color: rgb(var(--c-card)) !important; }
 
 /* ---------- Global de-cluttering for legacy inline styles ---------- */
 /* Tracked uppercase micro-labels read as template chrome; keep them readable. */
@@ -224,8 +225,8 @@
 /* Gradient text (background-clip:text) becomes plain ink. */
 .ui-shell [style*="background-clip"], .ui-shell [style*="-webkit-background-clip"] {
   background: none !important;
-  -webkit-text-fill-color: #172026 !important;
-  color: #172026 !important;
+  -webkit-text-fill-color: rgb(var(--c-foreground)) !important;
+  color: rgb(var(--c-foreground)) !important;
 }
 /* Oversized radii on inline-styled panels. */
 .ui-shell .glass-panel[style*="border-radius:20px"], .ui-shell .glass-panel[style*="border-radius: 20px"],
@@ -235,8 +236,8 @@
 /* Hover lifts on inline-styled cards. */
 .ui-shell [style*="transition"]:hover { transform: none !important; }
 /* Legacy modals: neutral overlay and card. */
-.ui-shell .modal-overlay, .ui-shell .image-modal { background: rgba(23, 32, 38, .55) !important; backdrop-filter: none !important; }
-.ui-shell .modal-content, .ui-shell .modal-box { border-radius: 12px !important; box-shadow: 0 12px 32px -12px rgba(15,58,71,.35) !important; }
+.ui-shell .modal-overlay, .ui-shell .image-modal { background: rgb(var(--c-foreground) / .55) !important; backdrop-filter: none !important; }
+.ui-shell .modal-content, .ui-shell .modal-box { border-radius: 12px !important; box-shadow: 0 12px 32px -12px rgb(var(--c-primary) / .35) !important; }
 /* Icon-only action groups in tables */
 .ui-shell .btn-group { display: inline-flex; gap: 4px; }
 .ui-shell .btn-group .btn { min-width: 32px; }
