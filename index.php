@@ -29,8 +29,6 @@ if ($page === 'logout') {
 if ($page === 'login_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'] ?? '';
     $password = $_POST['password'] ?? '';
-    $requested_role = $_POST['requested_role'] ?? 'partner';
-    
     $user = false;
     if (login_is_throttled($db, $username)) {
         $error = "Terlalu banyak percobaan login. Coba lagi dalam 15 menit.";
@@ -42,12 +40,10 @@ if ($page === 'login_post' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($user && password_verify($password, $user['password'])) {
-        // Enforce that login portal matches the user's real role
-        if ($requested_role === 'partner' && $user['role'] !== 'partner') {
-            $error = 'Akun ini bukan akun mitra. Silakan gunakan Portal Staff untuk akses Admin/Tagih.';
-            $page = 'login';
-        } elseif ($requested_role === 'staff' && !in_array($user['role'], ['admin', 'collector'])) {
-            $error = 'Hanya Staff atau Admin yang boleh masuk melalui Portal Staff.';
+        // One login for everyone: the account's own role decides where it lands
+        // (see "Default page based on role" below), so no portal to pick.
+        if (!in_array($user['role'], ['admin', 'collector', 'partner'])) {
+            $error = 'Akun ini tidak punya akses ke aplikasi. Hubungi admin.';
             $page = 'login';
         } else {
             // Fresh session id on privilege change (prevents session fixation).

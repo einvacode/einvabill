@@ -1,9 +1,10 @@
+<?php $__login_company = $db->query("SELECT company_name FROM settings WHERE id=1")->fetchColumn() ?: ""; ?>
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Billing RT/RW Net</title>
+    <title>Masuk<?= !empty($__login_company) ? " · " . htmlspecialchars($__login_company) : "" ?></title>
     <link rel="stylesheet" href="public/style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
     <style>
@@ -36,22 +37,25 @@
     </style>
 </head>
 <body>
-    <?php 
-    $company = $db->query("SELECT company_name, company_logo FROM settings WHERE id=1")->fetch(); 
-    $requested_role = $_GET['role'] ?? 'partner';
-    
-    $is_staff = ($requested_role === 'staff');
-    $portal_title = $is_staff ? 'Portal Staff & Admin' : 'Portal Partner (B2B)';
-    $portal_desc = $is_staff ? 'Manajemen Billing & Operasional' : 'Layanan Mandiri Khusus Mitra Terdaftar';
-    $portal_icon = $is_staff ? 'fa-shield-alt' : 'fa-handshake';
-    $portal_color = $is_staff ? '#ef4444' : '#23CED9';
+    <?php
+    $company = $db->query("SELECT company_name, company_logo FROM settings WHERE id=1")->fetch();
+    $logo_src = '';
+    if (!empty($company['company_logo'])) {
+        $logo_src = preg_match('/^https?:\/\//', $company['company_logo'])
+            ? $company['company_logo']
+            : '/' . str_replace(' ', '%20', ltrim($company['company_logo'], '/'));
+    }
     ?>
     <div class="login-container">
         <div class="glass-panel login-box">
             <div style="text-align:center; margin-bottom:25px;">
-                <i class="fas <?= $portal_icon ?>" style="font-size: 50px; color: <?= $portal_color ?>; margin-bottom:15px; display:inline-block; opacity:0.8;"></i>
-                <h1 style="font-size: 22px; font-weight: 700; margin-bottom: 5px; color:var(--text-primary);"><?= $portal_title ?></h1>
-                <p style="font-size: 14px; color: var(--text-secondary);"><?= $portal_desc ?></p>
+                <?php if ($logo_src): ?>
+                    <img src="<?= htmlspecialchars($logo_src) ?>" alt="<?= htmlspecialchars($company['company_name'] ?? '') ?>" class="login-logo">
+                <?php else: ?>
+                    <i class="fas fa-network-wired" style="font-size: 46px; color: var(--primary); margin-bottom:15px; display:inline-block; opacity:0.85;"></i>
+                <?php endif; ?>
+                <h1 style="font-size: 22px; font-weight: 700; margin-bottom: 5px; color:var(--text-primary);"><?= htmlspecialchars($company['company_name'] ?? 'Sistem Billing') ?></h1>
+                <p style="font-size: 14px; color: var(--text-secondary);">Masuk dengan akun Anda. Halaman yang terbuka menyesuaikan hak akses.</p>
             </div>
             
             <?php if(isset($error)): ?>
@@ -62,7 +66,6 @@
 
             <form action="index.php?page=login_post" method="POST">
 <?= csrf_field() ?>
-                <input type="hidden" name="requested_role" value="<?= $is_staff ? 'staff' : 'partner' ?>">
                 <div class="form-group" style="position:relative;">
                     <i class="fas fa-user" style="position:absolute; left:16px; top:15px; color:var(--text-secondary);"></i>
                     <input type="text" name="username" class="form-control" required placeholder="Nama Pengguna" style="padding-left: 45px;">
@@ -75,11 +78,7 @@
             </form>
             
             <div style="text-align:center; margin-top:20px; font-size:13px; color:var(--text-secondary);">
-                <?php if($is_staff): ?>
-                    Bukan Staff? <a href="index.php?page=login&role=partner" style="color:var(--primary); font-weight:600; text-decoration:none;">Portal Partner</a>
-                <?php else: ?>
-                    Bukan Partner? <a href="index.php?page=login&role=staff" style="color:#ef4444; font-weight:600; text-decoration:none;">Akses Staff</a>
-                <?php endif; ?>
+                Lupa kata sandi? Hubungi admin untuk mengatur ulang.
                 <div style="margin-top:25px;">
                     <a href="index.php?page=landing" class="btn btn-ghost btn-sm" style="font-size:13px; color:var(--text-secondary); padding: 8px 15px;">
                         <i class="fas fa-home"></i> Kembali ke Beranda

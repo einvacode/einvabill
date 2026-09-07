@@ -348,8 +348,7 @@ function svg_icon(string $name, string $class = 'h-5 w-5'): string {
         <div>
             <p class="font-semibold">Mitra dan staf</p>
             <ul class="mt-3 space-y-2 text-sm text-muted-foreground">
-                <li><a href="index.php?page=login&role=partner" class="hover:text-foreground">Portal mitra</a></li>
-                <li><a href="index.php?page=login&role=staff" class="hover:text-foreground">Area staf</a></li>
+                <li><a href="index.php?page=login" class="hover:text-foreground">Masuk aplikasi</a></li>
                 <li><a href="<?= htmlspecialchars($wa_link) ?>" target="_blank" rel="noopener" class="hover:text-foreground">Ingin jadi mitra desa?</a></li>
             </ul>
         </div>
