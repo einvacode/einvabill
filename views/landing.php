@@ -198,20 +198,20 @@ function svg_icon(string $name, string $class = 'h-5 w-5'): string {
 
 <!-- Trust facts -->
 <section class="border-y border-border bg-card">
-    <div class="container grid gap-8 py-10 sm:grid-cols-2 lg:grid-cols-4">
-        <div class="flex gap-4">
+    <div class="container grid gap-8 py-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-0 lg:divide-x lg:divide-border">
+        <div class="flex gap-4 lg:px-6 lg:first:pl-0 lg:last:pr-0">
             <span class="text-primary shrink-0"><?= svg_icon('building', 'h-6 w-6') ?></span>
             <div><p class="font-semibold">Badan hukum resmi</p><p class="mt-1 text-sm text-muted-foreground leading-relaxed"><?= htmlspecialchars($comp_name) ?>, penyelenggara jasa jual kembali telekomunikasi.</p></div>
         </div>
-        <div class="flex gap-4">
+        <div class="flex gap-4 lg:px-6 lg:first:pl-0 lg:last:pr-0">
             <span class="text-primary shrink-0"><?= svg_icon('shield', 'h-6 w-6') ?></span>
             <div><p class="font-semibold">Terhubung ke jaringan nasional</p><p class="mt-1 text-sm text-muted-foreground leading-relaxed">Bandwidth dari penyedia tulang punggung, bukan berbagi dari koneksi rumahan.</p></div>
         </div>
-        <div class="flex gap-4">
+        <div class="flex gap-4 lg:px-6 lg:first:pl-0 lg:last:pr-0">
             <span class="text-primary shrink-0"><?= svg_icon('users', 'h-6 w-6') ?></span>
             <div><p class="font-semibold">Rumah hingga korporasi</p><p class="mt-1 text-sm text-muted-foreground leading-relaxed">Melayani rumah tangga, UMKM, sekolah, dan perkantoran.</p></div>
         </div>
-        <div class="flex gap-4">
+        <div class="flex gap-4 lg:px-6 lg:first:pl-0 lg:last:pr-0">
             <span class="text-primary shrink-0"><?= svg_icon('clock', 'h-6 w-6') ?></span>
             <div><p class="font-semibold">Dipantau setiap hari</p><p class="mt-1 text-sm text-muted-foreground leading-relaxed">Perangkat jaringan dan trafik pelanggan diawasi dari pusat kendali kami.</p></div>
         </div>
@@ -220,34 +220,43 @@ function svg_icon(string $name, string $class = 'h-5 w-5'): string {
 
 <!-- Packages -->
 <section id="paket" class="container py-16 md:py-20">
-    <div class="max-w-[36rem]">        <h2 class="mt-3 text-3xl font-bold sm:text-4xl">Satu harga, tanpa biaya tersembunyi.</h2>
-        <p class="mt-4 text-muted-foreground leading-relaxed">Harga di bawah sudah termasuk pajak. Tidak ada kuota, tidak ada pembatasan jam. Biaya pemasangan dibicarakan saat survei, tergantung jarak ke tiang terdekat.</p>
+    <div class="max-w-[36rem]">
+        <h2 class="text-3xl font-semibold sm:text-4xl">Satu harga, tanpa biaya tersembunyi.</h2>
+        <p class="mt-4 leading-relaxed text-muted-foreground">Harga di bawah sudah termasuk pajak. Tidak ada kuota, tidak ada pembatasan jam. Biaya pemasangan dibicarakan saat survei, tergantung jarak ke tiang terdekat.</p>
     </div>
 
     <?php if (count($packages) > 0): ?>
+    <?php
+        // The bar compares the plans to each other, so it needs the fastest one.
+        $speed_of = function ($p) { preg_match('/(\d+)/', (string) $p['speed'], $m); return isset($m[1]) ? (int) $m[1] : 0; };
+        $speed_max = max(array_map($speed_of, $packages)) ?: 1;
+    ?>
     <div class="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
         <?php foreach ($packages as $i => $pkg):
             $feats = array_values(array_filter(array_map('trim', explode(',', (string) $pkg['features']))));
             $pkg_wa = 'https://wa.me/' . $wa_contact . '?text=' . rawurlencode("Halo $brand, saya tertarik paket {$pkg['name']} ({$pkg['speed']}). Alamat saya: ");
+            $mbps = $speed_of($pkg);
         ?>
         <article class="card flex flex-col p-6">
-            <div class="flex items-baseline justify-between gap-3">
-                <h3 class="text-lg font-bold"><?= htmlspecialchars($pkg['name']) ?></h3>
-                <span class="badge"><?= htmlspecialchars($pkg['speed']) ?></span>
-            </div>
-            <p class="mt-5 text-3xl font-extrabold tabular-nums">
+            <h3 class="text-[15px] font-semibold text-muted-foreground"><?= htmlspecialchars($pkg['name']) ?></h3>
+            <p class="mt-3 flex items-baseline gap-1.5">
+                <span class="pkg-speed"><?= $mbps ?: htmlspecialchars($pkg['speed']) ?></span>
+                <?php if ($mbps): ?><span class="text-sm font-medium text-muted-foreground">Mbps</span><?php endif; ?>
+            </p>
+            <div class="pkg-meter"><span style="width: <?= max(8, round($mbps / $speed_max * 100)) ?>%"></span></div>
+            <p class="mt-5 text-2xl font-bold tabular-nums">
                 <?php if ((int) $pkg['price'] > 0): ?>
                     Rp <?= number_format((int) $pkg['price'], 0, ',', '.') ?><span class="text-base font-medium text-muted-foreground">/bulan</span>
                 <?php else: ?>
                     <span class="text-xl">Hubungi kami</span>
                 <?php endif; ?>
             </p>
-            <ul class="mt-6 space-y-2.5 text-[15px]">
+            <ul class="mt-5 mb-2">
                 <?php foreach ($feats as $f): ?>
-                <li class="flex items-start gap-2.5"><span class="mt-0.5 text-signal"><?= svg_icon('check', 'h-4 w-4') ?></span><span><?= htmlspecialchars($f) ?></span></li>
+                <li class="pkg-row"><span class="text-signal"><?= svg_icon('check', 'h-4 w-4') ?></span><span><?= htmlspecialchars($f) ?></span></li>
                 <?php endforeach; ?>
             </ul>
-            <a href="<?= htmlspecialchars($pkg_wa) ?>" target="_blank" rel="noopener" class="btn <?= $i === 1 ? 'btn-primary' : 'btn-outline' ?> mt-auto pt-0 w-full" style="margin-top:2rem">Pasang <?= htmlspecialchars($pkg['name']) ?></a>
+            <a href="<?= htmlspecialchars($pkg_wa) ?>" target="_blank" rel="noopener" class="btn <?= $i === 1 ? 'btn-primary' : 'btn-outline' ?> mt-auto w-full" style="margin-top:1.5rem">Pasang <?= htmlspecialchars($pkg['name']) ?></a>
         </article>
         <?php endforeach; ?>
     </div>
@@ -258,31 +267,32 @@ function svg_icon(string $name, string $class = 'h-5 w-5'): string {
     <p class="mt-6 text-sm text-muted-foreground">Butuh kecepatan lebih tinggi untuk kantor, sekolah, atau kebutuhan lingkungan? <a href="<?= htmlspecialchars($wa_link) ?>" target="_blank" rel="noopener" class="font-semibold text-foreground underline underline-offset-4">Minta penawaran khusus.</a></p>
 </section>
 
-<!-- How to subscribe: a real sequence, so it is numbered -->
-<section id="cara" class="border-y border-border bg-card">
+<!-- How to subscribe: a real sequence, so the steps sit on the cable in order -->
+<section id="cara" class="net-band">
     <div class="container py-16 md:py-20">
-        <div class="max-w-[36rem]">            <h2 class="mt-3 text-3xl font-bold sm:text-4xl">Dari tanya sampai online, biasanya dalam beberapa hari.</h2>
+        <div class="max-w-[36rem]">
+            <h2 class="text-3xl font-semibold sm:text-4xl">Dari tanya sampai online, biasanya dalam beberapa hari.</h2>
         </div>
-        <ol class="mt-10 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
-            <li class="relative">
-                <span class="grid h-9 w-9 place-items-center rounded-md bg-primary text-primary-foreground text-sm font-bold">1</span>
-                <h3 class="mt-4 font-semibold">Kirim alamat lewat WhatsApp</h3>
-                <p class="mt-2 text-sm text-muted-foreground leading-relaxed">Kami cek apakah jalur fiber sudah lewat depan rumah Anda dan beri tahu perkiraan waktunya.</p>
+        <ol class="step-track mt-12 grid gap-10 md:grid-cols-2 lg:grid-cols-4 lg:gap-8">
+            <li>
+                <span class="step-node">1</span>
+                <h3 class="mt-4 font-semibold text-hero-ink">Kirim alamat lewat WhatsApp</h3>
+                <p class="mt-2 text-sm leading-relaxed text-hero-mute">Kami cek apakah jalur fiber sudah lewat depan rumah Anda dan beri tahu perkiraan waktunya.</p>
             </li>
             <li>
-                <span class="grid h-9 w-9 place-items-center rounded-md bg-primary text-primary-foreground text-sm font-bold">2</span>
-                <h3 class="mt-4 font-semibold">Survei lokasi</h3>
-                <p class="mt-2 text-sm text-muted-foreground leading-relaxed">Teknisi datang mengukur jarak ke tiang dan titik terbaik untuk router. Gratis.</p>
+                <span class="step-node">2</span>
+                <h3 class="mt-4 font-semibold text-hero-ink">Survei lokasi</h3>
+                <p class="mt-2 text-sm leading-relaxed text-hero-mute">Teknisi datang mengukur jarak ke tiang dan titik terbaik untuk router. Gratis.</p>
             </li>
             <li>
-                <span class="grid h-9 w-9 place-items-center rounded-md bg-primary text-primary-foreground text-sm font-bold">3</span>
-                <h3 class="mt-4 font-semibold">Pemasangan</h3>
-                <p class="mt-2 text-sm text-muted-foreground leading-relaxed">Kabel ditarik rapi, ONT dan router dipasang, kecepatan diuji di depan Anda.</p>
+                <span class="step-node">3</span>
+                <h3 class="mt-4 font-semibold text-hero-ink">Pemasangan</h3>
+                <p class="mt-2 text-sm leading-relaxed text-hero-mute">Kabel ditarik rapi, ONT dan router dipasang, kecepatan diuji di depan Anda.</p>
             </li>
             <li>
-                <span class="grid h-9 w-9 place-items-center rounded-md bg-primary text-primary-foreground text-sm font-bold">4</span>
-                <h3 class="mt-4 font-semibold">Aktif dan tagihan bulanan</h3>
-                <p class="mt-2 text-sm text-muted-foreground leading-relaxed">Anda mendapat kode pelanggan untuk cek tagihan. Pembayaran lewat transfer bank atau tunai kepada petugas resmi kami.</p>
+                <span class="step-node">4</span>
+                <h3 class="mt-4 font-semibold text-hero-ink">Aktif dan tagihan bulanan</h3>
+                <p class="mt-2 text-sm leading-relaxed text-hero-mute">Anda mendapat kode pelanggan untuk cek tagihan. Pembayaran lewat transfer bank atau tunai kepada petugas resmi kami.</p>
             </li>
         </ol>
     </div>
@@ -354,53 +364,47 @@ function svg_icon(string $name, string $class = 'h-5 w-5'): string {
 
 </main>
 
-<footer class="border-t border-border bg-card">
+<footer class="footer-band">
     <div class="container grid gap-10 py-14 md:grid-cols-[1.4fr_1fr_1fr]">
         <div class="max-w-[28rem]">
             <div class="flex items-center gap-3">
                 <?php if ($logo): ?><img src="<?= htmlspecialchars($logo) ?>" alt="" class="h-8 w-auto object-contain"><?php endif; ?>
-                <span class="font-bold text-lg"><?= htmlspecialchars($brand) ?></span>
+                <span class="font-display text-lg font-semibold"><?= htmlspecialchars($brand) ?></span>
             </div>
-            <p class="mt-3 text-sm text-muted-foreground leading-relaxed"><?= htmlspecialchars($comp_name) ?><?= $address ? '. ' . htmlspecialchars($address) : '' ?>.</p>
+            <p class="mt-3 text-sm leading-relaxed text-hero-mute"><?= htmlspecialchars($comp_name) ?><?= $address ? '. ' . htmlspecialchars($address) : '' ?>.</p>
             <?php if ($phone_display): ?>
-            <p class="mt-3 text-sm">WhatsApp dan telepon: <a href="<?= htmlspecialchars($wa_link) ?>" target="_blank" rel="noopener" class="font-semibold"><?= htmlspecialchars($phone_display) ?></a></p>
+            <p class="mt-3 text-sm text-hero-mute">WhatsApp dan telepon: <a href="<?= htmlspecialchars($wa_link) ?>" target="_blank" rel="noopener" class="font-semibold text-hero-ink"><?= htmlspecialchars($phone_display) ?></a></p>
             <?php endif; ?>
+            <?php // The two things a subscriber checks when something feels slow. ?>
+            <div class="mt-6 flex flex-wrap gap-2">
+                <a href="http://fibernodeinternet.com:3004" target="_blank" rel="noopener" class="footer-op"><?= svg_icon('activity', 'h-4 w-4') ?> Tes kecepatan</a>
+                <a href="http://fibernodeinternet.com:3001/status/server" target="_blank" rel="noopener" class="footer-op"><?= svg_icon('shield', 'h-4 w-4') ?> Status jaringan</a>
+            </div>
         </div>
         <div>
-            <p class="font-semibold">Pelanggan</p>
-            <ul class="mt-3 space-y-2 text-sm text-muted-foreground">
-                <li><a href="#tagihan" class="hover:text-foreground">Cek tagihan</a></li>
-                <li><a href="#paket" class="hover:text-foreground">Paket dan harga</a></li>
-                <li><a href="http://fibernodeinternet.com:3004" target="_blank" rel="noopener" class="hover:text-foreground">Tes kecepatan</a></li>
-                <li><a href="http://fibernodeinternet.com:3001/status/server" target="_blank" rel="noopener" class="hover:text-foreground">Status jaringan</a></li>
+            <p class="font-semibold text-hero-ink">Pelanggan</p>
+            <ul class="mt-3 space-y-2 text-sm">
+                <li><a href="#tagihan" class="footer-link">Cek tagihan</a></li>
+                <li><a href="#paket" class="footer-link">Paket dan harga</a></li>
+                <li><a href="#cara" class="footer-link">Cara berlangganan</a></li>
             </ul>
         </div>
         <div>
-            <p class="font-semibold">Perusahaan</p>
-            <ul class="mt-3 space-y-2 text-sm text-muted-foreground">
-                <li><a href="#tentang" class="hover:text-foreground">Tentang kami</a></li>
-                <li><a href="<?= htmlspecialchars($wa_link) ?>" target="_blank" rel="noopener" class="hover:text-foreground">Hubungi kami</a></li>
-                <li><a href="index.php?page=login" class="hover:text-foreground">Masuk aplikasi</a></li>
+            <p class="font-semibold text-hero-ink">Perusahaan</p>
+            <ul class="mt-3 space-y-2 text-sm">
+                <li><a href="#tentang" class="footer-link">Tentang kami</a></li>
+                <li><a href="<?= htmlspecialchars($wa_link) ?>" target="_blank" rel="noopener" class="footer-link">Hubungi kami</a></li>
+                <li><a href="index.php?page=login" class="footer-link">Masuk aplikasi</a></li>
             </ul>
         </div>
     </div>
-    <div class="border-t border-border">
-        <div class="container flex flex-col gap-2 py-5 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+    <div class="border-t border-white/10">
+        <div class="container flex flex-col gap-2 py-5 text-sm text-hero-mute sm:flex-row sm:items-center sm:justify-between">
             <span>&copy; <?= date('Y') ?> <?= htmlspecialchars($comp_name) ?>. Hak cipta dilindungi.</span>
             <span>Layanan dan penagihan dikelola dengan EinvaBill.</span>
         </div>
     </div>
 </footer>
 
-<script>
-function toggleMobileMenu() {
-    const menu = document.getElementById('mobileMenu');
-    const btn = document.getElementById('menuBtn');
-    const open = menu.classList.toggle('hidden') === false;
-    document.getElementById('menuIconOpen').classList.toggle('hidden', open);
-    document.getElementById('menuIconClose').classList.toggle('hidden', !open);
-    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-}
-</script>
 </body>
 </html>

@@ -74,6 +74,44 @@
     .fiber-route svg { height: 56px; }
   }
 
+  /* ---------- Dark bands further down the page ---------- */
+  /* The page alternates between the network side (dark) and the customer side
+     (light) rather than wearing the dark only as a hat. */
+  .net-band { @apply bg-hero text-hero-ink; }
+  .net-band h2 { @apply text-hero-ink; }
+  .net-band p { @apply text-hero-mute; }
+
+  /* Steps sit on the same cable the hero drew, so the sequence reads as a route
+     rather than four unrelated cards. */
+  .step-track { @apply relative; }
+  .step-node {
+    @apply relative z-10 grid h-9 w-9 place-items-center rounded-full font-display text-sm font-semibold;
+    background: theme('colors.hero.DEFAULT');
+    color: theme('colors.hero.fiber');
+    box-shadow: inset 0 0 0 2px theme('colors.hero.fiber');
+  }
+  @media (min-width: 1024px) {
+    .step-track::before {
+      content: "";
+      @apply absolute left-0 right-0 top-[17px] h-0.5;
+      background: linear-gradient(90deg, transparent, rgb(233 169 60 / .5) 7%, rgb(233 169 60 / .5) 93%, transparent);
+    }
+  }
+
+  /* ---------- Packages as a spec sheet ---------- */
+  .pkg-speed { @apply font-display text-[2.75rem] font-semibold leading-none tabular-nums; }
+  .pkg-meter { @apply mt-3 h-1 w-full overflow-hidden rounded-full bg-muted; }
+  .pkg-meter span { @apply block h-full rounded-full bg-primary; }
+  .pkg-row { @apply flex items-center gap-2.5 border-t border-border py-2.5 text-[15px]; }
+
+  /* ---------- Footer ---------- */
+  /* The amber hairline is the cable arriving at the end of the page. */
+  .footer-band { @apply bg-hero text-hero-ink; border-top: 2px solid theme('colors.hero.fiber'); }
+  .footer-link { @apply text-hero-mute transition-colors hover:text-hero-ink; }
+  .footer-op {
+    @apply inline-flex items-center gap-2 rounded-md border border-white/15 px-3 py-2 text-sm font-medium text-hero-ink transition-colors hover:bg-white/[.08];
+  }
+
   .marquee { @apply relative overflow-hidden; -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent); }
   .marquee-track { @apply flex w-max; animation: marquee 32s linear infinite; }
   .marquee:hover .marquee-track { animation-play-state: paused; }
