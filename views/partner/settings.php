@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Handle QRIS Upload (validated: extension allowlist, real MIME type, random name)
     if (isset($_FILES['brand_qris']) && $_FILES['brand_qris']['error'] !== UPLOAD_ERR_NO_FILE) {
-        $up = save_uploaded_image($_FILES['brand_qris'], $fs_upload_dir, 'qris_' . intval($u_id));
+        $up = save_uploaded_image($_FILES['brand_qris'], $fs_upload_dir, 'qris_' . intval($u_id), 1200);
         if ($up['ok']) {
             $qris_path = $web_upload_dir . $up['filename'];
         } else {

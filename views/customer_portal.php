@@ -65,7 +65,7 @@ $active_banners = $db->query("SELECT * FROM banners WHERE is_active = 1 AND targ
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cek Tagihan - <?= htmlspecialchars($comp_name) ?></title>
-    <link rel="stylesheet" href="public/style.css">
+    <link rel="stylesheet" href="<?= asset_url('public/style.css') ?>">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
     <style>
         .portal-container { max-width: 700px; margin: 0 auto; padding: 20px; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; }

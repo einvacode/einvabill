@@ -97,10 +97,10 @@ function nav_heading(string $text): string {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="public/style.css">
-    <link rel="stylesheet" href="public/ui.css">
+    <link rel="stylesheet" href="<?= asset_url('public/style.css') ?>">
+    <link rel="stylesheet" href="<?= asset_url('public/ui.css') ?>">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="public/tw-app.css">
+    <link rel="stylesheet" href="<?= asset_url('public/tw-app.css') ?>">
     <script>
         // Global WhatsApp API Constants (Available to all sub-views)
         window.WAGatewayCID = '<?= ($_SESSION["user_role"] === "admin") ? "admin_" . ($_SESSION["tenant_id"] ?? 1) : "u_" . ($_SESSION["user_id"] ?? "guest") ?>';

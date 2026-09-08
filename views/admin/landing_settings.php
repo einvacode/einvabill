@@ -72,7 +72,7 @@ if ($action === 'delete_package') {
 // Handle Powered By Logo Upload (UNLIMITED)
 if ($action === 'add_logo' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_FILES['logo_file'])) {
-        $up = save_uploaded_image($_FILES['logo_file'], __DIR__ . '/../../public/uploads', 'logo');
+        $up = save_uploaded_image($_FILES['logo_file'], __DIR__ . '/../../public/uploads', 'logo', 800);
         if ($up['ok']) {
             $path = 'public/uploads/' . $up['filename'];
             $tenant_id = $_SESSION['tenant_id'] ?? 1;

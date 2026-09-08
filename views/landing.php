@@ -64,7 +64,7 @@ function svg_icon(string $name, string $class = 'h-5 w-5'): string {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="public/tw-landing.css">
+    <link rel="stylesheet" href="<?= asset_url('public/tw-landing.css') ?>">
 </head>
 <body>
 

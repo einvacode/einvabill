@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Handle File Upload (validated: extension allowlist, real MIME type, random name)
     $upload_dir = __DIR__ . '/../../public/uploads';
     if (isset($_FILES['logo_file']) && $_FILES['logo_file']['error'] !== UPLOAD_ERR_NO_FILE) {
-        $up = save_uploaded_image($_FILES['logo_file'], $upload_dir, 'logo');
+        $up = save_uploaded_image($_FILES['logo_file'], $upload_dir, 'logo', 800);
         if ($up['ok']) {
             $company_logo = 'public/uploads/' . $up['filename'];
         } else {
@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Handle QRIS Upload
     if (isset($_FILES['qris_file']) && $_FILES['qris_file']['error'] !== UPLOAD_ERR_NO_FILE) {
-        $up = save_uploaded_image($_FILES['qris_file'], $upload_dir, 'qris');
+        $up = save_uploaded_image($_FILES['qris_file'], $upload_dir, 'qris', 1200);
         if ($up['ok']) {
             $company_qris = 'public/uploads/' . $up['filename'];
         } else {

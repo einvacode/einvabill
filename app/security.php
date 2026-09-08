@@ -106,6 +106,68 @@ function csrf_require(): void {
 // ---------------------------------------------------------------------
 
 /**
+ * Shrink an oversized image in place.
+ *
+ * A phone camera or a press-kit logo routinely arrives at several thousand
+ * pixels wide; the app never shows an image larger than about 1200. Left alone
+ * those files are downloaded in full on every page that shows them — the
+ * company logo alone was 2 MB on every screen of the app.
+ *
+ * Silently does nothing when GD is missing or the file is already small enough,
+ * and keeps the original whenever re-encoding would not actually be smaller.
+ *
+ * @return bool true when the file on disk was replaced with a smaller one.
+ */
+function image_downscale(string $path, int $max_side = 1600, int $quality = 82): bool {
+    if (!function_exists('imagecreatetruecolor')) return false; // GD not installed
+    $info = @getimagesize($path);
+    if (!$info) return false;
+    [$w, $h] = $info;
+    $type = $info[2];
+    $bytes = @filesize($path) ?: 0;
+    if (max($w, $h) <= $max_side && $bytes < 300 * 1024) return false;
+
+    switch ($type) {
+        case IMAGETYPE_JPEG: $src = @imagecreatefromjpeg($path); break;
+        case IMAGETYPE_PNG:  $src = @imagecreatefrompng($path); break;
+        case IMAGETYPE_GIF:  $src = @imagecreatefromgif($path); break;
+        case IMAGETYPE_WEBP: $src = function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($path) : null; break;
+        default: return false;
+    }
+    if (!$src) return false;
+
+    $scale = min(1, $max_side / max($w, $h));
+    $nw = max(1, (int) round($w * $scale));
+    $nh = max(1, (int) round($h * $scale));
+
+    $dst = imagecreatetruecolor($nw, $nh);
+    if ($type === IMAGETYPE_PNG || $type === IMAGETYPE_GIF || $type === IMAGETYPE_WEBP) {
+        imagealphablending($dst, false);
+        imagesavealpha($dst, true);
+        imagefill($dst, 0, 0, imagecolorallocatealpha($dst, 0, 0, 0, 127));
+    }
+    imagecopyresampled($dst, $src, 0, 0, 0, 0, $nw, $nh, $w, $h);
+    imagedestroy($src);
+
+    $tmp = $path . '.tmp';
+    $ok = false;
+    switch ($type) {
+        case IMAGETYPE_JPEG: $ok = imagejpeg($dst, $tmp, $quality); break;
+        case IMAGETYPE_PNG:  $ok = imagepng($dst, $tmp, 8); break;
+        case IMAGETYPE_GIF:  $ok = imagegif($dst, $tmp); break;
+        case IMAGETYPE_WEBP: $ok = function_exists('imagewebp') ? imagewebp($dst, $tmp, $quality) : false; break;
+    }
+    imagedestroy($dst);
+    if (!$ok || !is_file($tmp)) { @unlink($tmp); return false; }
+
+    // Only keep the new file when it is actually smaller.
+    if (filesize($tmp) >= $bytes && max($w, $h) <= $max_side) { @unlink($tmp); return false; }
+    if (!@rename($tmp, $path)) { @unlink($tmp); return false; }
+    @chmod($path, 0644);
+    return true;
+}
+
+/**
  * Validate and store an uploaded image.
  *
  * Checks the PHP upload status, the extension against an allowlist, the
@@ -115,9 +177,10 @@ function csrf_require(): void {
  * @param array  $file    One entry of $_FILES.
  * @param string $dir_fs  Destination directory on disk (created if missing).
  * @param string $prefix  Filename prefix, e.g. "logo".
+ * @param int    $max_side Longest side kept after upload; anything larger is scaled down.
  * @return array{ok:bool,filename?:string,error?:string}
  */
-function save_uploaded_image(array $file, string $dir_fs, string $prefix = 'img'): array {
+function save_uploaded_image(array $file, string $dir_fs, string $prefix = 'img', int $max_side = 1600): array {
     if (!isset($file['error']) || $file['error'] !== UPLOAD_ERR_OK) {
         return ['ok' => false, 'error' => 'Upload gagal atau file kosong.'];
     }
@@ -161,6 +224,7 @@ function save_uploaded_image(array $file, string $dir_fs, string $prefix = 'img'
         return ['ok' => false, 'error' => 'Gagal menyimpan file.'];
     }
     @chmod($dir_fs . '/' . $filename, 0644);
+    image_downscale($dir_fs . '/' . $filename, $max_side);
     return ['ok' => true, 'filename' => $filename];
 }
 

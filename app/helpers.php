@@ -99,3 +99,18 @@ if (!function_exists('render_wa_status_badge')) {
         }
     }
 }
+
+/**
+ * Static asset URL with a cache-busting stamp.
+ *
+ * The compiled stylesheets keep the same filename across deploys, so without
+ * this every release needed a hard refresh before the new CSS showed up. With
+ * the file time in the query the browser fetches the new file on its own, and
+ * the server is free to cache the old one for a year.
+ */
+function asset_url(string $rel): string {
+    $rel = ltrim($rel, '/');
+    $fs = __DIR__ . '/../' . $rel;
+    $v = @filemtime($fs);
+    return $v ? $rel . '?v=' . $v : $rel;
+}
