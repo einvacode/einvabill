@@ -820,6 +820,20 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         try { $routers = $db->query("SELECT * FROM routers WHERE tenant_id = $tenant_id")->fetchAll(); } catch(Exception $e) {}
         $customers = $db->query("SELECT id, customer_code, name, type, contact, address, package_name, monthly_fee, area, router_id, pppoe_name, created_by, collector_id FROM customers WHERE 1=1 $where_type $where_collector $where_search $scope_where ORDER BY id DESC LIMIT $items_per_page OFFSET $offset")->fetchAll();
 
+        // Reminder text for the row buttons: the saved template, with this
+        // customer's real outstanding rather than a generic sentence.
+        $list_settings = $db->query("SELECT company_name, wa_template, bank_account, site_url FROM settings WHERE tenant_id = $tenant_id")->fetch() ?: [];
+        $list_me = $db->query("SELECT wa_template FROM users WHERE id = " . intval($_SESSION['user_id'] ?? 0))->fetch() ?: [];
+        $list_tpl = !empty($list_me['wa_template']) ? $list_me['wa_template'] : ($list_settings['wa_template'] ?? "Halo {nama}, tagihan internet Anda {tagihan} jatuh tempo pada {jatuh_tempo}. Transfer ke {rekening}");
+        $list_base = !empty($list_settings['site_url']) ? rtrim($list_settings['site_url'], '/') : get_app_url();
+        $list_due = [];
+        if ($customers) {
+            $ids = implode(',', array_map(fn($x) => intval($x['id']), $customers));
+            foreach ($db->query("SELECT customer_id, COALESCE(SUM(amount - COALESCE(discount,0)),0) AS sisa, MIN(due_date) AS due FROM invoices WHERE tenant_id = $tenant_id AND status <> 'Lunas' AND customer_id IN ($ids) GROUP BY customer_id") as $r) {
+                $list_due[(int)$r['customer_id']] = $r;
+            }
+        }
+
         foreach($customers as $c):
             $rtName = '-';
             foreach($routers as $r) { if($r['id'] == ($c['router_id'] ?? 0)) $rtName = $r['name']; }
@@ -944,9 +958,23 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
                             <?php
                             $wa_number = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $c['contact']));
-                            $wa_text = "Halo " . urlencode($c['name']) . ", tagihan internet Anda sebesar Rp " . number_format($c['monthly_fee'], 0, ',', '.') . " telah tersedia. Mohon segera melakukan pembayaran.";
+                            $c_due = $list_due[(int)$c['id']] ?? null;
+                            $c_sisa = $c_due ? (float)$c_due['sisa'] : 0;
+                            $wa_text = parse_wa_template($list_tpl, [
+                                'name' => $c['name'],
+                                'id_cust' => $c['customer_code'] ?: $c['id'],
+                                'package' => $c['package_name'] ?: '-',
+                                'period' => $c_due && $c_due['due'] ? date('F Y', strtotime($c_due['due'])) : date('F Y'),
+                                'tagihan' => $c_sisa > 0 ? $c_sisa : (float)$c['monthly_fee'],
+                                'tunggakan' => $c_sisa,
+                                'total_payment' => $c_sisa > 0 ? $c_sisa : (float)$c['monthly_fee'],
+                                'due_date' => $c_due && $c_due['due'] ? date('d/m/Y', strtotime($c_due['due'])) : '-',
+                                'rekening' => trim((string)($list_settings['bank_account'] ?? '')),
+                                'company_name' => $list_settings['company_name'] ?? '',
+                                'portal_link' => $list_base . '/index.php?page=customer_portal&code=' . urlencode($c['customer_code'] ?: $c['id']),
+                            ]);
                             ?>
-                            <button onclick="sendWAGateway('<?= $wa_number ?>', <?= htmlspecialchars(json_encode($wa_text)) ?>, 'https://api.whatsapp.com/send?phone=<?= $wa_number ?>&text=<?= $wa_text ?>', this)" class="ui-btn ui-btn-sm ui-btn-wa" title="Kirim WA"><i class="fab fa-whatsapp"></i></button>
+                            <button onclick="sendWAGateway('<?= $wa_number ?>', <?= htmlspecialchars(json_encode($wa_text)) ?>, null, this)" class="ui-btn ui-btn-sm ui-btn-wa" title="Kirim WA"><i class="fab fa-whatsapp"></i></button>
                             </div>
                         </td>
                     </tr>

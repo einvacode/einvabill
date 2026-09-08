@@ -627,15 +627,27 @@ if ($action === 'print') {
                         <?= strtoupper($row['status']) ?>
                         <span class="compact-inline-actions">
                         <?php if($row['status'] == 'Lunas'): 
-                            $settings = $db->query("SELECT wa_template_paid, company_name, site_url FROM settings WHERE id=1")->fetch();
+                            $settings = $db->query("SELECT wa_template_paid, company_name, site_url, bank_account FROM settings WHERE id=1")->fetch();
                             $wa_num = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $row['contact']));
                             $cust_id_display = $row['customer_code'] ?: str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT);
                             $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . $cust_id_display;
                             
-                            $receipt_msg = str_replace(
-                                ['{nama}', '{total_bayar}', '{bulan}', '{link_tagihan}', '{perusahaan}'], 
-                                [$row['customer_name'], 'Rp ' . number_format($row['amount'], 0, ',', '.'), date('m/Y', strtotime($row['due_date'])), $portal_link, $settings['company_name']], 
-                                $settings['wa_template_paid'] ?: "Halo {nama}, pembayaran {total_bayar} sudah lunas. Cek nota: {link_tagihan}"
+                            $receipt_msg = parse_wa_template(
+                                $settings['wa_template_paid'] ?: "Halo {nama}, pembayaran {total_bayar} sudah lunas. Cek nota: {link_tagihan}",
+                                [
+                                    'name' => $row['customer_name'],
+                                    'id_cust' => $cust_id_display,
+                                    'period' => date('F Y', strtotime($row['due_date'])),
+                                    'tagihan' => (float)$row['amount'],
+                                    'total_paid' => (float)$row['amount'],
+                                    'total_payment' => (float)$row['amount'],
+                                    'due_date' => date('d/m/Y', strtotime($row['due_date'])),
+                                    'rekening' => trim((string)($settings['bank_account'] ?? '')),
+                                    'company_name' => $settings['company_name'] ?? '',
+                                    'admin_name' => $_SESSION['user_name'] ?? 'Admin',
+                                    'portal_link' => $portal_link,
+                                    'payment_status' => 'LUNAS',
+                                ]
                             );
                             $wa_link = "https://api.whatsapp.com/send?phone=$wa_num&text=" . urlencode($receipt_msg);
                         ?>
@@ -859,15 +871,27 @@ if ($action === 'print') {
             </div>
             <?php if($row['status'] == 'Lunas'):
                 $tenant_id = $_SESSION['tenant_id'] ?? 1;
-                $settings = $db->query("SELECT wa_template_paid, company_name, site_url FROM settings WHERE tenant_id = $tenant_id")->fetch();
+                $settings = $db->query("SELECT wa_template_paid, company_name, site_url, bank_account FROM settings WHERE tenant_id = $tenant_id")->fetch();
                 if (!$settings) $settings = ['wa_template_paid' => '', 'company_name' => 'ISP', 'site_url' => ''];
                 $wa_num = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $row['contact']));
                 $cust_id_display = $row['customer_code'] ?: str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT);
                 $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . $cust_id_display;
-                $receipt_msg = str_replace(
-                    ['{nama}', '{total_bayar}', '{bulan}', '{link_tagihan}', '{perusahaan}'],
-                    [$row['customer_name'], 'Rp ' . number_format($row['amount'], 0, ',', '.'), date('m/Y', strtotime($row['due_date'])), $portal_link, $settings['company_name']],
-                    $settings['wa_template_paid'] ?: "Halo {nama}, pembayaran {total_bayar} sudah lunas. Cek nota: {link_tagihan}"
+                $receipt_msg = parse_wa_template(
+                    $settings['wa_template_paid'] ?: "Halo {nama}, pembayaran {total_bayar} sudah lunas. Cek nota: {link_tagihan}",
+                    [
+                        'name' => $row['customer_name'],
+                        'id_cust' => $cust_id_display,
+                        'period' => date('F Y', strtotime($row['due_date'])),
+                        'tagihan' => (float)$row['amount'],
+                        'total_paid' => (float)$row['amount'],
+                        'total_payment' => (float)$row['amount'],
+                        'due_date' => date('d/m/Y', strtotime($row['due_date'])),
+                        'rekening' => trim((string)($settings['bank_account'] ?? '')),
+                        'company_name' => $settings['company_name'] ?? '',
+                        'admin_name' => $_SESSION['user_name'] ?? 'Admin',
+                        'portal_link' => $portal_link,
+                        'payment_status' => 'LUNAS',
+                    ]
                 );
                 $wa_link = "https://api.whatsapp.com/send?phone=$wa_num&text=" . urlencode($receipt_msg);
             ?>
@@ -932,14 +956,26 @@ if ($action === 'print') {
                         <div class="flex items-center justify-end gap-1.5">
                         <span class="ui-badge <?= $row['status'] == 'Lunas' ? 'ui-badge-signal' : 'ui-badge-danger' ?>"><?= $row['status'] == 'Lunas' ? 'Lunas' : 'Belum lunas' ?></span>
                         <?php if($row['status'] == 'Lunas'):
-                            $settings = $db->query("SELECT wa_template_paid, company_name, site_url FROM settings WHERE id=1")->fetch();
+                            $settings = $db->query("SELECT wa_template_paid, company_name, site_url, bank_account FROM settings WHERE id=1")->fetch();
                             $wa_num = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $row['contact']));
                             $cust_id_display = $row['customer_code'] ?: str_pad($row['invoice_id'], 5, "0", STR_PAD_LEFT);
                             $portal_link = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . $cust_id_display;
-                            $receipt_msg = str_replace(
-                                ['{nama}', '{total_bayar}', '{bulan}', '{link_tagihan}', '{perusahaan}'],
-                                [$row['customer_name'], 'Rp ' . number_format($row['amount'], 0, ',', '.'), date('m/Y', strtotime($row['due_date'])), $portal_link, $settings['company_name']],
-                                $settings['wa_template_paid'] ?: "Halo {nama}, pembayaran {total_bayar} sudah lunas. Cek nota: {link_tagihan}"
+                            $receipt_msg = parse_wa_template(
+                                $settings['wa_template_paid'] ?: "Halo {nama}, pembayaran {total_bayar} sudah lunas. Cek nota: {link_tagihan}",
+                                [
+                                    'name' => $row['customer_name'],
+                                    'id_cust' => $cust_id_display,
+                                    'period' => date('F Y', strtotime($row['due_date'])),
+                                    'tagihan' => (float)$row['amount'],
+                                    'total_paid' => (float)$row['amount'],
+                                    'total_payment' => (float)$row['amount'],
+                                    'due_date' => date('d/m/Y', strtotime($row['due_date'])),
+                                    'rekening' => trim((string)($settings['bank_account'] ?? '')),
+                                    'company_name' => $settings['company_name'] ?? '',
+                                    'admin_name' => $_SESSION['user_name'] ?? 'Admin',
+                                    'portal_link' => $portal_link,
+                                    'payment_status' => 'LUNAS',
+                                ]
                             );
                             $wa_link = "https://api.whatsapp.com/send?phone=$wa_num&text=" . urlencode($receipt_msg);
                         ?>

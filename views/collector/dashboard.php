@@ -830,11 +830,20 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                         $mon_label = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
                         $curr_month = $mon_label[intval(date('m')) - 1] . ' ' . date('Y');
                         $portal_link_rem = $base_url . "/index.php?page=customer_portal&code=" . $cust_id_display;
-                        $rem_msg = str_replace(
-                            ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{link_tagihan}'],
-                            [$ac['name'], '*' . $cust_id_display . '*', $ac['package_name'], $curr_month, '*Rp ' . number_format($ac['monthly_fee'], 0, ',', '.') . '*', '*' . $ac['billing_date'] . ' ' . $curr_month . '*', '*' . trim($settings['bank_account']) . '*', $portal_link_rem],
-                            $wa_tpl
-                        );
+                        $rem_msg = parse_wa_template($wa_tpl, [
+                                'name' => $ac['name'],
+                                'id_cust' => '*' . $cust_id_display . '*',
+                                'package' => $ac['package_name'],
+                                'period' => $curr_month,
+                                'tagihan' => '*Rp ' . number_format($ac['monthly_fee'], 0, ',', '.') . '*',
+                                'due_date' => '*' . $ac['billing_date'] . ' ' . $curr_month . '*',
+                                'rekening' => '*' . trim($settings['bank_account']) . '*',
+                                'tunggakan' => 0,
+                                'total_payment' => (float)$ac['monthly_fee'],
+                                'company_name' => $settings['company_name'] ?? '',
+                                'admin_name' => $_SESSION['user_name'] ?? 'Petugas',
+                                'portal_link' => $portal_link_rem,
+                        ]);
                         $rem_wa_link = "https://api.whatsapp.com/send?phone=$wa_num&text=" . urlencode($rem_msg);
                     ?>
                     <button class="ui-btn ui-btn-sm ui-btn-wa w-9 px-0" onclick="sendWAGateway('<?= $wa_num ?>', <?= htmlspecialchars(json_encode($rem_msg)) ?>, '<?= $rem_wa_link ?>', this)" title="Kirim pengingat WhatsApp" aria-label="Kirim pengingat WhatsApp">
@@ -909,11 +918,20 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                                 $mon_label = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
                                 $curr_month = $mon_label[intval(date('m')) - 1] . ' ' . date('Y');
                                 $portal_link_rem = $base_url . "/index.php?page=customer_portal&code=" . $cust_id_display;
-                                $rem_msg = str_replace(
-                                    ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{link_tagihan}'],
-                                    [$ac['name'], '*' . $cust_id_display . '*', $ac['package_name'], $curr_month, '*Rp ' . number_format($ac['monthly_fee'], 0, ',', '.') . '*', '*' . $ac['billing_date'] . ' ' . $curr_month . '*', '*' . trim($settings['bank_account']) . '*', $portal_link_rem],
-                                    $wa_tpl
-                                );
+                                $rem_msg = parse_wa_template($wa_tpl, [
+                                        'name' => $ac['name'],
+                                        'id_cust' => '*' . $cust_id_display . '*',
+                                        'package' => $ac['package_name'],
+                                        'period' => $curr_month,
+                                        'tagihan' => '*Rp ' . number_format($ac['monthly_fee'], 0, ',', '.') . '*',
+                                        'due_date' => '*' . $ac['billing_date'] . ' ' . $curr_month . '*',
+                                        'rekening' => '*' . trim($settings['bank_account']) . '*',
+                                        'tunggakan' => 0,
+                                        'total_payment' => (float)$ac['monthly_fee'],
+                                        'company_name' => $settings['company_name'] ?? '',
+                                        'admin_name' => $_SESSION['user_name'] ?? 'Petugas',
+                                        'portal_link' => $portal_link_rem,
+                                ]);
                                 $rem_wa_link = "https://api.whatsapp.com/send?phone=$wa_num&text=" . urlencode($rem_msg);
                             ?>
                                 <button onclick="sendWAGateway('<?= $wa_num ?>', <?= htmlspecialchars(json_encode($rem_msg)) ?>, '<?= $rem_wa_link ?>', this)" class="ui-btn ui-btn-sm ui-btn-wa" title="Kirim pesan tagihan" aria-label="Kirim pesan tagihan">
@@ -997,11 +1015,20 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                                     $portal_link_rem = $base_url . "/index.php?page=customer_portal&code=" . $cust_id_t;
 
                                     // Calculate total due for reminder
-                                    $rem_msg_t = str_replace(
-                                        ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{total_harus}', '{link_tagihan}'],
-                                        [$ui['name'], '*' . $cust_id_t . '*', $ui['package_name'], $ui['num_arrears'] . ' Bulan', '*Rp ' . number_format($ui['total_unpaid'], 0, ',', '.') . '*', '*' . date('d/m/Y', strtotime($ui['oldest_due_date'])) . '*', '*' . trim($settings['bank_account']) . '*', '*Rp ' . number_format($ui['total_unpaid'], 0, ',', '.') . '*', $portal_link_rem],
-                                        $wa_tpl
-                                    );
+                                    $rem_msg_t = parse_wa_template($wa_tpl, [
+                                            'name' => $ui['name'],
+                                            'id_cust' => '*' . $cust_id_t . '*',
+                                            'package' => $ui['package_name'],
+                                            'period' => $ui['num_arrears'] . ' Bulan',
+                                            'tagihan' => '*Rp ' . number_format($ui['total_unpaid'], 0, ',', '.') . '*',
+                                            'due_date' => '*' . date('d/m/Y', strtotime($ui['oldest_due_date'])) . '*',
+                                            'rekening' => '*' . trim($settings['bank_account']) . '*',
+                                            'tunggakan' => '*Rp ' . number_format($ui['total_unpaid'], 0, ',', '.') . '*',
+                                            'total_payment' => '*Rp ' . number_format($ui['total_unpaid'], 0, ',', '.') . '*',
+                                            'company_name' => $settings['company_name'] ?? '',
+                                            'admin_name' => $_SESSION['user_name'] ?? 'Petugas',
+                                            'portal_link' => $portal_link_rem,
+                                    ]);
                                     $rem_wa_link_t = "https://api.whatsapp.com/send?phone=$wa_num_t&text=" . urlencode($rem_msg_t);
                                 ?>
                                 <button onclick="sendWAGateway('<?= $wa_num_t ?>', <?= htmlspecialchars(json_encode($rem_msg_t)) ?>, '<?= $rem_wa_link_t ?>', this)" class="ui-btn ui-btn-sm ui-btn-wa" title="Pengingat WhatsApp" aria-label="Pengingat WhatsApp">
@@ -1049,11 +1076,20 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                     $curr_month = $mon_label[intval(date('m')) - 1] . ' ' . date('Y');
                     $portal_link_rem = $base_url . "/index.php?page=customer_portal&code=" . $cust_id_t;
 
-                    $rem_msg_t = str_replace(
-                        ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{jatuh_tempo}', '{rekening}', '{total_harus}', '{link_tagihan}'],
-                        [$ui['name'], '*' . $cust_id_t . '*', $ui['package_name'], $ui['num_arrears'] . ' Bulan', '*Rp ' . number_format($ui['total_unpaid'], 0, ',', '.') . '*', '*' . date('d/m/Y', strtotime($ui['oldest_due_date'])) . '*', '*' . trim($settings['bank_account']) . '*', '*Rp ' . number_format($ui['total_unpaid'], 0, ',', '.') . '*', $portal_link_rem],
-                        $wa_tpl
-                    );
+                    $rem_msg_t = parse_wa_template($wa_tpl, [
+                            'name' => $ui['name'],
+                            'id_cust' => '*' . $cust_id_t . '*',
+                            'package' => $ui['package_name'],
+                            'period' => $ui['num_arrears'] . ' Bulan',
+                            'tagihan' => '*Rp ' . number_format($ui['total_unpaid'], 0, ',', '.') . '*',
+                            'due_date' => '*' . date('d/m/Y', strtotime($ui['oldest_due_date'])) . '*',
+                            'rekening' => '*' . trim($settings['bank_account']) . '*',
+                            'tunggakan' => '*Rp ' . number_format($ui['total_unpaid'], 0, ',', '.') . '*',
+                            'total_payment' => '*Rp ' . number_format($ui['total_unpaid'], 0, ',', '.') . '*',
+                            'company_name' => $settings['company_name'] ?? '',
+                            'admin_name' => $_SESSION['user_name'] ?? 'Petugas',
+                            'portal_link' => $portal_link_rem,
+                    ]);
                     $rem_wa_link_t = "https://api.whatsapp.com/send?phone=$wa_num_t&text=" . urlencode($rem_msg_t);
                 ?>
                 <button onclick="sendWAGateway('<?= $wa_num_t ?>', <?= htmlspecialchars(json_encode($rem_msg_t)) ?>, '<?= $rem_wa_link_t ?>', this)" class="ui-btn ui-btn-sm ui-btn-wa w-9 px-0" title="Pengingat WhatsApp" aria-label="Pengingat WhatsApp">
@@ -1115,22 +1151,22 @@ $coll_tab = $_GET['tab'] ?? 'tugas';
                         $bulan_rp = date('m/Y', strtotime($rp['due_date']));
 
                         $portal_link_rp = ($settings['site_url'] ?? 'http://fibernodeinternet.com') . "/index.php?page=customer_portal&code=" . ($rp['customer_code'] ?: $rp['customer_id']);
-                        $parsed_msg_rp = str_replace(
-                            ['{nama}', '{id_cust}', '{paket}', '{bulan}', '{tagihan}', '{perusahaan}', '{tunggakan}', '{waktu_bayar}', '{admin}', '{link_tagihan}'],
-                            [
-                                $rp['name'],
-                                '*' . ($rp['customer_code'] ?: $rp['customer_id']) . '*',
-                                $rp['package_name'],
-                                $bulan_rp,
-                                '*Rp ' . number_format($rp['paid_amount'], 0, ',', '.') . '*',
-                                $settings['company_name'],
-                                '*Rp ' . number_format($rp['total_tunggakan'] ?? 0, 0, ',', '.') . '*',
-                                '*' . date('d/m/Y H:i', strtotime($rp['payment_date'])) . '*',
-                                '*' . ($rp['admin_name'] ?: 'System') . '*',
-                                $portal_link_rp
-                            ],
-                            $wa_tpl_paid
-                            );
+                        $parsed_msg_rp = parse_wa_template($wa_tpl_paid, [
+                            'name' => $rp['name'],
+                            'id_cust' => '*' . ($rp['customer_code'] ?: $rp['customer_id']) . '*',
+                            'package' => $rp['package_name'],
+                            'period' => $bulan_rp,
+                            'tagihan' => '*Rp ' . number_format($rp['paid_amount'], 0, ',', '.') . '*',
+                            'total_paid' => '*Rp ' . number_format($rp['paid_amount'], 0, ',', '.') . '*',
+                            'tunggakan' => '*Rp ' . number_format($rp['total_tunggakan'] ?? 0, 0, ',', '.') . '*',
+                            'sisa_tunggakan' => '*Rp ' . number_format($rp['total_tunggakan'] ?? 0, 0, ',', '.') . '*',
+                            'payment_time' => '*' . date('d/m/Y H:i', strtotime($rp['payment_date'])) . '*',
+                            'admin_name' => '*' . ($rp['admin_name'] ?: 'System') . '*',
+                            'company_name' => $settings['company_name'] ?? '',
+                            'rekening' => trim((string)($settings['bank_account'] ?? '')),
+                            'portal_link' => $portal_link_rp,
+                            'payment_status' => 'LUNAS',
+                        ]);
                         $parsed_msg_rp = str_ireplace('LUNAS', '*LUNAS*', $parsed_msg_rp);
                         $parsed_msg_rp = str_replace('**', '*', $parsed_msg_rp); // Clean up
                         $wa_msg_rp = urlencode($parsed_msg_rp);

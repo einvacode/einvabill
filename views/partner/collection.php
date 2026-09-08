@@ -802,27 +802,6 @@ function openFilterModal() {
     document.getElementById('filterModal').style.display = 'flex';
 }
 
-function sendReminder(btn) {
-    const wa_num = btn.getAttribute('data-phone');
-    const cust_name = btn.getAttribute('data-name');
-    const tagihan = btn.getAttribute('data-tagihan');
-    const paket = btn.getAttribute('data-paket');
-    const due_date = btn.getAttribute('data-due') || '<?= date('d/m/Y') ?>';
-    const link_portal = btn.getAttribute('data-link');
-    const sisa_tunggakan = btn.getAttribute('data-tunggakan') || 'Rp 0';
-
-    let tpl = `<?= str_replace(["\r", "\n"], ["", "\\n"], $wa_tpl) ?>`;
-    let msg = tpl.replace(/{nama}/g, cust_name)
-                .replace(/{tagihan}/g, tagihan)
-                .replace(/{paket}/g, paket)
-                .replace(/{jatuh_tempo}/g, due_date)
-                .replace(/{rekening}/g, `<?= str_replace(["\r", "\n"], ["", " "], $my_bank_info) ?>`)
-                .replace(/{tunggakan}/g, sisa_tunggakan)
-                .replace(/{link_tagihan}/g, link_portal);
-
-    const fallback = 'https://api.whatsapp.com/send?phone=' + wa_num + '&text=' + encodeURIComponent(msg);
-    sendWAGateway(wa_num, msg, fallback, btn);
-}
 </script>
 
 <?php
