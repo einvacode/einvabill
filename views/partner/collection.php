@@ -171,7 +171,9 @@ $cust_query = "
     SELECT c.*, 
     (SELECT COUNT(*) FROM invoices WHERE customer_id = c.id AND status = 'Belum Lunas' AND tenant_id = c.tenant_id) as unpaid_count,
     (SELECT COALESCE(SUM(amount - COALESCE(discount,0)),0) FROM invoices WHERE customer_id = c.id AND status = 'Belum Lunas' AND tenant_id = c.tenant_id) as unpaid_total,
-    (SELECT MIN(due_date) FROM invoices WHERE customer_id = c.id AND status = 'Belum Lunas' AND tenant_id = c.tenant_id) as oldest_due
+    (SELECT MIN(due_date) FROM invoices WHERE customer_id = c.id AND status = 'Belum Lunas' AND tenant_id = c.tenant_id) as oldest_due,
+    (SELECT p.amount FROM payments p JOIN invoices i2 ON i2.id = p.invoice_id WHERE i2.customer_id = c.id ORDER BY p.payment_date DESC LIMIT 1) as last_pay_amount,
+    (SELECT MAX(p.payment_date) FROM payments p JOIN invoices i2 ON i2.id = p.invoice_id WHERE i2.customer_id = c.id) as last_pay_date
     FROM customers c 
     WHERE 1=1 $partner_filter $where_search_cust 
     ORDER BY c.id DESC LIMIT $items_per_page OFFSET $off_cust
@@ -544,8 +546,33 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
                 <button type="button" onclick="sendWAGateway('<?= $wa_num ?>', <?= htmlspecialchars(json_encode($ac_msg)) ?>, null, this)" class="ui-btn ui-btn-wa" title="Kirim tagihan lewat WhatsApp">
                     <i class="fab fa-whatsapp"></i>
                 </button>
+                <?php elseif (!empty($ac['last_pay_date'])):
+                    // Already settled: send the receipt template instead of another bill.
+                    $mon_cust = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+                    $ac_pay = strtotime($ac['last_pay_date']);
+                    $ac_msg_paid = parse_wa_template($wa_tpl_paid, [
+                        'name' => $ac['name'],
+                        'id_cust' => $cust_id_display,
+                        'package' => $ac['package_name'] ?: '-',
+                        'period' => $mon_cust[(int) date('n', $ac_pay) - 1] . ' ' . date('Y', $ac_pay),
+                        'tagihan' => (float) ($ac['last_pay_amount'] ?? 0),
+                        'total_paid' => (float) ($ac['last_pay_amount'] ?? 0),
+                        'total_payment' => (float) ($ac['last_pay_amount'] ?? 0),
+                        'tunggakan' => 0,
+                        'sisa_tunggakan' => 0,
+                        'payment_time' => date('d/m/Y H:i', $ac_pay) . ' WIB',
+                        'payment_status' => 'LUNAS',
+                        'rekening' => $rekening_receipt,
+                        'company_name' => $settings['company_name'] ?? '',
+                        'admin_name' => $_SESSION['user_name'] ?? 'Admin',
+                        'portal_link' => $base_url . '/index.php?page=customer_portal&code=' . urlencode($ac['customer_code'] ?: $ac['id']),
+                    ]);
+                ?>
+                <button type="button" onclick="sendWAGateway('<?= $wa_num ?>', <?= htmlspecialchars(json_encode($ac_msg_paid)) ?>, null, this)" class="ui-btn ui-btn-wa" title="Kirim nota lunas lewat WhatsApp">
+                    <i class="fab fa-whatsapp"></i>
+                </button>
                 <?php else: ?>
-                <?php // Nothing owed, so no bill to send: just open the chat. ?>
+                <?php // Never billed and never paid: nothing to send, just open the chat. ?>
                 <a href="https://api.whatsapp.com/send?phone=<?= $wa_num ?>" target="_blank" class="ui-btn ui-btn-wa" title="Chat WhatsApp">
                     <i class="fab fa-whatsapp"></i>
                 </a>

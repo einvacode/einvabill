@@ -822,15 +822,21 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Reminder text for the row buttons: the saved template, with this
         // customer's real outstanding rather than a generic sentence.
-        $list_settings = $db->query("SELECT company_name, wa_template, bank_account, site_url FROM settings WHERE tenant_id = $tenant_id")->fetch() ?: [];
-        $list_me = $db->query("SELECT wa_template FROM users WHERE id = " . intval($_SESSION['user_id'] ?? 0))->fetch() ?: [];
+        $list_settings = $db->query("SELECT company_name, wa_template, wa_template_paid, bank_account, site_url FROM settings WHERE tenant_id = $tenant_id")->fetch() ?: [];
+        $list_me = $db->query("SELECT wa_template, wa_template_paid FROM users WHERE id = " . intval($_SESSION['user_id'] ?? 0))->fetch() ?: [];
         $list_tpl = !empty($list_me['wa_template']) ? $list_me['wa_template'] : ($list_settings['wa_template'] ?? "Halo {nama}, tagihan internet Anda {tagihan} jatuh tempo pada {jatuh_tempo}. Transfer ke {rekening}");
+        $list_tpl_paid = !empty($list_me['wa_template_paid']) ? $list_me['wa_template_paid'] : ($list_settings['wa_template_paid'] ?? "Halo {nama}, pembayaran {total_bayar} sudah kami terima. Terima kasih.");
         $list_base = !empty($list_settings['site_url']) ? rtrim($list_settings['site_url'], '/') : get_app_url();
         $list_due = [];
+        $list_paid = [];
         if ($customers) {
             $ids = implode(',', array_map(fn($x) => intval($x['id']), $customers));
             foreach ($db->query("SELECT customer_id, COALESCE(SUM(amount - COALESCE(discount,0)),0) AS sisa, MIN(due_date) AS due FROM invoices WHERE tenant_id = $tenant_id AND status <> 'Lunas' AND customer_id IN ($ids) GROUP BY customer_id") as $r) {
                 $list_due[(int)$r['customer_id']] = $r;
+            }
+            // Latest payment per customer, for the receipt template.
+            foreach ($db->query("SELECT i.customer_id, p.amount, p.payment_date FROM payments p JOIN invoices i ON i.id = p.invoice_id WHERE p.tenant_id = $tenant_id AND i.customer_id IN ($ids) ORDER BY p.payment_date DESC") as $r) {
+                $list_paid[(int)$r['customer_id']] = $list_paid[(int)$r['customer_id']] ?? $r;
             }
         }
 
@@ -960,7 +966,27 @@ if ($action === 'bulk_pay' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                             $wa_number = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $c['contact']));
                             $c_due = $list_due[(int)$c['id']] ?? null;
                             $c_sisa = $c_due ? (float)$c_due['sisa'] : 0;
-                            $wa_text = parse_wa_template($list_tpl, [
+                            $c_paid = $list_paid[(int)$c['id']] ?? null;
+                            // Settled customers get the receipt template, not another bill.
+                            $wa_text = $c_sisa <= 0 && $c_paid
+                                ? parse_wa_template($list_tpl_paid, [
+                                    'name' => $c['name'],
+                                    'id_cust' => $c['customer_code'] ?: $c['id'],
+                                    'package' => $c['package_name'] ?: '-',
+                                    'period' => date('F Y', strtotime($c_paid['payment_date'])),
+                                    'tagihan' => (float)$c_paid['amount'],
+                                    'total_paid' => (float)$c_paid['amount'],
+                                    'total_payment' => (float)$c_paid['amount'],
+                                    'tunggakan' => 0,
+                                    'sisa_tunggakan' => 0,
+                                    'payment_time' => date('d/m/Y H:i', strtotime($c_paid['payment_date'])) . ' WIB',
+                                    'payment_status' => 'LUNAS',
+                                    'rekening' => trim((string)($list_settings['bank_account'] ?? '')),
+                                    'company_name' => $list_settings['company_name'] ?? '',
+                                    'admin_name' => $_SESSION['user_name'] ?? 'Admin',
+                                    'portal_link' => $list_base . '/index.php?page=customer_portal&code=' . urlencode($c['customer_code'] ?: $c['id']),
+                                ])
+                                : parse_wa_template($list_tpl, [
                                 'name' => $c['name'],
                                 'id_cust' => $c['customer_code'] ?: $c['id'],
                                 'package' => $c['package_name'] ?: '-',
