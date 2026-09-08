@@ -6,6 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Masuk<?= !empty($__login_company) ? " · " . htmlspecialchars($__login_company) : "" ?></title>
+<?= pwa_head_tags() ?>
     <link rel="stylesheet" href="public/style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
     <style>
@@ -87,5 +88,6 @@
                 </div>
             </div>
         </div>
+<?= pwa_script() ?>
 </body>
 </html>

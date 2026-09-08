@@ -12,6 +12,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_require();
 }
 
+// Web app manifest: public, and answered before anything else so an installed
+// app can still fetch it while the session is gone.
+if ($page === 'manifest') {
+    header_remove('Set-Cookie'); // public file, no need to hand out a session
+    header('Content-Type: application/manifest+json; charset=utf-8');
+    header('Cache-Control: private, max-age=3600');
+    echo json_encode(pwa_manifest($db), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 // Handle Logout
 if ($page === 'logout') {
     $_SESSION = [];

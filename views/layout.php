@@ -93,6 +93,7 @@ function nav_heading(string $text): string {
     <?php else: ?>
         <link rel="icon" href="public/favicon.png">
     <?php endif; ?>
+<?= pwa_head_tags() ?>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -333,6 +334,7 @@ function nav_heading(string $text): string {
                 </div>
             </div>
             <?= nav_item('index.php?page=change_password', 'fas fa-key', 'Ganti Password', $page == 'change_password' || $page == 'change_password_post') ?>
+            <button type="button" data-pwa-install hidden onclick="pwaInstall()" class="nav-item w-full cursor-pointer border-0 bg-transparent text-left text-white/70 hover:bg-white/5 hover:text-white"><i class="fas fa-download w-5 text-center text-[15px]"></i><span class="truncate">Pasang aplikasi</span></button>
             <button type="button" data-theme-btn="nav" onclick="cycleTheme()" class="nav-item w-full cursor-pointer border-0 bg-transparent text-left text-white/70 hover:bg-white/5 hover:text-white"><i class="fas fa-adjust w-5 text-center text-[15px]"></i><span class="truncate">Tema: <span data-theme-label>Ikut sistem</span></span></button>
             <?= nav_item('index.php?page=logout', 'fas fa-sign-out-alt', 'Logout', false) ?>
         </div>
@@ -646,5 +648,6 @@ window.closeImagePreview = () => { const m = document.getElementById('globalImag
     })();
     </script>
 <?php endif; ?>
+<?= pwa_script() ?>
 </body>
 </html>

@@ -13,6 +13,12 @@ Options -Indexes
 </FilesMatch>
 
 <IfModule mod_headers.c>
+    # The service worker has to be revalidated on every load, or a cached copy
+    # keeps serving the old shell after a deploy.
+    <FilesMatch "^sw\.js$">
+        Header set Cache-Control "no-cache, must-revalidate"
+        Header set Service-Worker-Allowed "/"
+    </FilesMatch>
     Header always set X-Frame-Options "SAMEORIGIN"
     Header always set X-Content-Type-Options "nosniff"
     Header always set Referrer-Policy "same-origin"

@@ -100,6 +100,9 @@
 
 @layer base {
   html { -webkit-font-smoothing: antialiased; }
+  /* .nav-item and friends set display, which would otherwise defeat the
+     browser default for [hidden]. */
+  [hidden] { display: none !important; }
   /* Preflight is off (legacy CSS), but its border reset is still needed:
      without it `border-t border-solid` leaves the other three sides at the
      browser default "medium" (3px). Zero specificity so every utility wins. */

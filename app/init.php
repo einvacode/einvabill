@@ -21,6 +21,7 @@ require_once __DIR__ . '/finance_trend.php';
 require_once __DIR__ . '/auto_invoice_generator.php';
 require_once __DIR__ . '/audit_log.php';
 require_once __DIR__ . '/theme.php';
+require_once __DIR__ . '/pwa.php';
 
 /**
  * Peran untuk cakupan data. Bendahara melihat data satu tenant persis seperti
