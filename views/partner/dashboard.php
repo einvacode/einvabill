@@ -760,7 +760,7 @@ function switchImportTab(t){
                                                     'package' => $cust['package_name'],
                                                     'tagihan' => $cust['monthly_fee'],
                                                     'total_payment' => $cust['total_unpaid'],
-                                                    'jatuh_tempo' => 'Tgl ' . ($cust['billing_date'] ?: '1'),
+                                                    'due_date' => 'Tgl ' . ($cust['billing_date'] ?: '1'),
                                                     'rekening' => $rekening_receipt,
                                                     'portal_link' => $dash_portal_link
                                                 ]);

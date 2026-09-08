@@ -169,7 +169,9 @@ $total_cust_pages = ceil($total_customers / $items_per_page);
 
 $cust_query = "
     SELECT c.*, 
-    (SELECT COUNT(*) FROM invoices WHERE customer_id = c.id AND status = 'Belum Lunas' AND tenant_id = c.tenant_id) as unpaid_count
+    (SELECT COUNT(*) FROM invoices WHERE customer_id = c.id AND status = 'Belum Lunas' AND tenant_id = c.tenant_id) as unpaid_count,
+    (SELECT COALESCE(SUM(amount - COALESCE(discount,0)),0) FROM invoices WHERE customer_id = c.id AND status = 'Belum Lunas' AND tenant_id = c.tenant_id) as unpaid_total,
+    (SELECT MIN(due_date) FROM invoices WHERE customer_id = c.id AND status = 'Belum Lunas' AND tenant_id = c.tenant_id) as oldest_due
     FROM customers c 
     WHERE 1=1 $partner_filter $where_search_cust 
     ORDER BY c.id DESC LIMIT $items_per_page OFFSET $off_cust
@@ -349,7 +351,7 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
                         'tagihan' => $ui['monthly_fee'], // Current period fee
                         'tunggakan' => ($ui['total_unpaid'] - $ui['monthly_fee']), // Arrears
                         'total_payment' => $ui['total_unpaid'], // Total to be paid
-                        'jatuh_tempo' => date('d/m/Y', strtotime($ui['oldest_due_date'])),
+                        'due_date' => date('d/m/Y', strtotime($ui['oldest_due_date'])),
                         'rekening' => $rekening_receipt,
                         'portal_link' => $portal_link_rem
                     ]);
@@ -519,9 +521,35 @@ if (isset($_GET['msg']) && $_GET['msg'] === 'bulk_paid' && isset($_GET['cust_id'
                 <button type="button" class="ui-btn ui-btn-outline text-danger" onclick="PartnerPage.deleteCustomer(<?= $ac['id'] ?>, '<?= addslashes($ac['name']) ?>')" title="Hapus pelanggan">
                     <i class="fas fa-trash"></i>
                 </button>
+                <?php if ($is_unpaid):
+                    // Reminder with this partner's own template and bank details.
+                    $mon_cust = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+                    $ac_unpaid = (float) ($ac['unpaid_total'] ?? 0);
+                    $ac_due = !empty($ac['oldest_due']) ? strtotime($ac['oldest_due']) : null;
+                    $ac_msg = parse_wa_template($wa_tpl_unpaid, [
+                        'name' => $ac['name'],
+                        'id_cust' => $cust_id_display,
+                        'package' => $ac['package_name'] ?: '-',
+                        'period' => $ac_due ? $mon_cust[(int) date('n', $ac_due) - 1] . ' ' . date('Y', $ac_due) : $mon_cust[(int) date('n') - 1] . ' ' . date('Y'),
+                        'tagihan' => (float) $ac['monthly_fee'],
+                        'tunggakan' => max(0, $ac_unpaid - (float) $ac['monthly_fee']),
+                        'total_payment' => $ac_unpaid > 0 ? $ac_unpaid : (float) $ac['monthly_fee'],
+                        'due_date' => $ac_due ? date('d/m/Y', $ac_due) : 'tanggal ' . $ac['billing_date'],
+                        'rekening' => $rekening_receipt,
+                        'company_name' => $settings['company_name'] ?? '',
+                        'admin_name' => $_SESSION['user_name'] ?? 'Admin',
+                        'portal_link' => $base_url . '/index.php?page=customer_portal&code=' . urlencode($ac['customer_code'] ?: $ac['id']),
+                    ]);
+                ?>
+                <button type="button" onclick="sendWAGateway('<?= $wa_num ?>', <?= htmlspecialchars(json_encode($ac_msg)) ?>, null, this)" class="ui-btn ui-btn-wa" title="Kirim tagihan lewat WhatsApp">
+                    <i class="fab fa-whatsapp"></i>
+                </button>
+                <?php else: ?>
+                <?php // Nothing owed, so no bill to send: just open the chat. ?>
                 <a href="https://api.whatsapp.com/send?phone=<?= $wa_num ?>" target="_blank" class="ui-btn ui-btn-wa" title="Chat WhatsApp">
                     <i class="fab fa-whatsapp"></i>
                 </a>
+                <?php endif; ?>
                 <a href="tel:<?= htmlspecialchars($ac['contact']) ?>" class="ui-btn ui-btn-outline" title="Telepon">
                     <i class="fas fa-phone-alt"></i>
                 </a>

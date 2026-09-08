@@ -828,7 +828,7 @@ if ($action === 'list' && ($_SESSION['user_role'] ?? '') === 'partner') {
                         'payment_time' => $realtime_bayar,
                         'total_paid' => $inv['amount'], // or whatever was paid
                         'sisa_tunggakan' => $tunggakan_remain,
-                        'status_pembayaran' => 'LUNAS'
+                        'payment_status' => 'LUNAS'
                     ]);
                 } else {
                     // Calculate previous arrears
