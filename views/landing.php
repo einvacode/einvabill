@@ -63,13 +63,13 @@ function svg_icon(string $name, string $class = 'h-5 w-5'): string {
     <?php if ($logo): ?><link rel="icon" href="<?= htmlspecialchars($logo) ?>"><?php endif; ?>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="public/tw-landing.css">
 </head>
 <body>
 
 <!-- Navigation -->
-<header class="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
+<header class="sticky top-0 z-40 border-b border-white/10 bg-hero/95 text-hero-ink backdrop-blur">
     <div class="container flex h-16 items-center justify-between gap-6">
         <a href="index.php?page=landing" class="flex items-center gap-3 min-w-0">
             <?php if ($logo): ?>
@@ -80,28 +80,28 @@ function svg_icon(string $name, string $class = 'h-5 w-5'): string {
             <span class="<?= $logo ? 'sr-only' : 'truncate font-bold text-[17px]' ?>"><?= htmlspecialchars($brand) ?></span>
         </a>
         <nav class="hidden md:flex items-center gap-7">
-            <a href="#paket" class="nav-link">Paket</a>
-            <a href="#cara" class="nav-link">Cara berlangganan</a>
-            <a href="#tentang" class="nav-link">Tentang kami</a>
-            <a href="#tagihan" class="nav-link">Cek tagihan</a>
+            <a href="#paket" class="hero-nav-link">Paket</a>
+            <a href="#cara" class="hero-nav-link">Cara berlangganan</a>
+            <a href="#tentang" class="hero-nav-link">Tentang kami</a>
+            <a href="#tagihan" class="hero-nav-link">Cek tagihan</a>
         </nav>
         <div class="hidden md:flex items-center gap-2">
-            <a href="index.php?page=login" class="btn btn-ghost">Masuk</a>
+            <a href="index.php?page=login" class="btn btn-hero">Masuk</a>
             <a href="<?= htmlspecialchars($wa_link) ?>" target="_blank" rel="noopener" class="btn btn-wa"><?= svg_icon('chat', 'h-4 w-4') ?> WhatsApp</a>
         </div>
-        <button class="md:hidden btn btn-outline h-10 w-10 px-0" onclick="toggleMobileMenu()" aria-label="Buka menu" aria-expanded="false" id="menuBtn">
+        <button class="md:hidden btn btn-hero h-10 w-10 px-0" onclick="toggleMobileMenu()" aria-label="Buka menu" aria-expanded="false" id="menuBtn">
             <span id="menuIconOpen"><?= svg_icon('menu', 'h-5 w-5') ?></span>
             <span id="menuIconClose" class="hidden"><?= svg_icon('x', 'h-5 w-5') ?></span>
         </button>
     </div>
-    <div id="mobileMenu" class="hidden md:hidden border-t border-border bg-card">
+    <div id="mobileMenu" class="hidden md:hidden border-t border-white/10 bg-hero">
         <nav class="container flex flex-col py-3">
-            <a href="#paket" class="py-3 text-[15px] font-medium border-b border-border" onclick="toggleMobileMenu()">Paket</a>
-            <a href="#cara" class="py-3 text-[15px] font-medium border-b border-border" onclick="toggleMobileMenu()">Cara berlangganan</a>
-            <a href="#tentang" class="py-3 text-[15px] font-medium border-b border-border" onclick="toggleMobileMenu()">Tentang kami</a>
-            <a href="#tagihan" class="py-3 text-[15px] font-medium border-b border-border" onclick="toggleMobileMenu()">Cek tagihan</a>
+            <a href="#paket" class="py-3 text-[15px] font-medium border-b border-white/10 text-hero-ink" onclick="toggleMobileMenu()">Paket</a>
+            <a href="#cara" class="py-3 text-[15px] font-medium border-b border-white/10 text-hero-ink" onclick="toggleMobileMenu()">Cara berlangganan</a>
+            <a href="#tentang" class="py-3 text-[15px] font-medium border-b border-white/10 text-hero-ink" onclick="toggleMobileMenu()">Tentang kami</a>
+            <a href="#tagihan" class="py-3 text-[15px] font-medium border-b border-white/10 text-hero-ink" onclick="toggleMobileMenu()">Cek tagihan</a>
             <div class="flex gap-2 pt-4">
-                <a href="index.php?page=login" class="btn btn-outline flex-1">Masuk</a>
+                <a href="index.php?page=login" class="btn btn-hero flex-1">Masuk</a>
                 <a href="<?= htmlspecialchars($wa_link) ?>" target="_blank" rel="noopener" class="btn btn-wa flex-1"><?= svg_icon('chat', 'h-4 w-4') ?> WhatsApp</a>
             </div>
         </nav>
@@ -110,59 +110,91 @@ function svg_icon(string $name, string $class = 'h-5 w-5'): string {
 
 <main>
 
-<!-- Hero -->
-<section class="container grid gap-12 py-14 md:py-20 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-    <div class="max-w-[38rem]">
-        <p class="eyebrow flex items-center gap-2"><span class="fiber-dot"></span> Internet fiber optik untuk rumah, usaha, dan kantor</p>
-        <h1 class="mt-4 text-[2.4rem] leading-[1.08] font-extrabold sm:text-5xl lg:text-[3.4rem]">
-            Koneksi yang dipasang rapi, dijaga tiap hari, dan tagihannya jelas.
-        </h1>
-        <p class="mt-6 text-lg leading-relaxed text-muted-foreground max-w-[34rem]">
-            <?= htmlspecialchars($hero_text) ?>
-        </p>
-        <div class="mt-8 flex flex-wrap items-center gap-3">
-            <a href="<?= htmlspecialchars($wa_link) ?>" target="_blank" rel="noopener" class="btn btn-wa btn-lg"><?= svg_icon('chat', 'h-5 w-5') ?> Tanya pemasangan via WhatsApp</a>
-            <a href="#paket" class="btn btn-outline btn-lg">Lihat paket dan harga</a>
+<!-- Hero: the dark band is the network side of the story; the light page below is
+     the customer side. The cable runs along the seam between them. -->
+<section class="hero-band">
+    <div class="container grid gap-12 pb-4 pt-14 md:pt-20 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+        <div class="max-w-[38rem]">
+            <h1 class="font-display text-[2.4rem] font-semibold leading-[1.05] tracking-[-0.022em] text-hero-ink sm:text-5xl lg:text-[3.4rem]">
+                Koneksi yang dipasang rapi, dijaga tiap hari, dan tagihannya jelas.
+            </h1>
+            <p class="mt-6 max-w-[34rem] text-lg leading-relaxed text-hero-mute">
+                <?= htmlspecialchars($hero_text) ?>
+            </p>
+            <div class="mt-8 flex flex-wrap items-center gap-3">
+                <a href="<?= htmlspecialchars($wa_link) ?>" target="_blank" rel="noopener" class="btn btn-wa btn-lg"><?= svg_icon('chat', 'h-5 w-5') ?> Tanya pemasangan via WhatsApp</a>
+                <a href="#paket" class="btn btn-lg btn-hero">Lihat paket dan harga</a>
+            </div>
+            <?php if ($phone_display): ?>
+            <p class="mt-5 text-sm text-hero-mute">Atau telepon langsung <a href="tel:+<?= htmlspecialchars($wa_contact) ?>" class="font-semibold text-hero-ink underline-offset-4 hover:underline"><?= htmlspecialchars($phone_display) ?></a>.</p>
+            <?php endif; ?>
         </div>
-        <?php if ($phone_display): ?>
-        <p class="mt-5 text-sm text-muted-foreground">Atau telepon langsung <a href="tel:+<?= htmlspecialchars($wa_contact) ?>" class="font-semibold text-foreground"><?= htmlspecialchars($phone_display) ?></a>.</p>
-        <?php endif; ?>
+
+        <!-- Installation slip: the one memorable object on the page -->
+        <div class="hero-card p-6 sm:p-7 lg:ml-auto lg:max-w-[26rem] w-full">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <p class="text-sm text-hero-mute">Pemasangan baru</p>
+                    <h2 class="mt-1 font-display text-xl font-semibold text-hero-ink">Yang Anda dapat</h2>
+                </div>
+                <span class="badge border-transparent bg-signal/15 text-signal"><?= svg_icon('check', 'h-3.5 w-3.5 mr-1') ?> Tanpa biaya survei</span>
+            </div>
+            <ul class="mt-6 divide-y divide-white/10">
+                <li class="flex items-center gap-4 py-3.5">
+                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-white/[.06] text-hero-mute"><?= svg_icon('router') ?></span>
+                    <div class="min-w-0"><p class="font-semibold text-hero-ink">Perangkat ONT dan router WiFi</p><p class="text-sm text-hero-mute">Dipasang teknisi kami, siap pakai hari itu juga.</p></div>
+                </li>
+                <li class="flex items-center gap-4 py-3.5">
+                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-white/[.06] text-hero-mute"><?= svg_icon('activity') ?></span>
+                    <div class="min-w-0"><p class="font-semibold text-hero-ink">Jalur fiber sampai ke rumah</p><p class="text-sm text-hero-mute">Bukan wireless. Stabil saat hujan dan jam sibuk.</p></div>
+                </li>
+                <li class="flex items-center gap-4 py-3.5">
+                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-white/[.06] text-hero-mute"><?= svg_icon('receipt') ?></span>
+                    <div class="min-w-0"><p class="font-semibold text-hero-ink">Tagihan tetap tiap bulan</p><p class="text-sm text-hero-mute">Bisa dicek online dengan kode pelanggan.</p></div>
+                </li>
+                <li class="flex items-center gap-4 py-3.5">
+                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-white/[.06] text-hero-mute"><?= svg_icon('phone') ?></span>
+                    <div class="min-w-0"><p class="font-semibold text-hero-ink">Dukungan teknis yang bisa dihubungi</p><p class="text-sm text-hero-mute">Laporan gangguan ditangani langsung oleh tim teknis kami.</p></div>
+                </li>
+            </ul>
+            <div class="mt-5 flex items-center justify-between gap-4 rounded-md border border-white/10 px-4 py-3">
+                <span class="text-sm text-hero-mute">Mulai dari</span>
+                <?php $min_price = $packages ? min(array_map(fn($p) => (int) $p['price'], $packages)) : 0; ?>
+                <span class="font-display text-lg font-semibold tabular-nums text-hero-fiber"><?= $min_price > 0 ? 'Rp ' . number_format($min_price, 0, ',', '.') . '<span class="text-sm font-medium text-hero-mute">/bulan</span>' : 'Hubungi kami' ?></span>
+            </div>
+        </div>
     </div>
 
-    <!-- Installation slip: the one memorable object on the page -->
-    <div class="card shadow-lift p-6 sm:p-7 lg:ml-auto lg:max-w-[26rem] w-full">
-        <div class="flex items-start justify-between gap-4">
-            <div>
-                <p class="text-sm text-muted-foreground">Pemasangan baru</p>
-                <h2 class="mt-1 text-xl font-bold">Yang Anda dapat</h2>
-            </div>
-            <span class="badge badge-signal"><?= svg_icon('check', 'h-3.5 w-3.5 mr-1') ?> Tanpa biaya survei</span>
-        </div>
-        <ul class="mt-6 divide-y divide-border">
-            <li class="flex items-center gap-4 py-3.5">
-                <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-muted text-primary"><?= svg_icon('router') ?></span>
-                <div class="min-w-0"><p class="font-semibold">Perangkat ONT dan router WiFi</p><p class="text-sm text-muted-foreground">Dipasang teknisi kami, siap pakai hari itu juga.</p></div>
-            </li>
-            <li class="flex items-center gap-4 py-3.5">
-                <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-muted text-primary"><?= svg_icon('activity') ?></span>
-                <div class="min-w-0"><p class="font-semibold">Jalur fiber sampai ke rumah</p><p class="text-sm text-muted-foreground">Bukan wireless. Stabil saat hujan dan jam sibuk.</p></div>
-            </li>
-            <li class="flex items-center gap-4 py-3.5">
-                <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-muted text-primary"><?= svg_icon('receipt') ?></span>
-                <div class="min-w-0"><p class="font-semibold">Tagihan tetap tiap bulan</p><p class="text-sm text-muted-foreground">Bisa dicek online dengan kode pelanggan.</p></div>
-            </li>
-            <li class="flex items-center gap-4 py-3.5">
-                <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-muted text-primary"><?= svg_icon('phone') ?></span>
-                <div class="min-w-0"><p class="font-semibold">Dukungan teknis yang bisa dihubungi</p><p class="text-sm text-muted-foreground">Laporan gangguan ditangani langsung oleh tim teknis kami.</p></div>
-            </li>
-        </ul>
-        <div class="mt-5 flex items-center justify-between rounded-md bg-primary px-4 py-3 text-primary-foreground">
-            <span class="text-sm">Mulai dari</span>
-            <?php $min_price = $packages ? min(array_map(fn($p) => (int) $p['price'], $packages)) : 0; ?>
-            <span class="text-lg font-bold tabular-nums"><?= $min_price > 0 ? 'Rp ' . number_format($min_price, 0, ',', '.') . '<span class="text-sm font-medium opacity-80">/bulan</span>' : 'Hubungi kami' ?></span>
-        </div>
+    <!-- The delivery chain, in order, with the sag a real aerial cable has. The
+         light travels it once when the page loads and then stays lit. -->
+    <div class="fiber-route">
+        <svg viewBox="0 0 1200 132" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" role="img" aria-label="Jalur layanan: dari OLT di POP, lewat tiang dan ODP, sampai ke rumah pelanggan.">
+            <!-- OLT rack -->
+            <g class="fr-mark">
+                <rect x="40" y="50" width="42" height="40" rx="4"/>
+                <path d="M48 60h26M48 70h26M48 80h16"/>
+            </g>
+            <!-- pole -->
+            <path class="fr-mark" d="M380 70v34M370 104h20"/>
+            <!-- ODP box -->
+            <rect class="fr-mark" x="708" y="58" width="24" height="24" rx="4"/>
+            <!-- house -->
+            <path class="fr-mark" d="M1074 74l22-18 22 18M1080 72v26h32V72"/>
+
+            <path id="frPath" class="fr-base" d="M88 70 Q 234 84 380 70 Q 550 86 720 70 Q 908 84 1096 70"/>
+            <path class="fr-lit" pathLength="100" d="M88 70 Q 234 84 380 70 Q 550 86 720 70 Q 908 84 1096 70"/>
+            <circle class="fr-arrive" cx="1096" cy="70" r="4.5"/>
+
+            <g class="fr-label">
+                <text x="61" y="122" text-anchor="middle">OLT</text>
+                <text x="380" y="122" text-anchor="middle">Tiang</text>
+                <text x="720" y="122" text-anchor="middle">ODP</text>
+                <text x="1096" y="122" text-anchor="middle">Rumah Anda</text>
+            </g>
+        </svg>
     </div>
 </section>
+
 
 <!-- Trust facts -->
 <section class="border-y border-border bg-card">

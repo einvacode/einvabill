@@ -7,6 +7,8 @@
   html { -webkit-font-smoothing: antialiased; }
   body { @apply bg-background text-foreground font-sans; }
   h1, h2, h3 { @apply tracking-[-0.01em]; text-wrap: balance; }
+  /* Headlines carry the display face; body copy stays on the body face. */
+  h1, h2 { @apply font-display font-semibold tracking-[-0.02em]; }
   :focus-visible { @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background rounded-sm; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
 }
@@ -27,6 +29,51 @@
   .nav-link { @apply text-sm font-medium text-muted-foreground hover:text-foreground transition-colors; }
   .eyebrow { @apply text-sm font-semibold text-signal; }
   .fiber-dot { @apply inline-block h-2 w-2 rounded-full bg-accent; box-shadow: 0 0 0 4px #FFF3D6; }
+  /* ---------- Hero: the network side of the page ---------- */
+  /* Deep petrol rather than a neutral near-black: the ground still belongs to the
+     brand, and the amber reads as light in glass instead of a decorative accent. */
+  .hero-band { @apply relative bg-hero text-hero-ink; }
+  .hero-card { @apply rounded-lg border border-white/10 bg-white/[.04]; }
+  .btn-hero { @apply border border-white/15 bg-white/[.06] text-hero-ink hover:bg-white/[.12]; }
+  .hero-nav-link { @apply text-sm font-medium text-hero-mute transition-colors hover:text-hero-ink; }
+  /* The default focus ring is petrol on petrol-black: invisible here. */
+  .hero-band :focus-visible, header :focus-visible { @apply ring-hero-fiber ring-offset-hero; }
+
+  .fiber-route { @apply block; }
+  .fiber-route svg { @apply block h-auto w-full; }
+  .fr-mark { fill: none; stroke: theme('colors.hero.mute'); stroke-opacity: .5; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .fr-base { fill: none; stroke: theme('colors.hero.line'); stroke-width: 2; }
+  .fr-lit {
+    fill: none;
+    stroke: theme('colors.hero.fiber');
+    stroke-width: 2;
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    filter: drop-shadow(0 0 6px rgb(233 169 60 / .45));
+    animation: fiber-fill 1.5s .35s cubic-bezier(.22,.61,.36,1) forwards;
+  }
+  .fr-arrive {
+    fill: theme('colors.hero.hot');
+    opacity: 0;
+    filter: drop-shadow(0 0 9px rgb(255 231 190 / .7));
+    animation: fiber-arrive .45s 1.75s ease-out forwards;
+  }
+  .fr-label text { fill: theme('colors.hero.mute'); font-size: 15px; font-weight: 500; letter-spacing: .02em; }
+  @keyframes fiber-fill { to { stroke-dashoffset: 0; } }
+  @keyframes fiber-arrive { to { opacity: 1; } }
+  /* The light is information, not decoration: without motion it is simply already on. */
+  @media (prefers-reduced-motion: reduce) {
+    .fr-lit { stroke-dashoffset: 0; }
+    .fr-arrive { opacity: 1; }
+  }
+  /* On a phone the whole drawing is only ~40 px tall, too small for the glyphs to
+     mean anything. What survives is the lit cable itself, as the seam between the
+     network side of the page and the customer side. */
+  @media (max-width: 640px) {
+    .fr-mark, .fr-label { display: none; }
+    .fiber-route svg { height: 56px; }
+  }
+
   .marquee { @apply relative overflow-hidden; -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent); }
   .marquee-track { @apply flex w-max; animation: marquee 32s linear infinite; }
   .marquee:hover .marquee-track { animation-play-state: paused; }
