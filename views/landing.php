@@ -406,5 +406,15 @@ function svg_icon(string $name, string $class = 'h-5 w-5'): string {
     </div>
 </footer>
 
+<script>
+function toggleMobileMenu() {
+    const menu = document.getElementById('mobileMenu');
+    const btn = document.getElementById('menuBtn');
+    const open = menu.classList.toggle('hidden') === false;
+    document.getElementById('menuIconOpen').classList.toggle('hidden', open);
+    document.getElementById('menuIconClose').classList.toggle('hidden', !open);
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+</script>
 </body>
 </html>
