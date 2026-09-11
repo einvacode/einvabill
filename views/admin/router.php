@@ -83,23 +83,14 @@ if (!function_exists('formatBytes')) {
                 </tr>
             </thead>
             <tbody>
-                <?php foreach($routers as $rt):
-                    $api = new RouterosAPI();
-                    $api->debug = false;
-                    $api->port = $rt['port'];
-                    $api->timeout = 1;
-                    $isCon = @$api->connect($rt['host'], $rt['username'], $rt['password']);
-                    if($isCon) $api->disconnect();
-                ?>
+                <?php foreach($routers as $rt): ?>
                 <tr class="border-t border-solid border-border">
                     <td class="px-4 py-3 font-semibold"><?= htmlspecialchars($rt['name']) ?></td>
                     <td class="px-4 py-3 font-mono text-xs"><?= htmlspecialchars($rt['host']) ?>:<?= htmlspecialchars($rt['port']) ?></td>
                     <td class="px-4 py-3">
-                        <?php if($isCon): ?>
-                            <span class="ui-badge ui-badge-signal">Connected</span>
-                        <?php else: ?>
-                            <span class="ui-badge ui-badge-danger">Disconnected</span>
-                        <?php endif; ?>
+                        <div class="router-status" data-router-id="<?= $rt['id'] ?>">
+                            <i class="fas fa-spinner fa-spin text-muted-foreground"></i>
+                        </div>
                     </td>
                     <td class="px-4 py-3 text-right">
                         <div class="inline-flex flex-wrap justify-end gap-1">
@@ -170,6 +161,34 @@ function editRouter(rt) {
     document.getElementById('modalTitle').innerText = 'Edit Router';
     document.getElementById('addRouterModal').style.display = 'flex';
 }
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const statusEls = document.querySelectorAll('.router-status[data-router-id]');
+    const ids = [...new Set(Array.from(statusEls).map(el => parseInt(el.getAttribute('data-router-id'))).filter(id => id > 0))];
+    if(ids.length === 0) return;
+    ids.forEach(id => {
+        fetch(`index.php?page=router_data&router_id=${id}&action=status`)
+            .then(res => res.json())
+            .then(data => {
+                statusEls.forEach(el => {
+                    if (parseInt(el.getAttribute('data-router-id')) !== id) return;
+                    if (data && data.connected) {
+                        el.innerHTML = '<span class="ui-badge ui-badge-signal">Connected</span>';
+                    } else {
+                        el.innerHTML = '<span class="ui-badge ui-badge-danger">Disconnected</span>';
+                    }
+                });
+            })
+            .catch(() => {
+                statusEls.forEach(el => {
+                    if (parseInt(el.getAttribute('data-router-id')) !== id) return;
+                    el.innerHTML = '<span class="ui-badge ui-badge-danger">Disconnected</span>';
+                });
+            });
+    });
+});
 </script>
 
 <?php endif; ?>

@@ -37,10 +37,18 @@ $api = new RouterosAPI();
 $api->debug = false;
 $api->port = empty($router['port']) ? 8728 : $router['port'];
 $api->timeout = 2; // short timeout for ajax
+$api->attempts = 1; // avoid long multi-attempt delays for AJAX
+$api->delay = 0;
 
 if ($api->connect($router['host'], $router['username'], $router['password'])) {
     $action = $_GET['action'] ?? 'traffic';
 
+    if ($action === 'status') {
+        // quick connection-only status check
+        $api->disconnect();
+        echo json_encode(['connected' => true]);
+        exit;
+    }
     if ($action === 'interfaces') {
         $interfaces = $api->comm('/interface/print');
         $api->disconnect();
