@@ -118,7 +118,7 @@ function svg_icon(string $name, string $class = 'h-5 w-5'): string {
 <!-- Hero: the dark band is the network side of the story; the light page below is
      the customer side. The cable runs along the seam between them. -->
 <section class="hero-band">
-    <div class="container grid gap-12 pb-4 pt-14 md:pt-20 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+    <div class="container grid gap-12 pb-4 pt-14 md:pt-20 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
         <div class="max-w-[38rem]">
             <h1 class="font-display text-[2.4rem] font-semibold leading-[1.05] tracking-[-0.022em] text-hero-ink sm:text-5xl lg:text-[3.4rem]">
                 Koneksi yang dipasang rapi, dijaga tiap hari, dan tagihannya jelas.
@@ -135,97 +135,74 @@ function svg_icon(string $name, string $class = 'h-5 w-5'): string {
             <?php endif; ?>
         </div>
 
-        <!-- Installation slip: the one memorable object on the page -->
-        <div class="hero-card p-6 sm:p-7 lg:ml-auto lg:max-w-[26rem] w-full">
-            <div class="flex items-start justify-between gap-4">
-                <div>
-                    <p class="text-sm text-hero-mute">Pemasangan baru</p>
-                    <h2 class="mt-1 font-display text-xl font-semibold text-hero-ink">Yang Anda dapat</h2>
+        <!-- Hero Card: Terminal CMD Status Akses Pengunjung -->
+        <div class="hero-card overflow-hidden p-0 lg:ml-auto lg:max-w-[28rem] w-full shadow-2xl border border-white/15 bg-[#070b0e]">
+            <!-- Windows CMD Title Bar -->
+            <div class="flex items-center justify-between border-b border-white/10 bg-[#10171d] px-4 py-2.5 text-xs text-hero-mute select-none">
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex h-4 w-4 items-center justify-center rounded-sm bg-white/10 text-[9px] font-mono font-bold text-white/90">C:\</span>
+                    <span class="font-mono text-white/80 font-medium text-[11.5px]">Command Prompt - netstat /visitor</span>
                 </div>
-                <span class="badge border-transparent bg-signal/15 text-signal"><?= svg_icon('check', 'h-3.5 w-3.5 mr-1') ?> Tanpa biaya survei</span>
-            </div>
-            <ul class="mt-6 divide-y divide-white/10">
-                <li class="flex items-center gap-4 py-3.5">
-                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-white/[.06] text-hero-mute"><?= svg_icon('router') ?></span>
-                    <div class="min-w-0"><p class="font-semibold text-hero-ink">Perangkat ONT dan router WiFi</p><p class="text-sm text-hero-mute">Dipasang teknisi kami, siap pakai hari itu juga.</p></div>
-                </li>
-                <li class="flex items-center gap-4 py-3.5">
-                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-white/[.06] text-hero-mute"><?= svg_icon('activity') ?></span>
-                    <div class="min-w-0"><p class="font-semibold text-hero-ink">Jalur fiber sampai ke rumah</p><p class="text-sm text-hero-mute">Bukan wireless. Stabil saat hujan dan jam sibuk.</p></div>
-                </li>
-                <li class="flex items-center gap-4 py-3.5">
-                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-white/[.06] text-hero-mute"><?= svg_icon('receipt') ?></span>
-                    <div class="min-w-0"><p class="font-semibold text-hero-ink">Tagihan tetap tiap bulan</p><p class="text-sm text-hero-mute">Bisa dicek online dengan kode pelanggan.</p></div>
-                </li>
-                <li class="flex items-center gap-4 py-3.5">
-                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-white/[.06] text-hero-mute"><?= svg_icon('phone') ?></span>
-                    <div class="min-w-0"><p class="font-semibold text-hero-ink">Dukungan teknis yang bisa dihubungi</p><p class="text-sm text-hero-mute">Laporan gangguan ditangani langsung oleh tim teknis kami.</p></div>
-                </li>
-            </ul>
-            <div class="mt-5 flex items-center justify-between gap-4 rounded-md border border-white/10 px-4 py-3">
-                <span class="text-sm text-hero-mute">Mulai dari</span>
-                <?php $min_price = $packages ? min(array_map(fn($p) => (int) $p['price'], $packages)) : 0; ?>
-                <span class="font-display text-lg font-semibold tabular-nums text-hero-fiber"><?= $min_price > 0 ? 'Rp ' . number_format($min_price, 0, ',', '.') . '<span class="text-sm font-medium text-hero-mute">/bulan</span>' : 'Hubungi kami' ?></span>
+                <div class="flex items-center gap-2.5 text-[11px] text-white/50">
+                    <span class="cursor-pointer hover:text-white" title="Minimize">―</span>
+                    <span class="cursor-pointer hover:text-white" title="Maximize">□</span>
+                    <span class="cursor-pointer hover:text-rose-400" title="Close">✕</span>
+                </div>
             </div>
 
-            <!-- Terminal CMD: Informasi Akses Pengunjung -->
-            <div class="mt-5 overflow-hidden rounded-lg border border-white/15 bg-[#070b0e] font-mono text-xs shadow-2xl">
-                <!-- Windows CMD Title Bar -->
-                <div class="flex items-center justify-between border-b border-white/10 bg-[#10171d] px-3 py-1.5 text-[11px] text-hero-mute select-none">
-                    <div class="flex items-center gap-2">
-                        <span class="inline-flex h-3.5 w-3.5 items-center justify-center rounded-sm bg-white/10 text-[9px] font-bold text-white/80">C:\</span>
-                        <span class="font-sans font-medium text-white/80 text-[11px]">Command Prompt - netstat /visitor</span>
-                    </div>
-                    <div class="flex items-center gap-2.5 text-[11px] text-white/50">
-                        <span class="cursor-default hover:text-white" title="Minimize">―</span>
-                        <span class="cursor-default hover:text-white" title="Maximize">□</span>
-                        <span class="cursor-default hover:text-red-400" title="Close">✕</span>
-                    </div>
-                </div>
-
-                <!-- Terminal Screen Content -->
-                <div class="p-3.5 text-[11px] leading-relaxed text-white/90">
-                    <div class="text-white/40 text-[10px]">Microsoft Windows [Version 10.0.Network]</div>
-                    <div class="text-white/40 text-[10px]">(c) EinvaBill Network Diagnostic. All rights reserved.</div>
-                    
-                    <div class="mt-2.5 flex items-center gap-1.5 text-[#38bdf8]">
+            <!-- Terminal Screen Body -->
+            <div class="p-5 sm:p-6 font-mono text-xs leading-relaxed text-white/90 space-y-4">
+                <div class="flex items-center justify-between border-b border-white/10 pb-3">
+                    <div class="flex items-center gap-1.5 text-sky-400">
                         <span class="text-white/60">C:\Users\Visitor&gt;</span>
-                        <span>ping client-network -a</span>
+                        <span class="font-semibold text-sky-300">ping client-network -a</span>
                         <span class="inline-block h-3.5 w-1.5 bg-emerald-400 animate-pulse"></span>
                     </div>
+                    <span id="cmdStatus" class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-400 border border-emerald-500/20">
+                        <span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                        CONNECTED
+                    </span>
+                </div>
 
-                    <!-- Output Console Card -->
-                    <div class="mt-2.5 rounded border border-white/10 bg-black/40 p-2.5 space-y-1.5">
-                        <div class="flex items-center justify-between border-b border-white/5 pb-1 text-[10px]">
-                            <span class="text-white/50 uppercase tracking-wider font-semibold">Status Akses:</span>
-                            <span id="cmdStatus" class="inline-flex items-center gap-1.5 font-bold text-emerald-400">
-                                <span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                                CONNECTED
-                            </span>
-                        </div>
-                        
-                        <div class="grid grid-cols-[85px_1fr] gap-x-2 gap-y-1 text-[11px]">
-                            <span class="text-white/45">IP Public</span>
-                            <span id="cmdIp" class="font-bold text-emerald-400 tracking-wider text-right font-mono truncate"><?= htmlspecialchars($client_ip) ?></span>
-
-                            <span class="text-white/45">ISP Anda</span>
-                            <span id="cmdIsp" class="font-semibold text-amber-300 text-right truncate" title="Mendeteksi ISP...">Mendeteksi...</span>
-
-                            <span class="text-white/45">Lokasi</span>
-                            <span id="cmdLocation" class="text-sky-200 text-right truncate" title="Mendeteksi lokasi...">-</span>
-
-                            <span class="text-white/45">ASN</span>
-                            <span id="cmdAsn" class="text-white/70 text-right font-mono">-</span>
-                        </div>
+                <!-- Diagnostic Info Table -->
+                <div class="rounded-lg border border-white/10 bg-black/40 p-4 space-y-2.5">
+                    <div class="flex items-center justify-between border-b border-white/5 pb-2 text-[11px]">
+                        <span class="text-white/50">IP Public Anda</span>
+                        <span id="cmdIp" class="font-bold text-emerald-400 text-sm tracking-wider font-mono"><?= htmlspecialchars($client_ip) ?></span>
                     </div>
 
-                    <!-- Footer line with reload trigger -->
-                    <div class="mt-2.5 flex items-center justify-between text-[10px] text-white/35 pt-1">
-                        <span>C:\Users\Visitor&gt;</span>
-                        <button type="button" onclick="detectVisitorNetwork(true)" class="hover:text-emerald-400 transition-colors text-[10px] underline cursor-pointer bg-transparent border-0 p-0 text-white/40">
-                            [Refresh Ping]
-                        </button>
+                    <div class="flex items-center justify-between border-b border-white/5 pb-2 text-[11px]">
+                        <span class="text-white/50">ISP / Provider</span>
+                        <span id="cmdIsp" class="font-semibold text-amber-300 text-right truncate max-w-[210px]" title="Mendeteksi ISP...">Mendeteksi...</span>
                     </div>
+
+                    <div class="flex items-center justify-between border-b border-white/5 pb-2 text-[11px]">
+                        <span class="text-white/50">Lokasi Terdeteksi</span>
+                        <span id="cmdLocation" class="text-sky-200 text-right truncate max-w-[210px]">-</span>
+                    </div>
+
+                    <div class="flex items-center justify-between border-b border-white/5 pb-2 text-[11px]">
+                        <span class="text-white/50">ASN Jaringan</span>
+                        <span id="cmdAsn" class="text-white/70 font-mono text-right">-</span>
+                    </div>
+
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-white/50">Status Koneksi</span>
+                        <span class="text-emerald-400 font-medium text-right flex items-center gap-1.5">
+                            <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> Siap &amp; Stabil
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Command prompt line & action -->
+                <div class="flex items-center justify-between pt-1 text-[11px] text-white/40">
+                    <div class="flex items-center gap-1">
+                        <span class="text-white/35">C:\Users\Visitor&gt;</span>
+                        <span class="text-white/50">diagnostic ready</span>
+                    </div>
+                    <button type="button" onclick="detectVisitorNetwork(true)" class="inline-flex items-center gap-1 rounded bg-white/5 px-2.5 py-1 text-[11px] text-white/70 hover:bg-white/10 hover:text-emerald-400 transition-colors border border-white/10 cursor-pointer">
+                        <span>↻</span> Ping Ulang
+                    </button>
                 </div>
             </div>
         </div>
