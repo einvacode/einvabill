@@ -19,6 +19,11 @@ $phone_raw = preg_replace('/[^0-9]/', '', (string) ($site['company_contact'] ?? 
 $wa_contact = preg_replace('/^0/', '62', $phone_raw) ?: '6281234567890';
 $phone_display = $phone_raw ? preg_replace('/(\d{4})(\d{4})(\d+)/', '$1-$2-$3', $phone_raw) : '';
 
+$client_ip = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+if (strpos($client_ip, ',') !== false) {
+    $client_ip = trim(explode(',', $client_ip)[0]);
+}
+
 // Split the "about" text into intro, vision and mission when the admin wrote it that way.
 $about_raw = trim((string) ($site['landing_about_us'] ?? ''));
 $about_intro = $about_raw;
@@ -161,6 +166,67 @@ function svg_icon(string $name, string $class = 'h-5 w-5'): string {
                 <span class="text-sm text-hero-mute">Mulai dari</span>
                 <?php $min_price = $packages ? min(array_map(fn($p) => (int) $p['price'], $packages)) : 0; ?>
                 <span class="font-display text-lg font-semibold tabular-nums text-hero-fiber"><?= $min_price > 0 ? 'Rp ' . number_format($min_price, 0, ',', '.') . '<span class="text-sm font-medium text-hero-mute">/bulan</span>' : 'Hubungi kami' ?></span>
+            </div>
+
+            <!-- Terminal CMD: Informasi Akses Pengunjung -->
+            <div class="mt-5 overflow-hidden rounded-lg border border-white/15 bg-[#070b0e] font-mono text-xs shadow-2xl">
+                <!-- Windows CMD Title Bar -->
+                <div class="flex items-center justify-between border-b border-white/10 bg-[#10171d] px-3 py-1.5 text-[11px] text-hero-mute select-none">
+                    <div class="flex items-center gap-2">
+                        <span class="inline-flex h-3.5 w-3.5 items-center justify-center rounded-sm bg-white/10 text-[9px] font-bold text-white/80">C:\</span>
+                        <span class="font-sans font-medium text-white/80 text-[11px]">Command Prompt - netstat /visitor</span>
+                    </div>
+                    <div class="flex items-center gap-2.5 text-[11px] text-white/50">
+                        <span class="cursor-default hover:text-white" title="Minimize">―</span>
+                        <span class="cursor-default hover:text-white" title="Maximize">□</span>
+                        <span class="cursor-default hover:text-red-400" title="Close">✕</span>
+                    </div>
+                </div>
+
+                <!-- Terminal Screen Content -->
+                <div class="p-3.5 text-[11px] leading-relaxed text-white/90">
+                    <div class="text-white/40 text-[10px]">Microsoft Windows [Version 10.0.Network]</div>
+                    <div class="text-white/40 text-[10px]">(c) EinvaBill Network Diagnostic. All rights reserved.</div>
+                    
+                    <div class="mt-2.5 flex items-center gap-1.5 text-[#38bdf8]">
+                        <span class="text-white/60">C:\Users\Visitor&gt;</span>
+                        <span>ping client-network -a</span>
+                        <span class="inline-block h-3.5 w-1.5 bg-emerald-400 animate-pulse"></span>
+                    </div>
+
+                    <!-- Output Console Card -->
+                    <div class="mt-2.5 rounded border border-white/10 bg-black/40 p-2.5 space-y-1.5">
+                        <div class="flex items-center justify-between border-b border-white/5 pb-1 text-[10px]">
+                            <span class="text-white/50 uppercase tracking-wider font-semibold">Status Akses:</span>
+                            <span id="cmdStatus" class="inline-flex items-center gap-1.5 font-bold text-emerald-400">
+                                <span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                                CONNECTED
+                            </span>
+                        </div>
+                        
+                        <div class="grid grid-cols-[85px_1fr] gap-x-2 gap-y-1 text-[11px]">
+                            <span class="text-white/45">IP Public</span>
+                            <span id="cmdIp" class="font-bold text-emerald-400 tracking-wider text-right font-mono truncate"><?= htmlspecialchars($client_ip) ?></span>
+
+                            <span class="text-white/45">ISP Anda</span>
+                            <span id="cmdIsp" class="font-semibold text-amber-300 text-right truncate" title="Mendeteksi ISP...">Mendeteksi...</span>
+
+                            <span class="text-white/45">Lokasi</span>
+                            <span id="cmdLocation" class="text-sky-200 text-right truncate" title="Mendeteksi lokasi...">-</span>
+
+                            <span class="text-white/45">ASN</span>
+                            <span id="cmdAsn" class="text-white/70 text-right font-mono">-</span>
+                        </div>
+                    </div>
+
+                    <!-- Footer line with reload trigger -->
+                    <div class="mt-2.5 flex items-center justify-between text-[10px] text-white/35 pt-1">
+                        <span>C:\Users\Visitor&gt;</span>
+                        <button type="button" onclick="detectVisitorNetwork(true)" class="hover:text-emerald-400 transition-colors text-[10px] underline cursor-pointer bg-transparent border-0 p-0 text-white/40">
+                            [Refresh Ping]
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -414,6 +480,77 @@ function toggleMobileMenu() {
     document.getElementById('menuIconOpen').classList.toggle('hidden', open);
     document.getElementById('menuIconClose').classList.toggle('hidden', !open);
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+async function detectVisitorNetwork(isManual = false) {
+    const ipEl = document.getElementById('cmdIp');
+    const ispEl = document.getElementById('cmdIsp');
+    const locEl = document.getElementById('cmdLocation');
+    const asnEl = document.getElementById('cmdAsn');
+    const statusEl = document.getElementById('cmdStatus');
+
+    if (isManual && statusEl) {
+        statusEl.innerHTML = '<span class="inline-block h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse"></span> PINGING...';
+    }
+
+    try {
+        const res = await fetch('https://ipwho.is/', { cache: 'no-store' });
+        const data = await res.json();
+        if (data && data.success) {
+            if (ipEl) ipEl.textContent = data.ip;
+            const ispName = (data.connection && (data.connection.isp || data.connection.org)) || 'Terdeteksi';
+            if (ispEl) {
+                ispEl.textContent = ispName;
+                ispEl.title = ispName;
+            }
+            const locParts = [data.city, data.region, data.country_code].filter(Boolean);
+            const locText = locParts.length > 0 ? locParts.join(', ') : (data.country || '-');
+            if (locEl) {
+                locEl.textContent = locText;
+                locEl.title = locText;
+            }
+            const asnText = (data.connection && data.connection.asn) ? ('AS' + data.connection.asn) : (data.type || 'IPv4');
+            if (asnEl) asnEl.textContent = asnText;
+            if (statusEl) {
+                statusEl.innerHTML = '<span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping"></span> CONNECTED';
+            }
+            return;
+        }
+    } catch (e) {
+        // Fallback 1: ipify for IP lookup
+        try {
+            const res2 = await fetch('https://api.ipify.org?format=json');
+            const data2 = await res2.json();
+            if (data2 && data2.ip) {
+                if (ipEl) ipEl.textContent = data2.ip;
+                if (ispEl) ispEl.textContent = 'Jaringan Internet Publik';
+                if (locEl) locEl.textContent = 'Indonesia';
+                if (asnEl) asnEl.textContent = 'IPv4';
+                if (statusEl) {
+                    statusEl.innerHTML = '<span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400"></span> CONNECTED';
+                }
+                return;
+            }
+        } catch (e2) {}
+    }
+
+    // Fallback 2: Local / Server fallback
+    if (ispEl && ispEl.textContent === 'Mendeteksi...') {
+        ispEl.textContent = 'Jaringan Terhubung';
+    }
+    if (locEl && locEl.textContent === '-') {
+        locEl.textContent = 'Lokal';
+    }
+    if (statusEl) {
+        statusEl.innerHTML = '<span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400"></span> CONNECTED';
+    }
+}
+
+// Auto-run on page load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => detectVisitorNetwork(false));
+} else {
+    detectVisitorNetwork(false);
 }
 </script>
 </body>
