@@ -167,7 +167,7 @@ function svg_icon(string $name, string $class = 'h-5 w-5'): string {
                 <!-- Diagnostic Info Table (Pure IPv4 Details) -->
                 <div class="rounded-lg border border-white/10 bg-black/40 p-4 space-y-2.5">
                     <div class="flex items-center justify-between border-b border-white/5 pb-2 text-[11px]">
-                        <span class="text-white/50">IPv4 Public</span>
+                        <span class="text-white/50">IPv4 Public Anda</span>
                         <span id="cmdIp" class="font-bold text-emerald-400 text-sm tracking-wider font-mono"><?= htmlspecialchars($client_ip) ?></span>
                     </div>
 
