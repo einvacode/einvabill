@@ -135,13 +135,13 @@ function svg_icon(string $name, string $class = 'h-5 w-5'): string {
             <?php endif; ?>
         </div>
 
-        <!-- Hero Card: Terminal CMD Status Akses Pengunjung -->
-        <div class="hero-card overflow-hidden p-0 lg:ml-auto lg:max-w-[28rem] w-full shadow-2xl border border-white/15 bg-[#070b0e]">
+        <!-- Hero Card: Terminal CMD Details IPv4 Pengunjung -->
+        <div class="hero-card overflow-hidden p-0 lg:ml-auto lg:max-w-[26rem] w-full shadow-2xl border border-white/15 bg-[#070b0e]">
             <!-- Windows CMD Title Bar -->
-            <div class="flex items-center justify-between border-b border-white/10 bg-[#10171d] px-4 py-2.5 text-xs text-hero-mute select-none">
+            <div class="flex items-center justify-between border-b border-white/10 bg-[#10171d] px-4 py-2 text-xs text-hero-mute select-none">
                 <div class="flex items-center gap-2">
-                    <span class="inline-flex h-4 w-4 items-center justify-center rounded-sm bg-white/10 text-[9px] font-mono font-bold text-white/90">C:\</span>
-                    <span class="font-mono text-white/80 font-medium text-[11.5px]">Command Prompt - netstat /visitor</span>
+                    <span class="inline-flex h-3.5 w-3.5 items-center justify-center rounded-sm bg-white/10 text-[9px] font-mono font-bold text-white/90">C:\</span>
+                    <span class="font-mono text-white/80 font-medium text-[11px]">Command Prompt - ipconfig /ipv4</span>
                 </div>
                 <div class="flex items-center gap-2.5 text-[11px] text-white/50">
                     <span class="cursor-pointer hover:text-white" title="Minimize">―</span>
@@ -151,57 +151,45 @@ function svg_icon(string $name, string $class = 'h-5 w-5'): string {
             </div>
 
             <!-- Terminal Screen Body -->
-            <div class="p-5 sm:p-6 font-mono text-xs leading-relaxed text-white/90 space-y-4">
-                <div class="flex items-center justify-between border-b border-white/10 pb-3">
+            <div class="p-5 font-mono text-xs leading-relaxed text-white/90 space-y-3.5">
+                <div class="flex items-center justify-between border-b border-white/10 pb-2.5">
                     <div class="flex items-center gap-1.5 text-sky-400">
-                        <span class="text-white/60">C:\Users\Visitor&gt;</span>
-                        <span class="font-semibold text-sky-300">ping client-network -a</span>
+                        <span class="text-white/60">C:\Visitor&gt;</span>
+                        <span class="font-semibold text-sky-300">get-ipv4 -status</span>
                         <span class="inline-block h-3.5 w-1.5 bg-emerald-400 animate-pulse"></span>
                     </div>
-                    <span id="cmdStatus" class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-400 border border-emerald-500/20">
+                    <span id="cmdStatus" class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10.5px] font-bold text-emerald-400 border border-emerald-500/20">
                         <span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                        CONNECTED
+                        IPv4 ONLINE
                     </span>
                 </div>
 
-                <!-- Diagnostic Info Table -->
+                <!-- Diagnostic Info Table (Pure IPv4 Details) -->
                 <div class="rounded-lg border border-white/10 bg-black/40 p-4 space-y-2.5">
                     <div class="flex items-center justify-between border-b border-white/5 pb-2 text-[11px]">
-                        <span class="text-white/50">IP Public Anda</span>
+                        <span class="text-white/50">IPv4 Public</span>
                         <span id="cmdIp" class="font-bold text-emerald-400 text-sm tracking-wider font-mono"><?= htmlspecialchars($client_ip) ?></span>
                     </div>
 
                     <div class="flex items-center justify-between border-b border-white/5 pb-2 text-[11px]">
                         <span class="text-white/50">ISP / Provider</span>
-                        <span id="cmdIsp" class="font-semibold text-amber-300 text-right truncate max-w-[210px]" title="Mendeteksi ISP...">Mendeteksi...</span>
-                    </div>
-
-                    <div class="flex items-center justify-between border-b border-white/5 pb-2 text-[11px]">
-                        <span class="text-white/50">Lokasi Terdeteksi</span>
-                        <span id="cmdLocation" class="text-sky-200 text-right truncate max-w-[210px]">-</span>
-                    </div>
-
-                    <div class="flex items-center justify-between border-b border-white/5 pb-2 text-[11px]">
-                        <span class="text-white/50">ASN Jaringan</span>
-                        <span id="cmdAsn" class="text-white/70 font-mono text-right">-</span>
+                        <span id="cmdIsp" class="font-semibold text-amber-300 text-right truncate max-w-[200px]" title="Mendeteksi ISP...">Mendeteksi...</span>
                     </div>
 
                     <div class="flex items-center justify-between text-[11px]">
-                        <span class="text-white/50">Status Koneksi</span>
-                        <span class="text-emerald-400 font-medium text-right flex items-center gap-1.5">
-                            <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span> Siap &amp; Stabil
-                        </span>
+                        <span class="text-white/50">Protokol</span>
+                        <span id="cmdType" class="font-mono text-emerald-400 font-medium text-right">IPv4 Network</span>
                     </div>
                 </div>
 
                 <!-- Command prompt line & action -->
-                <div class="flex items-center justify-between pt-1 text-[11px] text-white/40">
+                <div class="flex items-center justify-between pt-0.5 text-[10.5px] text-white/40">
                     <div class="flex items-center gap-1">
-                        <span class="text-white/35">C:\Users\Visitor&gt;</span>
-                        <span class="text-white/50">diagnostic ready</span>
+                        <span class="text-white/35">C:\Visitor&gt;</span>
+                        <span class="text-white/50">ok</span>
                     </div>
-                    <button type="button" onclick="detectVisitorNetwork(true)" class="inline-flex items-center gap-1 rounded bg-white/5 px-2.5 py-1 text-[11px] text-white/70 hover:bg-white/10 hover:text-emerald-400 transition-colors border border-white/10 cursor-pointer">
-                        <span>↻</span> Ping Ulang
+                    <button type="button" onclick="detectVisitorNetwork(true)" class="inline-flex items-center gap-1 rounded bg-white/5 px-2 py-0.5 text-[10.5px] text-white/70 hover:bg-white/10 hover:text-emerald-400 transition-colors border border-white/10 cursor-pointer">
+                        <span>↻</span> Refresh
                     </button>
                 </div>
             </div>
@@ -462,8 +450,7 @@ function toggleMobileMenu() {
 async function detectVisitorNetwork(isManual = false) {
     const ipEl = document.getElementById('cmdIp');
     const ispEl = document.getElementById('cmdIsp');
-    const locEl = document.getElementById('cmdLocation');
-    const asnEl = document.getElementById('cmdAsn');
+    const typeEl = document.getElementById('cmdType');
     const statusEl = document.getElementById('cmdStatus');
 
     if (isManual && statusEl) {
@@ -471,55 +458,56 @@ async function detectVisitorNetwork(isManual = false) {
     }
 
     try {
-        const res = await fetch('https://ipwho.is/', { cache: 'no-store' });
+        // Step 1: Ensure IPv4 via api.ipify.org (strictly IPv4 endpoint)
+        let ipv4 = '';
+        try {
+            const ipRes = await fetch('https://api.ipify.org?format=json', { cache: 'no-store' });
+            const ipData = await ipRes.json();
+            if (ipData && ipData.ip) ipv4 = ipData.ip;
+        } catch (e) {}
+
+        // Step 2: Fetch ISP for this IPv4 or current visitor via ipwho.is
+        const whoUrl = ipv4 ? `https://ipwho.is/${encodeURIComponent(ipv4)}` : 'https://ipwho.is/';
+        const res = await fetch(whoUrl, { cache: 'no-store' });
         const data = await res.json();
+
         if (data && data.success) {
-            if (ipEl) ipEl.textContent = data.ip;
+            const finalIp = ipv4 || (data.type === 'IPv4' ? data.ip : '<?= htmlspecialchars($client_ip) ?>');
+            if (ipEl) ipEl.textContent = finalIp;
             const ispName = (data.connection && (data.connection.isp || data.connection.org)) || 'Terdeteksi';
             if (ispEl) {
                 ispEl.textContent = ispName;
                 ispEl.title = ispName;
             }
-            const locParts = [data.city, data.region, data.country_code].filter(Boolean);
-            const locText = locParts.length > 0 ? locParts.join(', ') : (data.country || '-');
-            if (locEl) {
-                locEl.textContent = locText;
-                locEl.title = locText;
-            }
-            const asnText = (data.connection && data.connection.asn) ? ('AS' + data.connection.asn) : (data.type || 'IPv4');
-            if (asnEl) asnEl.textContent = asnText;
+            if (typeEl) typeEl.textContent = 'IPv4 Network';
             if (statusEl) {
-                statusEl.innerHTML = '<span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping"></span> CONNECTED';
+                statusEl.innerHTML = '<span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping"></span> IPv4 ONLINE';
             }
             return;
         }
     } catch (e) {
-        // Fallback 1: ipify for IP lookup
+        // Fallback: ipify only
         try {
             const res2 = await fetch('https://api.ipify.org?format=json');
             const data2 = await res2.json();
             if (data2 && data2.ip) {
                 if (ipEl) ipEl.textContent = data2.ip;
                 if (ispEl) ispEl.textContent = 'Jaringan Internet Publik';
-                if (locEl) locEl.textContent = 'Indonesia';
-                if (asnEl) asnEl.textContent = 'IPv4';
+                if (typeEl) typeEl.textContent = 'IPv4 Network';
                 if (statusEl) {
-                    statusEl.innerHTML = '<span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400"></span> CONNECTED';
+                    statusEl.innerHTML = '<span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400"></span> IPv4 ONLINE';
                 }
                 return;
             }
         } catch (e2) {}
     }
 
-    // Fallback 2: Local / Server fallback
+    // Fallback: local/server IP
     if (ispEl && ispEl.textContent === 'Mendeteksi...') {
         ispEl.textContent = 'Jaringan Terhubung';
     }
-    if (locEl && locEl.textContent === '-') {
-        locEl.textContent = 'Lokal';
-    }
     if (statusEl) {
-        statusEl.innerHTML = '<span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400"></span> CONNECTED';
+        statusEl.innerHTML = '<span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400"></span> IPv4 ONLINE';
     }
 }
 
